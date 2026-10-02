@@ -14,33 +14,30 @@ import java.util.random.RandomGenerator;
 
 public record PreparedSequence(
     EmoteSequence source,
-    LinearPlayback playback,
+    List<Step> steps,
     PreparedAnimation layoutAnchor,
     PreparedAnimation compiledAnimation
 ) implements PlayableEmote {
     public PreparedSequence {
         Objects.requireNonNull(source, "source");
-        Objects.requireNonNull(playback, "playback");
+        steps = List.copyOf(steps);
+        if (steps.isEmpty()) throw new IllegalArgumentException("sequence steps must not be empty");
         Objects.requireNonNull(layoutAnchor, "layoutAnchor");
         Objects.requireNonNull(compiledAnimation, "compiledAnimation");
     }
 
     public static PreparedSequence resolve(EmoteSequence source, Map<String, PreparedAnimation> animations) {
-        LinearPlayback playback = resolvePlayback(source, animations);
-        PreparedAnimation layoutAnchor = SequenceNodeLayout.validateAndCreateLayout(playback.validationSteps());
+        List<Step> steps = resolveSteps(source.steps(), animations);
+        PreparedAnimation layoutAnchor = SequenceNodeLayout.validateAndCreateLayout(steps);
         return new PreparedSequence(
             source,
-            playback,
+            steps,
             layoutAnchor,
-            SequenceCompiler.compile(source, selectFirstCandidates(playback.branch()), layoutAnchor)
+            SequenceCompiler.compile(source, selectFirstCandidates(steps), layoutAnchor)
         );
     }
 
-    private static LinearPlayback resolvePlayback(EmoteSequence source, Map<String, PreparedAnimation> animations) {
-        return new LinearPlayback(resolveBranch(source.steps(), animations));
-    }
-
-    private static Branch resolveBranch(List<EmoteSequence.Step> sourceSteps, Map<String, PreparedAnimation> animations) {
+    private static List<Step> resolveSteps(List<EmoteSequence.Step> sourceSteps, Map<String, PreparedAnimation> animations) {
         List<Step> resolvedSteps = new ArrayList<>(sourceSteps.size());
         for (EmoteSequence.Step sourceStep : sourceSteps) {
             if (sourceStep instanceof EmoteSequence.WaitStep(int ticks)) {
@@ -60,7 +57,7 @@ public record PreparedSequence(
             }
             resolvedSteps.add(new EmoteStep(candidates, step.repeat(), step.transitionTicks()));
         }
-        return new Branch(resolvedSteps);
+        return List.copyOf(resolvedSteps);
     }
 
     private static PreparedAnimation resolveAnimation(String id, Map<String, PreparedAnimation> animations) {
@@ -78,17 +75,17 @@ public record PreparedSequence(
     }
 
     public PreparedAnimation compile(RandomGenerator random) {
-        return SequenceCompiler.compile(this.source, selectSteps(this.playback.branch(), random), this.layoutAnchor);
+        return SequenceCompiler.compile(this.source, selectSteps(this.steps, random), this.layoutAnchor);
     }
 
     List<SelectedStep> selectSteps(RandomGenerator random) {
-        return selectSteps(this.playback.branch(), random);
+        return selectSteps(this.steps, random);
     }
 
-    private static List<SelectedStep> selectSteps(Branch branch, RandomGenerator random) {
+    private static List<SelectedStep> selectSteps(List<Step> steps, RandomGenerator random) {
         Objects.requireNonNull(random, "random");
         List<SelectedStep> selectedSteps = new ArrayList<>();
-        for (Step step : branch.steps()) {
+        for (Step step : steps) {
             if (step instanceof WaitStep(int ticks)) {
                 selectedSteps.add(new SelectedWaitStep(ticks));
                 continue;
@@ -113,9 +110,9 @@ public record PreparedSequence(
         return selectedSteps;
     }
 
-    private static List<SelectedStep> selectFirstCandidates(Branch branch) {
+    private static List<SelectedStep> selectFirstCandidates(List<Step> steps) {
         List<SelectedStep> selectedSteps = new ArrayList<>();
-        for (Step step : branch.steps()) {
+        for (Step step : steps) {
             if (step instanceof WaitStep(int ticks)) {
                 selectedSteps.add(new SelectedWaitStep(ticks));
                 continue;
@@ -192,25 +189,6 @@ public record PreparedSequence(
     @Override
     public int nodeCount() {
         return this.compiledAnimation.nodeCount();
-    }
-
-    public record LinearPlayback(Branch branch) {
-        public LinearPlayback {
-            Objects.requireNonNull(branch, "branch");
-        }
-
-        public List<Step> validationSteps() {
-            return this.branch.steps();
-        }
-    }
-
-    public record Branch(List<Step> steps) {
-        public Branch {
-            steps = List.copyOf(steps);
-            if (steps.isEmpty()) {
-                throw new IllegalArgumentException("sequence branch steps must not be empty");
-            }
-        }
     }
 
     public sealed interface Step permits EmoteStep, WaitStep {

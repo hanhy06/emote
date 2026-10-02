@@ -1,23 +1,38 @@
 package io.github.hanhy06.emote.playback;
 
+import com.mojang.datafixers.util.Pair;
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.*;
 import io.github.hanhy06.emote.content.*;
+import io.github.hanhy06.emote.mixin.accessor.EntitySharedFlagsAccessor;
 import io.github.hanhy06.emote.playback.molang.PlayerMolangQueries;
 import io.github.hanhy06.emote.playback.runtime.RootTransform;
 import io.github.hanhy06.emote.playback.session.*;
 import io.github.hanhy06.emote.skin.*;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import net.minecraft.server.level.ServerPlayer;
+import net.fabricmc.fabric.api.networking.v1.EntityTrackingEvents;
+import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
+import net.minecraft.network.protocol.game.ClientboundSetEquipmentPacket;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 import java.util.*;
 import java.util.random.RandomGenerator;
 
 public final class PlayerPlaybackManager {
+    private static final List<EquipmentSlot> PLAYER_EQUIPMENT_SLOTS = List.of(
+        EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND, EquipmentSlot.FEET,
+        EquipmentSlot.LEGS, EquipmentSlot.CHEST, EquipmentSlot.HEAD
+    );
+    private static final List<Pair<EquipmentSlot, ItemStack>> EMPTY_EQUIPMENT = PLAYER_EQUIPMENT_SLOTS.stream()
+        .map(slot -> Pair.of(slot, ItemStack.EMPTY)).toList();
     private final PlaybackEngine engine;
     private final PlayerSkinManager skins;
-    private final PlayerVisibilityService visibility;
     private final List<PlaybackStateListener> listeners = new ArrayList<>();
     private final Set<UUID> closingPlayers = new HashSet<>();
     private final Map<UUID, PlayerPlayback> playerSessions = new HashMap<>();
@@ -26,11 +41,13 @@ public final class PlayerPlaybackManager {
     public PlayerPlaybackManager(PlaybackEngine engine, PlayerSkinManager skins) {
         this.engine = engine;
         this.skins = skins;
-        this.visibility = new PlayerVisibilityService(this);
         skins.addReadyListener(this::refreshPlayerSkin);
     }
     public PlaybackEngine engine() { return this.engine; }
-    public void registerVisibilityService() { this.visibility.register(); }
+    public void register() {
+        EntityTrackingEvents.START_TRACKING.register(this::handleStartTracking);
+        PlaybackHooks.EQUIPMENT_SYNC.register(this::handleEquipmentSync);
+    }
     public void addStateListener(PlaybackStateListener listener) { this.listeners.add(Objects.requireNonNull(listener)); }
     public @Nullable PlaybackSession findActive(UUID playerId) {
         PlayerPlayback playback = this.playerSessions.get(playerId);
@@ -63,7 +80,7 @@ public final class PlayerPlaybackManager {
             private int notifiedListeners;
             @Override public void onStarted(PlaybackSession session) {
                 playerSessions.put(player.getUUID(), new PlayerPlayback(session, playerState));
-                visibility.start(player, playerState);
+                hidePlayer(player, playerState);
                 for (PlaybackStateListener listener : playbackListeners) {
                     this.notifiedListeners++;
                     listener.onStarted(player, session, playerState);
@@ -80,7 +97,10 @@ public final class PlayerPlaybackManager {
             @Override public void prepareFrame(PlaybackSession session) {
                 if (playerState.behavior().stopConditions().movementDistance() == 0) engine.entities().moveSceneTo(session.nodes(), player.position());
                 engine.entities().updateViewRotation(session.nodes(), player.getYRot(), session.animation().rotationDeadzone());
-                visibility.tick(player, playerState);
+                if (playerState.behavior().hidden() && !player.isInvisible()) {
+                    player.setInvisible(true);
+                    syncPlayerVisibility(player);
+                }
             }
             @Override public void onClosing(PlaybackSession session) {
                 playerSessions.remove(player.getUUID());
@@ -88,7 +108,7 @@ public final class PlayerPlaybackManager {
             }
             @Override public void onStopped(PlaybackSession session, PlaybackStopReason reason) {
                 try {
-                    visibility.stop(player, playerState);
+                    restorePlayerVisibility(player, playerState);
                     for (int i = 0; i < this.notifiedListeners; i++) playbackListeners.get(i).onStopped(player, session, playerState, reason);
                 } finally { closingPlayers.remove(player.getUUID()); }
             }
@@ -118,6 +138,51 @@ public final class PlayerPlaybackManager {
         var bindings = playerState(playerId).skinBindings();
         var preparation = this.skins.preparePlayerSkin(player, bindings);
         this.engine.entities().applySkin(session.nodes(), bindings, preparation.preparedPlayerSkin());
+    }
+
+    private static void hidePlayer(ServerPlayer player, PlayerPlaybackState playerState) {
+        if (!playerState.behavior().hidden()) return;
+        player.setInvisible(true);
+        syncPlayerVisibility(player);
+        sendToTrackingPlayers(player, EMPTY_EQUIPMENT);
+    }
+
+    private static void restorePlayerVisibility(ServerPlayer player, PlayerPlaybackState playerState) {
+        if (!playerState.behavior().hidden()) return;
+        player.setInvisible(playerState.wasInvisible());
+        syncPlayerVisibility(player);
+        sendToTrackingPlayers(player, createVisibleEquipment(player));
+    }
+
+    private void handleStartTracking(Entity entity, ServerPlayer trackingPlayer) {
+        if (!(entity instanceof ServerPlayer emotePlayer)) return;
+        PlayerPlaybackState playerState = playerState(emotePlayer.getUUID());
+        if (playerState != null && playerState.behavior().hidden()) {
+            trackingPlayer.connection.send(new ClientboundSetEquipmentPacket(emotePlayer.getId(), EMPTY_EQUIPMENT));
+        }
+    }
+
+    private void handleEquipmentSync(ServerPlayer player, Map<EquipmentSlot, ItemStack> changedItems) {
+        if (PLAYER_EQUIPMENT_SLOTS.stream().noneMatch(changedItems::containsKey)) return;
+        PlayerPlaybackState playerState = playerState(player.getUUID());
+        if (playerState != null && playerState.behavior().hidden()) sendToTrackingPlayers(player, EMPTY_EQUIPMENT);
+    }
+
+    private static void syncPlayerVisibility(ServerPlayer player) {
+        EntityDataAccessor<Byte> sharedFlagsId = EntitySharedFlagsAccessor.emote$getSharedFlagsId();
+        byte sharedFlags = player.getEntityData().get(sharedFlagsId);
+        ClientboundSetEntityDataPacket packet = new ClientboundSetEntityDataPacket(
+            player.getId(), List.of(SynchedEntityData.DataValue.create(sharedFlagsId, sharedFlags))
+        );
+        player.level().getChunkSource().sendToTrackingPlayersAndSelf(player, packet);
+    }
+
+    private static List<Pair<EquipmentSlot, ItemStack>> createVisibleEquipment(ServerPlayer player) {
+        return PLAYER_EQUIPMENT_SLOTS.stream().map(slot -> Pair.of(slot, player.getItemBySlot(slot).copy())).toList();
+    }
+
+    private static void sendToTrackingPlayers(ServerPlayer player, List<Pair<EquipmentSlot, ItemStack>> equipment) {
+        player.level().getChunkSource().sendToTrackingPlayers(player, new ClientboundSetEquipmentPacket(player.getId(), equipment));
     }
 
     private boolean shouldStopForMovement(ServerPlayer player, PlayerPlaybackState playerState) {

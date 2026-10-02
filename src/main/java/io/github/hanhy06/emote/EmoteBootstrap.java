@@ -103,7 +103,7 @@ final class EmoteBootstrap {
         playback.addStateListener(cooldowns);
         playback.addStateListener(playbackStateSync);
         playback.addStateListener(apiEvents);
-        playback.registerVisibilityService();
+        playback.register();
         entityPlayback.register();
         registerPayloads();
         ServerLifecycleEvents.SERVER_STARTED.register(server -> accounts.initialize());

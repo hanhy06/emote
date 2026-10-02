@@ -1,5 +1,5 @@
 import { useState } from "preact/hooks";
-import { parseCallbacks } from "../format/emoteAnimationRuntime";
+import { parseCallbacks, requireEventBody } from "../format/emoteAnimationRuntime";
 import type { EmoteCallback, EmoteEvent } from "../format/emoteAnimation";
 import type { ConversionAnimationEvents } from "../domain/conversionDocument";
 
@@ -93,30 +93,12 @@ function parseEventArray(value: unknown, path: string, timeline = false): EmoteE
 function parseEvent(value: unknown, path: string, timeline: boolean): EmoteEvent {
   if (!isRecord(value)) throw new Error(`${path} must be a JSON object.`);
   if (timeline && ("time" in value || "tick" in value)) throw new Error(`${path} must not contain time or tick; the selected preview tick supplies it.`);
-  requireSource(value.source, `${path}.source`);
-  requireOrigin(value.origin, `${path}.origin`);
-  if (!Array.isArray(value.commands) || value.commands.some((command) => typeof command !== "string")) {
-    throw new Error(`${path}.commands must be an array of strings.`);
+  const event = requireEventBody(value, path);
+  const origin = event.origin as Record<string, unknown>;
+  if (origin.offset !== undefined && (!Array.isArray(origin.offset) || origin.offset.length !== 3 || origin.offset.some((item) => typeof item !== "number"))) {
+    throw new Error(`${path}.origin.offset must be an array of three numbers.`);
   }
-  if ("callbacks" in value) throw new Error(`${path}.callbacks is no longer supported.`);
-  return value as unknown as EmoteEvent;
-}
-
-function requireSource(value: unknown, path: string): void {
-  if (!isRecord(value) || (value.type !== "player" && value.type !== "server" && value.type !== "node")) {
-    throw new Error(`${path} must contain a player, server, or node source.`);
-  }
-  if (value.type === "node" && typeof value.node !== "string") throw new Error(`${path}.node must be a string.`);
-}
-
-function requireOrigin(value: unknown, path: string): void {
-  if (!isRecord(value) || (value.type !== "root" && value.type !== "node")) {
-    throw new Error(`${path} must contain a root or node origin.`);
-  }
-  if (value.type === "node" && typeof value.node !== "string") throw new Error(`${path}.node must be a string.`);
-  if (value.offset !== undefined && (!Array.isArray(value.offset) || value.offset.length !== 3 || value.offset.some((item) => typeof item !== "number"))) {
-    throw new Error(`${path}.offset must be an array of three numbers.`);
-  }
+  return event as unknown as EmoteEvent;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

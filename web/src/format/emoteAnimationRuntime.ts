@@ -195,11 +195,19 @@ function requireEvents(value: unknown, path: string, timeline: boolean): void {
     const eventPath = `${path}[${index}]`;
     const event = requireRecord(eventValue, eventPath);
     if (timeline) requireString(event.time, `${eventPath}.time`);
-    requireEventSource(event.source, `${eventPath}.source`);
-    requireEventOrigin(event.origin, `${eventPath}.origin`);
-    requireStringArray(event.commands, `${eventPath}.commands`);
-    if ("callbacks" in event) throw new Error(`${eventPath}.callbacks is no longer supported.`);
+    requireEventBody(event, eventPath);
+    const origin = event.origin as RuntimeRecord;
+    if (origin.offset !== undefined) requireNumberArray(origin.offset, `${eventPath}.origin.offset`);
   });
+}
+
+export function requireEventBody(value: unknown, path: string): RuntimeRecord {
+  const event = requireRecord(value, path);
+  requireEventSource(event.source, `${path}.source`);
+  requireEventOrigin(event.origin, `${path}.origin`);
+  requireStringArray(event.commands, `${path}.commands`);
+  if ("callbacks" in event) throw new Error(`${path}.callbacks is no longer supported.`);
+  return event;
 }
 
 function requireEventSource(value: unknown, path: string): void {
@@ -212,5 +220,4 @@ function requireEventOrigin(value: unknown, path: string): void {
   const origin = requireRecord(value, path);
   const type = requireStringValue(origin.type, ["root", "node"] as const, `${path}.type`);
   if (type === "node") requireString(origin.node, `${path}.node`);
-  if (origin.offset !== undefined) requireNumberArray(origin.offset, `${path}.offset`);
 }

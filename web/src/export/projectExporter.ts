@@ -147,10 +147,6 @@ function requireRemappedAnimationId(sourceId: string, outputIdBySourceId: Readon
   return outputId;
 }
 
-export function sanitizeAnimationFileName(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9_-]+/g, "_").replace(/^_+|_+$/g, "") || "emote";
-}
-
 export function emoteFileName(id: string): string {
   return `${id.replaceAll(/[:/]/g, ".")}.json`;
 }

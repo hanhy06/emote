@@ -1,9 +1,5 @@
 package io.github.hanhy06.emote.skin;
 
-import com.mojang.authlib.minecraft.MinecraftProfileTexture;
-import com.mojang.authlib.minecraft.MinecraftProfileTextures;
-import com.mojang.authlib.properties.Property;
-import com.mojang.authlib.GameProfile;
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.config.ConfigListener;
@@ -92,7 +88,7 @@ public class PlayerSkinManager implements ConfigListener {
     private static CompletableFuture<PlayerSkinSource> resolveNamedSkinSource(String name) {
         MinecraftServer server = EmoteMod.SERVER;
         return CompletableFuture.supplyAsync(() -> server.services().profileResolver().fetchByName(name)
-            .map(profile -> readSkinSource(profile, server)).orElse(null), Util.nonCriticalIoPool())
+            .map(profile -> PlayerSkinSource.fromProfile(profile, server.services().sessionService())).orElse(null), Util.nonCriticalIoPool())
             .orTimeout(15, TimeUnit.SECONDS);
     }
 
@@ -197,7 +193,7 @@ public class PlayerSkinManager implements ConfigListener {
     }
 
     private static PlayerSkinSource readPlayerSkinSource(ServerPlayer player) {
-        return readSkinSource(player.getGameProfile());
+        return PlayerSkinSource.fromProfile(player.getGameProfile(), EmoteMod.SERVER.services().sessionService());
     }
 
     private PlayerSkinSource resolvePlayerSkinSource(ServerPlayer player) {
@@ -207,30 +203,6 @@ public class PlayerSkinManager implements ConfigListener {
             EmoteMod.LOGGER.warn("Could not resolve player skin; using any prepared default skin", exception);
             return null;
         }
-    }
-
-    static PlayerSkinSource readSkinSource(GameProfile profile) {
-        return readSkinSource(profile, EmoteMod.SERVER);
-    }
-
-    private static PlayerSkinSource readSkinSource(GameProfile profile, MinecraftServer server) {
-        Property packedTextures = server.services().sessionService().getPackedTextures(profile);
-        if (packedTextures == null) {
-            return null;
-        }
-        MinecraftProfileTextures textures = server.services().sessionService().unpackTextures(packedTextures);
-        MinecraftProfileTexture skinTexture = textures.skin();
-        if (skinTexture == null) {
-            return null;
-        }
-        boolean slimModel = "slim".equalsIgnoreCase(skinTexture.getMetadata("model"));
-        return new PlayerSkinSource(
-            profile.id(),
-            profile.name(),
-            skinTexture.getHash(),
-            skinTexture.getUrl(),
-            slimModel
-        );
     }
 
     private record SkinIdentity(String textureHash, boolean slimModel) {

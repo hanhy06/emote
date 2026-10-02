@@ -43,7 +43,7 @@ final class TimelineJsonParser {
         for (Map.Entry<String, JsonElement> entry : object.entrySet()) {
             String nodeId = entry.getKey();
             String path = "$.timeline.tracks." + nodeId;
-            Node node = requireNode(nodes, nodeId, path, document);
+            Node node = document.requireNode(nodes, nodeId, path);
             JsonObject nodeObject = document.requireObject(entry.getValue(), path);
             List<VectorKeyframe> position = parseVectorTrack(
                 document.optionalArray(nodeObject, "position", path), path + ".position", durationTicks, document
@@ -116,7 +116,7 @@ final class TimelineJsonParser {
         if (expression.isBlank()) {
             throw document.error(path + ".molang", "must not be blank");
         }
-        AnimationJsonParser.compileMolang(expression, path + ".molang", document);
+        document.requireMolang(expression, path + ".molang");
         if (object.size() != 1) {
             throw document.error(path, "Molang NBT only supports molang");
         }
@@ -206,7 +206,7 @@ final class TimelineJsonParser {
                 parsed = new ConstantVisibility(value.getAsBoolean());
             } else if (!document.isNotString(value) && !value.getAsString().isBlank()) {
                 String source = value.getAsString();
-                AnimationJsonParser.compileMolang(source, keyframePath + ".value", document);
+                document.requireMolang(source, keyframePath + ".value");
                 parsed = new MolangVisibility(source, keyframePath + ".value");
             } else {
                 throw document.error(keyframePath + ".value", "must be a boolean or Molang string");
@@ -260,7 +260,7 @@ final class TimelineJsonParser {
         }
         if (!document.isNotString(element) && !element.getAsString().isBlank()) {
             String source = element.getAsString();
-            AnimationJsonParser.compileMolang(source, path, document);
+            document.requireMolang(source, path);
             return new MolangValue(source, path);
         }
         throw document.error(path, "must be a finite number or Molang string");
@@ -292,20 +292,6 @@ final class TimelineJsonParser {
         } catch (IllegalArgumentException exception) {
             throw document.error(path + ".easing", "unsupported easing: " + value);
         }
-    }
-
-    static Node requireNode(
-        Map<String, Node> nodes,
-        String nodeId,
-        String path,
-        EmoteJsonDocument document
-    )
-        throws EmoteAnimationLoadException {
-        Node node = nodes.get(nodeId);
-        if (node == null) {
-            throw document.error(path, "references unknown node: " + nodeId);
-        }
-        return node;
     }
 
     private int optionalInterpolationDuration(

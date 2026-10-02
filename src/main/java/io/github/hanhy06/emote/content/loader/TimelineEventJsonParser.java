@@ -151,7 +151,7 @@ final class TimelineEventJsonParser {
             case "server" -> new CommandSource(SourceType.SERVER, null);
             case "node" -> {
                 String nodeId = document.requireString(object, "node", path);
-                Node node = TimelineJsonParser.requireNode(nodes, nodeId, path + ".node", document);
+                Node node = document.requireNode(nodes, nodeId, path + ".node");
                 if (node instanceof AnchorNode) {
                     throw document.error(path + ".node", "anchor nodes cannot be command sources");
                 }
@@ -174,7 +174,7 @@ final class TimelineEventJsonParser {
             case "root" -> new CommandOrigin(OriginType.ROOT, null, offset);
             case "node" -> {
                 String nodeId = document.requireString(object, "node", path);
-                TimelineJsonParser.requireNode(nodes, nodeId, path + ".node", document);
+                document.requireNode(nodes, nodeId, path + ".node");
                 yield new CommandOrigin(OriginType.NODE, nodeId, offset);
             }
             default -> throw document.error(path + ".type", "unsupported origin type: " + type);

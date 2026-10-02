@@ -9,7 +9,6 @@ import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.content.LoadedAnimation;
-import io.github.hanhy06.emote.molang.MolangEngine;
 import io.github.hanhy06.emote.util.Sha256;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.TagParser;
@@ -112,7 +111,7 @@ public final class AnimationJsonParser {
         if (source.isBlank()) {
             throw document.error(path + "." + key, "must not be blank");
         }
-        compileMolang(source, path + "." + key, document);
+        document.requireMolang(source, path + "." + key);
         return source;
     }
 
@@ -399,14 +398,6 @@ public final class AnimationJsonParser {
             }
         }
         return tag;
-    }
-
-    static void compileMolang(String source, String path, EmoteJsonDocument document) throws EmoteAnimationLoadException {
-        try {
-            MolangEngine.INSTANCE.compile(source);
-        } catch (MolangEngine.MolangCompileException exception) {
-            throw document.error(path, "invalid Molang program", exception);
-        }
     }
 
     private CompoundTag requireCompoundSnbt(

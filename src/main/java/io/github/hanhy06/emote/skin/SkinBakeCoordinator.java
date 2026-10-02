@@ -54,7 +54,7 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
     ) {
         this(accounts, baker, skinClient, cache, accountUploads, fallbackUploader,
             name -> EmoteMod.SERVER.services().profileResolver().fetchByName(name)
-                .map(PlayerSkinManager::readSkinSource).orElse(null));
+                .map(profile -> PlayerSkinSource.fromProfile(profile, EmoteMod.SERVER.services().sessionService())).orElse(null));
     }
 
     public SkinBakeCoordinator(MinecraftAccountManager accounts, PlayerSkinBaker baker, MinecraftSkinClient skinClient,
