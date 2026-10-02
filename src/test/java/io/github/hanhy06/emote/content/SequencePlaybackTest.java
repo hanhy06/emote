@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.content;
 
+import io.github.hanhy06.emote.api.sequence.EmoteSequence;
+
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
@@ -22,9 +24,7 @@ class SequencePlaybackTest {
     void startsIndependentMolangSessionForEachAnimationSegment() throws Exception {
         PreparedAnimation first = animation("example:first", 1);
         PreparedAnimation second = animation("example:second", 10);
-        EmoteSequence sequence = new EmoteSequence(
-            Path.of("sequence.json"),
-            Identifier.parse("example:sequence"),
+        EmoteSequence sequence = new EmoteSequence(Identifier.parse("example:sequence"),
             new EmoteMetadata("Sequence", "test", Map.of()),
             new EmoteSequence.Settings(0, playerBehavior()),
             List.of(
@@ -53,9 +53,7 @@ class SequencePlaybackTest {
     void appliesTheNextPoseOnceAndWaitsForItsTransitionBeforeStartingTheSegment() throws Exception {
         PreparedAnimation first = animation("example:first", 1);
         PreparedAnimation second = animation("example:second", 10);
-        EmoteSequence sequence = new EmoteSequence(
-            Path.of("sequence.json"),
-            Identifier.parse("example:sequence"),
+        EmoteSequence sequence = new EmoteSequence(Identifier.parse("example:sequence"),
             new EmoteMetadata("Sequence", "test", Map.of()),
             new EmoteSequence.Settings(0, playerBehavior()),
             List.of(
@@ -88,9 +86,7 @@ class SequencePlaybackTest {
     @Test
     void composesTheSequenceBasePoseThroughParentAnchors() throws Exception {
         PreparedAnimation animation = zeroScaleParentAnimation();
-        EmoteSequence sequence = new EmoteSequence(
-            Path.of("sequence.json"),
-            Identifier.parse("example:sequence"),
+        EmoteSequence sequence = new EmoteSequence(Identifier.parse("example:sequence"),
             new EmoteMetadata("Sequence", "test", Map.of()),
             new EmoteSequence.Settings(0, playerBehavior()),
             List.of(new EmoteSequence.EmoteStep(animation.animation().id(), 1))

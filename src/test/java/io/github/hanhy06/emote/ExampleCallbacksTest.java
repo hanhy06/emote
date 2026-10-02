@@ -2,6 +2,7 @@ package io.github.hanhy06.emote;
 
 import io.github.hanhy06.emote.api.*;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.api.sequence.EmoteSequence;
 import io.github.hanhy06.emote.content.loader.AnimationJsonParser;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.particles.ParticleTypes;
@@ -135,6 +136,7 @@ class ExampleCallbacksTest {
                 public boolean setPlacement(UUID sessionId, PlaybackPlacement placement) { throw new UnsupportedOperationException(); }
                 public Optional<Vec3> getNodeWorldPosition(UUID sessionId, String nodeId) { return Optional.empty(); }
                 public Registration register(EmoteAnimation animation) { throw new UnsupportedOperationException(); }
+                public Registration register(EmoteSequence sequence) { throw new UnsupportedOperationException(); }
                 public Optional<EmoteInfo> find(Identifier id) { return Optional.empty(); }
                 public List<EmoteInfo> getAll() { return List.of(); }
                 public Optional<PlaybackInfo> getPlayback(ServerPlayer player) { return Optional.empty(); }

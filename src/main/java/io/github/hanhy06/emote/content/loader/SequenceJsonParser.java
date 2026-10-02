@@ -6,7 +6,8 @@ import com.google.gson.JsonObject;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
-import io.github.hanhy06.emote.content.EmoteSequence;
+import io.github.hanhy06.emote.api.sequence.EmoteSequence;
+import io.github.hanhy06.emote.content.LoadedSequence;
 import net.minecraft.resources.Identifier;
 
 import java.nio.file.Path;
@@ -16,11 +17,11 @@ import java.util.List;
 public final class SequenceJsonParser {
     private static final int SCHEMA_VERSION = 4;
 
-    public EmoteSequence parse(Path sourcePath) throws EmoteAnimationLoadException {
+    public LoadedSequence parse(Path sourcePath) throws EmoteAnimationLoadException {
         return parse(EmoteJsonDocument.read(sourcePath));
     }
 
-    EmoteSequence parse(EmoteJsonDocument document) throws EmoteAnimationLoadException {
+    LoadedSequence parse(EmoteJsonDocument document) throws EmoteAnimationLoadException {
         JsonObject root = document.root();
         if (!document.type().equals("sequence")) {
             throw document.error("$.type", "must equal sequence");
@@ -42,7 +43,7 @@ public final class SequenceJsonParser {
 
         List<EmoteSequence.Step> steps = parseSteps(document.requireArray(root, "steps", "$"), "$.steps", document);
         try {
-            return new EmoteSequence(document.sourcePath(), id, metadata, settings, steps, AnimationJsonParser.parseCallbacks(root, document));
+            return new LoadedSequence(document.sourcePath(), new EmoteSequence(id, metadata, settings, steps, AnimationJsonParser.parseCallbacks(root, document)));
         } catch (IllegalArgumentException | NullPointerException exception) {
             throw document.error("$.steps", exception.getMessage(), exception);
         }

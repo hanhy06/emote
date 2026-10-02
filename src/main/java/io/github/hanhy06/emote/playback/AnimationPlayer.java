@@ -346,7 +346,6 @@ public final class AnimationPlayer {
                 phaseTick = this.currentTick;
             }
         } else {
-            // At an animation's ending tick, its callbacks still observe that animation.
             PreparedAnimation.PlaybackSegment active = this.lifecycleSegment < 0 ? null
                 : this.emote.playbackSegments().get(this.lifecycleSegment);
             for (PlaybackTimeline.Segment segment : segments) {

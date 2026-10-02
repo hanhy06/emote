@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.content;
 
+import io.github.hanhy06.emote.api.sequence.EmoteSequence;
+
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.*;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
@@ -219,7 +221,7 @@ class PlaybackInspectionTest {
     }
 
     private static PreparedSequence sequence(PreparedAnimation animation, EmoteSequence.Step... steps) {
-        return PreparedSequence.resolve(new EmoteSequence(Path.of("sequence.json"), Identifier.parse("test:sequence"),
+        return PreparedSequence.resolve(new EmoteSequence(Identifier.parse("test:sequence"),
             new EmoteMetadata("Sequence", "test"), new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()),
             List.of(steps)), Map.of(animation.id(), animation));
     }

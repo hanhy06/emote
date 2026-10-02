@@ -4,9 +4,11 @@ import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.*;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
+import io.github.hanhy06.emote.api.sequence.EmoteSequence;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.LoadedAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimation;
+import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.content.loader.AnimationContentResolver;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
@@ -19,6 +21,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public final class EmoteApiImpl extends EmoteApi {
     private final EmoteCatalog emoteCatalog;
@@ -103,6 +107,17 @@ public final class EmoteApiImpl extends EmoteApi {
         UUID registrationId = this.emoteCatalog.register(emote);
         this.changeNotifier.notifyChanged();
         return new ApiRegistration(animation.id(), registrationId);
+    }
+
+    @Override
+    public Registration register(EmoteSequence sequence) {
+        Objects.requireNonNull(sequence, "sequence");
+        requireServerThread();
+        var animations = this.emoteCatalog.animations().stream().collect(Collectors.toMap(PreparedAnimation::id, Function.identity()));
+        PreparedSequence prepared = PreparedSequence.resolve(sequence, animations);
+        UUID registrationId = this.emoteCatalog.register(prepared);
+        this.changeNotifier.notifyChanged();
+        return new ApiRegistration(sequence.id(), registrationId);
     }
 
     @Override
@@ -196,10 +211,16 @@ public final class EmoteApiImpl extends EmoteApi {
         @Override
         public boolean unregister() {
             requireServerThread();
+            List<String> previousIds = EmoteApiImpl.this.emoteCatalog.emotes().stream().map(emote -> emote.id()).toList();
             if (!EmoteApiImpl.this.emoteCatalog.unregister(this.id.toString(), this.registrationId)) {
                 return false;
             }
             EmoteApiImpl.this.playerPlaybackManager.engine().stopById(this.id.toString(), PlaybackStopReason.EMOTE_REMOVED);
+            for (String previousId : previousIds) {
+                if (EmoteApiImpl.this.emoteCatalog.find(previousId) == null) {
+                    EmoteApiImpl.this.playerPlaybackManager.engine().stopById(previousId, PlaybackStopReason.EMOTE_REMOVED);
+                }
+            }
             EmoteApiImpl.this.changeNotifier.notifyChanged();
             return true;
         }

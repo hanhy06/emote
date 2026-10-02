@@ -3,6 +3,7 @@ package io.github.hanhy06.emote.application;
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.*;
 import io.github.hanhy06.emote.content.PlayableEmote;
+import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.playback.PlaybackStateListener;
 import io.github.hanhy06.emote.playback.PlayerPlaybackState;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
@@ -96,9 +97,10 @@ public final class ApiEventDispatcher implements PlaybackStateListener {
     public static EmoteInfo toInfo(PlayableEmote emote) {
         return new EmoteInfo(
             Identifier.parse(emote.id()),
+            emote instanceof PreparedSequence ? EmoteInfo.Kind.SEQUENCE : EmoteInfo.Kind.ANIMATION,
             emote.metadata(),
             emote.playerBehavior(),
-            emote.durationTicks(),
+            emote instanceof PreparedSequence sequence ? sequence.fixedDurationTicks() : Integer.valueOf(emote.durationTicks()),
             emote.cooldownTicks(),
             emote.loopMode()
         );

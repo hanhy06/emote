@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.content;
 
+import io.github.hanhy06.emote.api.sequence.EmoteSequence;
+
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import net.minecraft.resources.Identifier;
@@ -196,9 +198,7 @@ class EmoteCatalogTest {
     @Test
     void includesResolvedSequencesInDefinitionLookup() {
         PreparedAnimation animation = create("demo:sit_down", "Sit Down");
-        EmoteSequence source = new EmoteSequence(
-            Path.of("sit.json"),
-            Identifier.parse("demo:sit"),
+        EmoteSequence source = new EmoteSequence(Identifier.parse("demo:sit"),
             new EmoteMetadata("Sit", "Sit sequence"),
             new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()),
             List.of(new EmoteSequence.EmoteStep(Identifier.parse(animation.id()), 1))
@@ -218,9 +218,7 @@ class EmoteCatalogTest {
     @Test
     void restoresFileSequenceWhenApiCollisionIsRemoved() {
         PreparedAnimation animation = create("demo:offer", "Offer");
-        EmoteSequence source = new EmoteSequence(
-            Path.of("pair.json"),
-            Identifier.parse("demo:pair"),
+        EmoteSequence source = new EmoteSequence(Identifier.parse("demo:pair"),
             new EmoteMetadata("Pair", "Pair sequence"),
             new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()),
             List.of(new EmoteSequence.EmoteStep(Identifier.parse(animation.id()), 1))
@@ -238,9 +236,7 @@ class EmoteCatalogTest {
     @Test
     void appliesTheRegistryLimitAcrossAnimationsAndSequencesById() {
         PreparedAnimation animation = create("test:animation", "Animation");
-        EmoteSequence source = new EmoteSequence(
-            Path.of("sequence.json"),
-            Identifier.parse("test:0000"),
+        EmoteSequence source = new EmoteSequence(Identifier.parse("test:0000"),
             new EmoteMetadata("Sequence", "Sequence"),
             new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()),
             List.of(new EmoteSequence.EmoteStep(Identifier.parse(animation.id()), 1))

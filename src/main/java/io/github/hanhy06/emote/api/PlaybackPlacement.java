@@ -5,10 +5,6 @@ import net.minecraft.util.Mth;
 
 import java.util.Objects;
 
-/** World-space scene placement in the actor's dimension, using Minecraft yaw in [-180, 180).
- * PLAYER inputs use the actor's normal placement rules and ignore position/yaw;
- * playback snapshots always contain the actual position and orientation.
- */
 public record PlaybackPlacement(Mode mode, Vec3 position, float yaw) {
     public enum Mode { PLAYER, EXTERNAL }
 

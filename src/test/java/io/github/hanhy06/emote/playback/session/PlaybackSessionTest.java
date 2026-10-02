@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.playback.session;
 
+import io.github.hanhy06.emote.api.sequence.EmoteSequence;
+
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.*;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
@@ -245,7 +247,7 @@ class PlaybackSessionTest {
         steps.add(new EmoteSequence.EmoteStep(source.id(), 1));
         if (waitTicks > 0) steps.add(new EmoteSequence.WaitStep(waitTicks));
         steps.add(new EmoteSequence.EmoteStep(source.id(), 1, transitionTicks));
-        EmoteSequence sequence = new EmoteSequence(Path.of("sequence.json"), Identifier.parse("test:sequence"), source.metadata(),
+        EmoteSequence sequence = new EmoteSequence(Identifier.parse("test:sequence"), source.metadata(),
             new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()),
             steps, List.of());
         PreparedAnimation compiled = PreparedSequence.resolve(sequence, Map.of(repeated.id(), repeated)).compiledAnimation();

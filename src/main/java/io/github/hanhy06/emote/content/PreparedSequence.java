@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.content;
 
+import io.github.hanhy06.emote.api.sequence.EmoteSequence;
+
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
@@ -11,15 +13,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.random.RandomGenerator;
+import org.jspecify.annotations.Nullable;
 
 public record PreparedSequence(
     EmoteSequence source,
+    Path sourcePath,
     List<Step> steps,
     PreparedAnimation layoutAnchor,
     PreparedAnimation compiledAnimation
 ) implements PlayableEmote {
     public PreparedSequence {
         Objects.requireNonNull(source, "source");
+        Objects.requireNonNull(sourcePath, "sourcePath");
         steps = List.copyOf(steps);
         if (steps.isEmpty()) throw new IllegalArgumentException("sequence steps must not be empty");
         Objects.requireNonNull(layoutAnchor, "layoutAnchor");
@@ -27,13 +32,19 @@ public record PreparedSequence(
     }
 
     public static PreparedSequence resolve(EmoteSequence source, Map<String, PreparedAnimation> animations) {
+        return resolve(new LoadedSequence(Path.of("api", source.id().getNamespace(), source.id().getPath() + ".json"), source), animations);
+    }
+
+    public static PreparedSequence resolve(LoadedSequence loaded, Map<String, PreparedAnimation> animations) {
+        EmoteSequence source = loaded.sequence();
         List<Step> steps = resolveSteps(source.steps(), animations);
         PreparedAnimation layoutAnchor = SequenceNodeLayout.validateAndCreateLayout(steps);
         return new PreparedSequence(
             source,
+            loaded.sourcePath(),
             steps,
             layoutAnchor,
-            SequenceCompiler.compile(source, selectFirstCandidates(steps), layoutAnchor)
+            SequenceCompiler.compile(source, loaded.sourcePath(), selectFirstCandidates(steps), layoutAnchor)
         );
     }
 
@@ -75,7 +86,7 @@ public record PreparedSequence(
     }
 
     public PreparedAnimation compile(RandomGenerator random) {
-        return SequenceCompiler.compile(this.source, selectSteps(this.steps, random), this.layoutAnchor);
+        return SequenceCompiler.compile(this.source, this.sourcePath, selectSteps(this.steps, random), this.layoutAnchor);
     }
 
     List<SelectedStep> selectSteps(RandomGenerator random) {
@@ -173,7 +184,13 @@ public record PreparedSequence(
 
     @Override
     public Path sourcePath() {
-        return this.source.sourcePath();
+        return this.sourcePath;
+    }
+
+    public @Nullable Integer fixedDurationTicks() {
+        boolean fixed = this.steps.stream().allMatch(step -> step instanceof WaitStep
+            || (step instanceof EmoteStep emote && emote.candidates().size() == 1 && emote.candidates().getFirst() instanceof AnimationChoice));
+        return fixed ? this.compiledAnimation.durationTicks() : null;
     }
 
     @Override

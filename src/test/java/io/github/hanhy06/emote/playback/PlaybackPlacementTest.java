@@ -150,7 +150,6 @@ class PlaybackPlacementTest {
         }));
         UUID actorId = UUID.randomUUID();
         PlayerPlaybackState state = new PlayerPlaybackState(actorId, Vec3.ZERO, List.of(), false, EmotePlayerBehavior.createDefault());
-        // Populate only the player-session ownership index; no live player or world is needed for EXTERNAL placement.
         Class<?> playbackClass = Class.forName(PlayerPlaybackManager.class.getName() + "$PlayerPlayback");
         var constructor = playbackClass.getDeclaredConstructor(PlaybackSession.class, PlayerPlaybackState.class, ServerPlayer.class);
         constructor.setAccessible(true);

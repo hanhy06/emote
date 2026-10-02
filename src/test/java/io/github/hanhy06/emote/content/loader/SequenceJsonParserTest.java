@@ -2,7 +2,7 @@ package io.github.hanhy06.emote.content.loader;
 
 import com.google.gson.JsonPrimitive;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
-import io.github.hanhy06.emote.content.EmoteSequence;
+import io.github.hanhy06.emote.api.sequence.EmoteSequence;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -147,7 +147,7 @@ class SequenceJsonParserTest {
     private EmoteSequence load(Path tempDir, String fileName, String json) throws Exception {
         Path path = tempDir.resolve(fileName);
         Files.writeString(path, json);
-        return this.parser.parse(path);
+        return this.parser.parse(path).sequence();
     }
 
     private static String baseJson(String steps) {

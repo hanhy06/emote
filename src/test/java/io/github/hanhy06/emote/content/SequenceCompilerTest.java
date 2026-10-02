@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.content;
 
+import io.github.hanhy06.emote.api.sequence.EmoteSequence;
+
 import com.google.gson.JsonPrimitive;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.EmoteMetadata;
@@ -341,9 +343,7 @@ class SequenceCompilerTest {
             EmoteAnimation.Events.empty(),
             Map.of("root", sceneAnchor())
         );
-        EmoteSequence source = new EmoteSequence(
-            Path.of("sequence.json"),
-            Identifier.parse("demo:sequence"),
+        EmoteSequence source = new EmoteSequence(Identifier.parse("demo:sequence"),
             new EmoteMetadata("Sequence", "Random sequence"),
             new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()),
             List.of(new EmoteSequence.EmoteStep(List.of(
@@ -373,9 +373,7 @@ class SequenceCompilerTest {
         PreparedAnimation first = animation("demo:first", 1, EmoteAnimation.LoopMode.ONCE, 0, Map.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
         PreparedAnimation second = animation("demo:second", 1, EmoteAnimation.LoopMode.ONCE, 0, Map.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
         PreparedAnimation third = animation("demo:third", 1, EmoteAnimation.LoopMode.ONCE, 0, Map.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
-        EmoteSequence source = new EmoteSequence(
-            Path.of("sequence.json"),
-            Identifier.parse("demo:sequence"),
+        EmoteSequence source = new EmoteSequence(Identifier.parse("demo:sequence"),
             new EmoteMetadata("Sequence", "Weighted sequence"),
             new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()),
             List.of(new EmoteSequence.EmoteStep(List.of(
@@ -406,9 +404,7 @@ class SequenceCompilerTest {
     void continueSkipsOneIterationAndBreakStopsOnlyTheCurrentRepeat() {
         PreparedAnimation loop = animation("demo:loop", 2, EmoteAnimation.LoopMode.LOOP, 4, Map.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
         PreparedAnimation finish = animation("demo:finish", 3, EmoteAnimation.LoopMode.ONCE, 0, Map.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
-        EmoteSequence source = new EmoteSequence(
-            Path.of("sequence.json"),
-            Identifier.parse("demo:sequence"),
+        EmoteSequence source = new EmoteSequence(Identifier.parse("demo:sequence"),
             new EmoteMetadata("Sequence", "Control sequence"),
             new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()),
             List.of(
@@ -436,9 +432,7 @@ class SequenceCompilerTest {
     @Test
     void controlChoicesDoNotForceTheOnlyAnimationToAlternateWithContinue() {
         PreparedAnimation animation = animation("demo:only", 1, EmoteAnimation.LoopMode.ONCE, 0, Map.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
-        EmoteSequence source = new EmoteSequence(
-            Path.of("sequence.json"),
-            Identifier.parse("demo:sequence"),
+        EmoteSequence source = new EmoteSequence(Identifier.parse("demo:sequence"),
             new EmoteMetadata("Sequence", "Control sequence"),
             new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()),
             List.of(new EmoteSequence.EmoteStep(List.of(
@@ -459,9 +453,7 @@ class SequenceCompilerTest {
     @Test
     void compilesAnEmptyControlResultAsAHiddenOneTickTimeline() {
         PreparedAnimation animation = animation("demo:anchor", 2, EmoteAnimation.LoopMode.ONCE, 0, Map.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
-        EmoteSequence source = new EmoteSequence(
-            Path.of("sequence.json"),
-            Identifier.parse("demo:sequence"),
+        EmoteSequence source = new EmoteSequence(Identifier.parse("demo:sequence"),
             new EmoteMetadata("Sequence", "Control sequence"),
             new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()),
             List.of(new EmoteSequence.EmoteStep(List.of(
@@ -479,9 +471,7 @@ class SequenceCompilerTest {
 
     @Test
     void rejectsASequenceWithoutAnyAnimationCandidate() {
-        EmoteSequence source = new EmoteSequence(
-            Path.of("sequence.json"),
-            Identifier.parse("demo:sequence"),
+        EmoteSequence source = new EmoteSequence(Identifier.parse("demo:sequence"),
             new EmoteMetadata("Sequence", "Control sequence"),
             new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()),
             List.of(new EmoteSequence.EmoteStep(List.of(
@@ -496,9 +486,7 @@ class SequenceCompilerTest {
     }
 
     private static EmoteSequence sequence(EmoteSequence.Step... steps) {
-        return new EmoteSequence(
-            Path.of("sequence.json"),
-            Identifier.parse("demo:sequence"),
+        return new EmoteSequence(Identifier.parse("demo:sequence"),
             new EmoteMetadata("Sequence", "Compiled sequence"),
             new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()),
             List.of(steps)

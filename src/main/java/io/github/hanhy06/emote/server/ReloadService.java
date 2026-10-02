@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.server;
 
+import io.github.hanhy06.emote.content.LoadedSequence;
+
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.config.ConfigManager;
@@ -154,7 +156,7 @@ public final class ReloadService {
     }
 
     private PreparedSequence resolveSequence(
-        EmoteSequence sequence,
+        LoadedSequence sequence,
         Map<String, PreparedAnimation> animationsById
     ) {
         try {

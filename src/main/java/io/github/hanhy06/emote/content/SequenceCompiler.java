@@ -1,10 +1,13 @@
 package io.github.hanhy06.emote.content;
 
+import io.github.hanhy06.emote.api.sequence.EmoteSequence;
+
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.PlaybackTimeline;
 import io.github.hanhy06.emote.util.Sha256;
 
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.*;
 
 final class SequenceCompiler {
@@ -13,6 +16,7 @@ final class SequenceCompiler {
 
     static PreparedAnimation compile(
         EmoteSequence sequence,
+        Path sourcePath,
         List<PreparedSequence.SelectedStep> steps,
         PreparedAnimation layoutAnchor
     ) {
@@ -82,7 +86,7 @@ final class SequenceCompiler {
                 Map.of(),
                 EmoteAnimation.Events.empty()
             ), sequence.callbacks());
-        LoadedAnimation loaded = new LoadedAnimation(sequence.sourcePath(), fingerprint(sequence, steps),
+        LoadedAnimation loaded = new LoadedAnimation(sourcePath, fingerprint(sequence, steps),
             compiledAnimation, layoutAnchor.source().preparedDisplayData());
         PreparedAnimation preparedLayout = PreparedAnimation.from(loaded, layoutAnchor.skinBindings());
         if (timelineSegments.isEmpty()) {

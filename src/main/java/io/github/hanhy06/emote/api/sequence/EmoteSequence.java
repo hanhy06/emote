@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.content;
+package io.github.hanhy06.emote.api.sequence;
 
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
@@ -6,13 +6,12 @@ import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.Nullable;
 
-import java.nio.file.Path;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
 public record EmoteSequence(
-    Path sourcePath,
     Identifier id,
     EmoteMetadata metadata,
     Settings settings,
@@ -43,12 +42,11 @@ public record EmoteSequence(
         }
     }
 
-    public EmoteSequence(Path sourcePath, Identifier id, EmoteMetadata metadata, Settings settings, List<Step> steps) {
-        this(sourcePath, id, metadata, settings, steps, List.of());
+    public EmoteSequence(Identifier id, EmoteMetadata metadata, Settings settings, List<Step> steps) {
+        this(id, metadata, settings, steps, List.of());
     }
 
     public EmoteSequence {
-        Objects.requireNonNull(sourcePath, "sourcePath");
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(metadata, "metadata");
         Objects.requireNonNull(settings, "settings");
