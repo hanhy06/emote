@@ -31,10 +31,12 @@ export function migrateSchema3Animation(animation: Schema3EmoteAnimation): Emote
       playback: { ...animation.settings.playback },
     },
     nodes: Object.fromEntries(Object.entries(animation.nodes).map(([id, node]) => {
+      if (node.space === "partner") throw new Error(`nodes.${id}.space: two-player animations are no longer supported.`);
+      const space = node.space === "initiator" ? "actor" as const : "scene" as const;
       const transform = matrixToLocalTransform(node.default_matrix, `nodes.${id}.default_matrix`);
-      if (node.type === "anchor") return [id, { type: "anchor" as const, space: node.space, transform }];
+      if (node.type === "anchor") return [id, { type: "anchor" as const, space, transform }];
       const common = {
-        space: node.space,
+        space,
         transform,
         ...(node.visible === undefined ? {} : { visible: node.visible }),
         ...(node.entity_nbt === undefined ? {} : { entity_nbt: node.entity_nbt }),
@@ -44,7 +46,7 @@ export function migrateSchema3Animation(animation: Schema3EmoteAnimation): Emote
         type: "item_display" as const,
         item_stack_snbt: node.item_stack_snbt,
         item_display: node.item_display,
-        ...(node.skin ? { skin: { ...node.skin } } : {}),
+        ...(node.skin ? { skin: { part: node.skin.part, order: node.skin.order } } : {}),
       }];
       if (node.type === "block_display") return [id, { ...common, type: "block_display" as const, block_state_snbt: node.block_state_snbt }];
       return [id, { ...common, type: "text_display" as const, text: node.text }];

@@ -18,8 +18,7 @@ import {
 const NODE_TYPES = ["anchor", "item_display", "block_display", "text_display"] as const;
 const LOOP_TYPES = ["once", "hold", "loop", "server_sync"] as const;
 const SKIN_PARTS = ["head", "body", "left_arm", "right_arm", "left_leg", "right_leg"] as const;
-const NODE_SPACES = ["scene", "initiator", "partner"] as const;
-const PARTICIPANTS = ["initiator", "partner"] as const;
+const NODE_SPACES = ["scene", "actor"] as const;
 
 export function requireEmoteAnimation(value: unknown): EmoteAnimation {
   const root = requireRecord(value, "animation");
@@ -100,9 +99,7 @@ function requireSchema4Nodes(value: unknown): void {
       const skin = optionalRecord(node.skin, `${path}.skin`);
       if (skin) {
         requireStringValue(skin.part, SKIN_PARTS, `${path}.skin.part`);
-        if (skin.participant !== undefined && skin.participant !== null) {
-          requireStringValue(skin.participant, PARTICIPANTS, `${path}.skin.participant`);
-        }
+        if (skin.participant !== undefined) throw new Error(`${path}.skin.participant is no longer supported.`);
         requireNumber(skin.order, `${path}.skin.order`);
       }
     } else if (type === "block_display") {
@@ -114,14 +111,7 @@ function requireSchema4Nodes(value: unknown): void {
 }
 
 function normalizeSchemaDefaults(root: RuntimeRecord): EmoteAnimation {
-  const nodes = root.nodes as RuntimeRecord;
-  const normalizedNodes = Object.fromEntries(Object.entries(nodes).map(([nodeId, nodeValue]) => {
-    const node = nodeValue as RuntimeRecord;
-    const skin = node.skin as RuntimeRecord | undefined;
-    if (!skin || (skin.participant !== undefined && skin.participant !== null)) return [nodeId, node];
-    return [nodeId, { ...node, skin: { ...skin, participant: "initiator" } }];
-  }));
-  return { ...root, nodes: normalizedNodes } as unknown as EmoteAnimation;
+  return root as unknown as EmoteAnimation;
 }
 
 function requireLocalTransform(value: unknown, path: string): void {

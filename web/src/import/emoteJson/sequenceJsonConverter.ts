@@ -57,6 +57,7 @@ function requireSequence(value: unknown): EmoteSequence {
   const root = requireRecord(value, "sequence");
   if (root.type !== "sequence") throw invalid("type", "must be sequence");
   if (root.schema_version !== 4) throw invalid("schema_version", "must be 4");
+  if (root.participants !== undefined && root.participants !== null) throw invalid("participants", "two-player matching is no longer supported");
   const id = requireString(root.id, "id");
   if (!isResourceLocation(id)) throw invalid("id", "must be a Minecraft resource location");
   const metadata = requireRecord(root.metadata, "metadata");
@@ -95,6 +96,7 @@ function requirePlayer(player: RuntimeRecord): void {
 function requireStep(value: unknown, index: number): RuntimeRecord {
   const path = `steps[${index}]`;
   const step = requireRecord(value, path);
+  if (step.await_partner !== undefined) throw invalid(path + ".await_partner", "two-player matching is no longer supported");
   const hasEmote = step.emote !== undefined && step.emote !== null;
   const hasWait = step.wait !== undefined && step.wait !== null;
   if (hasEmote === hasWait) throw invalid(path, "must contain exactly one of emote or wait");

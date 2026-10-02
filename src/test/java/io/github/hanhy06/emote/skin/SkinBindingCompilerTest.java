@@ -2,7 +2,6 @@ package io.github.hanhy06.emote.skin;
 
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
-import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSegment;
 import net.minecraft.nbt.CompoundTag;
@@ -28,7 +27,6 @@ class SkinBindingCompilerTest {
         assertEquals(new PlayerSkinSegment(0, 3), find(bindings, "inner").region().skinSegment());
         assertEquals(new PlayerSkinSegment(3, 12), find(bindings, "outer").region().skinSegment());
         assertEquals(PlayerSkinSegment.FULL, find(bindings, "head").region().skinSegment());
-        assertEquals(ParticipantRole.INITIATOR, find(bindings, "head").participant());
     }
 
     @Test
@@ -86,7 +84,7 @@ class SkinBindingCompilerTest {
     private EmoteAnimation.ItemNode itemNode(double yScale, EmoteAnimation.SkinPart part, int order) {
         return new EmoteAnimation.ItemNode(
             true,
-            EmoteAnimation.NodeSpace.INITIATOR,
+            EmoteAnimation.NodeSpace.ACTOR,
             null,
             new EmoteAnimation.LocalTransform(
                 EmoteAnimation.Vec3.ZERO,
@@ -96,7 +94,7 @@ class SkinBindingCompilerTest {
             new CompoundTag(),
             new CompoundTag(),
             "none",
-            new EmoteAnimation.Skin(ParticipantRole.INITIATOR, part, order)
+            new EmoteAnimation.Skin(part, order)
         );
     }
 

@@ -75,7 +75,7 @@ export function createEmotecraftNodes(slices: readonly EmotecraftSlice[], matric
       itemStack: { id: "minecraft:player_head", count: 1 },
       playerHeadConversion: { matrix: slicePlayerHeadConversion(slice) },
       suggestedSkin: { part: slice.source.part, order: slice.order },
-      space: "initiator",
+      space: "actor",
     } satisfies ImportedNode];
   }));
 }

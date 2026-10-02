@@ -46,8 +46,8 @@ export function validateEmoteAnimation(animation: EmoteAnimation): ValidationIss
     if (node.parent) {
       if (!nodeIds.has(node.parent)) add(issues, `${path}.parent`, "references an unknown node");
       if (node.space !== undefined) add(issues, `${path}.space`, "is not allowed on child nodes");
-    } else if (!(node.space && (["scene", "initiator", "partner"] as const).includes(node.space))) {
-      add(issues, `${path}.space`, "root node must define scene, initiator, or partner");
+    } else if (!(node.space && (["scene", "actor"] as const).includes(node.space))) {
+      add(issues, `${path}.space`, "root node must define scene or actor");
     }
     validateVec3(node.transform.position, `${path}.transform.position`, issues);
     validateVec3(node.transform.rotation, `${path}.transform.rotation`, issues);
@@ -138,7 +138,7 @@ function validateItemNode(
   if (node.skin && !isNonNegativeInt32(node.skin.order)) add(issues, `${path}.skin.order`, "must be a non-negative Java integer");
   if (node.skin) {
     const rootSpace = inheritedNodeSpace(animation, nodeId);
-    if (rootSpace && node.skin.participant !== rootSpace) add(issues, `${path}.skin.participant`, "must match the node space");
+    if (rootSpace && rootSpace !== "actor") add(issues, `${path}.skin`, "requires actor node space");
   }
 }
 

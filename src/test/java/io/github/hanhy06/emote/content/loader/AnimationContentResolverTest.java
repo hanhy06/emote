@@ -1,6 +1,5 @@
 package io.github.hanhy06.emote.content.loader;
 
-import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import net.minecraft.SharedConstants;
@@ -23,7 +22,6 @@ class AnimationContentResolverTest {
     @Test
     void rejectsSkinMetadataOnNonPlayerHeadItem() {
         EmoteAnimation.ItemNode itemNode = itemNode(new EmoteAnimation.Skin(
-            ParticipantRole.INITIATOR,
             EmoteAnimation.SkinPart.HEAD,
             0
         ));
@@ -54,7 +52,7 @@ class AnimationContentResolverTest {
     private EmoteAnimation.ItemNode itemNode(EmoteAnimation.Skin skin) {
         return new EmoteAnimation.ItemNode(
             true,
-            EmoteAnimation.NodeSpace.INITIATOR,
+            EmoteAnimation.NodeSpace.ACTOR,
             null,
             EmoteAnimation.LocalTransform.IDENTITY,
             new CompoundTag(),

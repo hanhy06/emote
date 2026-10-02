@@ -13,8 +13,7 @@ final class SequenceCompiler {
     static PreparedAnimation compile(
         EmoteSequence sequence,
         List<PreparedSequence.SelectedStep> steps,
-        PreparedAnimation layoutAnchor,
-        boolean initialPoseAvailable
+        PreparedAnimation layoutAnchor
     ) {
         List<EmoteAnimation.TimelineEvent> timelineEvents = new ArrayList<>();
         List<PreparedAnimation.PlaybackSegment> playbackSegments = new ArrayList<>();
@@ -23,7 +22,7 @@ final class SequenceCompiler {
             hiddenNodes.put(0, nodesToHide(layoutAnchor.animation(), null));
         }
         long offset = 0L;
-        boolean hasPreviousPose = initialPoseAvailable;
+        boolean hasPreviousPose = false;
         for (PreparedSequence.SelectedStep selectedStep : steps) {
             if (selectedStep instanceof PreparedSequence.SelectedWaitStep(int ticks)) {
                 offset += ticks;
@@ -38,8 +37,7 @@ final class SequenceCompiler {
                 transitionStartTick,
                 segmentOffset,
                 requireTick(offset + transitionTicks + animation.timeline().durationTicks(), sequence),
-                step.animation(),
-                Map.of()
+                step.animation()
             ));
             hiddenNodes.put(segmentOffset, nodesToHide(layoutAnchor.animation(), animation));
             for (EmoteAnimation.TimelineEvent event : animation.timeline().events().timeline()) {
@@ -76,31 +74,10 @@ final class SequenceCompiler {
                 Map.of(),
                 new EmoteAnimation.Events(List.of(), timelineEvents, List.of(), List.of())
             ), sequence.callbacks());
-        SequenceNodeLayout.Expansion layout = SequenceNodeLayout.expandPartnerLayout(
-            sequence.participants() != null,
-            compiledAnimation,
-            layoutAnchor.source().preparedDisplayData()
-        );
-        compiledAnimation = layout.animation();
-        LoadedAnimation loaded = new LoadedAnimation(
-            sequence.sourcePath(),
-            fingerprint(sequence, steps, initialPoseAvailable),
-            compiledAnimation,
-            layout.preparedDisplayData()
-        );
-        List<PreparedAnimation.PlaybackSegment> expandedSegments = playbackSegments.stream()
-            .map(segment -> new PreparedAnimation.PlaybackSegment(
-                segment.transitionStartTick(),
-                segment.startTick(),
-                segment.endTick(),
-                segment.animation(),
-                layout.partnerNodeIds()
-            ))
-            .toList();
-        PreparedAnimation preparedLayout = layout.generatedPartner()
-            ? PreparedAnimation.from(loaded)
-            : PreparedAnimation.from(loaded, layoutAnchor.skinBindings());
-        return PreparedAnimation.sequence(preparedLayout, expandedSegments, expandHiddenNodes(hiddenNodes, layout.partnerNodeIds()));
+        LoadedAnimation loaded = new LoadedAnimation(sequence.sourcePath(), fingerprint(sequence, steps),
+            compiledAnimation, layoutAnchor.source().preparedDisplayData());
+        PreparedAnimation preparedLayout = PreparedAnimation.from(loaded, layoutAnchor.skinBindings());
+        return PreparedAnimation.sequence(preparedLayout, playbackSegments, hiddenNodes);
     }
 
     private static Set<String> nodesToHide(EmoteAnimation layout, EmoteAnimation active) {
@@ -109,23 +86,6 @@ final class SequenceCompiler {
             hiddenNodes.removeAll(active.nodes().keySet());
         }
         return Set.copyOf(hiddenNodes);
-    }
-
-    private static Map<Integer, Set<String>> expandHiddenNodes(
-        Map<Integer, Set<String>> source,
-        Map<String, String> partnerNodeIds
-    ) {
-        Map<Integer, Set<String>> expanded = new HashMap<>();
-        source.forEach((tick, nodeIds) -> {
-            Set<String> tickNodeIds = new LinkedHashSet<>(nodeIds);
-            partnerNodeIds.forEach((sourceId, partnerId) -> {
-                if (nodeIds.contains(sourceId)) {
-                    tickNodeIds.add(partnerId);
-                }
-            });
-            expanded.put(tick, Set.copyOf(tickNodeIds));
-        });
-        return Map.copyOf(expanded);
     }
 
     private static int requireTick(long tick, EmoteSequence sequence) {
@@ -137,10 +97,9 @@ final class SequenceCompiler {
 
     private static String fingerprint(
         EmoteSequence sequence,
-        List<PreparedSequence.SelectedStep> steps,
-        boolean initialPoseAvailable
+        List<PreparedSequence.SelectedStep> steps
     ) {
-        StringBuilder input = new StringBuilder(sequence.id().toString()).append('|').append(initialPoseAvailable);
+        StringBuilder input = new StringBuilder(sequence.id().toString());
         for (PreparedSequence.SelectedStep step : steps) {
             if (step instanceof PreparedSequence.SelectedWaitStep(int ticks)) {
                 input.append("|wait:").append(ticks);

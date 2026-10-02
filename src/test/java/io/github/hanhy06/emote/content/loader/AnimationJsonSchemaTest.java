@@ -22,7 +22,7 @@ class AnimationJsonSchemaTest {
 
         EmoteAnimation.Node child = animation.nodes().get("display");
         EmoteAnimation.NodeTracks tracks = animation.timeline().tracks().get("display");
-        assertEquals(EmoteAnimation.NodeSpace.INITIATOR, child.space());
+        assertEquals(EmoteAnimation.NodeSpace.ACTOR, child.space());
         assertEquals("root", child.parentId());
         assertEquals(1.5D, child.transform().position().y());
         assertEquals("v.speed = 1;", animation.molang().initialize());
@@ -128,7 +128,7 @@ class AnimationJsonSchemaTest {
     @Test
     void rejectsSpaceOnChildNode() {
         JsonObject root = base();
-        root.getAsJsonObject("nodes").getAsJsonObject("display").addProperty("space", "initiator");
+        root.getAsJsonObject("nodes").getAsJsonObject("display").addProperty("space", "actor");
 
         assertEquals("$.nodes.display.space", assertInvalid(root).fieldPath());
     }
@@ -198,7 +198,7 @@ class AnimationJsonSchemaTest {
               "nodes": {
                 "root": {
                   "type": "anchor",
-                  "space": "initiator",
+                  "space": "actor",
                   "transform": {
                     "position": [0, 0, 0],
                     "rotation": [0, 0, 0],

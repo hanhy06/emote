@@ -1,6 +1,5 @@
 package io.github.hanhy06.emote.skin;
 
-import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.skin.model.*;
 import org.junit.jupiter.api.Test;
@@ -31,12 +30,12 @@ class PlayerSkinManagerTest {
         assertEquals(PlayerSkinPreparation.State.FAILED, combined.state());
         PlayerSkinPreparation preparing = new PlayerSkinPreparation(null, PlayerSkinPreparation.State.PREPARING, 0);
         assertEquals(preparing, manager.withDefaultSkin(preparing, Set.of(HEAD, body)));
-        PlayerSkinPreparation missing = manager.preparePlayerSkin(null, List.of(new SkinBinding("head", ParticipantRole.INITIATOR, HEAD)));
+        PlayerSkinPreparation missing = manager.preparePlayerSkin(null, List.of(new SkinBinding("head", HEAD)));
         assertEquals("default-head", missing.preparedPlayerSkin().findTextureUrl(HEAD));
         assertEquals(PlayerSkinPreparation.State.UNAVAILABLE, missing.state());
         PlayerSkinManager failedLookup = new PlayerSkinManager(provider, ignored -> { throw new IllegalStateException("API failed"); });
         assertEquals("default-head", failedLookup.preparePlayerSkin(null,
-            List.of(new SkinBinding("head", ParticipantRole.INITIATOR, HEAD))).preparedPlayerSkin().findTextureUrl(HEAD));
+            List.of(new SkinBinding("head", HEAD))).preparedPlayerSkin().findTextureUrl(HEAD));
     }
 
     @Test
@@ -51,11 +50,11 @@ class PlayerSkinManagerTest {
         PlayerSkinRegion lower = new PlayerSkinRegion(PlayerSkinPart.LEFT_ARM, new PlayerSkinSegment(4, 12));
         PlayerSkinRegion joint = new PlayerSkinRegion(PlayerSkinPart.LEFT_ARM, new PlayerSkinSegment(4, 6));
         manager.setModelBindings(List.of(
-            new SkinBinding("normal_head", ParticipantRole.INITIATOR, HEAD),
-            new SkinBinding("normal_upper", ParticipantRole.INITIATOR, upper),
-            new SkinBinding("normal_lower", ParticipantRole.INITIATOR, lower),
-            new SkinBinding("jointed_upper", ParticipantRole.PARTNER, upper),
-            new SkinBinding("jointed_joint", ParticipantRole.PARTNER, joint)
+            new SkinBinding("normal_head", HEAD),
+            new SkinBinding("normal_upper", upper),
+            new SkinBinding("normal_lower", lower),
+            new SkinBinding("jointed_upper", upper),
+            new SkinBinding("jointed_joint", joint)
         ));
 
         manager.checkPlayerSkin(null);
@@ -86,7 +85,7 @@ class PlayerSkinManagerTest {
         PlayerSkinManager manager = new PlayerSkinManager(provider, ignored -> source.get());
         List<UUID> refreshedPlayers = new ArrayList<>();
         manager.addReadyListener(refreshedPlayers::add);
-        manager.setModelBindings(List.of(new SkinBinding("head", ParticipantRole.INITIATOR, HEAD)));
+        manager.setModelBindings(List.of(new SkinBinding("head", HEAD)));
 
         manager.checkPlayerSkin(null);
         assertTrue(provider.requests.isEmpty());
@@ -98,7 +97,7 @@ class PlayerSkinManagerTest {
         assertEquals(List.of(playerId), refreshedPlayers);
 
         PlayerSkinRegion body = new PlayerSkinRegion(PlayerSkinPart.BODY, PlayerSkinSegment.FULL);
-        manager.preparePlayerSkin(null, List.of(new SkinBinding("body", ParticipantRole.INITIATOR, body)));
+        manager.preparePlayerSkin(null, List.of(new SkinBinding("body", body)));
         assertEquals(Set.of(HEAD, body), provider.requests.getLast());
     }
 

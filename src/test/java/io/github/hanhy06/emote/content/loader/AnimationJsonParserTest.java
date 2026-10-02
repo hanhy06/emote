@@ -3,7 +3,6 @@ package io.github.hanhy06.emote.content.loader;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.content.LoadedAnimation;
@@ -177,16 +176,22 @@ class AnimationJsonParserTest {
     }
 
     @Test
-    void loadsNodeSpaceAndSkinParticipant() throws Exception {
+    void loadsActorSpaceAndSkin() throws Exception {
         EmoteAnimation animation = parse(readReference()).animation();
         EmoteAnimation.ItemNode head = (EmoteAnimation.ItemNode) animation.nodes().get("player_head");
-        EmoteAnimation.ItemNode partnerHead = (EmoteAnimation.ItemNode) animation.nodes().get("partner_head");
 
-        assertEquals(EmoteAnimation.NodeSpace.INITIATOR, head.space());
-        assertEquals(ParticipantRole.INITIATOR, head.skin().participant());
-        assertEquals(EmoteAnimation.NodeSpace.PARTNER, partnerHead.space());
-        assertEquals(ParticipantRole.PARTNER, partnerHead.skin().participant());
+        assertEquals(EmoteAnimation.NodeSpace.ACTOR, head.space());
         assertEquals(EmoteAnimation.NodeSpace.SCENE, animation.nodes().get("effect_anchor").space());
+    }
+
+    @Test
+    void rejectsRetiredParticipantNodeSpaces() throws Exception {
+        for (String space : java.util.List.of("initiator", "partner")) {
+            JsonObject root = readReference();
+            root.getAsJsonObject("nodes").getAsJsonObject("player_head").addProperty("space", space);
+            EmoteAnimationLoadException exception = assertThrows(EmoteAnimationLoadException.class, () -> parse(root));
+            assertEquals("$.nodes.player_head.space", exception.fieldPath());
+        }
     }
 
     @Test
@@ -204,7 +209,7 @@ class AnimationJsonParserTest {
     }
 
     @Test
-    void rejectsSkinParticipantThatDoesNotMatchNodeSpace() throws Exception {
+    void rejectsRetiredSkinParticipant() throws Exception {
         JsonObject root = readReference();
         root.getAsJsonObject("nodes").getAsJsonObject("player_head")
             .getAsJsonObject("skin").addProperty("participant", "partner");

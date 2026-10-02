@@ -30,7 +30,6 @@ public final class AnimationPlayer {
     private int remainingLoopDelay;
     private int loopCount;
     private int activePlaybackSegment = -1;
-    private Map<String, String> mirroredNodes = Map.of();
     private PlaybackPhase phase = PlaybackPhase.NOT_STARTED;
     private boolean initialVisibilityDeferred;
     private EventExecutor eventExecutor;
@@ -369,7 +368,7 @@ public final class AnimationPlayer {
         }
         this.currentTick = tick;
         this.evaluator.rewindLoop(tick, this.loopCount);
-        applyEvaluator(this.evaluator.displayInterpolationTicks(), Map.of());
+        applyEvaluator(this.evaluator.displayInterpolationTicks());
     }
 
     private void resetToTick(int tick) {
@@ -380,7 +379,7 @@ public final class AnimationPlayer {
             applyTick(tick);
         } else {
             this.evaluator.beginCycle(tick, this.loopCount);
-            applyEvaluator(0, Map.of());
+            applyEvaluator(0);
         }
     }
 
@@ -389,7 +388,6 @@ public final class AnimationPlayer {
         this.appliedVisibility.clear();
         this.appliedNbt.clear();
         this.activePlaybackSegment = -1;
-        this.mirroredNodes = Map.of();
         if (!this.emote.playbackSegments().isEmpty()) {
             this.evaluator = null;
         }
@@ -399,7 +397,7 @@ public final class AnimationPlayer {
 
     private void applySynchronizedSnapshot(int tick) {
         this.evaluator.beginCycle(tick, this.loopCount);
-        applyEvaluator(0, Map.of());
+        applyEvaluator(0);
     }
 
     private void applyTick(int tick) {
@@ -409,7 +407,7 @@ public final class AnimationPlayer {
             return;
         }
         this.evaluator.evaluate(tick, this.loopCount);
-        applyEvaluator(tick == 0 ? 0 : this.evaluator.displayInterpolationTicks(), Map.of());
+        applyEvaluator(tick == 0 ? 0 : this.evaluator.displayInterpolationTicks());
     }
 
     private void applyPlaybackSegment(int tick) {
@@ -435,7 +433,6 @@ public final class AnimationPlayer {
         boolean segmentChanged = selected != this.activePlaybackSegment;
         if (segmentChanged) {
             this.activePlaybackSegment = selected;
-            this.mirroredNodes = segment.mirroredNodes();
             this.evaluator = new AnimationEvaluator(segment.animation(), this.querySource);
             this.evaluator.beginCycle(Math.max(localTick, 0), 0);
         } else if (localTick > 0) {
@@ -443,7 +440,7 @@ public final class AnimationPlayer {
         }
         if (localTick < 0) {
             if (segmentChanged) {
-                applyEvaluatorTransforms(segment.startTick() - segment.transitionStartTick(), this.mirroredNodes);
+                applyEvaluatorTransforms(segment.startTick() - segment.transitionStartTick());
             }
             return;
         }
@@ -451,50 +448,25 @@ public final class AnimationPlayer {
             this.appliedNbt.keySet().forEach(this.target::resetNbt);
             this.appliedNbt.clear();
         }
-        applyEvaluator(tick == 0 || localTick == 0 ? 0 : this.evaluator.displayInterpolationTicks(), this.mirroredNodes);
+        applyEvaluator(tick == 0 || localTick == 0 ? 0 : this.evaluator.displayInterpolationTicks());
     }
 
     private void applyHiddenNodes(int tick) {
         this.emote.hiddenNodes(tick).forEach(nodeId -> applyVisibility(nodeId, false));
     }
 
-    private void applyEvaluator(int interpolationDurationTicks, Map<String, String> mirroredNodes) {
+    private void applyEvaluator(int interpolationDurationTicks) {
         for (int index = 0; index < this.evaluator.nodeCount(); index++) {
             String nodeId = applyEvaluatorTransform(index, interpolationDurationTicks);
-            String mirror = mirroredNodes.get(nodeId);
-            if (mirror != null) {
-                applyTransform(
-                    mirror,
-                    this.evaluator.matrix(index),
-                    this.evaluator.preservesMatrix(index),
-                    interpolationDurationTicks
-                );
-            }
-            boolean visible = this.evaluator.visible(index);
-            applyVisibility(nodeId, visible);
-            if (mirror != null) {
-                applyVisibility(mirror, visible);
-            }
+            applyVisibility(nodeId, this.evaluator.visible(index));
             CompoundTag nbt = this.evaluator.nbt(index);
-            if (nbt != null) {
-                applyNbt(nodeId, nbt);
-                if (mirror != null) applyNbt(mirror, nbt);
-            }
+            if (nbt != null) applyNbt(nodeId, nbt);
         }
     }
 
-    private void applyEvaluatorTransforms(int interpolationDurationTicks, Map<String, String> mirroredNodes) {
+    private void applyEvaluatorTransforms(int interpolationDurationTicks) {
         for (int index = 0; index < this.evaluator.nodeCount(); index++) {
-            String nodeId = applyEvaluatorTransform(index, interpolationDurationTicks);
-            String mirror = mirroredNodes.get(nodeId);
-            if (mirror != null) {
-                applyTransform(
-                    mirror,
-                    this.evaluator.matrix(index),
-                    this.evaluator.preservesMatrix(index),
-                    interpolationDurationTicks
-                );
-            }
+            applyEvaluatorTransform(index, interpolationDurationTicks);
         }
     }
 

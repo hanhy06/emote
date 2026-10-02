@@ -174,7 +174,7 @@ class SequenceJsonParserTest {
               "id": "example:handshake",
               "metadata": {"name": "Handshake", "description": "Two-player handshake"},
               "participants": {
-                "initiator": {"position": "~ ~ ~", "rotation": "~ 0"},
+                "actor": {"position": "~ ~ ~", "rotation": "~ 0"},
                 "partner": {"position": "%s", "rotation": "~180 0"}
               },
               "settings": {

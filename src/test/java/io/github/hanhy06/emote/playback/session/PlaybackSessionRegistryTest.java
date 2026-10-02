@@ -1,7 +1,6 @@
 package io.github.hanhy06.emote.playback.session;
 
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
-import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimationFixture;
@@ -34,13 +33,13 @@ class PlaybackSessionRegistryTest {
         PlaybackSession session = session(emote);
         PlaybackSessionRegistry registry = new PlaybackSessionRegistry();
         registry.register(session);
-        assertSame(session, registry.findParticipant(session.initiator().playerUuid()));
+        assertSame(session, registry.findParticipant(session.player().playerUuid()));
         assertSame(session, registry.findSession(session.sessionId()));
         assertEquals(1, registry.activeDisplayEntityCount());
 
         assertTrue(registry.remove(session));
 
-        assertNull(registry.findParticipant(session.initiator().playerUuid()));
+        assertNull(registry.findParticipant(session.player().playerUuid()));
         assertTrue(registry.isEmpty());
         assertEquals(0, registry.activeDisplayEntityCount());
         assertTrue(!registry.remove(session));
@@ -56,7 +55,7 @@ class PlaybackSessionRegistryTest {
             playbackNodes(),
             timeline(emote),
             EmotePlayerBehavior.createDefault(),
-            participant(ParticipantRole.INITIATOR)
+            participant()
         );
     }
 
@@ -75,8 +74,8 @@ class PlaybackSessionRegistryTest {
         return animation;
     }
 
-    private static PlaybackParticipant participant(ParticipantRole role) {
-        return new PlaybackParticipant(UUID.randomUUID(), role, Vec3.ZERO, List.of(), false);
+    private static PlaybackParticipant participant() {
+        return new PlaybackParticipant(UUID.randomUUID(), Vec3.ZERO, List.of(), false);
     }
 
     private static PlaybackNodes playbackNodes() {

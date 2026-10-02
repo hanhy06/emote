@@ -2,7 +2,6 @@ package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
-import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
@@ -91,9 +90,6 @@ public class PlaybackEngine implements ConfigListener {
     }
 
     private PlayResult start(ServerPlayer player, PreparedSequence sequence) {
-        if (sequence.hasPartner()) {
-            return PlayResult.failure("Two-player matching is no longer supported.");
-        }
         return startResolved(
             player,
             sequence.compile(this.random),
@@ -138,7 +134,7 @@ public class PlaybackEngine implements ConfigListener {
         }
         PlayerSkinPreparation skinPreparation = this.playerSkinManager.preparePlayerSkin(
             player,
-            emote.skinBindings(ParticipantRole.INITIATOR)
+            emote.skinBindings()
         );
         if (skinPreparation.preparing()) {
             return PlayResult.failure("Preparing your skin… " + skinPreparation.progressPercent() + "%");
@@ -184,16 +180,15 @@ public class PlaybackEngine implements ConfigListener {
             }
             this.entityController.applySkin(
                 nodes,
-                emote.skinBindings(ParticipantRole.INITIATOR),
+                emote.skinBindings(),
                 preparedSkin
             );
             timeline.deferInitialVisibility();
             this.entityController.add(player.level(), nodes);
-            PlaybackParticipant initiator = new PlaybackParticipant(
+            PlaybackParticipant playbackPlayer = new PlaybackParticipant(
                 player.getUUID(),
-                ParticipantRole.INITIATOR,
                 roots.get(EmoteAnimation.NodeSpace.SCENE).position(),
-                emote.skinBindings(ParticipantRole.INITIATOR),
+                emote.skinBindings(),
                 player.isInvisible()
             );
             session = new PlaybackSession(
@@ -204,12 +199,12 @@ public class PlaybackEngine implements ConfigListener {
                 nodes,
                 timeline,
                 playerBehavior,
-                initiator
+                playbackPlayer
             );
             session.bindCallbacks(callbackBindings, animationBindings, EmoteMod.SERVER.getTickCount());
             this.sessionRegistry.register(session);
-            this.playerVisibilityService.start(player, session, initiator);
-            if (!notifyStarted(player, session, initiator)) {
+            this.playerVisibilityService.start(player, session, playbackPlayer);
+            if (!notifyStarted(player, session, playbackPlayer)) {
                 return new PlayResult.Success(session.playbackInfo(player.getUUID()));
             }
             startedNotified = true;
@@ -295,11 +290,11 @@ public class PlaybackEngine implements ConfigListener {
 
         List<StopRequest> stopRequests = null;
         for (PlaybackSession session : this.sessionRegistry.sessions()) {
-            PlaybackParticipant initiator = session.initiator();
-            ServerPlayer player = EmoteMod.SERVER.getPlayerList().getPlayer(initiator.playerUuid());
+            PlaybackParticipant playbackPlayer = session.player();
+            ServerPlayer player = EmoteMod.SERVER.getPlayerList().getPlayer(playbackPlayer.playerUuid());
             PlaybackStopReason stopReason = null;
             for (PlaybackParticipant participant : session.participants()) {
-                ServerPlayer participantPlayer = participant == initiator
+                ServerPlayer participantPlayer = participant == playbackPlayer
                     ? player
                     : EmoteMod.SERVER.getPlayerList().getPlayer(participant.playerUuid());
                 if (!canKeepPlaying(participantPlayer, session)) {
@@ -332,7 +327,7 @@ public class PlaybackEngine implements ConfigListener {
                     );
 
                     for (PlaybackParticipant participant : session.participants()) {
-                        ServerPlayer participantPlayer = participant == initiator
+                        ServerPlayer participantPlayer = participant == playbackPlayer
                             ? player
                             : EmoteMod.SERVER.getPlayerList().getPlayer(participant.playerUuid());
                         this.playerVisibilityService.tick(participantPlayer, session, participant);

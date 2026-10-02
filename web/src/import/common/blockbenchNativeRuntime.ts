@@ -41,7 +41,7 @@ export function createBlockbenchNativeRuntime(options: BlockbenchNativeRuntimeOp
     const { animators, blendWeight, durationTicks, startDelayTicks } = source;
     const sceneId = options.runtimeSceneId;
     const nodes: Record<string, RuntimeNode> = {
-      [sceneId]: { type: "anchor", space: "initiator", transform: { ...IDENTITY_TRANSFORM, scale: [PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE] } },
+      [sceneId]: { type: "anchor", space: "actor", transform: { ...IDENTITY_TRANSFORM, scale: [PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE] } },
     };
     const tracks: Record<string, RuntimeNodeTracks> = {};
     const editorNodeByRuntimeNode: Record<string, string> = {};

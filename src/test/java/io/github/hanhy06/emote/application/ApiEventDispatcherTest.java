@@ -100,7 +100,7 @@ class ApiEventDispatcherTest {
     }
 
     private static PlaybackParticipant participant() {
-        return new PlaybackParticipant(UUID.randomUUID(), ParticipantRole.INITIATOR, Vec3.ZERO, List.of(), false);
+        return new PlaybackParticipant(UUID.randomUUID(), Vec3.ZERO, List.of(), false);
     }
 
     private record StopRecordingListener(String name, List<String> events) implements EmotePlaybackListener {

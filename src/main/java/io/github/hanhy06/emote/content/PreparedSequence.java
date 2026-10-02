@@ -14,7 +14,7 @@ import java.util.random.RandomGenerator;
 
 public record PreparedSequence(
     EmoteSequence source,
-    Playback playback,
+    LinearPlayback playback,
     PreparedAnimation layoutAnchor,
     PreparedAnimation compiledAnimation
 ) implements PlayableEmote {
@@ -26,29 +26,17 @@ public record PreparedSequence(
     }
 
     public static PreparedSequence resolve(EmoteSequence source, Map<String, PreparedAnimation> animations) {
-        Playback playback = resolvePlayback(source, animations);
+        LinearPlayback playback = resolvePlayback(source, animations);
         PreparedAnimation layoutAnchor = SequenceNodeLayout.validateAndCreateLayout(playback.validationSteps());
-        List<SelectedStep> initialSteps = switch (playback) {
-            case LinearPlayback linear -> selectFirstCandidates(linear.branch());
-            case PartnerPlayback partner -> List.of(new SelectedEmoteStep(partner.offer(), false, 0));
-        };
         return new PreparedSequence(
             source,
             playback,
             layoutAnchor,
-            SequenceCompiler.compile(source, initialSteps, layoutAnchor, false)
+            SequenceCompiler.compile(source, selectFirstCandidates(playback.branch()), layoutAnchor)
         );
     }
 
-    private static Playback resolvePlayback(EmoteSequence source, Map<String, PreparedAnimation> animations) {
-        if (source.steps().getFirst() instanceof EmoteSequence.AwaitPartnerStep await) {
-            return new PartnerPlayback(
-                resolveAnimation(await.offerAnimationId().toString(), animations),
-                await.timeoutTicks(),
-                resolveBranch(await.matched(), animations),
-                resolveBranch(await.timeout(), animations)
-            );
-        }
+    private static LinearPlayback resolvePlayback(EmoteSequence source, Map<String, PreparedAnimation> animations) {
         return new LinearPlayback(resolveBranch(source.steps(), animations));
     }
 
@@ -90,36 +78,11 @@ public record PreparedSequence(
     }
 
     public PreparedAnimation compile(RandomGenerator random) {
-        if (!(this.playback instanceof LinearPlayback linear)) {
-            throw new IllegalStateException("Partner sequence branches must be compiled separately: " + id());
-        }
-        return SequenceCompiler.compile(this.source, selectSteps(linear.branch(), random), this.layoutAnchor, false);
-    }
-
-    public PreparedAnimation compileMatch(RandomGenerator random) {
-        return SequenceCompiler.compile(this.source, selectSteps(partnerPlayback().matched(), random), this.layoutAnchor, true);
-    }
-
-    public PreparedAnimation compileTimeout(RandomGenerator random) {
-        return SequenceCompiler.compile(this.source, selectSteps(partnerPlayback().timeout(), random), this.layoutAnchor, true);
-    }
-
-    public boolean hasPartner() {
-        return this.playback instanceof PartnerPlayback;
-    }
-
-    public PartnerPlayback partnerPlayback() {
-        if (!(this.playback instanceof PartnerPlayback partnerPlayback)) {
-            throw new IllegalStateException("Sequence is not partner: " + id());
-        }
-        return partnerPlayback;
+        return SequenceCompiler.compile(this.source, selectSteps(this.playback.branch(), random), this.layoutAnchor);
     }
 
     List<SelectedStep> selectSteps(RandomGenerator random) {
-        if (!(this.playback instanceof LinearPlayback linear)) {
-            throw new IllegalStateException("Partner sequence branches must be selected separately: " + id());
-        }
-        return selectSteps(linear.branch(), random);
+        return selectSteps(this.playback.branch(), random);
     }
 
     private static List<SelectedStep> selectSteps(Branch branch, RandomGenerator random) {
@@ -231,43 +194,13 @@ public record PreparedSequence(
         return this.compiledAnimation.nodeCount();
     }
 
-    public sealed interface Playback permits LinearPlayback, PartnerPlayback {
-        List<Step> validationSteps();
-    }
-
-    public record LinearPlayback(Branch branch) implements Playback {
+    public record LinearPlayback(Branch branch) {
         public LinearPlayback {
             Objects.requireNonNull(branch, "branch");
         }
 
-        @Override
         public List<Step> validationSteps() {
             return this.branch.steps();
-        }
-    }
-
-    public record PartnerPlayback(
-        PreparedAnimation offer,
-        int timeoutTicks,
-        Branch matched,
-        Branch timeout
-    ) implements Playback {
-        public PartnerPlayback {
-            Objects.requireNonNull(offer, "offer");
-            if (timeoutTicks < 1) {
-                throw new IllegalArgumentException("await_partner timeout must be at least 1 tick");
-            }
-            Objects.requireNonNull(matched, "matched");
-            Objects.requireNonNull(timeout, "timeout");
-        }
-
-        @Override
-        public List<Step> validationSteps() {
-            List<Step> steps = new ArrayList<>(1 + this.matched.steps().size() + this.timeout.steps().size());
-            steps.add(new EmoteStep(List.of(new AnimationChoice(this.offer, 0)), 1, 0));
-            steps.addAll(this.matched.steps());
-            steps.addAll(this.timeout.steps());
-            return List.copyOf(steps);
         }
     }
 

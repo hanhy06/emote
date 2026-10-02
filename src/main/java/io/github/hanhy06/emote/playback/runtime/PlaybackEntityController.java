@@ -206,15 +206,6 @@ public final class PlaybackEntityController {
         setVisible(node, nodes.effectiveVisibility(node.id()));
     }
 
-    public void activateSpace(PlaybackNodes nodes, EmoteAnimation.NodeSpace space) {
-        nodes.activateSpace(space);
-        nodes.nodes().forEach((nodeId, node) -> {
-            if (node.node().space() == space) {
-                setVisible(node, nodes.effectiveVisibility(nodeId));
-            }
-        });
-    }
-
     public void applyTransformation(
         PlaybackNodes playbackNodes,
         NodeInstance node,

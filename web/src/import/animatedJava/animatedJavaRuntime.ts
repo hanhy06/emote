@@ -48,7 +48,7 @@ export function createAnimatedJavaRuntime(
     const baseRotation = element.rotation;
     addNode(ids.x, {
       type: "anchor",
-      ...(parentId ? { parent: parentId } : { space: sourceNode.space ?? "initiator" }),
+      ...(parentId ? { parent: parentId } : { space: sourceNode.space ?? "actor" }),
       transform: { position: basePosition, rotation: [baseRotation[0], 0, 0], scale: ONE_VECTOR },
     });
     addNode(ids.y, { type: "anchor", parent: ids.x, transform: { position: ZERO_VECTOR, rotation: [0, baseRotation[1], 0], scale: ONE_VECTOR } });

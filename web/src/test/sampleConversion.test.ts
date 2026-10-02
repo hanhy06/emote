@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
 import type { EmoteAnimation } from "../format/emoteAnimation";
+import { requireEmoteAnimation } from "../format/emoteAnimationRuntime";
 import type { ImportedProject } from "../domain/conversionSeed";
 import { animatedJavaBlueprintAdapter } from "../import/animatedJava/animatedJavaBlueprintAdapter";
 import type { ImportAdapter } from "../import/adapter";
@@ -37,6 +38,7 @@ describe("documentation sample conversion", () => {
 
   it.each(DIRECT_SAMPLES)("matches the existing %s sample", async (name) => {
     const actual = requireAnimation(directAnimations, name);
+    expect(() => requireEmoteAnimation(actual)).not.toThrow();
     const expected = await readJson(`docs/sample/${emoteFileName(actual.id)}`) as EmoteAnimation;
 
 
@@ -45,6 +47,7 @@ describe("documentation sample conversion", () => {
 
   it.each(SIT_MATRIX_SAMPLES)("matches the existing %s sample", async (name) => {
     const actual = requireAnimation(sitAnimations, name);
+    expect(() => requireEmoteAnimation(actual)).not.toThrow();
     const expected = await readJson(`docs/sample/sit/${emoteFileName(actual.id)}`) as EmoteAnimation;
 
 

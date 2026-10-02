@@ -1,7 +1,6 @@
 package io.github.hanhy06.emote.skin;
 
 import io.github.hanhy06.emote.EmoteMod;
-import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
@@ -12,14 +11,13 @@ import java.util.stream.Collectors;
 
 public final class SkinBindingCompiler {
     public List<SkinBinding> compile(EmoteAnimation animation) {
-        Map<ParticipantSkinPart, List<RawPart>> byPart = new HashMap<>();
+        Map<PlayerSkinPart, List<RawPart>> byPart = new HashMap<>();
         for (Map.Entry<String, EmoteAnimation.Node> entry : animation.nodes().entrySet()) {
             if (!(entry.getValue() instanceof EmoteAnimation.ItemNode itemNode) || itemNode.skin() == null) {
                 continue;
             }
             PlayerSkinPart skinPart = convert(itemNode.skin().part());
-            ParticipantSkinPart participantSkinPart = new ParticipantSkinPart(itemNode.skin().participant(), skinPart);
-            byPart.computeIfAbsent(participantSkinPart, ignored -> new ArrayList<>()).add(new RawPart(
+            byPart.computeIfAbsent(skinPart, ignored -> new ArrayList<>()).add(new RawPart(
                 entry.getKey(),
                 itemNode.skin().order(),
                 Math.abs(itemNode.transform().scale().y())
@@ -27,18 +25,17 @@ public final class SkinBindingCompiler {
         }
 
         List<SkinBinding> result = new ArrayList<>();
-        for (Map.Entry<ParticipantSkinPart, List<RawPart>> entry : byPart.entrySet()) {
+        for (Map.Entry<PlayerSkinPart, List<RawPart>> entry : byPart.entrySet()) {
             List<RawPart> parts = entry.getValue().stream()
                 .sorted(Comparator.comparingInt(RawPart::order).thenComparing(RawPart::nodeId))
                 .toList();
             result.addAll(createParts(entry.getKey(), parts));
         }
-        result.sort(Comparator.comparing(SkinBinding::participant).thenComparing(SkinBinding::nodeId));
+        result.sort(Comparator.comparing(SkinBinding::nodeId));
         return List.copyOf(result);
     }
 
-    private List<SkinBinding> createParts(ParticipantSkinPart participantSkinPart, List<RawPart> parts) {
-        PlayerSkinPart skinPart = participantSkinPart.skinPart();
+    private List<SkinBinding> createParts(PlayerSkinPart skinPart, List<RawPart> parts) {
         List<OrderGroup> orderGroups = parts.stream()
             .collect(Collectors.groupingBy(RawPart::order, LinkedHashMap::new, Collectors.toList()))
             .values().stream()
@@ -48,22 +45,19 @@ public final class SkinBindingCompiler {
             return parts.stream()
                 .map(part -> new SkinBinding(
                     part.nodeId(),
-                    participantSkinPart.participant(),
                     new PlayerSkinRegion(skinPart, PlayerSkinSegment.FULL)
                 ))
                 .toList();
         }
         if (orderGroups.size() > PlayerSkinSegment.SIDE_FACE_HEIGHT) {
             EmoteMod.LOGGER.warn(
-                "Too many vertical JSON skin segments for {} {}: {}",
-                participantSkinPart.participant(),
+                "Too many vertical JSON skin segments for {}: {}",
                 skinPart.id(),
                 orderGroups.size()
             );
             return parts.stream()
                 .map(part -> new SkinBinding(
                     part.nodeId(),
-                    participantSkinPart.participant(),
                     new PlayerSkinRegion(skinPart, PlayerSkinSegment.FULL)
                 ))
                 .toList();
@@ -86,7 +80,7 @@ public final class SkinBindingCompiler {
             int segmentEnd = Math.clamp(suggestedEnd, minimumEnd, maximumEnd);
             PlayerSkinRegion region = new PlayerSkinRegion(skinPart, new PlayerSkinSegment(segmentStart, segmentEnd));
             for (RawPart part : group.parts()) {
-                result.add(new SkinBinding(part.nodeId(), participantSkinPart.participant(), region));
+                result.add(new SkinBinding(part.nodeId(), region));
             }
             segmentStart = segmentEnd;
         }
@@ -117,6 +111,4 @@ public final class SkinBindingCompiler {
         }
     }
 
-    private record ParticipantSkinPart(ParticipantRole participant, PlayerSkinPart skinPart) {
-    }
 }

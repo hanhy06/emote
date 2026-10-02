@@ -95,7 +95,7 @@ class PlaybackSessionTest {
         session.startPlayback();
         assertEquals(List.of("start", "returned", "close"), calls);
         assertFalse(session.isInvokingCallback());
-        assertEquals(PlaybackState.CLOSED, session.playbackInfo(session.initiator().playerUuid()).state());
+        assertEquals(PlaybackState.CLOSED, session.playbackInfo(session.player().playerUuid()).state());
     }
 
     @Test
@@ -115,7 +115,7 @@ class PlaybackSessionTest {
             session.completeClose();
             assertFalse(session.beginClose(reason));
             assertEquals(List.of(reason), closed);
-            assertEquals(PlaybackState.CLOSED, session.playbackInfo(session.initiator().playerUuid()).state());
+            assertEquals(PlaybackState.CLOSED, session.playbackInfo(session.player().playerUuid()).state());
         }
     }
 
@@ -214,7 +214,7 @@ class PlaybackSessionTest {
         if (waitTicks > 0) steps.add(new EmoteSequence.WaitStep(waitTicks));
         steps.add(new EmoteSequence.EmoteStep(source.id(), 1, transitionTicks));
         EmoteSequence sequence = new EmoteSequence(Path.of("sequence.json"), Identifier.parse("test:sequence"), source.metadata(),
-            new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()), null,
+            new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()),
             steps, List.of());
         PreparedAnimation compiled = PreparedSequence.resolve(sequence, Map.of(repeated.id(), repeated)).compiledAnimation();
         List<String> calls = new ArrayList<>();
@@ -224,7 +224,7 @@ class PlaybackSessionTest {
         player.start();
         PlaybackSession session = new PlaybackSession(UUID.randomUUID(), Level.OVERWORLD, compiled.id(), compiled.id(),
             new PlaybackNodes(SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0)), Map.of()), player,
-            sequence.settings().player(), participant(ParticipantRole.INITIATOR));
+            sequence.settings().player(), participant());
         var callbacks = new EmoteCallbacks() {
             public void onStart(PlaybackContext context) {
                 contexts.add(context);
@@ -280,7 +280,7 @@ class PlaybackSessionTest {
         player.deferInitialVisibility();
         PlaybackSession session = new PlaybackSession(UUID.randomUUID(), Level.OVERWORLD, prepared.id(), prepared.id(),
             new PlaybackNodes(SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0)), Map.of()), player,
-            prepared.playerBehavior(), participant(ParticipantRole.INITIATOR));
+            prepared.playerBehavior(), participant());
         session.bindCallbacks(List.of(new CallbackRegistry.Binding(new EmoteCallbacks() {
             public void onStart(PlaybackContext context) {
                 assertTrue(target.visibility.get("root"));
@@ -311,14 +311,14 @@ class PlaybackSessionTest {
             new PlaybackNodes(SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)), Map.of()),
             timeline(offer),
             offer.playerBehavior(),
-            participant(ParticipantRole.INITIATOR)
+            participant()
         );
         session.animation().start();
         return new SessionFixture(session, offer);
     }
 
-    private static PlaybackParticipant participant(ParticipantRole role) {
-        return new PlaybackParticipant(UUID.randomUUID(), role, Vec3.ZERO, List.of(), false);
+    private static PlaybackParticipant participant() {
+        return new PlaybackParticipant(UUID.randomUUID(), Vec3.ZERO, List.of(), false);
     }
 
     private static AnimationPlayer timeline(PreparedAnimation emote) {

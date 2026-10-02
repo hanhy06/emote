@@ -146,7 +146,7 @@ function compileRuntimeNodes(
       transform,
       item_stack_snbt: writeItemStack(outputItem, profile),
       item_display: sourceNode.itemDisplay,
-      skin: assignment ? { participant: assignment.participant ?? "initiator", part: assignment.part, order: assignment.order } : undefined,
+      skin: assignment ? { part: assignment.part, order: assignment.order } : undefined,
     }];
   }));
 }
@@ -192,7 +192,6 @@ function compileNodes(document: ConversionDocument, animation: AnimationRuntimeP
         item_display: node.itemDisplay,
         ...(assignment ? {
           skin: {
-            participant: node.space === "partner" ? "partner" : "initiator",
             part: assignment.part,
             order: assignment.order,
           },

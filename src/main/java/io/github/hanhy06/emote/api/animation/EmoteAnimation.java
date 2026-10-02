@@ -3,7 +3,6 @@ package io.github.hanhy06.emote.api.animation;
 import com.google.gson.JsonElement;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
-import io.github.hanhy06.emote.api.ParticipantRole;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 
@@ -189,20 +188,11 @@ public record EmoteAnimation(
 
     public enum NodeSpace {
         SCENE,
-        INITIATOR,
-        PARTNER;
-
-        public static NodeSpace forParticipant(ParticipantRole participant) {
-            return switch (participant) {
-                case INITIATOR -> INITIATOR;
-                case PARTNER -> PARTNER;
-            };
-        }
+        ACTOR
     }
 
-    public record Skin(ParticipantRole participant, SkinPart part, int order) {
+    public record Skin(SkinPart part, int order) {
         public Skin {
-            Objects.requireNonNull(participant, "participant");
             Objects.requireNonNull(part, "part");
             if (order < 0) {
                 throw new IllegalArgumentException("skin order must not be negative");

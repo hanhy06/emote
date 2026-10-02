@@ -113,7 +113,7 @@ export function AssignmentPanel({
       </div>
       <p><strong>Coordinate space</strong></p>
       <div className="assignment-buttons">
-        {(["scene", "initiator", "partner"] as const).map((space) => (
+        {(["scene", "actor"] as const).map((space) => (
           <button type="button" key={space} disabled={!hasSelection} onClick={() => onAssignSpace(space)}>
             {space[0].toUpperCase() + space.slice(1)}
           </button>

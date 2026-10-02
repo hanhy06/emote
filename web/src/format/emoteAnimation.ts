@@ -1,8 +1,8 @@
 import type { Matrix16 } from "../domain/matrix";
-import type { NodeSpace, Participant, PlayerSkinPart } from "../domain/player";
+import type { NodeSpace, PlayerSkinPart } from "../domain/player";
 
 export type { Matrix16 } from "../domain/matrix";
-export type { NodeSpace, Participant, PlayerSkinPart } from "../domain/player";
+export type { NodeSpace, PlayerSkinPart } from "../domain/player";
 
 export type Vec3 = readonly [number, number, number];
 export type MolangScalar = number | string;
@@ -96,7 +96,7 @@ export type EmoteNode =
     type: "item_display";
     item_stack_snbt: string;
     item_display: string;
-    skin?: { participant: Participant; part: PlayerSkinPart; order: number };
+    skin?: { part: PlayerSkinPart; order: number };
   })
   | (EmoteDisplayNodeBase & { type: "block_display"; block_state_snbt: string })
   | (EmoteDisplayNodeBase & { type: "text_display"; text: unknown })

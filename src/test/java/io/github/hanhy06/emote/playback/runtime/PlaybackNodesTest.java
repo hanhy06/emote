@@ -120,44 +120,21 @@ class PlaybackNodesTest {
     }
 
     @Test
-    void masksPartnerVisibilityUntilPartnerSpaceIsActivated() {
-        EmoteAnimation.AnchorNode partnerNode = new EmoteAnimation.AnchorNode(
-            EmoteAnimation.NodeSpace.PARTNER,
-            null,
-            EmoteAnimation.LocalTransform.IDENTITY
-        );
-        PlaybackNodes nodes = new PlaybackNodes(
-            SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)),
-            Map.of("partner", new PlaybackNodes.NodeInstance("partner", partnerNode, null, null))
-        );
-
-        assertFalse(nodes.requestVisibility("partner", true));
-        assertFalse(nodes.effectiveVisibility("partner"));
-
-        nodes.activateSpace(EmoteAnimation.NodeSpace.PARTNER);
-
-        assertTrue(nodes.effectiveVisibility("partner"));
-    }
-
-    @Test
     void resolvesEachNodeSpaceAgainstItsOwnRoot() {
         RootTransform scene = RootTransform.create(Vec3.ZERO, 0.0F);
         RootTransform partner = RootTransform.create(new Vec3(1.2D, 0.0D, 0.0D), 180.0F);
         PlaybackNodes nodes = new PlaybackNodes(
             Map.of(
                 EmoteAnimation.NodeSpace.SCENE, scene,
-                EmoteAnimation.NodeSpace.INITIATOR, scene,
-                EmoteAnimation.NodeSpace.PARTNER, partner
+                EmoteAnimation.NodeSpace.ACTOR, partner
             ),
             Map.of()
         );
 
-        assertSame(scene, nodes.root(EmoteAnimation.NodeSpace.INITIATOR));
-        assertSame(partner, nodes.root(EmoteAnimation.NodeSpace.PARTNER));
+        assertSame(partner, nodes.root(EmoteAnimation.NodeSpace.ACTOR));
         nodes.updateViewYaw(90.0F, 50.0F);
         assertEquals(40.0F, nodes.orientationYaw(EmoteAnimation.NodeSpace.SCENE));
-        assertEquals(40.0F, nodes.orientationYaw(EmoteAnimation.NodeSpace.INITIATOR));
-        assertEquals(-140.0F, nodes.orientationYaw(EmoteAnimation.NodeSpace.PARTNER));
+        assertEquals(-140.0F, nodes.orientationYaw(EmoteAnimation.NodeSpace.ACTOR));
     }
 
     @Test
@@ -167,8 +144,7 @@ class PlaybackNodesTest {
         PlaybackNodes nodes = new PlaybackNodes(
             Map.of(
                 EmoteAnimation.NodeSpace.SCENE, scene,
-                EmoteAnimation.NodeSpace.INITIATOR, scene,
-                EmoteAnimation.NodeSpace.PARTNER, partner
+                EmoteAnimation.NodeSpace.ACTOR, partner
             ),
             Map.of()
         );
@@ -176,10 +152,9 @@ class PlaybackNodesTest {
         assertTrue(nodes.moveSceneTo(new Vec3(13.0D, 65.0D, 24.0D)));
 
         assertEquals(new Vec3(13.0D, 65.0D, 24.0D), nodes.root().position());
-        assertEquals(new Vec3(13.0D, 65.0D, 24.0D), nodes.root(EmoteAnimation.NodeSpace.INITIATOR).position());
-        assertEquals(new Vec3(15.0D, 65.0D, 23.0D), nodes.root(EmoteAnimation.NodeSpace.PARTNER).position());
+        assertEquals(new Vec3(15.0D, 65.0D, 23.0D), nodes.root(EmoteAnimation.NodeSpace.ACTOR).position());
         assertEquals(30.0F, nodes.root().yaw());
-        assertEquals(-45.0F, nodes.root(EmoteAnimation.NodeSpace.PARTNER).yaw());
+        assertEquals(-45.0F, nodes.root(EmoteAnimation.NodeSpace.ACTOR).yaw());
         assertFalse(nodes.moveSceneTo(new Vec3(13.0D, 65.0D, 24.0D)));
     }
 
@@ -190,8 +165,7 @@ class PlaybackNodesTest {
         PlaybackNodes nodes = new PlaybackNodes(
             Map.of(
                 EmoteAnimation.NodeSpace.SCENE, scene,
-                EmoteAnimation.NodeSpace.INITIATOR, scene,
-                EmoteAnimation.NodeSpace.PARTNER, partner
+                EmoteAnimation.NodeSpace.ACTOR, partner
             ),
             Map.of()
         );
@@ -199,7 +173,7 @@ class PlaybackNodesTest {
 
         var firstScene = nodes.displayTransformation(EmoteAnimation.NodeSpace.SCENE, transform);
         var secondScene = nodes.displayTransformation(EmoteAnimation.NodeSpace.SCENE, transform);
-        var partnerResult = nodes.displayTransformation(EmoteAnimation.NodeSpace.PARTNER, transform);
+        var partnerResult = nodes.displayTransformation(EmoteAnimation.NodeSpace.ACTOR, transform);
 
         assertNotSame(firstScene, secondScene);
         assertNotSame(firstScene, partnerResult);

@@ -113,7 +113,7 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
   const nodes = Object.fromEntries(Object.entries(project.nodes).map(([nodeId, importedNode]) => {
     const binding: EditorNodeBinding = { ...importedNode.binding, editorNodeId: nodeId };
     const suggestedSkin = importedNode.type === "item_display" ? importedNode.suggestedSkin ?? importedNode.skin : undefined;
-    const space = importedNode.space ?? suggestedSkin?.participant ?? (suggestedSkin ? "initiator" : "scene");
+    const space = importedNode.space ?? (suggestedSkin ? "actor" : "scene");
     if (importedNode.type !== "item_display") {
       const { binding: _binding, space: _space, ...node } = importedNode;
       return [nodeId, { ...node, binding, space }];
@@ -218,7 +218,6 @@ export function documentSkinAssignments(document: ConversionDocument): Record<st
     if (node.type !== "item_display" || !node.binding.skinGroupId) continue;
     const assignment = document.skinGroups[node.binding.skinGroupId]?.assignment;
     entries.push([nodeId, assignment ? {
-      participant: node.space === "partner" ? "partner" : "initiator",
       part: assignment.part,
       order: assignment.order,
     } : null]);
@@ -266,7 +265,7 @@ export function assignDocumentSkinPart(
   const nodes = Object.fromEntries(Object.entries(document.nodes).map(([nodeId, node]) => [
     nodeId,
     part !== null && node.space === "scene" && selectedSpaceGroups.has(node.binding.spaceGroupId ?? nodeId)
-      ? { ...node, space: "initiator" as const }
+      ? { ...node, space: "actor" as const }
       : node,
   ])) as ConversionDocument["nodes"];
   return { ...document, nodes, skinGroups };

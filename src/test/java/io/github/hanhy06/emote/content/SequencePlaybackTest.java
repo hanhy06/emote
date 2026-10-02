@@ -88,27 +88,6 @@ class SequencePlaybackTest {
     }
 
     @Test
-    void duplicatesHierarchyAndTracksForGeneratedPartner() throws Exception {
-        PreparedAnimation animation = animation("example:mirror", 1);
-
-        SequenceNodeLayout.Expansion expansion = SequenceNodeLayout.expandPartnerLayout(
-            true,
-            animation.animation(),
-            Map.of()
-        );
-
-        String partnerRoot = expansion.partnerNodeIds().get("root");
-        String partnerDisplay = expansion.partnerNodeIds().get("display");
-        assertTrue(expansion.generatedPartner());
-        assertEquals(EmoteAnimation.NodeSpace.PARTNER, expansion.animation().nodes().get(partnerDisplay).space());
-        assertEquals(partnerRoot, expansion.animation().nodes().get(partnerDisplay).parentId());
-        assertEquals(
-            expansion.animation().timeline().tracks().get("display"),
-            expansion.animation().timeline().tracks().get(partnerDisplay)
-        );
-    }
-
-    @Test
     void composesTheSequenceBasePoseThroughParentAnchors() throws Exception {
         PreparedAnimation animation = zeroScaleParentAnimation();
         EmoteSequence sequence = new EmoteSequence(
@@ -158,7 +137,7 @@ class SequencePlaybackTest {
               "nodes":{
                 "root":{
                   "type":"anchor",
-                  "space":"initiator",
+                  "space":"actor",
                   "transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]}
                 },
                 "display":{
@@ -216,7 +195,7 @@ class SequencePlaybackTest {
               "nodes":{
                 "root":{
                   "type":"anchor",
-                  "space":"initiator",
+                  "space":"actor",
                   "transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[0,0,0]}
                 },
                 "display":{

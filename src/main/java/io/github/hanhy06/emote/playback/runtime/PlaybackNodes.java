@@ -19,10 +19,6 @@ public final class PlaybackNodes {
     private final EnumMap<EmoteAnimation.NodeSpace, RootTransform> spaces;
     private final Map<String, NodeInstance> nodes;
     private final int displayEntityCount;
-    private final EnumSet<EmoteAnimation.NodeSpace> activeSpaces = EnumSet.of(
-        EmoteAnimation.NodeSpace.SCENE,
-        EmoteAnimation.NodeSpace.INITIATOR
-    );
     private final Map<String, Boolean> requestedVisibility = new HashMap<>();
 
     private float viewYaw;
@@ -95,11 +91,7 @@ public final class PlaybackNodes {
 
     boolean effectiveVisibility(String nodeId) {
         NodeInstance node = Objects.requireNonNull(this.nodes.get(nodeId), "Unknown node " + nodeId);
-        return this.requestedVisibility.getOrDefault(nodeId, false) && this.activeSpaces.contains(node.node().space());
-    }
-
-    void activateSpace(EmoteAnimation.NodeSpace space) {
-        this.activeSpaces.add(Objects.requireNonNull(space, "space"));
+        return this.requestedVisibility.getOrDefault(nodeId, false);
     }
 
     public float orientationYaw(EmoteAnimation.NodeSpace space) {

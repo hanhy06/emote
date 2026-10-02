@@ -38,10 +38,8 @@ public final class PlaybackSession implements AnimationPlayer.LifecycleListener 
     private final PlaybackNodes nodes;
     private final AnimationPlayer animation;
     private final EmotePlayerBehavior playerBehavior;
-    private final EnumMap<ParticipantRole, PlaybackParticipant> participants = new EnumMap<>(ParticipantRole.class);
-    private final Collection<PlaybackParticipant> participantView = Collections.unmodifiableCollection(this.participants.values());
-    private final Map<ParticipantRole, PlaybackParticipant> participantMapView = Collections.unmodifiableMap(this.participants);
-
+    private final PlaybackParticipant player;
+    private final List<PlaybackParticipant> participantView;
 
     public PlaybackSession(
         UUID sessionId,
@@ -51,7 +49,7 @@ public final class PlaybackSession implements AnimationPlayer.LifecycleListener 
         PlaybackNodes nodes,
         AnimationPlayer animation,
         EmotePlayerBehavior playerBehavior,
-        PlaybackParticipant initiator
+        PlaybackParticipant player
     ) {
         this.sessionId = Objects.requireNonNull(sessionId, "sessionId");
         this.levelKey = Objects.requireNonNull(levelKey, "levelKey");
@@ -60,17 +58,8 @@ public final class PlaybackSession implements AnimationPlayer.LifecycleListener 
         this.nodes = Objects.requireNonNull(nodes, "nodes");
         this.animation = Objects.requireNonNull(animation, "animation");
         this.playerBehavior = Objects.requireNonNull(playerBehavior, "playerBehavior");
-        addParticipant(Objects.requireNonNull(initiator, "initiator"));
-        if (initiator.role() != ParticipantRole.INITIATOR) {
-            throw new IllegalArgumentException("A playback session must start with an initiator");
-        }
-    }
-
-    void addParticipant(PlaybackParticipant participant) {
-        PlaybackParticipant previous = this.participants.putIfAbsent(participant.role(), participant);
-        if (previous != null) {
-            throw new IllegalStateException("Participant role is already occupied: " + participant.role());
-        }
+        this.player = Objects.requireNonNull(player, "player");
+        this.participantView = List.of(player);
     }
 
     public UUID sessionId() {
@@ -254,10 +243,8 @@ public final class PlaybackSession implements AnimationPlayer.LifecycleListener 
 
         public Optional<Entity> actor(String name) {
             Objects.requireNonNull(name, "name");
-            for (PlaybackParticipant participant : PlaybackSession.this.participants()) {
-                if (participant.role().name().equalsIgnoreCase(name)) {
-                    return Optional.ofNullable(server().getPlayerList().getPlayer(participant.playerUuid()));
-                }
+            if (name.equalsIgnoreCase("actor")) {
+                return Optional.ofNullable(server().getPlayerList().getPlayer(PlaybackSession.this.player.playerUuid()));
             }
             return Optional.empty();
         }
@@ -302,25 +289,16 @@ public final class PlaybackSession implements AnimationPlayer.LifecycleListener 
         return this.playerBehavior;
     }
 
-    public PlaybackParticipant initiator() {
-        return this.participants.get(ParticipantRole.INITIATOR);
+    public PlaybackParticipant player() {
+        return this.player;
     }
 
-    public PlaybackParticipant participant(UUID playerUuid) {
-        for (PlaybackParticipant participant : this.participants.values()) {
-            if (participant.playerUuid().equals(playerUuid)) {
-                return participant;
-            }
-        }
-        return null;
+    public @Nullable PlaybackParticipant participant(UUID playerUuid) {
+        return this.player.playerUuid().equals(playerUuid) ? this.player : null;
     }
 
     public Collection<PlaybackParticipant> participants() {
         return this.participantView;
-    }
-
-    public Map<ParticipantRole, PlaybackParticipant> participantsByRole() {
-        return this.participantMapView;
     }
 
 }

@@ -1,11 +1,12 @@
+type NodeSpace = "scene" | "initiator" | "partner";
+type Participant = "initiator" | "partner";
+
 import type {
   EmoteAnimationSettings,
   EmoteEvents,
   EmoteMetadata,
   Matrix16,
   MinecraftTime,
-  NodeSpace,
-  Participant,
 } from "../../../format/emoteAnimation";
 
 export interface Schema3EmoteAnimation {

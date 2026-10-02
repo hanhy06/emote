@@ -210,7 +210,7 @@ public final class ExampleCallbacks {
 
         context.setUserState(allay);
         Vec3 origin = context.nodeWorldPosition(context.payload());
-        allay.snapTo(origin.x, origin.y, origin.z, context.actor("initiator").orElseThrow().getYRot(), 0.0F);
+        allay.snapTo(origin.x, origin.y, origin.z, context.actor("actor").orElseThrow().getYRot(), 0.0F);
         allay.setNoAi(true);
         allay.setPermanentlyInvulnerable(true);
         allay.setSilent(true);
@@ -234,7 +234,7 @@ public final class ExampleCallbacks {
 
         context.setUserState(bat);
         Vec3 origin = context.nodeWorldPosition(context.payload());
-        bat.snapTo(origin.x, origin.y, origin.z, context.actor("initiator").orElseThrow().getYRot(), 0.0F);
+        bat.snapTo(origin.x, origin.y, origin.z, context.actor("actor").orElseThrow().getYRot(), 0.0F);
         bat.setNoAi(true);
         bat.setNoGravity(true);
         bat.setPermanentlyInvulnerable(true);

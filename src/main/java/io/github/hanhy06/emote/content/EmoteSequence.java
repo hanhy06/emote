@@ -3,7 +3,6 @@ package io.github.hanhy06.emote.content;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import net.minecraft.commands.arguments.coordinates.Coordinates;
 import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.Nullable;
 
@@ -17,7 +16,6 @@ public record EmoteSequence(
     Identifier id,
     EmoteMetadata metadata,
     Settings settings,
-    @Nullable Participants participants,
     List<Step> steps,
     List<EmoteAnimation.Callback> callbacks
 ) {
@@ -46,7 +44,7 @@ public record EmoteSequence(
     }
 
     public EmoteSequence(Path sourcePath, Identifier id, EmoteMetadata metadata, Settings settings, List<Step> steps) {
-        this(sourcePath, id, metadata, settings, null, steps, List.of());
+        this(sourcePath, id, metadata, settings, steps, List.of());
     }
 
     public EmoteSequence {
@@ -59,18 +57,7 @@ public record EmoteSequence(
         if (steps.isEmpty()) {
             throw new IllegalArgumentException("sequence steps must not be empty");
         }
-        long awaitCount = steps.stream().filter(AwaitPartnerStep.class::isInstance).count();
-        if (awaitCount > 0) {
-            if (steps.size() != 1 || awaitCount != 1) {
-                throw new IllegalArgumentException("a partner sequence must contain exactly one await_partner step");
-            }
-            Objects.requireNonNull(participants, "partner sequence participants");
-        } else {
-            if (participants != null) {
-                throw new IllegalArgumentException("participants require an await_partner step");
-            }
-            validateLinearSteps(steps, "sequence");
-        }
+        validateLinearSteps(steps, "sequence");
     }
 
     public record Settings(int cooldownTicks, EmotePlayerBehavior player) {
@@ -82,21 +69,7 @@ public record EmoteSequence(
         }
     }
 
-    public record Participants(ParticipantPlacement initiator, ParticipantPlacement partner) {
-        public Participants {
-            Objects.requireNonNull(initiator, "initiator");
-            Objects.requireNonNull(partner, "partner");
-        }
-    }
-
-    public record ParticipantPlacement(Coordinates position, Coordinates rotation) {
-        public ParticipantPlacement {
-            Objects.requireNonNull(position, "position");
-            Objects.requireNonNull(rotation, "rotation");
-        }
-    }
-
-    public sealed interface Step permits EmoteStep, WaitStep, AwaitPartnerStep {
+    public sealed interface Step permits EmoteStep, WaitStep {
     }
 
     public record EmoteStep(List<Choice> choices, int repeat, int transitionTicks) implements Step {
@@ -155,27 +128,6 @@ public record EmoteSequence(
         }
     }
 
-    public record AwaitPartnerStep(
-        Identifier offerAnimationId,
-        int timeoutTicks,
-        List<Step> matched,
-        List<Step> timeout
-    ) implements Step {
-        public AwaitPartnerStep {
-            Objects.requireNonNull(offerAnimationId, "offerAnimationId");
-            if (Control.fromId(offerAnimationId) != null) {
-                throw new IllegalArgumentException("await_partner offer must reference an animation");
-            }
-            if (timeoutTicks < 1) {
-                throw new IllegalArgumentException("await_partner timeout must be at least 1 tick");
-            }
-            matched = List.copyOf(matched);
-            timeout = List.copyOf(timeout);
-            validateLinearSteps(matched, "matched branch");
-            validateLinearSteps(timeout, "timeout branch");
-        }
-    }
-
     public record Choice(Identifier targetId, int chance) {
         public Choice {
             Objects.requireNonNull(targetId, "targetId");
@@ -188,9 +140,6 @@ public record EmoteSequence(
     private static void validateLinearSteps(List<Step> steps, String name) {
         if (steps.isEmpty()) {
             throw new IllegalArgumentException(name + " steps must not be empty");
-        }
-        if (steps.stream().anyMatch(AwaitPartnerStep.class::isInstance)) {
-            throw new IllegalArgumentException(name + " must not contain await_partner");
         }
         if (steps.getFirst() instanceof WaitStep || steps.getLast() instanceof WaitStep) {
             throw new IllegalArgumentException(name + " wait steps must be between emote steps");

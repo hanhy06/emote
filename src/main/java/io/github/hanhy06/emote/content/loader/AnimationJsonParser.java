@@ -6,7 +6,6 @@ import com.google.gson.JsonObject;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
-import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.content.LoadedAnimation;
@@ -372,8 +371,7 @@ public final class AnimationJsonParser {
         String value = document.requireString(object, "space", path);
         return switch (value) {
             case "scene" -> NodeSpace.SCENE;
-            case "initiator" -> NodeSpace.INITIATOR;
-            case "partner" -> NodeSpace.PARTNER;
+            case "actor" -> NodeSpace.ACTOR;
             default -> throw document.error(path + ".space", "unsupported node space: " + value);
         };
     }
@@ -397,17 +395,11 @@ public final class AnimationJsonParser {
             throw document.error(path + ".skin", "must be an object");
         }
         JsonObject skin = element.getAsJsonObject();
-        JsonElement participantElement = skin.get("participant");
-        String participantText = participantElement == null || participantElement.isJsonNull()
-            ? "initiator"
-            : document.requireString(skin, "participant", path + ".skin");
-        ParticipantRole participant = switch (participantText) {
-            case "initiator" -> ParticipantRole.INITIATOR;
-            case "partner" -> ParticipantRole.PARTNER;
-            default -> throw document.error(path + ".skin.participant", "unsupported participant: " + participantText);
-        };
-        if (nodeSpace != NodeSpace.forParticipant(participant)) {
-            throw document.error(path + ".skin.participant", "must match the node space");
+        if (skin.has("participant")) {
+            throw document.error(path + ".skin.participant", "participant roles are no longer supported");
+        }
+        if (nodeSpace != NodeSpace.ACTOR) {
+            throw document.error(path + ".skin", "requires actor node space");
         }
         String partText = document.requireString(skin, "part", path + ".skin");
         SkinPart part = switch (partText) {
@@ -423,7 +415,7 @@ public final class AnimationJsonParser {
         if (order < 0) {
             throw document.error(path + ".skin.order", "must not be negative");
         }
-        return new Skin(participant, part, order);
+        return new Skin(part, order);
     }
 
     private CompoundTag optionalEntityNbt(JsonObject object, String path, EmoteJsonDocument document)

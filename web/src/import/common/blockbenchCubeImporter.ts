@@ -100,7 +100,7 @@ export function importBlockbenchCubeContent(
         binding: { sourceNodeId: bone.id, spaceGroupId: options.runtimeSceneId },
         type: "anchor",
         defaultMatrix: matrix4ToRowMajor(boneMatrix, `${formatLabel} bone ${bone.id}`),
-        space: "initiator",
+        space: "actor",
       };
       bone.nodes.push({ id: bone.id, localMatrix: new Matrix4() });
       bindEditorNode(bone.uuid, bone.id);
@@ -123,7 +123,7 @@ export function importBlockbenchCubeContent(
         type: "item_display",
         defaultMatrix: matrix4ToRowMajor(boneMatrix.clone().multiply(localMatrix), `${formatLabel} cube ${nodeId}`),
         visible: true,
-        space: "initiator",
+        space: "actor",
         itemDisplay: "none",
         itemStack: {
           id: "minecraft:paper",
@@ -146,7 +146,7 @@ export function importBlockbenchCubeContent(
         binding: { sourceNodeId: nodeId, spaceGroupId: options.runtimeSceneId },
         type: "anchor",
         defaultMatrix: matrix4ToRowMajor(locatorBoneMatrix.clone().multiply(localMatrix), `${formatLabel} locator ${nodeId}`),
-        space: "initiator",
+        space: "actor",
       };
       bindEditorNode(bone.uuid, nodeId);
       bindEditorNode(locator.uuid, nodeId);

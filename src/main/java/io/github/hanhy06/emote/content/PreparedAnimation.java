@@ -3,7 +3,6 @@ package io.github.hanhy06.emote.content;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
-import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.skin.SkinBinding;
 import io.github.hanhy06.emote.skin.SkinBindingCompiler;
@@ -132,10 +131,6 @@ public final class PreparedAnimation implements PlayableEmote {
         return this.preparedTimeline;
     }
 
-    public List<SkinBinding> skinBindings() {
-        return this.skinBindings;
-    }
-
     public String id() {
         return animation().id().toString();
     }
@@ -176,8 +171,8 @@ public final class PreparedAnimation implements PlayableEmote {
         return animation().settings().playback().mode();
     }
 
-    public List<SkinBinding> skinBindings(ParticipantRole participant) {
-        return this.skinBindings.stream().filter(binding -> binding.participant() == participant).toList();
+    public List<SkinBinding> skinBindings() {
+        return this.skinBindings;
     }
 
     public List<PreparedEvent> timelineEvents(int tick) {
@@ -264,15 +259,13 @@ public final class PreparedAnimation implements PlayableEmote {
         int transitionStartTick,
         int startTick,
         int endTick,
-        PreparedAnimation animation,
-        Map<String, String> mirroredNodes
+        PreparedAnimation animation
     ) {
         public PlaybackSegment {
             if (transitionStartTick < 0 || startTick < transitionStartTick || endTick < startTick) {
                 throw new IllegalArgumentException("invalid playback segment range");
             }
             Objects.requireNonNull(animation, "animation");
-            mirroredNodes = Map.copyOf(mirroredNodes);
         }
     }
 
