@@ -40,17 +40,18 @@ final class SequenceCompiler {
             int transitionStartTick = requireTick(offset, sequence);
             int transitionTicks = hasPreviousPose ? step.transitionTicks() : 0;
             int segmentOffset = requireTick(offset + transitionTicks, sequence);
+            int segmentEndTick = requireTick(offset + transitionTicks + animation.timeline().durationTicks(), sequence);
             if (transitionTicks > 0) {
                 timelineSegments.add(new PlaybackTimeline.Segment(timelineSegments.size(), step.stepIndex(), step.repeatIndex(),
                     PlaybackTimeline.Phase.TRANSITION, transitionStartTick, (long) segmentOffset, animation.id()));
             }
             timelineSegments.add(new PlaybackTimeline.Segment(timelineSegments.size(), step.stepIndex(), step.repeatIndex(),
                 PlaybackTimeline.Phase.ANIMATION, segmentOffset,
-                (long) requireTick(offset + transitionTicks + animation.timeline().durationTicks(), sequence), animation.id()));
+                (long) segmentEndTick, animation.id()));
             playbackSegments.add(new PreparedAnimation.PlaybackSegment(
                 transitionStartTick,
                 segmentOffset,
-                requireTick(offset + transitionTicks + animation.timeline().durationTicks(), sequence),
+                segmentEndTick,
                 step.animation()
             ));
             hiddenNodes.put(segmentOffset, nodesToHide(layoutAnchor.animation(), animation));

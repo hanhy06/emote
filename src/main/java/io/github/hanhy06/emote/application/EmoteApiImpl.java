@@ -217,7 +217,7 @@ public final class EmoteApiImpl extends EmoteApi {
             }
             EmoteApiImpl.this.playerPlaybackManager.engine().stopById(this.id.toString(), PlaybackStopReason.EMOTE_REMOVED);
             for (String previousId : previousIds) {
-                if (EmoteApiImpl.this.emoteCatalog.find(previousId) == null) {
+                if (!previousId.equals(this.id.toString()) && EmoteApiImpl.this.emoteCatalog.find(previousId) == null) {
                     EmoteApiImpl.this.playerPlaybackManager.engine().stopById(previousId, PlaybackStopReason.EMOTE_REMOVED);
                 }
             }

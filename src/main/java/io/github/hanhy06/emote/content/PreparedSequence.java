@@ -117,7 +117,7 @@ public record PreparedSequence(
                     break;
                 }
             }
-            appendSelectedAnimations(selectedSteps, selectedAnimations, emoteStep.transitionTicks());
+            appendSelectedAnimations(selectedSteps, selectedAnimations);
         }
         return selectedSteps;
     }
@@ -140,22 +140,21 @@ public record PreparedSequence(
                     break;
                 }
             }
-            appendSelectedAnimations(selectedSteps, selectedAnimations, emoteStep.transitionTicks());
+            appendSelectedAnimations(selectedSteps, selectedAnimations);
         }
         return selectedSteps;
     }
 
     private static void appendSelectedAnimations(
         List<SelectedStep> selectedSteps,
-        List<SelectedEmoteStep> animations,
-        int transitionTicks
+        List<SelectedEmoteStep> animations
     ) {
         for (int index = 0; index < animations.size(); index++) {
             SelectedEmoteStep selected = animations.get(index);
             selectedSteps.add(new SelectedEmoteStep(
                 selected.animation(),
                 index + 1 < animations.size(),
-                transitionTicks,
+                selected.transitionTicks(),
                 selected.stepIndex(),
                 selected.repeatIndex()
             ));
@@ -180,11 +179,6 @@ public record PreparedSequence(
     @Override
     public EmotePlayerBehavior playerBehavior() {
         return this.source.settings().player();
-    }
-
-    @Override
-    public Path sourcePath() {
-        return this.sourcePath;
     }
 
     public @Nullable Integer fixedDurationTicks() {
