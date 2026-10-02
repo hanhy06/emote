@@ -218,8 +218,6 @@ public class WheelScreen extends Screen {
     }
 
     private void drawCenter(GuiGraphicsExtractor graphics, WheelMetrics metrics, List<EmoteSummary> pageEmotes) {
-        int radius = metrics.centerRadius();
-
         if (this.emotes.isEmpty()) {
             graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.center.no_shortcuts"), metrics.centerX(), metrics.centerY() - 10, TITLE_COLOR);
             graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.center.selected"), metrics.centerX(), metrics.centerY() + 2, TITLE_COLOR);
@@ -230,7 +228,7 @@ public class WheelScreen extends Screen {
             ? pageEmotes.get(this.hoveredSlotIndex)
             : null;
         if (hoveredEmote != null) {
-            graphics.centeredText(this.font, fitText(hoveredEmote.displayName(), radius * 2 - 12), metrics.centerX(), metrics.centerY() - 12, TITLE_COLOR);
+            graphics.centeredText(this.font, Component.literal(hoveredEmote.displayName()), metrics.centerX(), metrics.centerY() - 12, TITLE_COLOR);
         }
         graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.center.release"), metrics.centerX(), metrics.centerY() + 2, BODY_COLOR);
         graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.center.to_play"), metrics.centerX(), metrics.centerY() + 12, BODY_COLOR);
