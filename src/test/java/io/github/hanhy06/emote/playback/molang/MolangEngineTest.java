@@ -79,14 +79,14 @@ class MolangEngineTest {
     @Test
     void evaluatesParameterizedEquipmentQueries() throws Exception {
         MolangEngine.Session session = this.engine.createSession();
-        PlayerMolangQueries.setItemQueries(
+        MolangQueries.setItemQueries(
             session,
-            new PlayerMolangQueries.ItemQueryValue("minecraft:bow", false),
-            new PlayerMolangQueries.ItemQueryValue("minecraft:crossbow", false),
-            new PlayerMolangQueries.ItemQueryValue("minecraft:diamond_helmet", false),
-            new PlayerMolangQueries.ItemQueryValue("", false),
-            new PlayerMolangQueries.ItemQueryValue("", false),
-            new PlayerMolangQueries.ItemQueryValue("", false)
+            new MolangQueries.ItemQueryValue("minecraft:bow", false),
+            new MolangQueries.ItemQueryValue("minecraft:crossbow", false),
+            new MolangQueries.ItemQueryValue("minecraft:diamond_helmet", false),
+            new MolangQueries.ItemQueryValue("", false),
+            new MolangQueries.ItemQueryValue("", false),
+            new MolangQueries.ItemQueryValue("", false)
         );
 
         assertEquals(1.0D, session.evaluate(this.engine.compile("q.is_item_equipped")));
@@ -104,7 +104,7 @@ class MolangEngineTest {
     @Test
     void evaluatesSpatialPlayerQueries() throws Exception {
         MolangEngine.Session session = this.engine.createSession();
-        PlayerMolangQueries.setSpatialQueries(session, new Vec3(10.0D, 20.0D, 30.0D), new Vec3(3.0D, 0.0D, 4.0D));
+        MolangQueries.setSpatialQueries(session, new Vec3(10.0D, 20.0D, 30.0D), new Vec3(3.0D, 0.0D, 4.0D));
 
         assertEquals(20.0D, session.evaluate(this.engine.compile("q.position(1)")));
         assertEquals(3.0D, session.evaluate(this.engine.compile("q.position_delta(0)")));
@@ -112,7 +112,7 @@ class MolangEngineTest {
         assertEquals(0.8D, session.evaluate(this.engine.compile("q.movement_direction(2)")), 1.0E-9D);
         assertEquals(0.0D, session.evaluate(this.engine.compile("q.position(9)")));
 
-        PlayerMolangQueries.setSpatialQueries(session, Vec3.ZERO, new Vec3(1.0E-6D, 0.0D, 0.0D));
+        MolangQueries.setSpatialQueries(session, Vec3.ZERO, new Vec3(1.0E-6D, 0.0D, 0.0D));
         assertEquals(0.0D, session.evaluate(this.engine.compile("q.movement_direction(0)")));
 
         MolangQueryCatalog.validate(
@@ -124,7 +124,7 @@ class MolangEngineTest {
     @Test
     void evaluatesScoreboardQueryByObjectiveName() throws Exception {
         MolangEngine.Session session = this.engine.createSession();
-        PlayerMolangQueries.setScoreboardQuery(session, objective -> objective.equals("combo") ? 12.0D : 0.0D);
+        MolangQueries.setScoreboardQuery(session, objective -> objective.equals("combo") ? 12.0D : 0.0D);
 
         assertEquals(12.0D, session.evaluate(this.engine.compile("q.scoreboard('combo')")));
         assertEquals(0.0D, session.evaluate(this.engine.compile("q.scoreboard('missing')")));
@@ -322,7 +322,7 @@ class MolangEngineTest {
             session.setQuery(name, 99.0D);
         }
 
-        PlayerMolangQueries.EMPTY.apply(session);
+        MolangQuerySource.EMPTY.apply(session);
 
         assertEquals(0.0D, session.evaluate(expression));
     }

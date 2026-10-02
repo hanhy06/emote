@@ -18,7 +18,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentUtils;
 import net.minecraft.network.chat.ResolutionContext;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
 import net.minecraft.util.Mth;
 import net.minecraft.util.ProblemReporter;
@@ -77,10 +76,6 @@ public final class PlaybackEntityController {
     public static final String RUNTIME_TAG = "emote.runtime";
     private static final int RESPONSIVE_INTERPOLATION_TICKS = 1;
     private static final int VIEW_ROTATION_INTERPOLATION_TICKS = 3;
-
-    public PlaybackNodes create(ServerPlayer player, PreparedAnimation emote) {
-        return create(player.level(), RootTransform.fromPlayer(player), emote);
-    }
 
     public PlaybackNodes create(ServerLevel level, RootTransform root, PreparedAnimation emote) {
         LinkedHashMap<String, NodeInstance> instances = new LinkedHashMap<>();

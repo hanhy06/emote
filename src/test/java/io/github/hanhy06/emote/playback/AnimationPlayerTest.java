@@ -6,7 +6,7 @@ import com.google.gson.JsonPrimitive;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.loader.AnimationJsonParser;
-import io.github.hanhy06.emote.playback.molang.PlayerMolangQueries;
+import io.github.hanhy06.emote.playback.molang.MolangQuerySource;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -72,7 +72,7 @@ class AnimationPlayerTest {
                 + " + q.is_swimming + q.is_gliding + q.is_riding + q.is_using_item + q.is_on_fire + q.is_in_water\""
         ));
 
-        PlayerMolangQueries.Source queries = session -> {
+        MolangQuerySource queries = session -> {
             session.setQuery("ground_speed", 2.0D);
             session.setQuery("vertical_speed", 3.0D);
             session.setQuery("is_moving", 1.0D);
@@ -284,7 +284,7 @@ class AnimationPlayerTest {
                 }]
                 """));
         AtomicBoolean sneaking = new AtomicBoolean();
-        PlayerMolangQueries.Source queries = session -> session.setQuery("is_sneaking", sneaking.get() ? 1.0D : 0.0D);
+        MolangQuerySource queries = session -> session.setQuery("is_sneaking", sneaking.get() ? 1.0D : 0.0D);
         FakeTarget target = new FakeTarget();
         AnimationPlayer player = new AnimationPlayer(PreparedAnimation.from(load(root)), target, queries);
 

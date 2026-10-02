@@ -5,6 +5,7 @@ import io.github.hanhy06.emote.api.*;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.*;
 import io.github.hanhy06.emote.playback.AnimationPlayer;
+import io.github.hanhy06.emote.playback.PlayerPlaybackState;
 import io.github.hanhy06.emote.playback.CallbackRegistry;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 import io.github.hanhy06.emote.playback.runtime.RootTransform;
@@ -31,6 +32,38 @@ class PlaybackSessionTest {
     static void bootstrapMinecraftRegistries() {
         SharedConstants.tryDetectVersion();
         Bootstrap.bootStrap();
+    }
+
+    @Test
+    void actorFreePlaybackRunsCallbacksAndClosesWithoutPlayerLookup() throws Exception {
+        PlaybackSession session = fixture().session();
+        CallbackRegistry registry = new CallbackRegistry();
+        Identifier id = Identifier.parse("test:actor_free");
+        List<String> calls = new ArrayList<>();
+        registry.register(id, new EmoteCallbacks() {
+            public void onStart(PlaybackContext context) {
+                assertTrue(context.actor("actor").isEmpty());
+                assertTrue(context.actor("missing").isEmpty());
+                assertEquals(Vec3.ZERO, context.rootPosition());
+                calls.add("start");
+            }
+            public void onTick(PlaybackContext context) { calls.add("tick"); }
+            public void onClose(PlaybackContext context) {
+                assertTrue(context.actor("actor").isEmpty());
+                assertEquals(PlaybackStopReason.MANUAL, context.stopReason().orElseThrow());
+                calls.add("close");
+            }
+        });
+        session.bindCallbacks(registry.resolve(List.of(new EmoteAnimation.Callback(id, ""))), Map.of(), 0);
+        session.startPlayback();
+        assertTrue(session.tick(1));
+        session.tickCallbacks();
+        assertTrue(session.beginClose(PlaybackStopReason.MANUAL));
+        session.animation().stop(PlaybackStopReason.MANUAL);
+        session.closeCallbacks();
+        session.completeClose();
+        assertEquals(List.of("start", "tick", "close"), calls);
+        assertEquals(PlaybackState.CLOSED, session.playbackState());
     }
 
     @Test
@@ -94,7 +127,7 @@ class PlaybackSessionTest {
         session.startPlayback();
         assertEquals(List.of("start", "returned", "close"), calls);
         assertFalse(session.isInvokingCallback());
-        assertEquals(PlaybackState.CLOSED, session.playbackInfo(session.player().playerUuid()).state());
+        assertEquals(PlaybackState.CLOSED, session.playbackInfo(UUID.randomUUID()).state());
     }
 
     @Test
@@ -114,7 +147,7 @@ class PlaybackSessionTest {
             session.completeClose();
             assertFalse(session.beginClose(reason));
             assertEquals(List.of(reason), closed);
-            assertEquals(PlaybackState.CLOSED, session.playbackInfo(session.player().playerUuid()).state());
+            assertEquals(PlaybackState.CLOSED, session.playbackInfo(UUID.randomUUID()).state());
         }
     }
 
@@ -222,8 +255,7 @@ class PlaybackSessionTest {
         player.bindEvents(command -> calls.addAll(command.event().commands()));
         player.start();
         PlaybackSession session = new PlaybackSession(UUID.randomUUID(), Level.OVERWORLD, compiled.id(), compiled.id(),
-            new PlaybackNodes(RootTransform.create(Vec3.ZERO, 0), Map.of()), player,
-            sequence.settings().player(), participant());
+            new PlaybackNodes(RootTransform.create(Vec3.ZERO, 0), Map.of()), player, Map.of());
         var callbacks = new EmoteCallbacks() {
             public void onStart(PlaybackContext context) {
                 contexts.add(context);
@@ -278,8 +310,7 @@ class PlaybackSessionTest {
         player.start();
         player.deferInitialVisibility();
         PlaybackSession session = new PlaybackSession(UUID.randomUUID(), Level.OVERWORLD, prepared.id(), prepared.id(),
-            new PlaybackNodes(RootTransform.create(Vec3.ZERO, 0), Map.of()), player,
-            prepared.playerBehavior(), participant());
+            new PlaybackNodes(RootTransform.create(Vec3.ZERO, 0), Map.of()), player, Map.of());
         session.bindCallbacks(List.of(new CallbackRegistry.Binding(new EmoteCallbacks() {
             public void onStart(PlaybackContext context) {
                 assertTrue(target.visibility.get("root"));
@@ -308,16 +339,14 @@ class PlaybackSessionTest {
             offer.id(),
             offer.id(),
             new PlaybackNodes(RootTransform.create(Vec3.ZERO, 0.0F), Map.of()),
-            timeline(offer),
-            offer.playerBehavior(),
-            participant()
+            timeline(offer), Map.of()
         );
         session.animation().start();
         return new SessionFixture(session, offer);
     }
 
-    private static PlaybackParticipant participant() {
-        return new PlaybackParticipant(UUID.randomUUID(), Vec3.ZERO, List.of(), false);
+    private static PlayerPlaybackState participant() {
+        return new PlayerPlaybackState(UUID.randomUUID(), Vec3.ZERO, List.of(), false, EmotePlayerBehavior.createDefault());
     }
 
     private static AnimationPlayer timeline(PreparedAnimation emote) {

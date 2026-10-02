@@ -2,7 +2,6 @@ package io.github.hanhy06.emote.playback.runtime;
 
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.content.PreparedAnimation;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
@@ -16,10 +15,6 @@ public record RootTransform(Vec3 position, float yaw, Matrix4f rotationMatrix, Q
     public RootTransform {
         rotationMatrix = new Matrix4f(rotationMatrix);
         rotation = new Quaternionf(rotation);
-    }
-
-    public static RootTransform fromPlayer(ServerPlayer player) {
-        return create(player.position(), player.getYRot());
     }
 
     public static RootTransform create(Vec3 position, float yaw) {

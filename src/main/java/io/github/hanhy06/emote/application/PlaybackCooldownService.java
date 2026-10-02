@@ -2,7 +2,7 @@ package io.github.hanhy06.emote.application;
 
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.playback.PlaybackStateListener;
-import io.github.hanhy06.emote.playback.session.PlaybackParticipant;
+import io.github.hanhy06.emote.playback.PlayerPlaybackState;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -78,11 +78,11 @@ public final class PlaybackCooldownService implements PlaybackStateListener {
     }
 
     @Override
-    public void onStarted(ServerPlayer player, PlaybackSession session, PlaybackParticipant participant) {
+    public void onStarted(ServerPlayer player, PlaybackSession session, PlayerPlaybackState participant) {
     }
 
     @Override
-    public void onStopped(ServerPlayer player, PlaybackSession session, PlaybackParticipant participant, PlaybackStopReason reason) {
+    public void onStopped(ServerPlayer player, PlaybackSession session, PlayerPlaybackState participant, PlaybackStopReason reason) {
         onPlaybackEnded(player, session.id());
     }
 

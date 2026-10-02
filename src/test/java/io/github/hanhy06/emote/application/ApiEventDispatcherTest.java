@@ -7,7 +7,7 @@ import io.github.hanhy06.emote.content.PreparedAnimationFixture;
 import io.github.hanhy06.emote.playback.AnimationPlayer;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 import io.github.hanhy06.emote.playback.runtime.RootTransform;
-import io.github.hanhy06.emote.playback.session.PlaybackParticipant;
+import io.github.hanhy06.emote.playback.PlayerPlaybackState;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
 import net.minecraft.SharedConstants;
 import net.minecraft.server.Bootstrap;
@@ -33,7 +33,7 @@ class ApiEventDispatcherTest {
     @Test
     void stopsStartDispatchWithoutNotifyingLaterListeners() {
         ApiEventDispatcher dispatcher = new ApiEventDispatcher();
-        PlaybackParticipant participant = participant();
+        PlayerPlaybackState participant = participant();
         PlaybackSession session = session(participant);
         List<String> events = new ArrayList<>();
         dispatcher.addPlaybackListener(new EmotePlaybackListener() {
@@ -68,7 +68,7 @@ class ApiEventDispatcherTest {
     @Test
     void notifiesEveryListenerWhenStopIsNotReentrant() {
         ApiEventDispatcher dispatcher = new ApiEventDispatcher();
-        PlaybackParticipant participant = participant();
+        PlayerPlaybackState participant = participant();
         PlaybackSession session = session(participant);
         List<String> events = new ArrayList<>();
         dispatcher.addPlaybackListener(new StopRecordingListener("first", events));
@@ -79,7 +79,7 @@ class ApiEventDispatcherTest {
         assertEquals(List.of("first-stopped", "second-stopped"), events);
     }
 
-    private static PlaybackSession session(PlaybackParticipant participant) {
+    private static PlaybackSession session(PlayerPlaybackState participant) {
         PreparedAnimation emote = PreparedAnimationFixture.create("test:api-event", "API Event");
         PlaybackNodes nodes = new PlaybackNodes(
             RootTransform.create(Vec3.ZERO, 0.0F),
@@ -93,13 +93,12 @@ class ApiEventDispatcherTest {
             emote.id(),
             nodes,
             animation,
-            EmotePlayerBehavior.createDefault(),
-            participant
+            Map.of()
         );
     }
 
-    private static PlaybackParticipant participant() {
-        return new PlaybackParticipant(UUID.randomUUID(), Vec3.ZERO, List.of(), false);
+    private static PlayerPlaybackState participant() {
+        return new PlayerPlaybackState(UUID.randomUUID(), Vec3.ZERO, List.of(), false, EmotePlayerBehavior.createDefault());
     }
 
     private record StopRecordingListener(String name, List<String> events) implements EmotePlaybackListener {

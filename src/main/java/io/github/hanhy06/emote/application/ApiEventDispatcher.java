@@ -4,7 +4,7 @@ import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.*;
 import io.github.hanhy06.emote.content.PlayableEmote;
 import io.github.hanhy06.emote.playback.PlaybackStateListener;
-import io.github.hanhy06.emote.playback.session.PlaybackParticipant;
+import io.github.hanhy06.emote.playback.PlayerPlaybackState;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -44,7 +44,7 @@ public final class ApiEventDispatcher implements PlaybackStateListener {
     }
 
     @Override
-    public void onStarted(ServerPlayer player, PlaybackSession session, PlaybackParticipant participant) {
+    public void onStarted(ServerPlayer player, PlaybackSession session, PlayerPlaybackState participant) {
         PlaybackInfo playback = toPlaybackInfo(session, participant);
         StartKey key = new StartKey(session.sessionId(), participant.playerUuid());
         StartDispatch dispatch = new StartDispatch(List.copyOf(this.playbackListeners));
@@ -72,7 +72,7 @@ public final class ApiEventDispatcher implements PlaybackStateListener {
     public void onStopped(
         ServerPlayer player,
         PlaybackSession session,
-        PlaybackParticipant participant,
+        PlayerPlaybackState participant,
         PlaybackStopReason reason
     ) {
         PlaybackInfo playback = toPlaybackInfo(session, participant);
@@ -104,7 +104,7 @@ public final class ApiEventDispatcher implements PlaybackStateListener {
         );
     }
 
-    public static PlaybackInfo toPlaybackInfo(PlaybackSession session, PlaybackParticipant participant) {
+    public static PlaybackInfo toPlaybackInfo(PlaybackSession session, PlayerPlaybackState participant) {
         return session.playbackInfo(participant.playerUuid());
     }
 

@@ -37,9 +37,7 @@ public final class PlaybackSession implements AnimationPlayer.LifecycleListener 
     private final String animationId;
     private final PlaybackNodes nodes;
     private final AnimationPlayer animation;
-    private final EmotePlayerBehavior playerBehavior;
-    private final PlaybackParticipant player;
-    private final List<PlaybackParticipant> participantView;
+    private final Map<String, Entity> actors;
 
     public PlaybackSession(
         UUID sessionId,
@@ -48,8 +46,7 @@ public final class PlaybackSession implements AnimationPlayer.LifecycleListener 
         String animationId,
         PlaybackNodes nodes,
         AnimationPlayer animation,
-        EmotePlayerBehavior playerBehavior,
-        PlaybackParticipant player
+        Map<String, Entity> actors
     ) {
         this.sessionId = Objects.requireNonNull(sessionId, "sessionId");
         this.levelKey = Objects.requireNonNull(levelKey, "levelKey");
@@ -57,9 +54,7 @@ public final class PlaybackSession implements AnimationPlayer.LifecycleListener 
         this.animationId = Objects.requireNonNull(animationId, "animationId");
         this.nodes = Objects.requireNonNull(nodes, "nodes");
         this.animation = Objects.requireNonNull(animation, "animation");
-        this.playerBehavior = Objects.requireNonNull(playerBehavior, "playerBehavior");
-        this.player = Objects.requireNonNull(player, "player");
-        this.participantView = List.of(player);
+        this.actors = Map.copyOf(actors);
     }
 
     public UUID sessionId() {
@@ -243,10 +238,7 @@ public final class PlaybackSession implements AnimationPlayer.LifecycleListener 
 
         public Optional<Entity> actor(String name) {
             Objects.requireNonNull(name, "name");
-            if (name.equalsIgnoreCase("actor")) {
-                return Optional.ofNullable(server().getPlayerList().getPlayer(PlaybackSession.this.player.playerUuid()));
-            }
-            return Optional.empty();
+            return Optional.ofNullable(PlaybackSession.this.actors.get(name)).filter(entity -> !entity.isRemoved());
         }
 
         public Optional<Entity> nodeEntity(String nodeId) {
@@ -283,21 +275,4 @@ public final class PlaybackSession implements AnimationPlayer.LifecycleListener 
     public AnimationPlayer animation() {
         return this.animation;
     }
-
-    public EmotePlayerBehavior playerBehavior() {
-        return this.playerBehavior;
-    }
-
-    public PlaybackParticipant player() {
-        return this.player;
-    }
-
-    public @Nullable PlaybackParticipant participant(UUID playerUuid) {
-        return this.player.playerUuid().equals(playerUuid) ? this.player : null;
-    }
-
-    public Collection<PlaybackParticipant> participants() {
-        return this.participantView;
-    }
-
 }

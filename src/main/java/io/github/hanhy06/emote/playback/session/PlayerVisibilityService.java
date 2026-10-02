@@ -3,6 +3,7 @@ package io.github.hanhy06.emote.playback.session;
 import com.mojang.datafixers.util.Pair;
 import io.github.hanhy06.emote.mixin.accessor.EntitySharedFlagsAccessor;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
+import io.github.hanhy06.emote.playback.PlayerPlaybackState;
 import io.github.hanhy06.emote.playback.PlaybackHooks;
 import net.fabricmc.fabric.api.networking.v1.EntityTrackingEvents;
 import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
@@ -41,8 +42,8 @@ public final class PlayerVisibilityService {
         PlaybackHooks.EQUIPMENT_SYNC.register(this::handleEquipmentSync);
     }
 
-    public void start(ServerPlayer player, PlaybackSession session, PlaybackParticipant participant) {
-        if (!session.playerBehavior().hidden()) {
+    public void start(ServerPlayer player, PlayerPlaybackState participant) {
+        if (!participant.behavior().hidden()) {
             return;
         }
         player.setInvisible(true);
@@ -50,16 +51,16 @@ public final class PlayerVisibilityService {
         sendToTrackingPlayers(player, EMPTY_EQUIPMENT);
     }
 
-    public void tick(ServerPlayer player, PlaybackSession session, PlaybackParticipant participant) {
-        if (!session.playerBehavior().hidden() || player.isInvisible()) {
+    public void tick(ServerPlayer player, PlayerPlaybackState participant) {
+        if (!participant.behavior().hidden() || player.isInvisible()) {
             return;
         }
         player.setInvisible(true);
         syncPlayerVisibility(player);
     }
 
-    public void stop(ServerPlayer player, PlaybackSession session, PlaybackParticipant participant) {
-        if (!session.playerBehavior().hidden()) {
+    public void stop(ServerPlayer player, PlayerPlaybackState participant) {
+        if (!participant.behavior().hidden()) {
             return;
         }
         player.setInvisible(participant.wasInvisible());
@@ -71,8 +72,8 @@ public final class PlayerVisibilityService {
         if (!(entity instanceof ServerPlayer emotePlayer)) {
             return;
         }
-        PlaybackSession session = this.playbackEngine.findActive(emotePlayer.getUUID());
-        if (session != null && session.playerBehavior().hidden()) {
+        PlayerPlaybackState participant = this.playbackEngine.playerState(emotePlayer.getUUID());
+        if (participant != null && participant.behavior().hidden()) {
             trackingPlayer.connection.send(new ClientboundSetEquipmentPacket(emotePlayer.getId(), EMPTY_EQUIPMENT));
         }
     }
@@ -81,8 +82,8 @@ public final class PlayerVisibilityService {
         if (PLAYER_EQUIPMENT_SLOTS.stream().noneMatch(changedItems::containsKey)) {
             return;
         }
-        PlaybackSession session = this.playbackEngine.findActive(player.getUUID());
-        if (session != null && session.playerBehavior().hidden()) {
+        PlayerPlaybackState participant = this.playbackEngine.playerState(player.getUUID());
+        if (participant != null && participant.behavior().hidden()) {
             sendToTrackingPlayers(player, EMPTY_EQUIPMENT);
         }
     }

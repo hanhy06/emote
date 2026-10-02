@@ -5,6 +5,7 @@ import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimationFixture;
 import io.github.hanhy06.emote.playback.AnimationPlayer;
+import io.github.hanhy06.emote.playback.PlayerPlaybackState;
 import io.github.hanhy06.emote.playback.runtime.*;
 import net.minecraft.SharedConstants;
 import net.minecraft.nbt.CompoundTag;
@@ -33,13 +34,11 @@ class PlaybackSessionRegistryTest {
         PlaybackSession session = session(emote);
         PlaybackSessionRegistry registry = new PlaybackSessionRegistry();
         registry.register(session);
-        assertSame(session, registry.findParticipant(session.player().playerUuid()));
         assertSame(session, registry.findSession(session.sessionId()));
         assertEquals(1, registry.activeDisplayEntityCount());
 
         assertTrue(registry.remove(session));
 
-        assertNull(registry.findParticipant(session.player().playerUuid()));
         assertTrue(registry.isEmpty());
         assertEquals(0, registry.activeDisplayEntityCount());
         assertTrue(!registry.remove(session));
@@ -54,8 +53,7 @@ class PlaybackSessionRegistryTest {
             emote.id(),
             playbackNodes(),
             timeline(emote),
-            EmotePlayerBehavior.createDefault(),
-            participant()
+            Map.of()
         );
     }
 
@@ -74,8 +72,8 @@ class PlaybackSessionRegistryTest {
         return animation;
     }
 
-    private static PlaybackParticipant participant() {
-        return new PlaybackParticipant(UUID.randomUUID(), Vec3.ZERO, List.of(), false);
+    private static PlayerPlaybackState participant() {
+        return new PlayerPlaybackState(UUID.randomUUID(), Vec3.ZERO, List.of(), false, EmotePlayerBehavior.createDefault());
     }
 
     private static PlaybackNodes playbackNodes() {

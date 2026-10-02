@@ -14,18 +14,23 @@ import org.joml.Matrix4fc;
 import org.joml.Vector3f;
 
 import java.util.Objects;
+import net.minecraft.server.level.ServerLevel;
+import org.jspecify.annotations.Nullable;
 
 public final class EventCommandExecutor implements AnimationPlayer.EventExecutor {
-    private final CommandSourceStack actorSource;
+    private final ServerLevel level;
+    private final @Nullable CommandSourceStack actorSource;
     private final PlaybackNodes nodes;
     private final AnimationPlayer timeline;
 
     public EventCommandExecutor(
-        CommandSourceStack actorSource,
+        ServerLevel level,
+        @Nullable CommandSourceStack actorSource,
         PlaybackNodes nodes,
         AnimationPlayer timeline
     ) {
-        this.actorSource = Objects.requireNonNull(actorSource, "actorSource");
+        this.level = Objects.requireNonNull(level, "level");
+        this.actorSource = actorSource;
         this.nodes = Objects.requireNonNull(nodes, "nodes");
         this.timeline = Objects.requireNonNull(timeline, "timeline");
     }
@@ -37,7 +42,7 @@ public final class EventCommandExecutor implements AnimationPlayer.EventExecutor
         if (!event.commands().isEmpty()) {
             CommandSourceStack source = createSource(event.source())
                 .withPosition(origin)
-                .withLevel(this.actorSource.getLevel())
+                .withLevel(this.level)
                 .withPermission(LevelBasedPermissionSet.GAMEMASTER)
                 .withSuppressedOutput();
             for (String command : event.commands()) {
@@ -48,12 +53,15 @@ public final class EventCommandExecutor implements AnimationPlayer.EventExecutor
 
     private CommandSourceStack createSource(EmoteAnimation.CommandSource source) {
         return switch (source.type()) {
-            case PLAYER -> this.actorSource;
-            case SERVER -> EmoteMod.SERVER.createCommandSourceStack().withLevel(this.actorSource.getLevel());
+            case PLAYER -> {
+                if (this.actorSource == null) throw new IllegalStateException("Playback has no actor command source.");
+                yield this.actorSource;
+            }
+            case SERVER -> EmoteMod.SERVER.createCommandSourceStack().withLevel(this.level);
             case NODE -> {
                 Entity entity = requiredEntity(source.node());
                 yield EmoteMod.SERVER.createCommandSourceStack()
-                    .withLevel(this.actorSource.getLevel())
+                    .withLevel(this.level)
                     .withEntity(entity)
                     .withPosition(entity.position());
             }
