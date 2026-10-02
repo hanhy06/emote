@@ -4,7 +4,7 @@ import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaySource;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.PlayableEmote;
-import io.github.hanhy06.emote.playback.PlaybackEngine;
+import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -17,7 +17,7 @@ public class EmotePlayService {
     public EmotePlayService(
         EmoteCatalog emoteCatalog,
         PlaybackPolicyService playbackPolicy,
-        PlaybackEngine playbackEngine,
+        PlayerPlaybackManager playbackEngine,
         ApiEventDispatcher apiEvents
     ) {
         this(

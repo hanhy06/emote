@@ -5,7 +5,7 @@ import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.application.PlaybackCooldownService;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.network.WheelSyncService;
-import io.github.hanhy06.emote.playback.PlaybackEngine;
+import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.playback.PlaybackHooks;
 import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
@@ -29,7 +29,7 @@ public class ServerLifecycle {
     private final PlayerSkinManager playerSkinManager;
     private final PlaybackCooldownService cooldowns;
     private final EmoteCatalog emoteCatalog;
-    private final PlaybackEngine playbackEngine;
+    private final PlayerPlaybackManager playbackEngine;
     private final ReloadService reloadService;
     private final WheelSyncService wheelSyncService;
     private final IdlePlaybackService idlePlaybackService;
@@ -39,7 +39,7 @@ public class ServerLifecycle {
         PlayerSkinManager playerSkinManager,
         PlaybackCooldownService cooldowns,
         EmoteCatalog emoteCatalog,
-        PlaybackEngine playbackEngine,
+        PlayerPlaybackManager playbackEngine,
         ReloadService reloadService,
         WheelSyncService wheelSyncService,
         IdlePlaybackService idlePlaybackService,
@@ -60,7 +60,7 @@ public class ServerLifecycle {
         ServerLifecycleEvents.SERVER_STOPPING.register(this::handleServerStopping);
         ServerLifecycleEvents.SERVER_STOPPED.register(this::handleServerStopped);
         ServerTickEvents.END_SERVER_TICK.register(ignoredServer -> {
-            this.playbackEngine.tick();
+            this.playbackEngine.engine().tick();
             this.idlePlaybackService.tick();
         });
         PlaybackHooks.INTERRUPTION.register(this.playbackEngine::interrupt);
@@ -126,7 +126,7 @@ public class ServerLifecycle {
     }
 
     private void handleServerStopping(MinecraftServer ignoredServer) {
-        this.playbackEngine.stopAll(PlaybackStopReason.SERVER_STOPPING);
+        this.playbackEngine.engine().stopAll(PlaybackStopReason.SERVER_STOPPING);
         this.cooldowns.clear();
         int removedApiEmotes = this.emoteCatalog.clearApiRegistrations();
         this.idlePlaybackService.clear();

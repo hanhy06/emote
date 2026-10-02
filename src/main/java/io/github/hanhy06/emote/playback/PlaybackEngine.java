@@ -2,375 +2,181 @@ package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
-import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.config.ConfigListener;
-import io.github.hanhy06.emote.content.PlayableEmote;
 import io.github.hanhy06.emote.content.PreparedAnimation;
-import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.playback.molang.PlayerMolangQueries;
 import io.github.hanhy06.emote.playback.runtime.*;
 import io.github.hanhy06.emote.playback.session.*;
-import io.github.hanhy06.emote.playback.stress.PlaybackStressTest;
-import io.github.hanhy06.emote.playback.stress.PlaybackStressTestReport;
+import io.github.hanhy06.emote.playback.stress.*;
 import io.github.hanhy06.emote.playback.timeline.EventCommandExecutor;
-import io.github.hanhy06.emote.skin.PlayerSkinManager;
-import io.github.hanhy06.emote.skin.SkinBinding;
-import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import io.github.hanhy06.emote.skin.model.PreparedPlayerSkin;
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
-
 import java.util.*;
 import java.util.function.Consumer;
-import java.util.random.RandomGenerator;
 
-public class PlaybackEngine implements ConfigListener {
+public final class PlaybackEngine implements ConfigListener {
     public static final int DEFAULT_STRESS_TEST_INSTANCE_COUNT = PlaybackStressTest.DEFAULT_INSTANCE_COUNT;
     public static final int MAX_STRESS_TEST_INSTANCE_COUNT = PlaybackStressTest.MAX_INSTANCE_COUNT;
     public static final int DEFAULT_STRESS_TEST_PACKET_FANOUT = PlaybackStressTest.DEFAULT_PACKET_FANOUT;
     public static final int MAX_STRESS_TEST_PACKET_FANOUT = PlaybackStressTest.MAX_PACKET_FANOUT;
     private final PlaybackSessionRegistry sessionRegistry = new PlaybackSessionRegistry();
-    private final List<PlaybackStateListener> stateListeners = new ArrayList<>();
-    private final Set<UUID> closingPlayers = new HashSet<>();
-
-    private final PlayerSkinManager playerSkinManager;
     private final PlaybackEntityController entityController = new PlaybackEntityController();
     private final PlaybackStressTest stressTest = new PlaybackStressTest(this.entityController);
-    private final PlayerVisibilityService playerVisibilityService;
-    private final RandomGenerator random = RandomGenerator.getDefault();
-    private int maxActiveDisplayEntities = Config.DEFAULT_MAX_ACTIVE_DISPLAY_ENTITIES;
     private final CallbackRegistry callbackRegistry = new CallbackRegistry();
+    private final Map<UUID, Lifecycle> lifecycles = new HashMap<>();
+    private int maxActiveDisplayEntities = Config.DEFAULT_MAX_ACTIVE_DISPLAY_ENTITIES;
 
-    public CallbackRegistry callbackRegistry() {
-        return this.callbackRegistry;
+    public interface Lifecycle {
+        default void onStarted(PlaybackSession session) {}
+        default @Nullable PlaybackStopReason beforeTick(PlaybackSession session) { return null; }
+        default void prepareFrame(PlaybackSession session) {}
+        default void onClosing(PlaybackSession session) {}
+        default void onStopped(PlaybackSession session, PlaybackStopReason reason) {}
     }
 
-    public PlaybackEngine(PlayerSkinManager playerSkinManager) {
-        this.playerSkinManager = playerSkinManager;
-        this.playerVisibilityService = new PlayerVisibilityService(this);
-        this.playerSkinManager.addReadyListener(this::refreshPlayerSkin);
+    public record Request(ServerLevel level, RootTransform root, PreparedAnimation animation, String playbackId,
+                          EmotePlayerBehavior behavior, PlaybackParticipant participant,
+                          PlayerMolangQueries.Source queries, CommandSourceStack commandSource,
+                          @Nullable PreparedPlayerSkin skin, Lifecycle lifecycle) {}
+
+    public sealed interface StartResult {
+        record Success(PlaybackSession session) implements StartResult {}
+        record Failure(String message) implements StartResult {}
     }
 
-    public void registerVisibilityService() {
-        this.playerVisibilityService.register();
-    }
+    public CallbackRegistry callbackRegistry() { return this.callbackRegistry; }
+    public PlaybackEntityController entities() { return this.entityController; }
+    @Override public void onConfigReload(Config config) { this.maxActiveDisplayEntities = config.maxActiveDisplayEntities(); }
 
-    @Override
-    public void onConfigReload(Config newConfig) {
-        this.maxActiveDisplayEntities = newConfig.maxActiveDisplayEntities();
-    }
-
-    public void addStateListener(PlaybackStateListener stateListener) {
-        this.stateListeners.add(Objects.requireNonNull(stateListener, "stateListener"));
-    }
-
-    public PlayResult start(ServerPlayer player, PlayableEmote definition) {
-        if (this.closingPlayers.contains(player.getUUID())) {
-            return PlayResult.failure("Your previous emote is still closing.");
+    public StartResult start(Request request, @Nullable PlaybackSession replacedSession) {
+        PreparedAnimation emote = request.animation();
+        if (replacedSession != null && replacedSession.isInvokingCallback()) {
+            return new StartResult.Failure("Cannot replace an emote from its own callback.");
         }
-        return switch (definition) {
-            case PreparedAnimation animation -> start(player, animation);
-            case PreparedSequence sequence -> start(player, sequence);
-        };
-    }
-
-    public PlayResult start(ServerPlayer player, PreparedAnimation emote) {
-        return startResolved(
-            player,
-            emote,
-            emote.id(),
-            emote.playerBehavior(),
-            RootTransform.fromPlayer(player)
-        );
-    }
-
-    private PlayResult start(ServerPlayer player, PreparedSequence sequence) {
-        return startResolved(
-            player,
-            sequence.compile(this.random),
-            sequence.id(),
-            sequence.playerBehavior(),
-            RootTransform.fromPlayer(player)
-        );
-    }
-
-    private PlayResult startResolved(
-        ServerPlayer player,
-        PreparedAnimation emote,
-        String playbackId,
-        EmotePlayerBehavior playerBehavior,
-        RootTransform root
-    ) {
-        if (this.closingPlayers.contains(player.getUUID())) {
-            return PlayResult.failure("Your previous emote is still closing.");
+        int projected = projectedDisplayEntityCount(activeDisplayEntityCount(),
+            replacedSession == null ? 0 : replacedSession.nodes().displayEntityCount(), emote.displayNodeCount());
+        if (exceedsDisplayEntityLimit(projected, this.maxActiveDisplayEntities)) {
+            return new StartResult.Failure("Too many emotes are active right now. Try again shortly.");
         }
-        PlaybackSession currentSession = findActive(player.getUUID());
-        if (currentSession != null && currentSession.isInvokingCallback()) {
-            return PlayResult.failure("Cannot replace an emote from its own callback.");
-        }
-        int projectedDisplayEntities = projectedDisplayEntityCount(
-            activeDisplayEntityCount(),
-            displayEntityCount(currentSession),
-            emote.displayNodeCount()
-        );
-        if (exceedsDisplayEntityLimit(projectedDisplayEntities, this.maxActiveDisplayEntities)) {
-            return PlayResult.failure("Too many emotes are active right now. Try again shortly.");
-        }
-
-        List<CallbackRegistry.Binding> callbackBindings;
-        Map<PreparedAnimation, List<CallbackRegistry.Binding>> animationBindings = new HashMap<>();
+        List<CallbackRegistry.Binding> bindings;
+        Map<PreparedAnimation, List<CallbackRegistry.Binding>> segmentBindings = new HashMap<>();
         try {
-            callbackBindings = this.callbackRegistry.resolve(emote.animation().callbacks());
-            for (PreparedAnimation.PlaybackSegment segment : emote.playbackSegments()) {
-                animationBindings.computeIfAbsent(segment.animation(), animation -> this.callbackRegistry.resolve(animation.animation().callbacks()));
+            bindings = this.callbackRegistry.resolve(emote.animation().callbacks());
+            for (var segment : emote.playbackSegments()) {
+                segmentBindings.computeIfAbsent(segment.animation(), animation -> this.callbackRegistry.resolve(animation.animation().callbacks()));
             }
         } catch (IllegalArgumentException exception) {
-            return PlayResult.failure(exception.getMessage());
+            return new StartResult.Failure(exception.getMessage());
         }
-        PlayerSkinPreparation skinPreparation = this.playerSkinManager.preparePlayerSkin(
-            player,
-            emote.skinBindings()
-        );
-        if (skinPreparation.preparing()) {
-            return PlayResult.failure("Preparing your skin… " + skinPreparation.progressPercent() + "%");
-        }
-        stop(player, PlaybackStopReason.REPLACED);
-        return startPrepared(
-            player,
-            emote,
-            playbackId,
-            playerBehavior,
-            root,
-            skinPreparation.preparedPlayerSkin(),
-            callbackBindings,
-            animationBindings
-        );
-    }
-
-    private PlayResult startPrepared(
-        ServerPlayer player,
-        PreparedAnimation emote,
-        String playbackId,
-        EmotePlayerBehavior playerBehavior,
-        RootTransform root,
-        PreparedPlayerSkin preparedSkin,
-        List<CallbackRegistry.Binding> callbackBindings,
-        Map<PreparedAnimation, List<CallbackRegistry.Binding>> animationBindings
-    ) {
+        if (replacedSession != null) stop(replacedSession, PlaybackStopReason.REPLACED);
         PlaybackNodes nodes = null;
         PlaybackSession session = null;
-        boolean startedNotified = false;
         try {
-            nodes = this.entityController.create(player.level(), root, emote);
-            AnimationPlayer timeline = new AnimationPlayer(
-                emote,
-                new EntityTimelineTarget(emote, nodes, this.entityController),
-                PlayerMolangQueries.forPlayer(player)
-            );
-            timeline.bindEvents(new EventCommandExecutor(player, nodes, timeline));
+            nodes = this.entityController.create(request.level(), request.root(), emote);
+            AnimationPlayer timeline = new AnimationPlayer(emote, new EntityTimelineTarget(emote, nodes, this.entityController), request.queries());
+            timeline.bindEvents(new EventCommandExecutor(request.commandSource(), nodes, timeline));
             if (emote.animation().settings().playback().mode() == EmoteAnimation.LoopMode.SERVER_SYNC) {
                 timeline.startSynchronized(EmoteMod.SERVER.overworld().getGameTime());
             } else {
                 timeline.start();
             }
-            this.entityController.applySkin(
-                nodes,
-                emote.skinBindings(),
-                preparedSkin
-            );
+            if (request.skin() != null) this.entityController.applySkin(nodes, emote.skinBindings(), request.skin());
             timeline.deferInitialVisibility();
-            this.entityController.add(player.level(), nodes);
-            PlaybackParticipant playbackPlayer = new PlaybackParticipant(
-                player.getUUID(),
-                root.position(),
-                emote.skinBindings(),
-                player.isInvisible()
-            );
-            session = new PlaybackSession(
-                UUID.randomUUID(),
-                player.level().dimension(),
-                playbackId,
-                emote.id(),
-                nodes,
-                timeline,
-                playerBehavior,
-                playbackPlayer
-            );
-            session.bindCallbacks(callbackBindings, animationBindings, EmoteMod.SERVER.getTickCount());
+            this.entityController.add(request.level(), nodes);
+            session = new PlaybackSession(UUID.randomUUID(), request.level().dimension(), request.playbackId(), emote.id(),
+                nodes, timeline, request.behavior(), request.participant());
+            session.bindCallbacks(bindings, segmentBindings, EmoteMod.SERVER.getTickCount());
             this.sessionRegistry.register(session);
-            this.playerVisibilityService.start(player, session, playbackPlayer);
-            if (!notifyStarted(player, session, playbackPlayer)) {
-                return new PlayResult.Success(session.playbackInfo(player.getUUID()));
-            }
-            startedNotified = true;
-            session.startPlayback();
-            return new PlayResult.Success(session.playbackInfo(player.getUUID()));
+            this.lifecycles.put(session.sessionId(), request.lifecycle());
+            request.lifecycle().onStarted(session);
+            if (this.sessionRegistry.contains(session)) session.startPlayback();
+            return new StartResult.Success(session);
         } catch (RuntimeException exception) {
-            EmoteMod.LOGGER.warn("Failed to start emote {} for player {}", emote.id(), player.getScoreboardName(), exception);
-            if (session != null && this.sessionRegistry.remove(session)) {
-                cleanupSession(session, startedNotified, PlaybackStopReason.ERROR, null);
-            } else if (nodes != null) {
-                this.entityController.remove(player.level(), nodes);
+            EmoteMod.LOGGER.warn("Failed to start emote {}", emote.id(), exception);
+            if (session != null && this.sessionRegistry.contains(session)) {
+                stop(session, PlaybackStopReason.ERROR);
+            } else if (session == null && nodes != null) {
+                this.entityController.remove(request.level(), nodes);
             }
-            return PlayResult.failure("Something went wrong while starting the emote.");
+            return new StartResult.Failure("Something went wrong while starting the emote.");
         }
     }
 
-    private void refreshPlayerSkin(UUID playerUuid) {
-        PlaybackSession session = findActive(playerUuid);
-        if (session == null) {
-            return;
-        }
-        PlaybackParticipant participant = session.participant(playerUuid);
-        ServerPlayer player = EmoteMod.SERVER.getPlayerList().getPlayer(playerUuid);
-        if (player == null || participant == null) {
-            return;
-        }
-        PlayerSkinPreparation preparation = this.playerSkinManager.preparePlayerSkin(
-            player,
-            participant.skinBindings()
-        );
-        this.entityController.applySkin(
-            session.nodes(),
-            participant.skinBindings(),
-            preparation.preparedPlayerSkin()
-        );
-    }
-
-    public PlaybackSession stop(ServerPlayer player) {
-        return stop(player, PlaybackStopReason.MANUAL);
-    }
-
-    public PlaybackSession stop(ServerPlayer player, PlaybackStopReason reason) {
-        return stop(player.getUUID(), reason, player);
-    }
-
-    public void interrupt(ServerPlayer player, PlaybackStopReason reason) {
-        PlaybackSession session = findActive(player.getUUID());
-        if (session == null || !shouldStopFor(session.playerBehavior().stopConditions(), reason)) {
-            return;
-        }
-        stop(player, reason);
-    }
-
-    private PlaybackSession stop(
-        UUID playerUuid,
-        PlaybackStopReason reason,
-        @Nullable ServerPlayer knownPlayer
-    ) {
-        PlaybackSession session = findActive(playerUuid);
-        if (session == null) {
-            return null;
-        }
-        if (!this.sessionRegistry.remove(session)) {
-            return null;
-        }
-        cleanupSession(session, true, reason, knownPlayer);
-        return session;
-    }
-
-    public PlaybackSession findActive(UUID playerUuid) {
-        return this.sessionRegistry.findParticipant(playerUuid);
-    }
-
-    public @Nullable PlaybackSession findSession(UUID sessionId) {
-        return this.sessionRegistry.findSession(sessionId);
-    }
+    public @Nullable PlaybackSession findSession(UUID sessionId) { return this.sessionRegistry.findSession(sessionId); }
+    public boolean contains(PlaybackSession session) { return this.sessionRegistry.contains(session); }
 
     public void tick() {
         this.stressTest.tick();
-        if (this.sessionRegistry.isEmpty()) {
-            return;
-        }
-
-        List<StopRequest> stopRequests = null;
-        for (PlaybackSession session : this.sessionRegistry.sessions()) {
-            PlaybackParticipant playbackPlayer = session.player();
-            ServerPlayer player = EmoteMod.SERVER.getPlayerList().getPlayer(playbackPlayer.playerUuid());
-            PlaybackStopReason stopReason = null;
-            for (PlaybackParticipant participant : session.participants()) {
-                ServerPlayer participantPlayer = participant == playbackPlayer
-                    ? player
-                    : EmoteMod.SERVER.getPlayerList().getPlayer(participant.playerUuid());
-                if (!canKeepPlaying(participantPlayer, session)) {
-                    stopReason = PlaybackStopReason.PLAYER_UNAVAILABLE;
-                    break;
-                }
-                if (session.playerBehavior().stopConditions().submerge() && participantPlayer.isUnderWater()) {
-                    stopReason = PlaybackStopReason.SUBMERGED;
-                    break;
-                }
-                MovementResult movement = movementResult(participantPlayer, session, participant);
-                if (movement == MovementResult.IMMEDIATE_STOP) {
-                    stopReason = PlaybackStopReason.MOVED;
-                    break;
-                }
-            }
-            if (stopReason == null) {
-                try {
-                    if (!session.tick(EmoteMod.SERVER.getTickCount())) {
-                        continue;
-                    }
-                    if (session.playerBehavior().stopConditions().movementDistance() == 0.0D) {
-                        this.entityController.moveSceneTo(session.nodes(), player.position());
-                    }
+        for (PlaybackSession session : List.copyOf(this.sessionRegistry.sessions())) {
+            if (!contains(session)) continue;
+            PlaybackStopReason reason = null;
+            try {
+                reason = this.lifecycles.get(session.sessionId()).beforeTick(session);
+                if (!contains(session)) continue;
+                if (reason == null && session.tick(EmoteMod.SERVER.getTickCount())) {
+                    this.lifecycles.get(session.sessionId()).prepareFrame(session);
+                    if (!contains(session)) continue;
                     session.animation().restoreDeferredVisibility();
-                    this.entityController.updateViewRotation(
-                        session.nodes(),
-                        player.getYRot(),
-                        session.animation().rotationDeadzone()
-                    );
-
-                    for (PlaybackParticipant participant : session.participants()) {
-                        ServerPlayer participantPlayer = participant == playbackPlayer
-                            ? player
-                            : EmoteMod.SERVER.getPlayerList().getPlayer(participant.playerUuid());
-                        this.playerVisibilityService.tick(participantPlayer, session, participant);
-                    }
-                    AnimationPlayer.AdvanceResult result = session.animation().advance();
-                    if (playbackChanged(session)) continue;
-                    boolean timelineFinished = result == AnimationPlayer.AdvanceResult.FINISHED;
-
-                    if (stopReason == null && !playbackChanged(session)) {
-                        session.tickCallbacks();
-                        if (playbackChanged(session)) continue;
-                        if (timelineFinished) stopReason = PlaybackStopReason.FINISHED;
-                    }
-                } catch (RuntimeException exception) {
-                    EmoteMod.LOGGER.warn("Failed to play emote {}", session.id(), exception);
-                    stopReason = PlaybackStopReason.ERROR;
+                    var result = session.animation().advance();
+                    if (!contains(session)) continue;
+                    session.tickCallbacks();
+                    if (!contains(session)) continue;
+                    if (result == AnimationPlayer.AdvanceResult.FINISHED) reason = PlaybackStopReason.FINISHED;
                 }
+            } catch (RuntimeException exception) {
+                EmoteMod.LOGGER.warn("Failed to play emote {}", session.id(), exception);
+                reason = PlaybackStopReason.ERROR;
             }
-            if (stopReason != null) {
-                if (stopRequests == null) {
-                    stopRequests = new ArrayList<>();
-                }
-                stopRequests.add(new StopRequest(session, stopReason));
-            }
+            if (reason != null) stop(session, reason);
         }
+    }
 
-        if (stopRequests != null) {
-            for (StopRequest request : stopRequests) {
-                stopIfCurrent(request.session(), request.reason());
+    public @Nullable PlaybackSession stop(PlaybackSession session, PlaybackStopReason reason) {
+        if (!this.sessionRegistry.remove(session)) return null;
+        if (!session.beginClose(reason)) return null;
+        Lifecycle lifecycle = this.lifecycles.remove(session.sessionId());
+        lifecycle.onClosing(session);
+        Runnable cleanup = () -> finishCleanup(session, lifecycle, reason);
+        if (!session.deferCleanup(cleanup)) cleanup.run();
+        return session;
+    }
+
+    private void finishCleanup(PlaybackSession session, Lifecycle lifecycle, PlaybackStopReason reason) {
+        try {
+            try { session.animation().stop(reason); }
+            catch (RuntimeException exception) { EmoteMod.LOGGER.warn("Failed to run stop events for emote {}", session.id(), exception); }
+            session.closeCallbacks();
+        } finally {
+            try { lifecycle.onStopped(session, reason); }
+            finally {
+                try {
+                    ServerLevel level = EmoteMod.SERVER.getLevel(session.levelKey());
+                    if (level != null) this.entityController.remove(level, session.nodes());
+                } finally { session.completeClose(); }
             }
         }
     }
 
-    public void stopAll() {
-        stopAll(PlaybackStopReason.MANUAL);
-    }
-
+    public void stopAll() { stopAll(PlaybackStopReason.MANUAL); }
     public void stopAll(PlaybackStopReason reason) {
         this.stressTest.stop();
-        for (PlaybackSession session : List.copyOf(this.sessionRegistry.sessions())) {
-            stopIfCurrent(session, reason);
+        for (var session : List.copyOf(this.sessionRegistry.sessions())) stop(session, reason);
+    }
+    public void stopById(String id) { stopById(id, PlaybackStopReason.EMOTE_REMOVED); }
+    public void stopById(String id, PlaybackStopReason reason) {
+        this.stressTest.stopById(id);
+        for (var session : List.copyOf(this.sessionRegistry.sessions())) {
+            if (session.id().equals(id) || session.animationId().equals(id)) stop(session, reason);
         }
     }
+    public int activeDisplayEntityCount() { return this.stressTest.displayEntityCount() + this.sessionRegistry.activeDisplayEntityCount(); }
+    public int activeSessionCount() { return this.sessionRegistry.activeSessionCount(); }
 
     public PlaybackStressTest.StartResult startStressTest(
         ServerLevel level,
@@ -420,156 +226,8 @@ public class PlaybackEngine implements ConfigListener {
         );
     }
 
-    public PlayerSkinPreparation prepareStressTestSkin(ServerPlayer player, List<PreparedAnimation> emotes) {
-        List<SkinBinding> bindings = emotes.stream().flatMap(emote -> emote.skinBindings().stream()).distinct().toList();
-        return this.playerSkinManager.preparePlayerSkin(player, bindings);
-    }
-
     public @Nullable PlaybackStressTestReport stopStressTest() {
         return this.stressTest.stop();
-    }
-
-    public void stopById(String id) {
-        stopById(id, PlaybackStopReason.EMOTE_REMOVED);
-    }
-
-    public void stopById(String id, PlaybackStopReason reason) {
-        this.stressTest.stopById(id);
-        List<PlaybackSession> matchingPlaybacks = this.sessionRegistry.sessions().stream()
-            .filter(session -> session.id().equals(id) || session.animationId().equals(id))
-            .toList();
-        for (PlaybackSession session : matchingPlaybacks) {
-            stopIfCurrent(session, reason);
-        }
-    }
-
-    private boolean playbackChanged(PlaybackSession session) {
-        return !this.sessionRegistry.contains(session);
-    }
-
-    private boolean notifyStarted(ServerPlayer player, PlaybackSession session, PlaybackParticipant participant) {
-        for (PlaybackStateListener stateListener : this.stateListeners) {
-            stateListener.onStarted(player, session, participant);
-            if (playbackChanged(session)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private void stopIfCurrent(PlaybackSession session, PlaybackStopReason reason) {
-        if (!this.sessionRegistry.remove(session)) {
-            return;
-        }
-        cleanupSession(session, true, reason, null);
-    }
-
-    private void cleanupSession(
-        PlaybackSession session,
-        boolean notifyListeners,
-        PlaybackStopReason reason,
-        @Nullable ServerPlayer knownPlayer
-    ) {
-        if (!session.beginClose(reason)) return;
-        for (PlaybackParticipant participant : session.participants()) {
-            this.closingPlayers.add(participant.playerUuid());
-        }
-        if (session.deferCleanup(() -> finishCleanupSession(session, notifyListeners, reason, knownPlayer))) return;
-        finishCleanupSession(session, notifyListeners, reason, knownPlayer);
-    }
-
-    private void finishCleanupSession(
-        PlaybackSession session,
-        boolean notifyListeners,
-        PlaybackStopReason reason,
-        @Nullable ServerPlayer knownPlayer
-    ) {
-        try {
-            try {
-                session.animation().stop(reason);
-            } catch (RuntimeException exception) {
-                EmoteMod.LOGGER.warn("Failed to run stop events for emote {}", session.id(), exception);
-            }
-            session.closeCallbacks();
-            for (PlaybackParticipant participant : session.participants()) {
-                ServerPlayer player = knownPlayer != null && knownPlayer.getUUID().equals(participant.playerUuid())
-                    ? knownPlayer
-                    : EmoteMod.SERVER.getPlayerList().getPlayer(participant.playerUuid());
-                if (player == null) {
-                    continue;
-                }
-                this.playerVisibilityService.stop(player, session, participant);
-                if (notifyListeners) {
-                    for (PlaybackStateListener stateListener : this.stateListeners) {
-                        stateListener.onStopped(player, session, participant, reason);
-                    }
-                }
-            }
-        } finally {
-            try {
-                ServerLevel level = EmoteMod.SERVER.getLevel(session.levelKey());
-                if (level != null) {
-                    this.entityController.remove(level, session.nodes());
-                }
-            } finally {
-                session.completeClose();
-                for (PlaybackParticipant participant : session.participants()) {
-                    this.closingPlayers.remove(participant.playerUuid());
-                }
-            }
-        }
-    }
-
-    private boolean canKeepPlaying(ServerPlayer player, PlaybackSession session) {
-        return player != null
-            && player.isAlive()
-            && player.level().dimension().equals(session.levelKey());
-    }
-
-    private MovementResult movementResult(ServerPlayer player, PlaybackSession session, PlaybackParticipant participant) {
-        double movementDistance = session.playerBehavior().stopConditions().movementDistance();
-        if (movementDistance == 0.0D) {
-            return MovementResult.NONE;
-        }
-        Vec3 currentPosition = player.position();
-        Vec3 startPosition = participant.startPosition();
-        double xDistance = currentPosition.x - startPosition.x;
-        double zDistance = currentPosition.z - startPosition.z;
-        double horizontalDistanceSquared = xDistance * xDistance + zDistance * zDistance;
-        return movementResult(horizontalDistanceSquared, movementDistance);
-    }
-
-    static MovementResult movementResult(double horizontalDistanceSquared, double movementDistance) {
-        if (movementDistance == 0.0D) {
-            return MovementResult.NONE;
-        }
-        if (horizontalDistanceSquared > movementDistance * movementDistance) {
-            return MovementResult.IMMEDIATE_STOP;
-        }
-        return MovementResult.NONE;
-    }
-
-    static boolean shouldStopFor(EmotePlayerBehavior.StopConditions conditions, PlaybackStopReason reason) {
-        return switch (reason) {
-            case JUMPED -> conditions.jump();
-            case MOUNTED -> conditions.ride();
-            case DAMAGED -> conditions.damage();
-            case ATTACKED -> conditions.attack();
-            case GAME_MODE_CHANGED -> conditions.gameModeChange();
-            default -> false;
-        };
-    }
-
-    public int activeDisplayEntityCount() {
-        return this.stressTest.displayEntityCount() + this.sessionRegistry.activeDisplayEntityCount();
-    }
-
-    public int activeSessionCount() {
-        return this.sessionRegistry.activeSessionCount();
-    }
-
-    public int activeParticipantCount() {
-        return this.sessionRegistry.activeParticipantCount();
     }
 
     static boolean exceedsDisplayEntityLimit(int projectedDisplayEntities, int limit) {
@@ -579,17 +237,4 @@ public class PlaybackEngine implements ConfigListener {
     static int projectedDisplayEntityCount(int activeDisplayEntities, int replacedDisplayEntities, int requestedDisplayEntities) {
         return activeDisplayEntities - replacedDisplayEntities + requestedDisplayEntities;
     }
-
-    private int displayEntityCount(@Nullable PlaybackSession session) {
-        return session == null ? 0 : session.nodes().displayEntityCount();
-    }
-
-    private record StopRequest(PlaybackSession session, PlaybackStopReason reason) {
-    }
-
-    enum MovementResult {
-        NONE,
-        IMMEDIATE_STOP
-    }
-
 }

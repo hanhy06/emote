@@ -9,7 +9,7 @@ import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.permission.PermissionService;
-import io.github.hanhy06.emote.playback.PlaybackEngine;
+import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.playback.stress.PlaybackStressTest;
 import io.github.hanhy06.emote.playback.stress.PlaybackStressTestReport;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
@@ -33,12 +33,12 @@ final class StressTestCommand {
         "Invalid stress-test load '" + value + "'. Use a positive number followed by i or d."
     ));
     private final EmoteCatalog emoteCatalog;
-    private final PlaybackEngine playbackEngine;
+    private final PlayerPlaybackManager playbackEngine;
     private final PermissionService permissionService;
 
     StressTestCommand(
         EmoteCatalog emoteCatalog,
-        PlaybackEngine playbackEngine,
+        PlayerPlaybackManager playbackEngine,
         PermissionService permissionService
     ) {
         this.emoteCatalog = emoteCatalog;
@@ -103,7 +103,7 @@ final class StressTestCommand {
         PlaybackStressTest.StartResult startResult;
         try {
             startResult = load.unit() == LoadUnit.INSTANCES
-                ? this.playbackEngine.startStressTest(
+                ? this.playbackEngine.engine().startStressTest(
                     source.getLevel(),
                     source.getPosition(),
                     source.getRotation().y,
@@ -114,7 +114,7 @@ final class StressTestCommand {
                     preparedSkin,
                     report -> sendStressTestReport(source, report)
                 )
-                : this.playbackEngine.startStressTestByDisplayCount(
+                : this.playbackEngine.engine().startStressTestByDisplayCount(
                     source.getLevel(),
                     source.getPosition(),
                     source.getRotation().y,
@@ -174,7 +174,7 @@ final class StressTestCommand {
     }
 
     private int stopStressTest(CommandSourceStack source) {
-        PlaybackStressTestReport report = this.playbackEngine.stopStressTest();
+        PlaybackStressTestReport report = this.playbackEngine.engine().stopStressTest();
         if (report == null) {
             source.sendFailure(Component.literal("No emote stress test is running."));
             return 0;

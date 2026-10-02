@@ -11,7 +11,7 @@ import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaySource;
 import io.github.hanhy06.emote.application.EmotePlayService;
 import io.github.hanhy06.emote.application.EmoteQueryService;
-import io.github.hanhy06.emote.playback.PlaybackEngine;
+import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
@@ -24,13 +24,13 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public final class UserCommand {
-    private final PlaybackEngine playbackEngine;
+    private final PlayerPlaybackManager playbackEngine;
     private final EmoteMenu menu;
     private final EmoteQueryService emoteQueryService;
     private final EmotePlayService playService;
 
     public UserCommand(
-        PlaybackEngine playbackEngine,
+        PlayerPlaybackManager playbackEngine,
         EmoteMenu menu,
         EmoteQueryService emoteQueryService,
         EmotePlayService playService

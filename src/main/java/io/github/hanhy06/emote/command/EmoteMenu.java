@@ -7,7 +7,7 @@ import io.github.hanhy06.emote.application.EmoteSummary;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.PlayableEmote;
-import io.github.hanhy06.emote.playback.PlaybackEngine;
+import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
 import net.minecraft.core.Holder;
 import net.minecraft.network.chat.ClickEvent;
@@ -37,13 +37,13 @@ public final class EmoteMenu {
     private final ConfigManager configManager;
     private final EmoteCatalog emoteCatalog;
     private final EmoteQueryService emoteQueryService;
-    private final PlaybackEngine playbackEngine;
+    private final PlayerPlaybackManager playbackEngine;
 
     public EmoteMenu(
         ConfigManager configManager,
         EmoteCatalog emoteCatalog,
         EmoteQueryService emoteQueryService,
-        PlaybackEngine playbackEngine
+        PlayerPlaybackManager playbackEngine
     ) {
         this.configManager = configManager;
         this.emoteCatalog = emoteCatalog;

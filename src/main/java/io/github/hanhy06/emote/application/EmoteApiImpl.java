@@ -8,7 +8,7 @@ import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.LoadedAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.loader.AnimationContentResolver;
-import io.github.hanhy06.emote.playback.PlaybackEngine;
+import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.playback.session.PlaybackParticipant;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
 import net.minecraft.resources.Identifier;
@@ -23,7 +23,7 @@ import java.util.UUID;
 public final class EmoteApiImpl extends EmoteApi {
     private final EmoteCatalog emoteCatalog;
     private final EmotePlayService playService;
-    private final PlaybackEngine playbackEngine;
+    private final PlayerPlaybackManager playbackEngine;
     private final ApiEventDispatcher events;
     private final ChangeNotifier changeNotifier;
     private final AnimationContentResolver contentResolver;
@@ -31,7 +31,7 @@ public final class EmoteApiImpl extends EmoteApi {
     public EmoteApiImpl(
         EmoteCatalog emoteCatalog,
         EmotePlayService playService,
-        PlaybackEngine playbackEngine,
+        PlayerPlaybackManager playbackEngine,
         ApiEventDispatcher events,
         ChangeNotifier changeNotifier,
         AnimationContentResolver contentResolver
@@ -109,12 +109,12 @@ public final class EmoteApiImpl extends EmoteApi {
     public Optional<PlaybackInfo> getPlayback(UUID sessionId) {
         Objects.requireNonNull(sessionId, "sessionId");
         requireServerThread();
-        return Optional.ofNullable(this.playbackEngine.findSession(sessionId)).map(session -> session.playbackInfo(session.player().playerUuid()));
+        return Optional.ofNullable(this.playbackEngine.engine().findSession(sessionId)).map(session -> session.playbackInfo(session.player().playerUuid()));
     }
 
     @Override
     public Registration registerCallbacks(Identifier id, EmoteCallbacks callbacks) {
-        return this.playbackEngine.callbackRegistry().register(id, callbacks);
+        return this.playbackEngine.engine().callbackRegistry().register(id, callbacks);
     }
 
     @Override
@@ -161,7 +161,7 @@ public final class EmoteApiImpl extends EmoteApi {
             if (!EmoteApiImpl.this.emoteCatalog.unregister(this.id.toString(), this.registrationId)) {
                 return false;
             }
-            EmoteApiImpl.this.playbackEngine.stopById(this.id.toString(), PlaybackStopReason.EMOTE_REMOVED);
+            EmoteApiImpl.this.playbackEngine.engine().stopById(this.id.toString(), PlaybackStopReason.EMOTE_REMOVED);
             EmoteApiImpl.this.changeNotifier.notifyChanged();
             return true;
         }

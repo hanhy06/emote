@@ -14,6 +14,7 @@ import io.github.hanhy06.emote.network.payload.PlaybackStatePayload;
 import io.github.hanhy06.emote.network.payload.WheelSyncPayload;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
+import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.resource.PolymerResourcePackDistributor;
 import io.github.hanhy06.emote.server.IdlePlaybackService;
 import io.github.hanhy06.emote.server.ReloadService;
@@ -55,7 +56,8 @@ final class EmoteBootstrap {
             case PreparedAnimation animation -> animation.skinBindings().stream();
             case PreparedSequence sequence -> sequence.layoutAnchor().skinBindings().stream();
         }).toList()));
-        PlaybackEngine playback = new PlaybackEngine(skins);
+        PlaybackEngine engine = new PlaybackEngine();
+        PlayerPlaybackManager playback = new PlayerPlaybackManager(engine, skins);
         PlaybackStateSyncService playbackStateSync = new PlaybackStateSyncService();
         ApiEventDispatcher apiEvents = new ApiEventDispatcher();
         EmoteQueryService queries = new EmoteQueryService(catalog, playbackPolicy);
@@ -67,7 +69,7 @@ final class EmoteBootstrap {
             configManager,
             catalog,
             new EmoteDirectoryLoader(),
-            playback,
+            engine,
             wheelSync,
             resourcePackDistributor::rebuild,
             resourcePackDistributor::pushToOnlinePlayers
@@ -95,7 +97,7 @@ final class EmoteBootstrap {
         configManager.addAccessConfigListener(playbackPolicy);
         configManager.addAccessConfigListener(idlePlayback);
         configManager.addListener(skins);
-        configManager.addListener(playback);
+        configManager.addListener(engine);
         playback.addStateListener(cooldowns);
         playback.addStateListener(playbackStateSync);
         playback.addStateListener(apiEvents);

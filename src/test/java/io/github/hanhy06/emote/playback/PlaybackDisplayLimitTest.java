@@ -27,12 +27,12 @@ class PlaybackDisplayLimitTest {
             false
         );
 
-        assertTrue(PlaybackEngine.shouldStopFor(conditions, PlaybackStopReason.JUMPED));
-        assertTrue(PlaybackEngine.shouldStopFor(conditions, PlaybackStopReason.MOUNTED));
-        assertTrue(PlaybackEngine.shouldStopFor(conditions, PlaybackStopReason.ATTACKED));
-        assertFalse(PlaybackEngine.shouldStopFor(conditions, PlaybackStopReason.DAMAGED));
-        assertFalse(PlaybackEngine.shouldStopFor(conditions, PlaybackStopReason.GAME_MODE_CHANGED));
-        assertFalse(PlaybackEngine.shouldStopFor(conditions, PlaybackStopReason.MANUAL));
+        assertTrue(PlayerPlaybackManager.shouldStopFor(conditions, PlaybackStopReason.JUMPED));
+        assertTrue(PlayerPlaybackManager.shouldStopFor(conditions, PlaybackStopReason.MOUNTED));
+        assertTrue(PlayerPlaybackManager.shouldStopFor(conditions, PlaybackStopReason.ATTACKED));
+        assertFalse(PlayerPlaybackManager.shouldStopFor(conditions, PlaybackStopReason.DAMAGED));
+        assertFalse(PlayerPlaybackManager.shouldStopFor(conditions, PlaybackStopReason.GAME_MODE_CHANGED));
+        assertFalse(PlayerPlaybackManager.shouldStopFor(conditions, PlaybackStopReason.MANUAL));
     }
 
 }

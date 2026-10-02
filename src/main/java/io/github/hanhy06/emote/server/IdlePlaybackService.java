@@ -9,7 +9,7 @@ import io.github.hanhy06.emote.config.AccessConfig;
 import io.github.hanhy06.emote.config.AccessConfigListener;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.PlayableEmote;
-import io.github.hanhy06.emote.playback.PlaybackEngine;
+import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.util.WeightedChoiceSelector;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Util;
@@ -40,7 +40,7 @@ public final class IdlePlaybackService implements AccessConfigListener {
     public IdlePlaybackService(
         PlaybackPolicyService playbackPolicy,
         EmotePlayService playService,
-        PlaybackEngine playbackEngine,
+        PlayerPlaybackManager playbackEngine,
         EmoteCatalog emoteCatalog
     ) {
         this(

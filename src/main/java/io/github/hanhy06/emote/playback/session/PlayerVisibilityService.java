@@ -2,7 +2,7 @@ package io.github.hanhy06.emote.playback.session;
 
 import com.mojang.datafixers.util.Pair;
 import io.github.hanhy06.emote.mixin.accessor.EntitySharedFlagsAccessor;
-import io.github.hanhy06.emote.playback.PlaybackEngine;
+import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.playback.PlaybackHooks;
 import net.fabricmc.fabric.api.networking.v1.EntityTrackingEvents;
 import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
@@ -30,9 +30,9 @@ public final class PlayerVisibilityService {
         .map(slot -> Pair.of(slot, ItemStack.EMPTY))
         .toList();
 
-    private final PlaybackEngine playbackEngine;
+    private final PlayerPlaybackManager playbackEngine;
 
-    public PlayerVisibilityService(PlaybackEngine playbackEngine) {
+    public PlayerVisibilityService(PlayerPlaybackManager playbackEngine) {
         this.playbackEngine = playbackEngine;
     }
 
