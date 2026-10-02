@@ -65,6 +65,7 @@ public final class PlaybackEngine implements ConfigListener {
 
     public CallbackRegistry callbackRegistry() { return this.callbackRegistry; }
     public PlaybackEntityController entities() { return this.entityController; }
+    public int displayEntityLimit() { return this.maxActiveDisplayEntities; }
     @Override public void onConfigReload(Config config) { this.maxActiveDisplayEntities = config.maxActiveDisplayEntities(); }
 
     public StartResult start(Request request, @Nullable PlaybackSession replacedSession) {

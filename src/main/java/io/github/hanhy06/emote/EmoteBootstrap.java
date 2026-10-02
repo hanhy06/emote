@@ -15,6 +15,7 @@ import io.github.hanhy06.emote.network.payload.WheelSyncPayload;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
+import io.github.hanhy06.emote.playback.EntityPlaybackManager;
 import io.github.hanhy06.emote.resource.PolymerResourcePackDistributor;
 import io.github.hanhy06.emote.server.IdlePlaybackService;
 import io.github.hanhy06.emote.server.ReloadService;
@@ -58,6 +59,7 @@ final class EmoteBootstrap {
         }).toList()));
         PlaybackEngine engine = new PlaybackEngine();
         PlayerPlaybackManager playback = new PlayerPlaybackManager(engine, skins);
+        EntityPlaybackManager entityPlayback = new EntityPlaybackManager(engine, catalog, skins);
         PlaybackStateSyncService playbackStateSync = new PlaybackStateSyncService();
         ApiEventDispatcher apiEvents = new ApiEventDispatcher();
         EmoteQueryService queries = new EmoteQueryService(catalog, playbackPolicy);
@@ -90,7 +92,7 @@ final class EmoteBootstrap {
             new AccountCommand(accounts)
         );
         ServerLifecycle lifecycle = new ServerLifecycle(
-            skins, cooldowns, catalog, playback, reload, wheelSync, idlePlayback,
+            skins, cooldowns, catalog, playback, entityPlayback, reload, wheelSync, idlePlayback,
             () -> !accounts.hasAccounts() && !mineSkin.available()
         );
 
@@ -102,6 +104,7 @@ final class EmoteBootstrap {
         playback.addStateListener(playbackStateSync);
         playback.addStateListener(apiEvents);
         playback.registerVisibilityService();
+        entityPlayback.register();
         registerPayloads();
         ServerLifecycleEvents.SERVER_STARTED.register(server -> accounts.initialize());
         lifecycle.register();

@@ -6,6 +6,7 @@ import io.github.hanhy06.emote.application.PlaybackCooldownService;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.network.WheelSyncService;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
+import io.github.hanhy06.emote.playback.EntityPlaybackManager;
 import io.github.hanhy06.emote.playback.PlaybackHooks;
 import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
@@ -30,6 +31,7 @@ public class ServerLifecycle {
     private final PlaybackCooldownService cooldowns;
     private final EmoteCatalog emoteCatalog;
     private final PlayerPlaybackManager playbackEngine;
+    private final EntityPlaybackManager entityPlayback;
     private final ReloadService reloadService;
     private final WheelSyncService wheelSyncService;
     private final IdlePlaybackService idlePlaybackService;
@@ -40,6 +42,7 @@ public class ServerLifecycle {
         PlaybackCooldownService cooldowns,
         EmoteCatalog emoteCatalog,
         PlayerPlaybackManager playbackEngine,
+        EntityPlaybackManager entityPlayback,
         ReloadService reloadService,
         WheelSyncService wheelSyncService,
         IdlePlaybackService idlePlaybackService,
@@ -49,6 +52,7 @@ public class ServerLifecycle {
         this.cooldowns = cooldowns;
         this.emoteCatalog = emoteCatalog;
         this.playbackEngine = playbackEngine;
+        this.entityPlayback = entityPlayback;
         this.reloadService = reloadService;
         this.wheelSyncService = wheelSyncService;
         this.idlePlaybackService = idlePlaybackService;
@@ -60,6 +64,7 @@ public class ServerLifecycle {
         ServerLifecycleEvents.SERVER_STOPPING.register(this::handleServerStopping);
         ServerLifecycleEvents.SERVER_STOPPED.register(this::handleServerStopped);
         ServerTickEvents.END_SERVER_TICK.register(ignoredServer -> {
+            this.entityPlayback.tick();
             this.playbackEngine.engine().tick();
             this.idlePlaybackService.tick();
         });

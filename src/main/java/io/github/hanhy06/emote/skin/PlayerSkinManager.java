@@ -62,6 +62,10 @@ public class PlayerSkinManager implements ConfigListener {
     }
 
     public PlayerSkinPreparation preparePlayerSkin(ServerPlayer player, List<SkinBinding> skinBindings) {
+        return prepareSkinSource(skinBindings.isEmpty() ? null : resolvePlayerSkinSource(player), skinBindings);
+    }
+
+    public PlayerSkinPreparation prepareSkinSource(PlayerSkinSource skinSource, List<SkinBinding> skinBindings) {
         if (skinBindings.isEmpty()) {
             return new PlayerSkinPreparation(null, PlayerSkinPreparation.State.READY, 100);
         }
@@ -69,7 +73,6 @@ public class PlayerSkinManager implements ConfigListener {
         for (SkinBinding binding : skinBindings) {
             requiredTextureKeys.add(binding.region());
         }
-        PlayerSkinSource skinSource = resolvePlayerSkinSource(player);
         PlayerSkinPreparation preparation = skinSource == null
             ? new PlayerSkinPreparation(null, PlayerSkinPreparation.State.UNAVAILABLE, 0)
             : this.provider.prepare(skinSource, requiredTextureKeys);
