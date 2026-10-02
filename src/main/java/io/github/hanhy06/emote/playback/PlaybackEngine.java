@@ -85,7 +85,7 @@ public class PlaybackEngine implements ConfigListener {
             emote,
             emote.id(),
             emote.playerBehavior(),
-            SceneRootResolver.single(RootTransform.fromPlayer(player))
+            RootTransform.fromPlayer(player)
         );
     }
 
@@ -95,7 +95,7 @@ public class PlaybackEngine implements ConfigListener {
             sequence.compile(this.random),
             sequence.id(),
             sequence.playerBehavior(),
-            SceneRootResolver.single(RootTransform.fromPlayer(player))
+            RootTransform.fromPlayer(player)
         );
     }
 
@@ -104,7 +104,7 @@ public class PlaybackEngine implements ConfigListener {
         PreparedAnimation emote,
         String playbackId,
         EmotePlayerBehavior playerBehavior,
-        Map<EmoteAnimation.NodeSpace, RootTransform> roots
+        RootTransform root
     ) {
         if (this.closingPlayers.contains(player.getUUID())) {
             return PlayResult.failure("Your previous emote is still closing.");
@@ -145,7 +145,7 @@ public class PlaybackEngine implements ConfigListener {
             emote,
             playbackId,
             playerBehavior,
-            roots,
+            root,
             skinPreparation.preparedPlayerSkin(),
             callbackBindings,
             animationBindings
@@ -157,7 +157,7 @@ public class PlaybackEngine implements ConfigListener {
         PreparedAnimation emote,
         String playbackId,
         EmotePlayerBehavior playerBehavior,
-        Map<EmoteAnimation.NodeSpace, RootTransform> roots,
+        RootTransform root,
         PreparedPlayerSkin preparedSkin,
         List<CallbackRegistry.Binding> callbackBindings,
         Map<PreparedAnimation, List<CallbackRegistry.Binding>> animationBindings
@@ -166,7 +166,7 @@ public class PlaybackEngine implements ConfigListener {
         PlaybackSession session = null;
         boolean startedNotified = false;
         try {
-            nodes = this.entityController.create(player.level(), roots, emote);
+            nodes = this.entityController.create(player.level(), root, emote);
             AnimationPlayer timeline = new AnimationPlayer(
                 emote,
                 new EntityTimelineTarget(emote, nodes, this.entityController),
@@ -187,7 +187,7 @@ public class PlaybackEngine implements ConfigListener {
             this.entityController.add(player.level(), nodes);
             PlaybackParticipant playbackPlayer = new PlaybackParticipant(
                 player.getUUID(),
-                roots.get(EmoteAnimation.NodeSpace.SCENE).position(),
+                root.position(),
                 emote.skinBindings(),
                 player.isInvisible()
             );

@@ -18,7 +18,6 @@ import {
 const NODE_TYPES = ["anchor", "item_display", "block_display", "text_display"] as const;
 const LOOP_TYPES = ["once", "hold", "loop", "server_sync"] as const;
 const SKIN_PARTS = ["head", "body", "left_arm", "right_arm", "left_leg", "right_leg"] as const;
-const NODE_SPACES = ["scene", "actor"] as const;
 
 export function requireEmoteAnimation(value: unknown): EmoteAnimation {
   const root = requireRecord(value, "animation");
@@ -85,7 +84,7 @@ function requireSchema4Nodes(value: unknown): void {
     const node = requireRecord(nodeValue, path);
     const type = requireStringValue(node.type, NODE_TYPES, `${path}.type`);
     optionalString(node.parent, `${path}.parent`);
-    if (node.space !== undefined) requireStringValue(node.space, NODE_SPACES, `${path}.space`);
+    if (node.space !== undefined) throw new Error(`${path}.space is no longer supported.`);
     requireLocalTransform(node.transform, `${path}.transform`);
     if (type === "anchor") {
       optionalAnchorFields(node, path);

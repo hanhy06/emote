@@ -84,7 +84,6 @@ class SkinBindingCompilerTest {
     private EmoteAnimation.ItemNode itemNode(double yScale, EmoteAnimation.SkinPart part, int order) {
         return new EmoteAnimation.ItemNode(
             true,
-            EmoteAnimation.NodeSpace.ACTOR,
             null,
             new EmoteAnimation.LocalTransform(
                 EmoteAnimation.Vec3.ZERO,

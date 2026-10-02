@@ -4,13 +4,12 @@ import { remapEditorNodeBinding, remapNativeRuntimeBindings } from "./nodeBindin
 describe("node binding remapping", () => {
   it("keeps the source identity while remapping editor identities", () => {
     expect(remapEditorNodeBinding(
-      { sourceNodeId: "source/head", editorNodeId: "head", skinGroupId: "skin", spaceGroupId: "body" },
+      { sourceNodeId: "source/head", editorNodeId: "head", skinGroupId: "skin"},
       { editorNodeId: (id) => `editor/${id}`, editorGroupId: (id) => `group/${id}` },
     )).toEqual({
       sourceNodeId: "source/head",
       editorNodeId: "editor/head",
       skinGroupId: "group/skin",
-      spaceGroupId: "group/body",
     });
   });
 
@@ -18,7 +17,6 @@ describe("node binding remapping", () => {
     expect(remapNativeRuntimeBindings(
       {
         editorNodeByRuntimeNode: { runtime_head: "editor_head" },
-        editorSpaceGroupByRuntimeRoot: { runtime_root: "editor_group" },
       },
       {
         runtimeNodeId: (id) => `runtime/${id}`,
@@ -27,7 +25,6 @@ describe("node binding remapping", () => {
       },
     )).toEqual({
       editorNodeByRuntimeNode: { "runtime/runtime_head": "editor/editor_head" },
-      editorSpaceGroupByRuntimeRoot: { "runtime/runtime_root": "group/editor_group" },
     });
   });
 });

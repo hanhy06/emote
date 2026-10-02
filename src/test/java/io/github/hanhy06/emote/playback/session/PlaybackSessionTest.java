@@ -8,7 +8,6 @@ import io.github.hanhy06.emote.playback.AnimationPlayer;
 import io.github.hanhy06.emote.playback.CallbackRegistry;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 import io.github.hanhy06.emote.playback.runtime.RootTransform;
-import io.github.hanhy06.emote.playback.runtime.SceneRootResolver;
 import net.minecraft.SharedConstants;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.Bootstrap;
@@ -223,7 +222,7 @@ class PlaybackSessionTest {
         player.bindEvents(command -> calls.addAll(command.event().commands()));
         player.start();
         PlaybackSession session = new PlaybackSession(UUID.randomUUID(), Level.OVERWORLD, compiled.id(), compiled.id(),
-            new PlaybackNodes(SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0)), Map.of()), player,
+            new PlaybackNodes(RootTransform.create(Vec3.ZERO, 0), Map.of()), player,
             sequence.settings().player(), participant());
         var callbacks = new EmoteCallbacks() {
             public void onStart(PlaybackContext context) {
@@ -279,7 +278,7 @@ class PlaybackSessionTest {
         player.start();
         player.deferInitialVisibility();
         PlaybackSession session = new PlaybackSession(UUID.randomUUID(), Level.OVERWORLD, prepared.id(), prepared.id(),
-            new PlaybackNodes(SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0)), Map.of()), player,
+            new PlaybackNodes(RootTransform.create(Vec3.ZERO, 0), Map.of()), player,
             prepared.playerBehavior(), participant());
         session.bindCallbacks(List.of(new CallbackRegistry.Binding(new EmoteCallbacks() {
             public void onStart(PlaybackContext context) {
@@ -308,7 +307,7 @@ class PlaybackSessionTest {
             Level.OVERWORLD,
             offer.id(),
             offer.id(),
-            new PlaybackNodes(SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)), Map.of()),
+            new PlaybackNodes(RootTransform.create(Vec3.ZERO, 0.0F), Map.of()),
             timeline(offer),
             offer.playerBehavior(),
             participant()

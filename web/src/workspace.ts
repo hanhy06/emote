@@ -1,5 +1,4 @@
 import {
-  assignDocumentNodeSpace,
   assignDocumentSkinOrder,
   assignDocumentSkinPart,
   createConversionDocument,
@@ -11,7 +10,7 @@ import {
   type ConversionDocument,
 } from "./domain/conversionDocument";
 import type { ImportedProject } from "./domain/conversionSeed";
-import type { EmoteCallback, EmoteEvent, NodeSpace, PlayerSkinPart } from "./format/emoteAnimation";
+import type { EmoteCallback, EmoteEvent, PlayerSkinPart } from "./format/emoteAnimation";
 import { selectNode, selectNodes } from "./preview/skinParts";
 
 export type WorkspacePage = 0 | 1 | 2;
@@ -47,7 +46,6 @@ export type WorkspaceAction =
   | { type: "node_selected"; nodeId: string; additive: boolean }
   | { type: "nodes_selected"; nodeIds: readonly string[]; additive: boolean }
   | { type: "skin_part_assigned"; part: PlayerSkinPart | null }
-  | { type: "node_space_assigned"; space: NodeSpace }
   | { type: "skin_order_assigned"; order: number }
   | { type: "animation_output_changed"; output: AnimationOutputSettings }
   | { type: "minecraft_version_changed"; version: string }
@@ -107,11 +105,6 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
       return updateSession(state, (session) => ({
         ...session,
         document: assignDocumentSkinPart(session.document, session.selectedNodeIds, action.part),
-      }));
-    case "node_space_assigned":
-      return updateSession(state, (session) => ({
-        ...session,
-        document: assignDocumentNodeSpace(session.document, session.selectedNodeIds, action.space),
       }));
     case "skin_order_assigned":
       return updateSession(state, (session) => ({

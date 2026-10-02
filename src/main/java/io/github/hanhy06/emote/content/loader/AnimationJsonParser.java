@@ -265,19 +265,14 @@ public final class AnimationJsonParser {
         }
         JsonObject object = definitions.get(nodeId);
         String parentId = optionalParent(object, path, document);
-        NodeSpace space;
-        if (parentId == null) {
-            space = requireNodeSpace(object, path, document);
-        } else {
-            if (object.has("space")) {
-                throw document.error(path + ".space", "is not allowed on child nodes");
-            }
-            if (!definitions.containsKey(parentId)) {
-                throw document.error(path + ".parent", "references unknown node: " + parentId);
-            }
-            space = resolveNode(parentId, definitions, nodes, visiting, document).space();
+        if (object.has("space")) {
+            throw document.error(path + ".space", "node coordinate spaces are no longer supported");
         }
-        Node node = parseNode(object, path, parentId, space, document);
+        if (parentId != null) {
+            if (!definitions.containsKey(parentId)) throw document.error(path + ".parent", "references unknown node: " + parentId);
+            resolveNode(parentId, definitions, nodes, visiting, document);
+        }
+        Node node = parseNode(object, path, parentId, document);
         visiting.remove(nodeId);
         nodes.put(nodeId, node);
         return node;
@@ -296,7 +291,7 @@ public final class AnimationJsonParser {
         return parent;
     }
 
-    private Node parseNode(JsonObject object, String path, String parentId, NodeSpace space, EmoteJsonDocument document)
+    private Node parseNode(JsonObject object, String path, String parentId, EmoteJsonDocument document)
         throws EmoteAnimationLoadException {
         String type = document.requireString(object, "type", path);
         LocalTransform transform = parseTransform(document.requireObject(object, "transform", path), path + ".transform", document);
@@ -307,7 +302,7 @@ public final class AnimationJsonParser {
             if (object.has("entity_nbt")) {
                 throw document.error(path + ".entity_nbt", "is not supported by anchor nodes");
             }
-            return new AnchorNode(space, parentId, transform);
+            return new AnchorNode(parentId, transform);
         }
 
         boolean visible = optionalVisible(object, path, document);
@@ -315,17 +310,15 @@ public final class AnimationJsonParser {
         return switch (type) {
             case "item_display" -> new ItemNode(
                 visible,
-                space,
                 parentId,
                 transform,
                 entityNbt,
                 requireCompoundSnbt(object, "item_stack_snbt", path, document),
                 parseItemDisplay(object, path, document),
-                parseSkin(object, space, path, document)
+                parseSkin(object, path, document)
             );
             case "block_display" -> new BlockNode(
                 visible,
-                space,
                 parentId,
                 transform,
                 entityNbt,
@@ -333,7 +326,6 @@ public final class AnimationJsonParser {
             );
             case "text_display" -> new TextNode(
                 visible,
-                space,
                 parentId,
                 transform,
                 entityNbt,
@@ -366,16 +358,6 @@ public final class AnimationJsonParser {
         );
     }
 
-    private NodeSpace requireNodeSpace(JsonObject object, String path, EmoteJsonDocument document)
-        throws EmoteAnimationLoadException {
-        String value = document.requireString(object, "space", path);
-        return switch (value) {
-            case "scene" -> NodeSpace.SCENE;
-            case "actor" -> NodeSpace.ACTOR;
-            default -> throw document.error(path + ".space", "unsupported node space: " + value);
-        };
-    }
-
     private String parseItemDisplay(JsonObject object, String path, EmoteJsonDocument document)
         throws EmoteAnimationLoadException {
         String value = document.requireString(object, "item_display", path);
@@ -385,7 +367,7 @@ public final class AnimationJsonParser {
         return value;
     }
 
-    private Skin parseSkin(JsonObject object, NodeSpace nodeSpace, String path, EmoteJsonDocument document)
+    private Skin parseSkin(JsonObject object, String path, EmoteJsonDocument document)
         throws EmoteAnimationLoadException {
         JsonElement element = object.get("skin");
         if (element == null || element.isJsonNull()) {
@@ -397,9 +379,6 @@ public final class AnimationJsonParser {
         JsonObject skin = element.getAsJsonObject();
         if (skin.has("participant")) {
             throw document.error(path + ".skin.participant", "participant roles are no longer supported");
-        }
-        if (nodeSpace != NodeSpace.ACTOR) {
-            throw document.error(path + ".skin", "requires actor node space");
         }
         String partText = document.requireString(skin, "part", path + ".skin");
         SkinPart part = switch (partText) {

@@ -61,7 +61,7 @@ class PlaybackSessionRegistryTest {
 
     private static AnimationPlayer timeline(PreparedAnimation emote) {
         PlaybackNodes nodes = new PlaybackNodes(
-            SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)),
+            RootTransform.create(Vec3.ZERO, 0.0F),
             Map.of()
         );
         AnimationPlayer animation = new AnimationPlayer(emote, new EntityTimelineTarget(
@@ -81,7 +81,6 @@ class PlaybackSessionRegistryTest {
     private static PlaybackNodes playbackNodes() {
         EmoteAnimation.ItemNode node = new EmoteAnimation.ItemNode(
             true,
-            EmoteAnimation.NodeSpace.SCENE,
             null,
             EmoteAnimation.LocalTransform.IDENTITY,
             new CompoundTag(),
@@ -90,7 +89,7 @@ class PlaybackSessionRegistryTest {
             null
         );
         return new PlaybackNodes(
-            SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)),
+            RootTransform.create(Vec3.ZERO, 0.0F),
             Map.of("display", new PlaybackNodes.NodeInstance("display", node, null, null))
         );
     }

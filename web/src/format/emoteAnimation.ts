@@ -1,8 +1,8 @@
 import type { Matrix16 } from "../domain/matrix";
-import type { NodeSpace, PlayerSkinPart } from "../domain/player";
+import type { PlayerSkinPart } from "../domain/player";
 
 export type { Matrix16 } from "../domain/matrix";
-export type { NodeSpace, PlayerSkinPart } from "../domain/player";
+export type { PlayerSkinPart } from "../domain/player";
 
 export type Vec3 = readonly [number, number, number];
 export type MolangScalar = number | string;
@@ -82,7 +82,7 @@ export interface LocalTransform {
 
 interface EmoteNodeBase {
   parent?: string;
-  space?: NodeSpace;
+
   transform: LocalTransform;
 }
 

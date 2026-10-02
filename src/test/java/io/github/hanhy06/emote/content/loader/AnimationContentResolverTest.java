@@ -52,7 +52,6 @@ class AnimationContentResolverTest {
     private EmoteAnimation.ItemNode itemNode(EmoteAnimation.Skin skin) {
         return new EmoteAnimation.ItemNode(
             true,
-            EmoteAnimation.NodeSpace.ACTOR,
             null,
             EmoteAnimation.LocalTransform.IDENTITY,
             new CompoundTag(),

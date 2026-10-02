@@ -121,9 +121,8 @@ function importRuntimeNodes(animation: EmoteAnimation): Record<string, ImportedN
 
   return Object.fromEntries(Object.entries(animation.nodes).map(([id, node]) => {
     const root = rootId(id);
-    const space = animation.nodes[root].space!;
     const defaultMatrix = worldMatrix(id);
-    return [id, importNode(id, node, { defaultMatrix, space, binding: { sourceNodeId: id, spaceGroupId: root } })];
+    return [id, importNode(id, node, { defaultMatrix, binding: { sourceNodeId: id} })];
   }));
 }
 
@@ -131,14 +130,14 @@ function importNodes(animation: EmoteAnimation): Record<string, ImportedNode> {
   return Object.fromEntries(Object.entries(animation.nodes).map(([id, node]) => {
     if (node.parent) throw unsupportedSchema4(`${id}.parent`, "parented schema 4 nodes cannot be represented by the web editor");
     const defaultMatrix = localTransformToMatrix(node.transform, `${id}.transform`);
-    return [id, importNode(id, node, { defaultMatrix, space: node.space, binding: { sourceNodeId: id, spaceGroupId: id } })];
+    return [id, importNode(id, node, { defaultMatrix, binding: { sourceNodeId: id} })];
   }));
 }
 
 function importNode(
   id: string,
   node: EmoteAnimation["nodes"][string],
-  placement: Pick<ImportedNodeBase, "defaultMatrix" | "space" | "binding">,
+  placement: Pick<ImportedNodeBase, "defaultMatrix" | "binding">,
 ): ImportedNode {
   if (node.type === "anchor") return { type: "anchor", ...placement };
   const common = {
@@ -246,16 +245,14 @@ function runtimeBindings(animation: EmoteAnimation): NativeRuntimeBindings {
     editorNodeByRuntimeNode: Object.fromEntries(Object.entries(animation.nodes)
       .filter(([, node]) => node.type !== "anchor")
       .map(([nodeId]) => [nodeId, nodeId])),
-    editorSpaceGroupByRuntimeRoot: Object.fromEntries(Object.entries(animation.nodes)
-      .filter(([, node]) => !node.parent)
-      .map(([nodeId]) => [nodeId, nodeId])),
+
   };
 }
 
 function readRuntimeNodes(animation: EmoteAnimation): Record<string, RuntimeNode> {
   return Object.fromEntries(Object.entries(animation.nodes).map(([id, node]): [string, RuntimeNode] => {
     const common = {
-      ...(node.parent ? { parent: node.parent } : { space: node.space! }),
+      ...(node.parent ? { parent: node.parent } : {}),
       transform: node.transform,
     };
     if (node.type === "anchor") return [id, { type: "anchor", ...common }];

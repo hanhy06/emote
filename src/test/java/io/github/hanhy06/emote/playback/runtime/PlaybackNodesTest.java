@@ -15,7 +15,7 @@ class PlaybackNodesTest {
     @Test
     void keepsViewYawInsideThresholdAndFollowsOnlyTheExcess() {
         PlaybackNodes nodes = new PlaybackNodes(
-            SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)),
+            RootTransform.create(Vec3.ZERO, 0.0F),
             Map.of()
         );
 
@@ -27,7 +27,7 @@ class PlaybackNodesTest {
     @Test
     void appliesViewYawThresholdAcrossDegreeWrap() {
         PlaybackNodes nodes = new PlaybackNodes(
-            SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 170.0F)),
+            RootTransform.create(Vec3.ZERO, 170.0F),
             Map.of()
         );
 
@@ -38,7 +38,7 @@ class PlaybackNodesTest {
     @Test
     void updatesDisplayRotationOnlyWhenPackedYawChanges() {
         PlaybackNodes nodes = new PlaybackNodes(
-            SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)),
+            RootTransform.create(Vec3.ZERO, 0.0F),
             Map.of()
         );
         PlaybackEntityController controller = new PlaybackEntityController();
@@ -51,7 +51,7 @@ class PlaybackNodesTest {
     @Test
     void followsViewYawWithoutDeadzone() {
         PlaybackNodes nodes = new PlaybackNodes(
-            SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)),
+            RootTransform.create(Vec3.ZERO, 0.0F),
             Map.of()
         );
 
@@ -69,7 +69,6 @@ class PlaybackNodesTest {
     void itemNodeKeepsReplacementStackForVisibilityRestores() {
         EmoteAnimation.ItemNode itemNode = new EmoteAnimation.ItemNode(
             true,
-            EmoteAnimation.NodeSpace.SCENE,
             null,
             EmoteAnimation.LocalTransform.IDENTITY,
             new CompoundTag(),
@@ -95,7 +94,6 @@ class PlaybackNodesTest {
     void countsDisplayNodesOnceWithoutIncludingAnchors() {
         EmoteAnimation.ItemNode itemNode = new EmoteAnimation.ItemNode(
             true,
-            EmoteAnimation.NodeSpace.SCENE,
             null,
             EmoteAnimation.LocalTransform.IDENTITY,
             new CompoundTag(),
@@ -104,12 +102,11 @@ class PlaybackNodesTest {
             null
         );
         EmoteAnimation.AnchorNode anchorNode = new EmoteAnimation.AnchorNode(
-            EmoteAnimation.NodeSpace.SCENE,
             null,
             EmoteAnimation.LocalTransform.IDENTITY
         );
         PlaybackNodes nodes = new PlaybackNodes(
-            SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)),
+            RootTransform.create(Vec3.ZERO, 0.0F),
             Map.of(
                 "item", new PlaybackNodes.NodeInstance("item", itemNode, null, null),
                 "anchor", new PlaybackNodes.NodeInstance("anchor", anchorNode, null, null)
@@ -120,66 +117,32 @@ class PlaybackNodesTest {
     }
 
     @Test
-    void resolvesEachNodeSpaceAgainstItsOwnRoot() {
-        RootTransform scene = RootTransform.create(Vec3.ZERO, 0.0F);
-        RootTransform partner = RootTransform.create(new Vec3(1.2D, 0.0D, 0.0D), 180.0F);
-        PlaybackNodes nodes = new PlaybackNodes(
-            Map.of(
-                EmoteAnimation.NodeSpace.SCENE, scene,
-                EmoteAnimation.NodeSpace.ACTOR, partner
-            ),
-            Map.of()
-        );
-
-        assertSame(partner, nodes.root(EmoteAnimation.NodeSpace.ACTOR));
+    void singleRootTracksViewYaw() {
+        RootTransform root = RootTransform.create(Vec3.ZERO, 0.0F);
+        PlaybackNodes nodes = new PlaybackNodes(root, Map.of());
+        assertSame(root, nodes.root());
         nodes.updateViewYaw(90.0F, 50.0F);
-        assertEquals(40.0F, nodes.orientationYaw(EmoteAnimation.NodeSpace.SCENE));
-        assertEquals(-140.0F, nodes.orientationYaw(EmoteAnimation.NodeSpace.ACTOR));
+        assertEquals(40.0F, nodes.orientationYaw());
     }
 
     @Test
-    void movesEveryNodeSpaceWithTheSceneWhilePreservingRelativePlacement() {
-        RootTransform scene = RootTransform.create(new Vec3(10.0D, 64.0D, 20.0D), 30.0F);
-        RootTransform partner = RootTransform.create(new Vec3(12.0D, 64.0D, 19.0D), -45.0F);
-        PlaybackNodes nodes = new PlaybackNodes(
-            Map.of(
-                EmoteAnimation.NodeSpace.SCENE, scene,
-                EmoteAnimation.NodeSpace.ACTOR, partner
-            ),
-            Map.of()
-        );
-
-        assertTrue(nodes.moveSceneTo(new Vec3(13.0D, 65.0D, 24.0D)));
-
-        assertEquals(new Vec3(13.0D, 65.0D, 24.0D), nodes.root().position());
-        assertEquals(new Vec3(15.0D, 65.0D, 23.0D), nodes.root(EmoteAnimation.NodeSpace.ACTOR).position());
+    void movesRootWhilePreservingYaw() {
+        PlaybackNodes nodes = new PlaybackNodes(RootTransform.create(new Vec3(10, 64, 20), 30), Map.of());
+        assertTrue(nodes.moveSceneTo(new Vec3(13, 65, 24)));
+        assertEquals(new Vec3(13, 65, 24), nodes.root().position());
         assertEquals(30.0F, nodes.root().yaw());
-        assertEquals(-45.0F, nodes.root(EmoteAnimation.NodeSpace.ACTOR).yaw());
-        assertFalse(nodes.moveSceneTo(new Vec3(13.0D, 65.0D, 24.0D)));
+        assertFalse(nodes.moveSceneTo(new Vec3(13, 65, 24)));
     }
 
     @Test
-    void createsEquivalentPreparedTransformationsPerNodeSpace() {
-        RootTransform scene = RootTransform.create(Vec3.ZERO, 0.0F);
-        RootTransform partner = RootTransform.create(new Vec3(1.2D, 0.0D, 0.0D), 180.0F);
-        PlaybackNodes nodes = new PlaybackNodes(
-            Map.of(
-                EmoteAnimation.NodeSpace.SCENE, scene,
-                EmoteAnimation.NodeSpace.ACTOR, partner
-            ),
-            Map.of()
-        );
-        PreparedAnimation.PreparedTransform transform = PreparedAnimation.PreparedTransform.create(EmoteAnimation.LocalTransform.IDENTITY, false);
-
-        var firstScene = nodes.displayTransformation(EmoteAnimation.NodeSpace.SCENE, transform);
-        var secondScene = nodes.displayTransformation(EmoteAnimation.NodeSpace.SCENE, transform);
-        var partnerResult = nodes.displayTransformation(EmoteAnimation.NodeSpace.ACTOR, transform);
-
-        assertNotSame(firstScene, secondScene);
-        assertNotSame(firstScene, partnerResult);
-        assertEquals(firstScene.getMatrix(), secondScene.getMatrix());
-        assertEquals(scene.displayTransformation(transform).getMatrix(), firstScene.getMatrix());
-        assertEquals(partner.displayTransformation(transform).getMatrix(), partnerResult.getMatrix());
+    void createsEquivalentIndependentTransformations() {
+        RootTransform root = RootTransform.create(Vec3.ZERO, 0.0F);
+        PlaybackNodes nodes = new PlaybackNodes(root, Map.of());
+        var transform = PreparedAnimation.PreparedTransform.create(EmoteAnimation.LocalTransform.IDENTITY, false);
+        var first = nodes.displayTransformation(transform);
+        var second = nodes.displayTransformation(transform);
+        assertNotSame(first, second);
+        assertEquals(first.getMatrix(), second.getMatrix());
+        assertEquals(root.displayTransformation(transform).getMatrix(), first.getMatrix());
     }
-
 }

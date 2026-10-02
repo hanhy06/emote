@@ -1,5 +1,5 @@
 import type { ConversionIssue } from "../foundation/diagnostics";
-import type { EmoteCallback, EmoteEvent, EmoteMetadata, EmotePlayerBehavior, NodeSpace, PlayerSkinPart } from "../format/emoteAnimation";
+import type { EmoteCallback, EmoteEvent, EmoteMetadata, EmotePlayerBehavior, PlayerSkinPart } from "../format/emoteAnimation";
 import { normalizeResourceLocation } from "../format/resourceLocation";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
 import type { GeneratedResource } from "./generatedResource";
@@ -24,13 +24,13 @@ type ImportedAnchorNode = Extract<ImportedNode, { type: "anchor" }>;
 export const DEFAULT_TARGET_MINECRAFT_VERSION = "26.3";
 
 export type ConversionNode =
-  | (Omit<ImportedItemNode, "binding" | "skin" | "suggestedSkin" | "space"> & {
+  | (Omit<ImportedItemNode, "binding" | "skin" | "suggestedSkin"> & {
     binding: EditorNodeBinding;
-    space: NodeSpace;
+
   })
-  | (Omit<ImportedBlockNode, "binding" | "space"> & { binding: EditorNodeBinding; space: NodeSpace })
-  | (Omit<ImportedTextNode, "binding" | "space"> & { binding: EditorNodeBinding; space: NodeSpace })
-  | (Omit<ImportedAnchorNode, "binding" | "space"> & { binding: EditorNodeBinding; space: NodeSpace });
+  | (Omit<ImportedBlockNode, "binding"> & { binding: EditorNodeBinding })
+  | (Omit<ImportedTextNode, "binding"> & { binding: EditorNodeBinding })
+  | (Omit<ImportedAnchorNode, "binding"> & { binding: EditorNodeBinding });
 
 export interface SkinGroup {
   nodeIds: string[];
@@ -113,20 +113,18 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
   const nodes = Object.fromEntries(Object.entries(project.nodes).map(([nodeId, importedNode]) => {
     const binding: EditorNodeBinding = { ...importedNode.binding, editorNodeId: nodeId };
     const suggestedSkin = importedNode.type === "item_display" ? importedNode.suggestedSkin ?? importedNode.skin : undefined;
-    const space = importedNode.space ?? (suggestedSkin ? "actor" : "scene");
     if (importedNode.type !== "item_display") {
-      const { binding: _binding, space: _space, ...node } = importedNode;
-      return [nodeId, { ...node, binding, space }];
+      const { binding: _binding, ...node } = importedNode;
+      return [nodeId, { ...node, binding }];
     }
 
     const {
       binding: _binding,
       skin: _skin,
       suggestedSkin: _suggestedSkin,
-      space: _space,
       ...itemNode
     } = importedNode;
-    if (!isSkinCandidate(importedNode)) return [nodeId, { ...itemNode, binding, space }];
+    if (!isSkinCandidate(importedNode)) return [nodeId, { ...itemNode, binding }];
     const skinGroupId = importedNode.binding.skinGroupId ?? nodeId;
     const group = skinGroups[skinGroupId] ?? { nodeIds: [], assignment: null };
     group.nodeIds.push(nodeId);
@@ -134,7 +132,7 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
       group.assignment = { part: suggestedSkin.part, order: suggestedSkin.order };
     }
     skinGroups[skinGroupId] = group;
-    return [nodeId, { ...itemNode, binding: { ...binding, skinGroupId }, space }];
+    return [nodeId, { ...itemNode, binding: { ...binding, skinGroupId } }];
   })) as Record<string, ConversionNode>;
 
   const additionalMetadata = Object.fromEntries(Object.entries(project.suggestedMetadata)
@@ -225,9 +223,6 @@ export function documentSkinAssignments(document: ConversionDocument): Record<st
   return Object.fromEntries(entries);
 }
 
-export function documentNodeSpaces(document: ConversionDocument): Record<string, NodeSpace> {
-  return Object.fromEntries(Object.entries(document.nodes).map(([nodeId, node]) => [nodeId, node.space]));
-}
 
 export function documentPartAssignments(document: ConversionDocument): Record<string, PlayerSkinPart | null> {
   return Object.fromEntries(Object.entries(document.nodes).flatMap(([nodeId, node]) => node.type === "item_display" && node.binding.skinGroupId
@@ -261,14 +256,7 @@ export function assignDocumentSkinPart(
       assignment: part === null ? null : { part, order: order ?? group.assignment?.order ?? 0 },
     };
   }
-  const selectedSpaceGroups = selectedSpaceAssignmentGroups(document, selectedNodeIds);
-  const nodes = Object.fromEntries(Object.entries(document.nodes).map(([nodeId, node]) => [
-    nodeId,
-    part !== null && node.space === "scene" && selectedSpaceGroups.has(node.binding.spaceGroupId ?? nodeId)
-      ? { ...node, space: "actor" as const }
-      : node,
-  ])) as ConversionDocument["nodes"];
-  return { ...document, nodes, skinGroups };
+  return { ...document, skinGroups };
 }
 
 export function assignDocumentSkinOrder(
@@ -285,24 +273,6 @@ export function assignDocumentSkinOrder(
   return { ...document, skinGroups };
 }
 
-export function assignDocumentNodeSpace(
-  document: ConversionDocument,
-  selectedNodeIds: ReadonlySet<string>,
-  space: NodeSpace,
-): ConversionDocument {
-  const selectedGroups = selectedSpaceAssignmentGroups(document, selectedNodeIds);
-  const nodes = Object.fromEntries(Object.entries(document.nodes).map(([nodeId, node]) => [
-    nodeId,
-    selectedGroups.has(node.binding.spaceGroupId ?? nodeId) ? { ...node, space } : node,
-  ])) as ConversionDocument["nodes"];
-  if (space !== "scene") return { ...document, nodes };
-  const selectedGroupIds = selectedSkinGroupIds(document, new Set(Object.entries(document.nodes)
-    .filter(([nodeId, node]) => selectedGroups.has(node.binding.spaceGroupId ?? nodeId))
-    .map(([nodeId]) => nodeId)));
-  const skinGroups = { ...document.skinGroups };
-  for (const groupId of selectedGroupIds) skinGroups[groupId] = { ...skinGroups[groupId], assignment: null };
-  return { ...document, nodes, skinGroups };
-}
 
 export function updateDocumentAnimationLifecycleEvents(
   document: ConversionDocument,
@@ -363,12 +333,5 @@ function selectedSkinGroupIds(document: ConversionDocument, selectedNodeIds: Rea
   return new Set([...selectedNodeIds].flatMap((nodeId) => {
     const node = document.nodes[nodeId];
     return node?.type === "item_display" && node.binding.skinGroupId ? [node.binding.skinGroupId] : [];
-  }));
-}
-
-function selectedSpaceAssignmentGroups(document: ConversionDocument, selectedNodeIds: ReadonlySet<string>): Set<string> {
-  return new Set([...selectedNodeIds].flatMap((nodeId) => {
-    const node = document.nodes[nodeId];
-    return node ? [node.binding.spaceGroupId ?? nodeId] : [];
   }));
 }

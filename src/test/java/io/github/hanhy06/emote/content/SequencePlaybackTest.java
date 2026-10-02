@@ -137,7 +137,6 @@ class SequencePlaybackTest {
               "nodes":{
                 "root":{
                   "type":"anchor",
-                  "space":"actor",
                   "transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]}
                 },
                 "display":{
@@ -195,7 +194,6 @@ class SequencePlaybackTest {
               "nodes":{
                 "root":{
                   "type":"anchor",
-                  "space":"actor",
                   "transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[0,0,0]}
                 },
                 "display":{

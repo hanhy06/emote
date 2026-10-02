@@ -32,11 +32,9 @@ export function migrateSchema3Animation(animation: Schema3EmoteAnimation): Emote
     },
     nodes: Object.fromEntries(Object.entries(animation.nodes).map(([id, node]) => {
       if (node.space === "partner") throw new Error(`nodes.${id}.space: two-player animations are no longer supported.`);
-      const space = node.space === "initiator" ? "actor" as const : "scene" as const;
       const transform = matrixToLocalTransform(node.default_matrix, `nodes.${id}.default_matrix`);
-      if (node.type === "anchor") return [id, { type: "anchor" as const, space, transform }];
+      if (node.type === "anchor") return [id, { type: "anchor" as const, transform }];
       const common = {
-        space,
         transform,
         ...(node.visible === undefined ? {} : { visible: node.visible }),
         ...(node.entity_nbt === undefined ? {} : { entity_nbt: node.entity_nbt }),

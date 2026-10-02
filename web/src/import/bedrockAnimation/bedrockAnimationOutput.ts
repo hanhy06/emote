@@ -20,7 +20,7 @@ export function createBedrockRuntime(
 ): Omit<Extract<AnimationRuntimeData, { kind: "native" }>, "kind"> {
   const timelineRate = playbackRate ?? 1;
   const nodes: Record<string, RuntimeNode> = {
-    [BEDROCK_RUNTIME_SCENE_ID]: { type: "anchor", space: "actor", transform: { position: ZERO, rotation: ZERO, scale: [BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE] } },
+    [BEDROCK_RUNTIME_SCENE_ID]: { type: "anchor", transform: { position: ZERO, rotation: ZERO, scale: [BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE] } },
   };
   const tracks: Record<string, RuntimeNodeTracks> = {};
   const editorNodeByRuntimeNode: Record<string, string> = {};
@@ -72,7 +72,7 @@ export function createBedrockRuntime(
     tracks,
     bindings: {
       editorNodeByRuntimeNode,
-      editorSpaceGroupByRuntimeRoot: { [BEDROCK_RUNTIME_SCENE_ID]: BEDROCK_RUNTIME_SCENE_ID },
+
     },
   };
 }

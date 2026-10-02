@@ -78,9 +78,6 @@ final class SequenceNodeLayout {
     }
 
     private static boolean compatibleNode(EmoteAnimation.Node first, EmoteAnimation.Node candidate) {
-        if (first.space() != candidate.space()) {
-            return false;
-        }
         return switch (first) {
             case EmoteAnimation.ItemNode item -> candidate instanceof EmoteAnimation.ItemNode other
                 && item.entityNbt().equals(other.entityNbt())

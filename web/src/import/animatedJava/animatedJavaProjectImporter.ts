@@ -84,8 +84,8 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
     const node = importProjectElement(element, projectElementMatrix(element, undefined, 0, transformGraph, 1, sceneScale));
     addProjectNode(nodes, element.uuid, {
       ...node,
-      binding: { ...node.binding, spaceGroupId: cubeContent?.runtimeSceneId ?? ajRuntimeRootId(element.uuid) },
-      ...(cubeContent ? { space: "actor" as const } : {}),
+      binding: { ...node.binding},
+      ...(cubeContent ? { } : {}),
     });
     bindOutputNode(element.uuid, element.uuid);
   }

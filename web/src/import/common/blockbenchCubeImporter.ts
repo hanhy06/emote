@@ -97,11 +97,10 @@ export function importBlockbenchCubeContent(
     const playableCubes = playableCubesByBone.get(bone.uuid) ?? [];
     if (playableCubes.length === 0) {
       nodes[bone.id] = {
-        binding: { sourceNodeId: bone.id, spaceGroupId: options.runtimeSceneId },
+        binding: { sourceNodeId: bone.id},
         type: "anchor",
         defaultMatrix: matrix4ToRowMajor(boneMatrix, `${formatLabel} bone ${bone.id}`),
-        space: "actor",
-      };
+        };
       bone.nodes.push({ id: bone.id, localMatrix: new Matrix4() });
       bindEditorNode(bone.uuid, bone.id);
     } else for (const [cubeIndex, cube] of playableCubes.entries()) {
@@ -117,13 +116,11 @@ export function importBlockbenchCubeContent(
       nodes[nodeId] = {
         binding: {
           sourceNodeId: nodeId,
-          spaceGroupId: options.runtimeSceneId,
           ...(skin ? { skinGroupId: `${skin.part}_${skin.order}` } : {}),
         },
         type: "item_display",
         defaultMatrix: matrix4ToRowMajor(boneMatrix.clone().multiply(localMatrix), `${formatLabel} cube ${nodeId}`),
         visible: true,
-        space: "actor",
         itemDisplay: "none",
         itemStack: {
           id: "minecraft:paper",
@@ -143,11 +140,10 @@ export function importBlockbenchCubeContent(
       const locatorBoneMatrix = locator.ignore_inherited_scale ? matrixWithoutScale(boneMatrix) : boneMatrix;
       bone.nodes.push({ id: nodeId, localMatrix, ignoreInheritedScale: locator.ignore_inherited_scale, locatorName: locator.name });
       nodes[nodeId] = {
-        binding: { sourceNodeId: nodeId, spaceGroupId: options.runtimeSceneId },
+        binding: { sourceNodeId: nodeId},
         type: "anchor",
         defaultMatrix: matrix4ToRowMajor(locatorBoneMatrix.clone().multiply(localMatrix), `${formatLabel} locator ${nodeId}`),
-        space: "actor",
-      };
+        };
       bindEditorNode(bone.uuid, nodeId);
       bindEditorNode(locator.uuid, nodeId);
     }

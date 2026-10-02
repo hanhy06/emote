@@ -134,7 +134,6 @@ class SequenceCompilerTest {
     void createsAllCandidateNodesAtTheirOwnInitialPositionsAndSwitchesVisibility() {
         EmoteAnimation.TextNode flowerNode = new EmoteAnimation.TextNode(
             true,
-            EmoteAnimation.NodeSpace.SCENE,
             null,
             transform(2.0D),
             new CompoundTag(),
@@ -142,7 +141,6 @@ class SequenceCompilerTest {
         );
         EmoteAnimation.TextNode butterflyNode = new EmoteAnimation.TextNode(
             true,
-            EmoteAnimation.NodeSpace.SCENE,
             null,
             transform(8.0D),
             new CompoundTag(),
@@ -266,7 +264,6 @@ class SequenceCompilerTest {
     void acceptsEquivalentDisplayContentPreparedAsSeparateRuntimeObjects() {
         EmoteAnimation.TextNode node = new EmoteAnimation.TextNode(
             true,
-            EmoteAnimation.NodeSpace.SCENE,
             null,
             EmoteAnimation.LocalTransform.IDENTITY,
             new CompoundTag(),
@@ -520,7 +517,7 @@ class SequenceCompilerTest {
     }
 
     private static EmoteAnimation.AnchorNode sceneAnchor() {
-        return new EmoteAnimation.AnchorNode(EmoteAnimation.NodeSpace.SCENE, null, EmoteAnimation.LocalTransform.IDENTITY);
+        return new EmoteAnimation.AnchorNode(null, EmoteAnimation.LocalTransform.IDENTITY);
     }
 
     private static PreparedAnimation animation(

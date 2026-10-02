@@ -93,8 +93,6 @@ public record EmoteAnimation(
     }
 
     public sealed interface Node permits ItemNode, BlockNode, TextNode, AnchorNode {
-        NodeSpace space();
-
         String parentId();
 
         LocalTransform transform();
@@ -110,7 +108,6 @@ public record EmoteAnimation(
 
     public record ItemNode(
         boolean visible,
-        NodeSpace space,
         String parentId,
         LocalTransform transform,
         CompoundTag entityNbt,
@@ -119,7 +116,6 @@ public record EmoteAnimation(
         Skin skin
     ) implements Node {
         public ItemNode {
-            Objects.requireNonNull(space, "space");
             Objects.requireNonNull(transform, "transform");
             entityNbt = copy(entityNbt);
             itemStackNbt = copy(itemStackNbt);
@@ -129,14 +125,12 @@ public record EmoteAnimation(
 
     public record BlockNode(
         boolean visible,
-        NodeSpace space,
         String parentId,
         LocalTransform transform,
         CompoundTag entityNbt,
         CompoundTag blockStateNbt
     ) implements Node {
         public BlockNode {
-            Objects.requireNonNull(space, "space");
             Objects.requireNonNull(transform, "transform");
             entityNbt = copy(entityNbt);
             blockStateNbt = copy(blockStateNbt);
@@ -145,14 +139,12 @@ public record EmoteAnimation(
 
     public record TextNode(
         boolean visible,
-        NodeSpace space,
         String parentId,
         LocalTransform transform,
         CompoundTag entityNbt,
         JsonElement text
     ) implements Node {
         public TextNode {
-            Objects.requireNonNull(space, "space");
             Objects.requireNonNull(transform, "transform");
             entityNbt = copy(entityNbt);
             text = Objects.requireNonNull(text, "text").deepCopy();
@@ -165,12 +157,10 @@ public record EmoteAnimation(
     }
 
     public record AnchorNode(
-        NodeSpace space,
         String parentId,
         LocalTransform transform
     ) implements Node {
         public AnchorNode {
-            Objects.requireNonNull(space, "space");
             Objects.requireNonNull(transform, "transform");
         }
     }
@@ -184,11 +174,6 @@ public record EmoteAnimation(
             Objects.requireNonNull(scale, "scale");
         }
 
-    }
-
-    public enum NodeSpace {
-        SCENE,
-        ACTOR
     }
 
     public record Skin(SkinPart part, int order) {

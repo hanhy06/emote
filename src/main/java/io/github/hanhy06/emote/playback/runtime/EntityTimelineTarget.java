@@ -26,13 +26,13 @@ public final class EntityTimelineTarget implements AnimationPlayer.TimelineTarge
     @Override
     public Transformation createTransformation(String nodeId, PreparedAnimation.PreparedTransform transform) {
         PlaybackNodes.NodeInstance node = requiredNode(nodeId);
-        return this.nodes.displayTransformation(node.node().space(), transform);
+        return this.nodes.displayTransformation(transform);
     }
 
     @Override
     public Transformation createTransformation(String nodeId, Matrix4fc matrix, boolean preserveMatrix) {
         PlaybackNodes.NodeInstance node = requiredNode(nodeId);
-        return this.nodes.displayTransformation(node.node().space(), matrix, preserveMatrix);
+        return this.nodes.displayTransformation(matrix, preserveMatrix);
     }
 
     @Override
@@ -62,7 +62,7 @@ public final class EntityTimelineTarget implements AnimationPlayer.TimelineTarge
         }
         this.entityController.applyTransformation(
             node,
-            this.nodes.displayTransformation(node.node().space(), matrix, preserveMatrix),
+            this.nodes.displayTransformation(matrix, preserveMatrix),
             interpolationDurationTicks
         );
     }

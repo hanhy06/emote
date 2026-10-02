@@ -7,7 +7,7 @@ import { ExportPanel } from "./components/ExportPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { downloadExports } from "./export/download";
 import type { ExportResult } from "./export/types";
-import type { EmoteCallback, EmoteEvent, NodeSpace, PlayerSkinPart } from "./format/emoteAnimation";
+import type { EmoteCallback, EmoteEvent, PlayerSkinPart } from "./format/emoteAnimation";
 import { IMPORT_ADAPTERS } from "./import/adapters";
 import { importFileBatch } from "./import/importBatch";
 import { conversionErrorMessage, groupConversionWarnings } from "./foundation/diagnostics";
@@ -65,7 +65,6 @@ export function App() {
   }, [session]);
   const assignments = preview?.assignments ?? {};
   const orders = preview?.orders ?? {};
-  const spaces = preview?.spaces ?? {};
   const selectedNodeIds = session?.selectedNodeIds ?? EMPTY_SELECTION;
   const selectedAnimation = project?.animations[animationIndex];
   const animation = selectedAnimation?.source;
@@ -144,11 +143,6 @@ export function App() {
   function assignSelected(part: PlayerSkinPart | null) {
     if (selectedNodeIds.size === 0) return;
     dispatch({ type: "skin_part_assigned", part });
-  }
-
-  function assignSelectedSpace(space: NodeSpace) {
-    if (selectedNodeIds.size === 0) return;
-    dispatch({ type: "node_space_assigned", space });
   }
 
   function assignOrder(order: number) {
@@ -318,13 +312,11 @@ export function App() {
                   parts={previewParts}
                   assignments={assignments}
                   orders={orders}
-                  spaces={spaces}
-                  selectedNodeIds={selectedNodeIds}
+                          selectedNodeIds={selectedNodeIds}
                   hasSelectedAssignment={hasSelectedAssignment}
                   onAssignPart={assignSelected}
                   onAssignOrder={assignOrder}
-                  onAssignSpace={assignSelectedSpace}
-                  onSelectNode={handleNodeSelect}
+                          onSelectNode={handleNodeSelect}
                 />
               </div>
             ) : (

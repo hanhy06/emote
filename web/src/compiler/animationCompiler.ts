@@ -114,11 +114,8 @@ function compileRuntimeNodes(
     if (sourceNode.type !== "anchor" && !editorNode) {
       throw new ConversionError("missing_runtime_node_binding", `Runtime display ${id} is not bound to an editor node.`, id);
     }
-    const spaceGroupId = bindings.editorSpaceGroupByRuntimeRoot[id];
-    const space = !sourceNode.parent && spaceGroupId ? documentSpaceGroup(document, spaceGroupId) : sourceNode.space;
     const common = {
       ...(sourceNode.parent ? { parent: sourceNode.parent } : {}),
-      ...(space ? { space } : {}),
       transform: sourceNode.transform,
     };
     if (sourceNode.type === "anchor") return [id, { type: "anchor", ...common }];
@@ -151,15 +148,6 @@ function compileRuntimeNodes(
   }));
 }
 
-function documentSpaceGroup(document: ConversionDocument, groupId: string): EmoteNode["space"] {
-  const spaces = new Set(Object.entries(document.nodes)
-    .filter(([nodeId, node]) => (node.binding.spaceGroupId ?? nodeId) === groupId)
-    .map(([, node]) => node.space));
-  if (spaces.size !== 1) {
-    throw new ConversionError("invalid_runtime_space_binding", `Runtime space group ${groupId} must resolve to exactly one editor space.`, groupId);
-  }
-  return spaces.values().next().value!;
-}
 
 function validateAnimationIds(document: ConversionDocument): void {
   const ids = new Set<string>();
@@ -174,9 +162,8 @@ function compileNodes(document: ConversionDocument, animation: AnimationRuntimeP
   return Object.fromEntries(nodeIds.map((id) => [id, document.nodes[id]] as const).filter((entry): entry is readonly [string, ConversionNode] => Boolean(entry[1])).map(([id, node]) => {
     const sourceMatrix = tracks[id]?.transforms.find((transform) => transform.tick === 0)?.matrix ?? node.defaultMatrix;
     const transform = matrixToLocalTransform(compileNodeMatrix(document, id, node, sourceMatrix), `${animation.id}/${id} default transform`);
-    if (node.type === "anchor") return [id, { type: "anchor", space: node.space, transform }];
+    if (node.type === "anchor") return [id, { type: "anchor", transform }];
     const common = {
-      space: node.space,
       ...(node.visible ? {} : { visible: false }),
       transform,
       ...(node.entityNbt ? { entity_nbt: node.entityNbt } : {}),

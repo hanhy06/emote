@@ -1,6 +1,5 @@
 import type { TargetedEvent, TargetedMouseEvent } from "preact";
 import { useEffect, useRef } from "preact/hooks";
-import type { NodeSpace } from "../format/emoteAnimation";
 import type { PreviewPart } from "../preview/previewModel";
 import {
   SKIN_PARTS,
@@ -13,12 +12,10 @@ interface AssignmentPanelProps {
   parts: PreviewPart[];
   assignments: PartAssignments;
   orders: PartOrders;
-  spaces: Readonly<Record<string, NodeSpace>>;
   selectedNodeIds: ReadonlySet<string>;
   hasSelectedAssignment: boolean;
   onAssignPart: (skinPart: SkinPartId | null) => void;
   onAssignOrder: (order: number) => void;
-  onAssignSpace: (space: NodeSpace) => void;
   onSelectNode: (nodeId: string, additive: boolean) => void;
 }
 
@@ -26,15 +23,12 @@ export function AssignmentPanel({
   parts,
   assignments,
   orders,
-  spaces,
   selectedNodeIds,
   hasSelectedAssignment,
   onAssignPart,
   onAssignOrder,
-  onAssignSpace,
   onSelectNode,
 }: AssignmentPanelProps) {
-  const hasSelection = selectedNodeIds.size > 0;
   const hasSelectedSkinPart = parts.some((part) => selectedNodeIds.has(part.nodeId));
   const selectableItems = parts.map((part) => ({ nodeId: part.nodeId, label: `#${part.partIndex}`, detail: assignmentLabel(assignments[part.nodeId], orders[part.nodeId]) }));
   const partItems = useRef(new Map<string, HTMLLIElement>());
@@ -111,14 +105,6 @@ export function AssignmentPanel({
         ))}
         <button type="button" disabled={!hasSelectedSkinPart} onClick={() => onAssignPart(null)}>Unassigned</button>
       </div>
-      <p><strong>Coordinate space</strong></p>
-      <div className="assignment-buttons">
-        {(["scene", "actor"] as const).map((space) => (
-          <button type="button" key={space} disabled={!hasSelection} onClick={() => onAssignSpace(space)}>
-            {space[0].toUpperCase() + space.slice(1)}
-          </button>
-        ))}
-      </div>
       <label className="order-control">
         <strong>Skin order</strong>
         <input
@@ -147,7 +133,7 @@ export function AssignmentPanel({
               onClick={(event) => handleNodeClick(event, item.nodeId)}
             >
               <span>{item.label}</span>
-              <span>{spaces[item.nodeId] ?? "scene"} · {item.detail}</span>
+              <span>{item.detail}</span>
             </button>
           </li>
         ))}

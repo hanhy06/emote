@@ -16,20 +16,15 @@ import org.joml.Matrix4fc;
 import java.util.*;
 
 public final class PlaybackNodes {
-    private final EnumMap<EmoteAnimation.NodeSpace, RootTransform> spaces;
+    private RootTransform root;
     private final Map<String, NodeInstance> nodes;
     private final int displayEntityCount;
     private final Map<String, Boolean> requestedVisibility = new HashMap<>();
 
     private float viewYaw;
 
-    public PlaybackNodes(Map<EmoteAnimation.NodeSpace, RootTransform> spaces, Map<String, NodeInstance> nodes) {
-        EnumMap<EmoteAnimation.NodeSpace, RootTransform> requiredSpaces = new EnumMap<>(EmoteAnimation.NodeSpace.class);
-        requiredSpaces.putAll(spaces);
-        for (EmoteAnimation.NodeSpace space : EmoteAnimation.NodeSpace.values()) {
-            Objects.requireNonNull(requiredSpaces.get(space), "Missing root for node space " + space);
-        }
-        this.spaces = requiredSpaces;
+    public PlaybackNodes(RootTransform root, Map<String, NodeInstance> nodes) {
+        this.root = Objects.requireNonNull(root, "root");
         this.nodes = Map.copyOf(nodes);
         this.displayEntityCount = (int) nodes.values().stream()
             .filter(node -> !(node.node() instanceof EmoteAnimation.AnchorNode))
@@ -39,22 +34,13 @@ public final class PlaybackNodes {
     }
 
     public RootTransform root() {
-        return root(EmoteAnimation.NodeSpace.SCENE);
-    }
-
-    public RootTransform root(EmoteAnimation.NodeSpace space) {
-        return this.spaces.get(Objects.requireNonNull(space, "space"));
+        return this.root;
     }
 
     public boolean moveSceneTo(Vec3 position) {
-        Vec3 movement = Objects.requireNonNull(position, "position").subtract(root().position());
-        if (movement.equals(Vec3.ZERO)) {
-            return false;
-        }
-        for (Map.Entry<EmoteAnimation.NodeSpace, RootTransform> entry : this.spaces.entrySet()) {
-            RootTransform root = entry.getValue();
-            entry.setValue(RootTransform.create(root.position().add(movement), root.yaw()));
-        }
+        Objects.requireNonNull(position, "position");
+        if (position.equals(this.root.position())) return false;
+        this.root = RootTransform.create(position, this.root.yaw());
         return true;
     }
 
@@ -67,20 +53,18 @@ public final class PlaybackNodes {
     }
 
     public Transformation displayTransformation(
-        EmoteAnimation.NodeSpace space,
         PreparedAnimation.PreparedTransform transform
     ) {
         Objects.requireNonNull(transform, "transform");
-        return root(Objects.requireNonNull(space, "space")).displayTransformation(transform);
+        return root().displayTransformation(transform);
     }
 
     public Transformation displayTransformation(
-        EmoteAnimation.NodeSpace space,
         Matrix4fc matrix,
         boolean preserveMatrix
     ) {
         Objects.requireNonNull(matrix, "matrix");
-        return root(Objects.requireNonNull(space, "space")).displayTransformation(matrix, preserveMatrix);
+        return root().displayTransformation(matrix, preserveMatrix);
     }
 
     public boolean requestVisibility(String nodeId, boolean visible) {
@@ -94,8 +78,8 @@ public final class PlaybackNodes {
         return this.requestedVisibility.getOrDefault(nodeId, false);
     }
 
-    public float orientationYaw(EmoteAnimation.NodeSpace space) {
-        return Mth.wrapDegrees(root(space).yaw() + root().relativeYaw(this.viewYaw));
+    public float orientationYaw() {
+        return Mth.wrapDegrees(root().yaw() + root().relativeYaw(this.viewYaw));
     }
 
     public float viewYaw() {

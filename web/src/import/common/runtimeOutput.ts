@@ -7,7 +7,7 @@ export const IDENTITY_TRANSFORM: RuntimeLocalTransform = { position: ZERO_VECTOR
 
 export function importedNodeToRuntimeNode(node: ImportedNode, transform: RuntimeLocalTransform, parent?: string): RuntimeNode {
   const common = {
-    ...(parent ? { parent } : { space: node.space ?? "actor" as const }),
+    ...(parent ? { parent } : {}),
     ...("visible" in node && !node.visible ? { visible: false } : {}),
     ...("entityNbt" in node && node.entityNbt ? { entityNbt: node.entityNbt } : {}),
     transform,

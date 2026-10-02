@@ -176,17 +176,16 @@ class AnimationJsonParserTest {
     }
 
     @Test
-    void loadsActorSpaceAndSkin() throws Exception {
+    void loadsSkinWithoutCoordinateSpace() throws Exception {
         EmoteAnimation animation = parse(readReference()).animation();
         EmoteAnimation.ItemNode head = (EmoteAnimation.ItemNode) animation.nodes().get("player_head");
 
-        assertEquals(EmoteAnimation.NodeSpace.ACTOR, head.space());
-        assertEquals(EmoteAnimation.NodeSpace.SCENE, animation.nodes().get("effect_anchor").space());
+        assertNotNull(head.skin());
     }
 
     @Test
     void rejectsRetiredParticipantNodeSpaces() throws Exception {
-        for (String space : java.util.List.of("initiator", "partner")) {
+        for (String space : java.util.List.of("scene", "actor", "initiator", "partner")) {
             JsonObject root = readReference();
             root.getAsJsonObject("nodes").getAsJsonObject("player_head").addProperty("space", space);
             EmoteAnimationLoadException exception = assertThrows(EmoteAnimationLoadException.class, () -> parse(root));
@@ -195,17 +194,12 @@ class AnimationJsonParserTest {
     }
 
     @Test
-    void rejectsRootNodeWithoutSpace() throws Exception {
+    void loadsRootNodeWithoutSpace() throws Exception {
         JsonObject root = readReference();
         JsonObject playerHead = root.getAsJsonObject("nodes").getAsJsonObject("player_head");
         playerHead.remove("space");
 
-        EmoteAnimationLoadException exception = assertThrows(
-            EmoteAnimationLoadException.class,
-            () -> parse(root)
-        );
-
-        assertEquals("$.nodes.player_head.space", exception.fieldPath());
+        assertNotNull(parse(root).animation().nodes().get("player_head"));
     }
 
     @Test

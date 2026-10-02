@@ -7,7 +7,6 @@ import io.github.hanhy06.emote.content.PreparedAnimationFixture;
 import io.github.hanhy06.emote.playback.AnimationPlayer;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 import io.github.hanhy06.emote.playback.runtime.RootTransform;
-import io.github.hanhy06.emote.playback.runtime.SceneRootResolver;
 import io.github.hanhy06.emote.playback.session.PlaybackParticipant;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
 import net.minecraft.SharedConstants;
@@ -83,7 +82,7 @@ class ApiEventDispatcherTest {
     private static PlaybackSession session(PlaybackParticipant participant) {
         PreparedAnimation emote = PreparedAnimationFixture.create("test:api-event", "API Event");
         PlaybackNodes nodes = new PlaybackNodes(
-            SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)),
+            RootTransform.create(Vec3.ZERO, 0.0F),
             Map.of()
         );
         AnimationPlayer animation = new AnimationPlayer(emote, new EmptyTimelineTarget());

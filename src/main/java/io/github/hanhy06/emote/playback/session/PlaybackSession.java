@@ -257,10 +257,9 @@ public final class PlaybackSession implements AnimationPlayer.LifecycleListener 
         public Vec3 nodeWorldPosition(String nodeId) {
             var nodes = PlaybackSession.this.nodes;
             var node = Objects.requireNonNull(nodes.nodes().get(nodeId), "Unknown node " + nodeId);
-            var space = node.node().space();
-            var root = nodes.root(space);
+            var root = nodes.root();
             var transform = PlaybackSession.this.animation.currentTransformation(nodeId).getMatrix();
-            Vector3f point = root.worldMatrix(nodes.orientationYaw(space), transform).transformPosition(new Vector3f());
+            Vector3f point = root.worldMatrix(nodes.orientationYaw(), transform).transformPosition(new Vector3f());
             return root.position().add(point.x, point.y, point.z);
         }
     }

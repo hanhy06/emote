@@ -45,10 +45,8 @@ export function validateEmoteAnimation(animation: EmoteAnimation): ValidationIss
     if (!nodeId.trim()) add(issues, "nodes", "node id must not be blank");
     if (node.parent) {
       if (!nodeIds.has(node.parent)) add(issues, `${path}.parent`, "references an unknown node");
-      if (node.space !== undefined) add(issues, `${path}.space`, "is not allowed on child nodes");
-    } else if (!(node.space && (["scene", "actor"] as const).includes(node.space))) {
-      add(issues, `${path}.space`, "root node must define scene or actor");
     }
+    if ("space" in node) add(issues, `${path}.space`, "coordinate spaces are no longer supported");
     validateVec3(node.transform.position, `${path}.transform.position`, issues);
     validateVec3(node.transform.rotation, `${path}.transform.rotation`, issues);
     validateVec3(node.transform.scale, `${path}.transform.scale`, issues);
@@ -136,21 +134,9 @@ function validateItemNode(
 ): void {
   if (!ITEM_DISPLAY_VALUES.has(node.item_display)) add(issues, `${path}.item_display`, "uses an unsupported item display context");
   if (node.skin && !isNonNegativeInt32(node.skin.order)) add(issues, `${path}.skin.order`, "must be a non-negative Java integer");
-  if (node.skin) {
-    const rootSpace = inheritedNodeSpace(animation, nodeId);
-    if (rootSpace && rootSpace !== "actor") add(issues, `${path}.skin`, "requires actor node space");
-  }
+
 }
 
-function inheritedNodeSpace(animation: EmoteAnimation, nodeId: string): EmoteAnimation["nodes"][string]["space"] {
-  const seen = new Set<string>();
-  let current = animation.nodes[nodeId];
-  while (current?.parent && !seen.has(current.parent)) {
-    seen.add(current.parent);
-    current = animation.nodes[current.parent];
-  }
-  return current?.space;
-}
 
 function validateParentCycles(animation: EmoteAnimation, issues: ValidationIssue[]): void {
   for (const nodeId of Object.keys(animation.nodes)) {

@@ -43,7 +43,6 @@
         "part": "head",
         "order": 0
       },
-      "space": "actor",
       "transform": {
         "position": [0, 1.75, 0],
         "rotation": [0, 0, 0],
@@ -68,7 +67,6 @@
       "visible": true,
       "block_state_snbt": "{Name:\"minecraft:gold_block\"}",
       "entity_nbt": "{brightness:{block:15,sky:15},shadow_radius:0.0f,shadow_strength:0.0f}",
-      "space": "scene",
       "transform": {
         "position": [-1, 0, -1],
         "rotation": [0, 0, 0],
@@ -82,7 +80,6 @@
         "text": "Emote"
       },
       "entity_nbt": "{billboard:\"center\",background:0,line_width:200,see_through:1b,shadow:1b}",
-      "space": "scene",
       "transform": {
         "position": [0, 2.4, 0],
         "rotation": [0, 0, 0],
@@ -91,7 +88,6 @@
     },
     "effect_anchor": {
       "type": "anchor",
-      "space": "scene",
       "transform": {
         "position": [0, 1.5, 0],
         "rotation": [0, 0, 0],

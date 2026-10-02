@@ -52,7 +52,6 @@ export type DisplayNbtValue = DisplayNbtPatch | { molang: string; generatedResou
 export type RuntimeScalar = number | string;
 export type RuntimeVector = readonly [RuntimeScalar, RuntimeScalar, RuntimeScalar];
 export type RuntimeVec3 = readonly [number, number, number];
-export type RuntimeNodeSpace = "scene" | "actor";
 
 export interface RuntimeLocalTransform {
   position: RuntimeVec3;
@@ -62,7 +61,7 @@ export interface RuntimeLocalTransform {
 
 interface RuntimeNodeBase {
   parent?: string;
-  space?: RuntimeNodeSpace;
+
   transform: RuntimeLocalTransform;
 }
 

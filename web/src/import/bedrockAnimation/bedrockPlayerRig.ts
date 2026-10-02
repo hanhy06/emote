@@ -80,7 +80,7 @@ export function createBedrockPlayerNodes(worldMatrices = buildBedrockPlayerWorld
     const world = worldMatrices.get(slice.bone.id);
     if (!world) throw new Error(`Missing bind matrix for Bedrock player bone ${slice.bone.id}.`);
     nodes[slice.id] = {
-      binding: { sourceNodeId: slice.id, spaceGroupId: BEDROCK_RUNTIME_SCENE_ID },
+      binding: { sourceNodeId: slice.id},
       type: "item_display",
       defaultMatrix: matrix4ToRowMajor(world, `Bedrock player slice ${slice.id}`),
       visible: true,

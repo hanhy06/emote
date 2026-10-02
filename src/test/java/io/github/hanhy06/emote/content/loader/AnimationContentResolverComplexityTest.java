@@ -74,7 +74,6 @@ class AnimationContentResolverComplexityTest {
     private EmoteAnimation.BlockNode blockNode() {
         return new EmoteAnimation.BlockNode(
             true,
-            EmoteAnimation.NodeSpace.SCENE,
             null,
             EmoteAnimation.LocalTransform.IDENTITY,
             new CompoundTag(),

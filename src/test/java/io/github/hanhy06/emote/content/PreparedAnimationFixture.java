@@ -59,7 +59,7 @@ public final class PreparedAnimationFixture {
             new EmoteMetadata(name, name + " description"),
             new EmoteAnimation.Settings(standalone, cooldownTicks, 50.0F, 1, playerBehavior, new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.ONCE, 0, 0, 0)),
             EmoteAnimation.MolangPrograms.empty(),
-            Map.of("root", new EmoteAnimation.AnchorNode(EmoteAnimation.NodeSpace.SCENE, null, EmoteAnimation.LocalTransform.IDENTITY)),
+            Map.of("root", new EmoteAnimation.AnchorNode(null, EmoteAnimation.LocalTransform.IDENTITY)),
             new EmoteAnimation.Timeline(1, Map.of(), EmoteAnimation.Events.empty()), List.of());
         return PreparedAnimation.from(new LoadedAnimation(
             Path.of(id.replace(':', '_') + ".json"),

@@ -63,17 +63,14 @@ public final class EventCommandExecutor implements AnimationPlayer.EventExecutor
 
     private Vec3 resolveOrigin(EmoteAnimation.CommandOrigin origin) {
         RootTransform root = this.nodes.root();
-        EmoteAnimation.NodeSpace space = EmoteAnimation.NodeSpace.SCENE;
         Matrix4fc displayMatrix;
         if (origin.type() == EmoteAnimation.OriginType.ROOT) {
             displayMatrix = root.rotationMatrix();
         } else {
             PlaybackNodes.NodeInstance node = requiredNode(origin.node());
-            space = node.node().space();
-            root = this.nodes.root(space);
             displayMatrix = this.timeline.currentTransformation(origin.node()).getMatrix();
         }
-        Matrix4fc matrix = root.worldMatrix(this.nodes.orientationYaw(space), displayMatrix);
+        Matrix4fc matrix = root.worldMatrix(this.nodes.orientationYaw(), displayMatrix);
         Vector3f position = matrix.transformPosition(new Vector3f(
             (float) origin.offset().x(),
             (float) origin.offset().y(),
