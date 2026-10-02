@@ -3,10 +3,12 @@ package io.github.hanhy06.emote.playback;
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.content.*;
-import io.github.hanhy06.emote.playback.molang.MolangQuerySource;
+import io.github.hanhy06.emote.playback.molang.EntityMolangQueries;
 import io.github.hanhy06.emote.playback.runtime.RootTransform;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
+import io.github.hanhy06.emote.skin.SkinBinding;
+import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.world.entity.Marker;
@@ -23,6 +25,7 @@ public final class EntityPlaybackManager {
     private final Map<UUID, Entry> markers = new HashMap<>();
     private final RandomGenerator random = RandomGenerator.getDefault();
     private long catalogRevision;
+    private long skinRevision;
     private boolean running;
 
     public EntityPlaybackManager(PlaybackEngine engine, EmoteCatalog catalog, PlayerSkinManager skins) {
@@ -30,6 +33,8 @@ public final class EntityPlaybackManager {
         this.catalog = catalog;
         this.skins = skins;
         catalog.addListener(ignored -> this.catalogRevision++);
+        skins.addReadyListener(ignored -> this.skinRevision++);
+        skins.addDefaultReadyListener(() -> this.skinRevision++);
     }
 
     public void register() {
@@ -59,6 +64,7 @@ public final class EntityPlaybackManager {
                 entry.blocked = false;
                 entry.nextAttempt = tick;
                 entry.needsStart = true;
+                entry.skinWarning = false;
             }
             if (settings.emoteId().isEmpty()) {
                 if (entry.session != null) this.engine.stop(entry.session, PlaybackStopReason.MANUAL);
@@ -66,6 +72,11 @@ public final class EntityPlaybackManager {
                 continue;
             }
             if (!entry.blocked && entry.needsStart && tick >= entry.nextAttempt) start(entry, tick);
+            if (entry.session != null && !entry.needsStart && entry.skinRevision != this.skinRevision) {
+                entry.skinRevision = this.skinRevision;
+                var preparation = this.skins.prepareNamedSkin(entry.settings.skinName(), entry.skinBindings);
+                if (!preparation.preparing()) this.engine.entities().applySkin(entry.session.nodes(), entry.skinBindings, preparation.preparedPlayerSkin());
+            }
         }
     }
 
@@ -83,7 +94,7 @@ public final class EntityPlaybackManager {
             case PreparedAnimation prepared -> prepared;
             case PreparedSequence sequence -> sequence.compile(this.random);
         };
-        var preparation = this.skins.prepareSkinSource(null, animation.skinBindings());
+        var preparation = this.skins.prepareNamedSkin(entry.settings.skinName(), animation.skinBindings());
         if (preparation.preparing()) {
             entry.nextAttempt = tick + 20;
             return;
@@ -95,6 +106,14 @@ public final class EntityPlaybackManager {
             return;
         }
         entry.needsStart = false;
+        entry.skinRevision = this.skinRevision;
+        entry.skinBindings = animation.skinBindings();
+        if (!entry.settings.skinName().isEmpty() && !animation.skinBindings().isEmpty()
+            && preparation.state() != PlayerSkinPreparation.State.READY && !entry.skinWarning) {
+            entry.skinWarning = true;
+            EmoteMod.LOGGER.warn("Marker {} skin {} is {}; using any prepared default skin", entry.marker.getUUID(),
+                entry.settings.skinName(), preparation.state());
+        }
         var lifecycle = new PlaybackEngine.Lifecycle() {
             @Override public void onStarted(PlaybackSession session) { entry.session = session; }
             @Override public @Nullable PlaybackStopReason beforeTick(PlaybackSession session) {
@@ -119,7 +138,7 @@ public final class EntityPlaybackManager {
         Marker marker = entry.marker;
         ServerLevel level = (ServerLevel) marker.level();
         var result = this.engine.start(new PlaybackEngine.Request(level, RootTransform.create(marker.position(), marker.getYRot()),
-            animation, definition.id(), Map.of("actor", marker), MolangQuerySource.EMPTY,
+            animation, definition.id(), Map.of("actor", marker), EntityMolangQueries.forEntity(marker),
             EmoteMod.SERVER.createCommandSourceStack().withEntity(marker).withLevel(level)
                 .withPosition(marker.position()).withRotation(marker.getRotationVector()),
             preparation.preparedPlayerSkin(), lifecycle), entry.session);
@@ -137,6 +156,9 @@ public final class EntityPlaybackManager {
         private long nextAttempt;
         private boolean needsStart;
         private boolean blocked;
+        private boolean skinWarning;
+        private long skinRevision;
+        private List<SkinBinding> skinBindings = List.of();
         private Entry(Marker marker) { this.marker = marker; }
     }
 }

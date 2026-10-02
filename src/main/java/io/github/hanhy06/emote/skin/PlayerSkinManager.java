@@ -17,12 +17,18 @@ import net.minecraft.server.level.ServerPlayer;
 
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import net.minecraft.util.Util;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class PlayerSkinManager implements ConfigListener {
     private final PlayerSkinProvider provider;
     private final Function<ServerPlayer, PlayerSkinSource> playerSkinSourceResolver;
+    private final Function<String, CompletableFuture<PlayerSkinSource>> namedSkinSourceResolver;
+    private final Map<String, CompletableFuture<PlayerSkinSource>> namedSources = new HashMap<>();
+    private final List<Runnable> defaultReadyListeners = new CopyOnWriteArrayList<>();
     private final List<Consumer<UUID>> readyListeners = new CopyOnWriteArrayList<>();
     private final Map<UUID, SkinIdentity> connectedSkins = new HashMap<>();
     private Set<PlayerSkinRegion> modelRegions = Set.of();
@@ -35,14 +41,23 @@ public class PlayerSkinManager implements ConfigListener {
         PlayerSkinProvider provider,
         Function<ServerPlayer, PlayerSkinSource> playerSkinSourceResolver
     ) {
+        this(provider, playerSkinSourceResolver, PlayerSkinManager::resolveNamedSkinSource);
+    }
+
+    PlayerSkinManager(PlayerSkinProvider provider, Function<ServerPlayer, PlayerSkinSource> playerSkinSourceResolver,
+                      Function<String, CompletableFuture<PlayerSkinSource>> namedSkinSourceResolver) {
         this.provider = Objects.requireNonNull(provider, "provider");
         this.playerSkinSourceResolver = Objects.requireNonNull(playerSkinSourceResolver, "playerSkinSourceResolver");
+        this.namedSkinSourceResolver = Objects.requireNonNull(namedSkinSourceResolver, "namedSkinSourceResolver");
         this.provider.setListener(new PlayerSkinProvider.Listener() {
             @Override
             public void onDefaultReady() {
-                EmoteMod.SERVER.execute(() -> EmoteMod.SERVER.getPlayerList().getPlayers().forEach(player -> {
-                    for (Consumer<UUID> readyListener : readyListeners) readyListener.accept(player.getUUID());
-                }));
+                EmoteMod.SERVER.execute(() -> {
+                    EmoteMod.SERVER.getPlayerList().getPlayers().forEach(player -> {
+                        for (Consumer<UUID> readyListener : readyListeners) readyListener.accept(player.getUUID());
+                    });
+                    defaultReadyListeners.forEach(Runnable::run);
+                });
             }
             @Override
             public void onReady(UUID playerUuid) {
@@ -58,7 +73,27 @@ public class PlayerSkinManager implements ConfigListener {
 
     @Override
     public void onConfigReload(Config newConfig) {
+        this.namedSources.clear();
         this.provider.onConfigReload(newConfig);
+    }
+
+    public PlayerSkinPreparation prepareNamedSkin(String name, List<SkinBinding> skinBindings) {
+        if (skinBindings.isEmpty() || name.isBlank()) return prepareSkinSource(null, skinBindings);
+        String key = name.strip().toLowerCase(Locale.ROOT);
+        CompletableFuture<PlayerSkinSource> future = this.namedSources.computeIfAbsent(key, ignored ->
+            this.namedSkinSourceResolver.apply(name.strip()).exceptionally(exception -> {
+                EmoteMod.LOGGER.warn("Could not resolve skin for {}; using any prepared default skin", name);
+                return null;
+            }));
+        if (!future.isDone()) return new PlayerSkinPreparation(null, PlayerSkinPreparation.State.PREPARING, 0);
+        return prepareSkinSource(future.getNow(null), skinBindings);
+    }
+
+    private static CompletableFuture<PlayerSkinSource> resolveNamedSkinSource(String name) {
+        MinecraftServer server = EmoteMod.SERVER;
+        return CompletableFuture.supplyAsync(() -> server.services().profileResolver().fetchByName(name)
+            .map(profile -> readSkinSource(profile, server)).orElse(null), Util.nonCriticalIoPool())
+            .orTimeout(15, TimeUnit.SECONDS);
     }
 
     public PlayerSkinPreparation preparePlayerSkin(ServerPlayer player, List<SkinBinding> skinBindings) {
@@ -127,7 +162,12 @@ public class PlayerSkinManager implements ConfigListener {
         this.readyListeners.add(Objects.requireNonNull(readyListener, "readyListener"));
     }
 
+    public void addDefaultReadyListener(Runnable listener) {
+        this.defaultReadyListeners.add(Objects.requireNonNull(listener, "listener"));
+    }
+
     public void cancelPendingBakes() {
+        this.namedSources.clear();
         this.connectedSkins.clear();
         this.provider.cancelPendingBakes();
     }
@@ -170,7 +210,10 @@ public class PlayerSkinManager implements ConfigListener {
     }
 
     static PlayerSkinSource readSkinSource(GameProfile profile) {
-        MinecraftServer server = EmoteMod.SERVER;
+        return readSkinSource(profile, EmoteMod.SERVER);
+    }
+
+    private static PlayerSkinSource readSkinSource(GameProfile profile, MinecraftServer server) {
         Property packedTextures = server.services().sessionService().getPackedTextures(profile);
         if (packedTextures == null) {
             return null;

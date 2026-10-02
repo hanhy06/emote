@@ -55,7 +55,8 @@ public final class EventCommandExecutor implements AnimationPlayer.EventExecutor
         return switch (source.type()) {
             case PLAYER -> {
                 if (this.actorSource == null) throw new IllegalStateException("Playback has no actor command source.");
-                yield this.actorSource;
+                Entity actor = this.actorSource.getEntity();
+                yield actor == null ? this.actorSource : this.actorSource.withRotation(actor.getRotationVector());
             }
             case SERVER -> EmoteMod.SERVER.createCommandSourceStack().withLevel(this.level);
             case NODE -> {
