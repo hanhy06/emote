@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.playback.molang;
 
+import io.github.hanhy06.emote.playback.molang.MolangQueries.*;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.FluidTags;
@@ -12,8 +13,6 @@ import net.minecraft.world.item.ItemUseAnimation;
 
 import java.util.Objects;
 
-import io.github.hanhy06.emote.playback.molang.MolangQueries.ItemQueryValue;
-import io.github.hanhy06.emote.playback.molang.MolangQueries.PlayerQueryValues;
 import static io.github.hanhy06.emote.playback.molang.MolangQueries.*;
 
 public final class PlayerMolangQueries {
