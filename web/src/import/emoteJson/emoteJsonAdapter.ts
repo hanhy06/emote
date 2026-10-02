@@ -13,10 +13,6 @@ import type { ImportedAnimation, ImportedNode, ImportedNodeBase, ImportedProject
 import type { NativeRuntimeBindings } from "../../domain/nodeBindings";
 import type { BakedRuntimeNodeTracks, RuntimeNode, RuntimeNodeTracks, RuntimeVectorKeyframe } from "../../domain/minecraftData";
 import type { PreviewNodeTrack, PreviewProjection, PreviewTransformKeyframe } from "../../domain/previewProjection";
-import { migrateSchema1Animation } from "./schema1Migration";
-import { migrateSchema3Animation } from "./animationSchema3/animationSchema3Migration";
-import { requireSchema3Animation } from "./animationSchema3/animationSchema3Runtime";
-import { validateSchema3Animation } from "./animationSchema3/animationSchema3Validator";
 import { bakeSchema4Preview } from "./schema4PreviewBaker";
 import { createMolangPreviewFallback } from "../common/previewFallback";
 
@@ -30,8 +26,7 @@ export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {
       if (!isRecord(value) || !isRecord(value.nodes) || !isRecord(value.timeline)) {
         return { confidence: 0, reason: "does not match an emote animation schema" };
       }
-      if (value.schema_version === 1) return { confidence: 100, reason: "matches emote animation schema 1" };
-      return value.type === "animation" && (value.schema_version === 3 || value.schema_version === 4)
+      return value.type === "animation" && value.schema_version === 4
         ? { confidence: 100, reason: `matches emote animation schema ${value.schema_version}` }
         : { confidence: 0, reason: "does not match a supported emote animation schema" };
     }, "not JSON");
@@ -39,10 +34,7 @@ export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {
 
   async import(input: ImportInput): Promise<ImportedProject> {
     const parsed = parseInputJson(input);
-    const schema1 = isRecord(parsed) && parsed.schema_version === 1 ? migrateSchema1Animation(parsed) : null;
-    const schema3 = schema1?.animation ?? (isRecord(parsed) && parsed.schema_version === 3 ? requireSchema3Animation(parsed) : null);
-    if (schema3) requireValidSchema3Animation(schema3);
-    const animation = schema3 ? migrateSchema3Animation(schema3) : requireEmoteAnimation(parsed);
+    const animation = requireEmoteAnimation(parsed);
     const issues = validateEmoteAnimation(animation);
     if (issues.length > 0) {
       throw new ConversionError("invalid_emote_animation", `Invalid emote animation at ${issues[0].path}: ${issues[0].message}`, issues[0].path);
@@ -57,7 +49,7 @@ export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {
       nodes = importNodes(animation);
       importedAnimation = importTimeline(animation, animationId, animation.id);
     } catch (reason) {
-      if (!(reason instanceof ConversionError) || reason.code !== "unsupported_schema_4_import" || schema3) throw reason;
+      if (!(reason instanceof ConversionError) || reason.code !== "unsupported_schema_4_import") throw reason;
       nodes = importRuntimeNodes(animation);
       try {
         importedAnimation = importRuntimeTimeline(animation, animationId, animation.id, bakeSchema4Preview(animation));
@@ -75,7 +67,7 @@ export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {
       suggestedPlayer: { ...animation.settings.player, stop_conditions: { ...animation.settings.player.stop_conditions } },
       ...(typeof animation.target_minecraft_version === "string"
         ? { suggestedMinecraftVersion: animation.target_minecraft_version }
-        : schema1 ? { suggestedMinecraftVersion: schema1.minecraftVersion } : {}),
+        : {}),
       suggestedNamespace: namespace,
       suggestedStandalone: animation.settings.standalone,
       suggestedCooldown: animation.settings.cooldown,
@@ -88,13 +80,6 @@ export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {
     };
   },
 };
-
-function requireValidSchema3Animation(animation: Parameters<typeof validateSchema3Animation>[0]): void {
-  const issues = validateSchema3Animation(animation);
-  if (issues.length > 0) {
-    throw new ConversionError("invalid_emote_animation", `Invalid emote animation at ${issues[0].path}: ${issues[0].message}`, issues[0].path);
-  }
-}
 
 function importRuntimeNodes(animation: EmoteAnimation): Record<string, ImportedNode> {
   const worldMatrices = new Map<string, Matrix16>();

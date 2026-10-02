@@ -11,7 +11,7 @@ export const sequenceJsonAdapter: ImportAdapter<ImportedSequence> = {
   extensions: ["json"],
 
   probe(input: ImportInput): ProbeResult {
-    return probeParsedInput(input, parseInputJson, (value) => isRecord(value) && value.type === "sequence"
+    return probeParsedInput(input, parseInputJson, (value) => isRecord(value) && value.type === "sequence" && value.schema_version === 4
         ? { confidence: 100, reason: "matches an Emote sequence" }
         : { confidence: 0, reason: "not an Emote sequence" }, "not JSON");
   },

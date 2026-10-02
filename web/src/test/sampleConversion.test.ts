@@ -11,6 +11,7 @@ import { geckoLibBbmodelAdapter } from "../import/geckoLib/geckoLibBbmodelAdapte
 import { removeRedundantKeyframes } from "../format/keyframeCleanup";
 import { bakeSchema4Preview } from "../import/emoteJson/schema4PreviewBaker";
 import { emoteJsonAdapter } from "../import/emoteJson/emoteJsonAdapter";
+import { sequenceJsonAdapter } from "../import/emoteJson/sequenceJsonAdapter";
 import { createConversionDocument } from "../domain/conversionDocument";
 import { compileConversionAnimation } from "../compiler/animationCompiler";
 import { emoteFileName, exportDocumentAnimation, exportDocumentAnimationFiles } from "../export/projectExporter";
@@ -119,6 +120,27 @@ describe("legacy loop end sample JSON round trips", () => {
     expect(actual.settings.playback.mode).toBe(expected.settings.playback.mode);
     expect(actual.timeline.duration).toBe(expected.timeline.duration);
     expectMatchingMatrices(actual, expected);
+  });
+});
+
+describe("current schema JSON samples", () => {
+  it.each([1, 3])("rejects animation schema %s instead of migrating it", async (schemaVersion) => {
+    const sample = await readJson("docs/sample/emote.bat.json") as EmoteAnimation;
+    const input = { name: "emote.bat.json", bytes: new TextEncoder().encode(JSON.stringify({ ...sample, schema_version: schemaVersion })) };
+
+    expect((await emoteJsonAdapter.probe(input)).confidence).toBe(0);
+    await expect(emoteJsonAdapter.import(input)).rejects.toThrow("schema_version must be 4");
+  });
+
+  it("accepts the current sequence sample and rejects its old schema", async () => {
+    const sample = await readJson("docs/reference/sequence.json") as Record<string, unknown>;
+    const current = { name: "sequence.json", bytes: new TextEncoder().encode(JSON.stringify(sample)) };
+    expect((await sequenceJsonAdapter.probe(current)).confidence).toBe(100);
+    expect((await sequenceJsonAdapter.import(current)).id).toBe(sample.id);
+
+    const legacy = { name: "sequence.json", bytes: new TextEncoder().encode(JSON.stringify({ ...sample, schema_version: 1 })) };
+    expect((await sequenceJsonAdapter.probe(legacy)).confidence).toBe(0);
+    await expect(sequenceJsonAdapter.import(legacy)).rejects.toThrow("Unsupported sequence schema: 1");
   });
 });
 

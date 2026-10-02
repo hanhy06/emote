@@ -37,20 +37,8 @@ export function convertSequenceInput(input: ImportInput): EmoteSequence | null {
     return null;
   }
   if (!isRecord(value) || value.type !== "sequence") return null;
-  if (value.schema_version === 1) return migrateSchema1Sequence(value);
   if (value.schema_version === 4) return requireSequence(value);
   throw new ConversionError("unsupported_sequence_schema", `Unsupported sequence schema: ${String(value.schema_version)}.`, "schema_version");
-}
-
-function migrateSchema1Sequence(root: RuntimeRecord): EmoteSequence {
-  return requireSequence({
-    type: "sequence",
-    schema_version: 4,
-    id: root.id,
-    metadata: root.metadata,
-    settings: { cooldown: "0t", player: root.player },
-    steps: root.steps,
-  });
 }
 
 function requireSequence(value: unknown): EmoteSequence {
