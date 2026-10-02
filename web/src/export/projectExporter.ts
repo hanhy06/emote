@@ -1,5 +1,5 @@
 import { compileConversionAnimationArtifact } from "../compiler/animationCompiler";
-import type { ConversionDocument } from "../domain/conversionDocument";
+import { animationOutputId, type ConversionDocument } from "../domain/conversionDocument";
 import { formatMinecraftTime, parseMinecraftTime } from "../format/time";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { serializeEmoteAnimation } from "../format/serializer";
@@ -50,7 +50,7 @@ function compileAnimationFile(document: ConversionDocument, animationIndex: numb
     generatedResourceReferences: compiled.generatedResourceReferences,
     file: {
       blob: new Blob([serializeEmoteAnimation(animation)], { type: "application/json" }),
-      fileName: documentAnimationFileNames(document)[animationIndex],
+      fileName: animationFileNames(document.animations.map((entry, index) => index === animationIndex ? animation.id : animationOutputId(entry)))[animationIndex],
     },
   };
 }
@@ -63,7 +63,7 @@ function compileAnimationFiles(document: ConversionDocument, includeSequence: bo
     includeSequence ? { standalone: false } : undefined,
   ));
   const animations = compiled.map((entry) => removeRedundantKeyframes(entry.animation));
-  const fileNames = documentAnimationFileNames(document);
+  const fileNames = animationFileNames(animations.map((animation) => animation.id));
   const generatedResourceReferences = new Set(compiled.flatMap((entry) => [...entry.generatedResourceReferences]));
   const files: ExportResult[] = animations.map((animation, index) => {
     return {
@@ -103,10 +103,8 @@ function compileAnimationFiles(document: ConversionDocument, includeSequence: bo
   return { generatedResourceReferences, files };
 }
 
-function documentAnimationFileNames(document: ConversionDocument): string[] {
-  const baseNames = document.animations.map((entry) => emoteFileName(
-    `${sanitizeNamespace(entry.output.namespace || entry.output.displayName)}:${sanitizeResourcePath(entry.runtime.id)}`,
-  ));
+function animationFileNames(animationIds: readonly string[]): string[] {
+  const baseNames = animationIds.map(emoteFileName);
   const reservedNames = new Set(baseNames);
   const usedNames = new Set<string>();
   return baseNames.map((baseName) => {

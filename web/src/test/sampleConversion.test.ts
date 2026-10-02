@@ -11,7 +11,9 @@ import { geckoLibBbmodelAdapter } from "../import/geckoLib/geckoLibBbmodelAdapte
 import { removeRedundantKeyframes } from "../format/keyframeCleanup";
 import { bakeSchema4Preview } from "../import/emoteJson/schema4PreviewBaker";
 import { emoteJsonAdapter } from "../import/emoteJson/emoteJsonAdapter";
-import { emoteFileName } from "../export/projectExporter";
+import { createConversionDocument } from "../domain/conversionDocument";
+import { compileConversionAnimation } from "../compiler/animationCompiler";
+import { emoteFileName, exportDocumentAnimation, exportDocumentAnimationFiles } from "../export/projectExporter";
 import { compileImportedProject } from "./compileImportedFixture";
 
 const REPOSITORY_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
@@ -69,6 +71,38 @@ describe("lifecycle callback sample JSON round trips", () => {
     for (const phase of ["start", "timeline", "loop", "stop"] as const) {
       expect(actual.timeline.events?.[phase] ?? []).toEqual(expected.timeline.events?.[phase] ?? []);
     }
+  });
+});
+
+describe("sample export identity", () => {
+  it("uses the same collision-free filenames for single and bundle exports", async () => {
+    const imported = await importFixture("docs/sample/emote.indicate.json", emoteJsonAdapter);
+    const document = createConversionDocument(imported, "Sample");
+    const original = document.animations[0];
+    document.animations = ["music/song", "music.song", "music.song.1"].map((id) => ({
+      ...original,
+      runtime: { ...original.runtime, id },
+      output: { ...original.output, namespace: "emote" },
+    }));
+    document.sequence = { ...document.sequence, namespace: "emote", idPath: "music/song" };
+    const bundle = exportDocumentAnimationFiles(document, true);
+    expect(bundle.map((file) => file.fileName)).toEqual([
+      "emote.music.song.json", "emote.music.song.2.json", "emote.music.song.1.json", "emote.music.song.1.1.json",
+    ]);
+    for (let index = 0; index < document.animations.length; index++) {
+      const single = exportDocumentAnimation(document, index);
+      expect(single.fileName).toBe(bundle[index].fileName);
+      const actual = JSON.parse(await single.blob.text()) as EmoteAnimation;
+      expect(actual.id).toBe(`emote:${document.animations[index].runtime.id}`);
+      expectMatchingMatrices(actual, await readJson("docs/sample/emote.indicate.json") as EmoteAnimation);
+    }
+    const overridden = compileConversionAnimation(document, 0, { namespace: "Custom Namespace" });
+    expect(overridden.id).toBe("custom_namespace:music/song");
+    const sequence = JSON.parse(await bundle[3].blob.text());
+    expect(sequence.id).toBe("emote:music/song.1");
+    expect(sequence.steps.map((step: { emote: string }) => step.emote)).toEqual([
+      "emote:music/song", "emote:music.song", "emote:music.song.1",
+    ]);
   });
 });
 

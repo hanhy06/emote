@@ -11,6 +11,7 @@ import type {
 } from "../format/emoteAnimation";
 import { ConversionError } from "../foundation/diagnostics";
 import {
+  animationOutputId,
   documentMetadata,
   documentSkinAssignments,
   type AnimationOutputSettings,
@@ -21,7 +22,6 @@ import {
 import { multiplyMatrix16 } from "../format/matrix";
 import { localTransformToMatrix, matrixToContinuousLocalTransform, matrixToLocalTransform } from "../format/localTransform";
 import { formatMinecraftTime, parseMinecraftTime, requireTick } from "../format/time";
-import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import type { BakedRuntimeNodeTracks, DisplayNbtPatch, DisplayNbtValue, ItemStackData, RuntimeNode, RuntimeNodeTracks } from "../domain/minecraftData";
 import { readDisplayNbt, writeBlockState, writeDisplayNbt, writeItemStack } from "../format/minecraftData";
 import { minecraftVersionProfile, type MinecraftVersionProfile } from "../format/minecraftVersionProfiles";
@@ -56,7 +56,6 @@ export function compileConversionAnimationArtifact(
   validateAnimationIds(document);
 
   const output = { ...entry.output, ...outputOverride };
-  const namespace = sanitizeNamespace(output.namespace || output.displayName);
   const animation = entry.runtime;
   const availability = animation.availability;
   if (!availability.exportable) {
@@ -73,7 +72,7 @@ export function compileConversionAnimationArtifact(
     type: "animation",
     schema_version: 4,
     target_minecraft_version: document.targetMinecraftVersion,
-    id: `${namespace}:${sanitizeResourcePath(animation.id)}`,
+    id: animationOutputId(entry, output),
     metadata: documentMetadata(output),
     ...(entry.callbacks?.length ? { callbacks: entry.callbacks.map((callback) => ({ ...callback })) } : {}),
     settings: {
@@ -152,7 +151,7 @@ function compileRuntimeNodes(
 function validateAnimationIds(document: ConversionDocument): void {
   const ids = new Set<string>();
   for (const animation of document.animations) {
-    const id = `${sanitizeNamespace(animation.output.namespace || animation.output.displayName)}:${sanitizeResourcePath(animation.runtime.id)}`;
+    const id = animationOutputId(animation);
     if (ids.has(id)) throw new ConversionError("duplicate_animation_id", `Multiple animations normalize to the same id: ${id}`);
     ids.add(id);
   }

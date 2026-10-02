@@ -1,6 +1,6 @@
 import type { ConversionIssue } from "../foundation/diagnostics";
 import type { EmoteCallback, EmoteEvent, EmoteMetadata, EmotePlayerBehavior, PlayerSkinPart } from "../format/emoteAnimation";
-import { normalizeResourceLocation } from "../format/resourceLocation";
+import { normalizeResourceLocation, sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
 import type { GeneratedResource } from "./generatedResource";
 import type { EditorNodeBinding } from "./nodeBindings";
@@ -70,6 +70,10 @@ export interface ConversionAnimationSource {
   id: string;
   name: string;
   sourceReferenceId?: string;
+}
+
+export function animationOutputId(animation: ConversionAnimation, output: AnimationOutputSettings = animation.output): string {
+  return `${sanitizeNamespace(output.namespace || output.displayName)}:${sanitizeResourcePath(animation.runtime.id)}`;
 }
 
 export interface ConversionAnimationEvents {
