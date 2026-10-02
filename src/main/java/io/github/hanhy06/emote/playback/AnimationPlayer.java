@@ -85,7 +85,7 @@ public final class AnimationPlayer {
         int duration = this.animation.timeline().durationTicks();
         EmoteAnimation.PlaybackSettings playback = this.animation.settings().playback();
         int cycleStart = playback.mode() == EmoteAnimation.LoopMode.LOOP ? playback.loopStartTicks() : 0;
-        int cycleEnd = playback.mode() == EmoteAnimation.LoopMode.LOOP ? playback.loopEndTicks() : duration;
+        int cycleEnd = duration;
         long cycleLength = (long) cycleEnd - cycleStart + playback.loopDelayTicks();
         long phase = Math.floorMod(cycleTick, cycleLength);
         int timelineTick = cycleStart + (int) Math.min(phase, cycleEnd - cycleStart);
@@ -163,7 +163,7 @@ public final class AnimationPlayer {
             execute(
                 this.animation.timeline().events().loop(),
                 this.animation.id(),
-                this.animation.settings().playback().loopEndTicks(),
+                this.animation.timeline().durationTicks(),
                 AnimationEventPhase.LOOP
             );
             if (this.eventsStopped) return AdvanceResult.FINISHED;
@@ -281,7 +281,7 @@ public final class AnimationPlayer {
         this.currentTick++;
         applyTick(this.currentTick);
         if (this.animation.settings().playback().mode() == EmoteAnimation.LoopMode.LOOP
-            && this.currentTick >= this.animation.settings().playback().loopEndTicks()) {
+            && this.currentTick >= this.animation.timeline().durationTicks()) {
             this.phase = PlaybackPhase.LOOP_BOUNDARY;
             return AdvanceResult.LOOP_BOUNDARY;
         }

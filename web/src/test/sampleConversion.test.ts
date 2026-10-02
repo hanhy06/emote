@@ -106,6 +106,22 @@ describe("sample export identity", () => {
   });
 });
 
+describe("legacy loop end sample JSON round trips", () => {
+  it.each(["1t", "not a time"])("ignores loop_end %s without changing the sample timeline", async (loopEnd) => {
+    const path = "docs/sample/emote.indicate.json";
+    const expected = await readJson(path) as EmoteAnimation;
+    const input = structuredClone(expected);
+    Object.assign(input.settings.playback, { loop_end: loopEnd });
+    const imported = await emoteJsonAdapter.import({ name: "emote.indicate.json", bytes: new TextEncoder().encode(JSON.stringify(input)) });
+    const [actual] = compileImportedProject(imported, {});
+
+    expect(actual.settings.playback).not.toHaveProperty("loop_end");
+    expect(actual.settings.playback.mode).toBe(expected.settings.playback.mode);
+    expect(actual.timeline.duration).toBe(expected.timeline.duration);
+    expectMatchingMatrices(actual, expected);
+  });
+});
+
 function expectMatchingMatrices(actual: EmoteAnimation, expected: EmoteAnimation): void {
   const actualTracks = bakeSchema4Preview(actual);
   const expectedTracks = bakeSchema4Preview(expected);

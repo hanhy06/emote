@@ -550,7 +550,6 @@ class SequenceCompilerTest {
             new EmoteAnimation.Settings(false, 0, 50.0F, 1, EmotePlayerBehavior.createDefault(), new EmoteAnimation.PlaybackSettings(
                 loop,
                 0,
-                loop == EmoteAnimation.LoopMode.LOOP ? duration : 0,
                 loopDelay
             )),
             EmoteAnimation.MolangPrograms.empty(),

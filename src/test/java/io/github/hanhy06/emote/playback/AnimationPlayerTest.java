@@ -146,7 +146,7 @@ class AnimationPlayerTest {
     void loopCallbackSeesRestartPoseAfterLoopDelayAndCommands(int delay) throws Exception {
         JsonObject root = base();
         root.getAsJsonObject("settings").add("playback", JsonParser.parseString(
-            "{\"mode\":\"loop\",\"loop_start\":\"4t\",\"loop_end\":\"10t\",\"loop_delay\":\"" + delay + "t\"}"));
+            "{\"mode\":\"loop\",\"loop_start\":\"4t\",\"loop_delay\":\"" + delay + "t\"}"));
         root.getAsJsonObject("timeline").add("events", JsonParser.parseString("""
             {"loop":[{"source":{"type":"server"},"origin":{"type":"root"},"commands":["loop-command"]}],
              "timeline":[{"time":"4t","source":{"type":"server"},"origin":{"type":"root"},"commands":["restart-command"]}]}
@@ -194,7 +194,7 @@ class AnimationPlayerTest {
     }
 
     @Test
-    void loopsBetweenConfiguredBoundsAndStopsImmediately() throws Exception {
+    void ignoresLegacyLoopEndAndLoopsToTimelineEnd() throws Exception {
         JsonObject root = base();
         JsonObject playback = root.getAsJsonObject("settings").getAsJsonObject("playback");
         playback.addProperty("mode", "loop");
@@ -205,11 +205,11 @@ class AnimationPlayerTest {
         AnimationPlayer player = player(root, target);
         player.start();
 
-        for (int tick = 0; tick < 5; tick++) {
+        for (int tick = 0; tick < 9; tick++) {
             assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.advance());
         }
         assertEquals(AnimationPlayer.AdvanceResult.LOOP_BOUNDARY, player.advance(false));
-        assertEquals(6, player.currentTick());
+        assertEquals(10, player.currentTick());
         assertEquals(AnimationPlayer.AdvanceResult.RESTARTED, player.continueAfterLoopEvent());
         assertEquals(2, player.currentTick());
 
@@ -227,12 +227,12 @@ class AnimationPlayerTest {
 
         AnimationPlayer player = player(root, new FakeTarget());
         player.start();
-        for (int tick = 0; tick < 6; tick++) player.advance(false);
+        for (int tick = 0; tick < 10; tick++) player.advance(false);
         assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.continueAfterLoopEvent());
 
         player.stop(io.github.hanhy06.emote.api.PlaybackStopReason.MANUAL);
         assertEquals(AnimationPlayer.AdvanceResult.FINISHED, player.advance());
-        assertEquals(6, player.currentTick());
+        assertEquals(10, player.currentTick());
     }
 
     @Test

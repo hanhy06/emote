@@ -99,7 +99,6 @@ class AnimationEventTest {
             new EmoteAnimation.Settings(true, 0, 50.0F, 1, EmotePlayerBehavior.createDefault(), new EmoteAnimation.PlaybackSettings(
                 loopMode,
                 0,
-                loopMode == EmoteAnimation.LoopMode.LOOP ? durationTicks : 0,
                 loopDelayTicks
             )),
             EmoteAnimation.MolangPrograms.empty(),

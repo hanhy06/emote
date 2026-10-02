@@ -12,7 +12,6 @@ interface FixtureCompileOptions {
   standalone?: boolean;
   cooldown?: string;
   loopStart?: string;
-  loopEnd?: string;
   loopDelay?: string;
   rotationDeadzoneByAnimation?: Readonly<Record<string, number>>;
 }
@@ -45,7 +44,6 @@ function fixtureDocument(project: ImportedProject, options: FixtureCompileOption
         standalone: options.standalone ?? true,
         cooldown: options.cooldown ?? "0t",
         loopStart: options.loopStart ?? animation.output.loopStart,
-        loopEnd: options.loopEnd ?? animation.output.loopEnd,
         loopDelay: options.loopDelay ?? animation.output.loopDelay,
         rotationDeadzone: options.rotationDeadzoneByAnimation?.[animation.source.name] ?? animation.output.rotationDeadzone,
       },

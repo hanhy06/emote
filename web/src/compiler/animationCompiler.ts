@@ -63,7 +63,6 @@ export function compileConversionAnimationArtifact(
   }
   const mode = output.playbackMode === "source" ? animation.sourcePlaybackMode : output.playbackMode;
   const loopStartTicks = mode === "loop" ? parseMinecraftTime(output.loopStart) : 0;
-  const loopEndTicks = mode === "loop" ? parseMinecraftTime(output.loopEnd) : 0;
   const loopDelayTicks = mode === "once" || mode === "hold" ? 0 : parseMinecraftTime(output.loopDelay);
   const profile = minecraftVersionProfile(document.targetMinecraftVersion);
   const runtime = animation.data;
@@ -84,7 +83,6 @@ export function compileConversionAnimationArtifact(
       playback: {
         mode,
         ...(loopStartTicks === 0 ? {} : { loop_start: formatMinecraftTime(loopStartTicks) }),
-        ...(mode === "loop" && loopEndTicks !== 0 ? { loop_end: formatMinecraftTime(loopEndTicks) } : {}),
         ...(loopDelayTicks === 0 ? {} : { loop_delay: formatMinecraftTime(loopDelayTicks) }),
       },
     },

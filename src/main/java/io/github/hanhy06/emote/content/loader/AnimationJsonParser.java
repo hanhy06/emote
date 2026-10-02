@@ -160,23 +160,12 @@ public final class AnimationJsonParser {
             default -> throw document.error("$.settings.playback.mode", "unsupported playback mode: " + modeText);
         };
         int loopStartTicks = optionalTime(playbackObject, "loop_start", "$.settings.playback", document);
-        int configuredLoopEndTicks = optionalTime(playbackObject, "loop_end", "$.settings.playback", document);
-        int loopEndTicks = mode == LoopMode.LOOP && configuredLoopEndTicks == 0 ? durationTicks : configuredLoopEndTicks;
         int loopDelayTicks = optionalTime(playbackObject, "loop_delay", "$.settings.playback", document);
         if (loopStartTicks != 0 && mode != LoopMode.LOOP) {
             throw document.error("$.settings.playback.loop_start", "must be zero unless playback mode is loop");
         }
-        if (loopEndTicks != 0 && mode != LoopMode.LOOP) {
-            throw document.error("$.settings.playback.loop_end", "must be zero unless playback mode is loop");
-        }
         if (mode == LoopMode.LOOP && loopStartTicks >= durationTicks) {
             throw document.error("$.settings.playback.loop_start", "must be less than the timeline duration");
-        }
-        if (mode == LoopMode.LOOP && loopEndTicks <= loopStartTicks) {
-            throw document.error("$.settings.playback.loop_end", "must be greater than loop_start");
-        }
-        if (mode == LoopMode.LOOP && loopEndTicks > durationTicks) {
-            throw document.error("$.settings.playback.loop_end", "must not exceed the timeline duration");
         }
         if (loopDelayTicks != 0 && (mode == LoopMode.ONCE || mode == LoopMode.HOLD)) {
             throw document.error("$.settings.playback.loop_delay", "must be zero when playback mode is once or hold");
@@ -187,7 +176,7 @@ public final class AnimationJsonParser {
             (float) rotationDeadzone,
             displayInterpolationTicks,
             player,
-            new PlaybackSettings(mode, loopStartTicks, loopEndTicks, loopDelayTicks)
+            new PlaybackSettings(mode, loopStartTicks, loopDelayTicks)
         );
     }
 
