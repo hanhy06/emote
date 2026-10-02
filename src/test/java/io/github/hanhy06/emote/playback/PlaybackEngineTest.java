@@ -1,11 +1,11 @@
-package io.github.hanhy06.emote.playback.session;
+package io.github.hanhy06.emote.playback;
 
-import io.github.hanhy06.emote.api.EmotePlayerBehavior;
+import io.github.hanhy06.emote.playback.session.PlaybackSession;
+
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimationFixture;
 import io.github.hanhy06.emote.playback.AnimationPlayer;
-import io.github.hanhy06.emote.playback.PlayerPlaybackState;
 import io.github.hanhy06.emote.playback.runtime.*;
 import net.minecraft.SharedConstants;
 import net.minecraft.nbt.CompoundTag;
@@ -15,13 +15,12 @@ import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class PlaybackSessionRegistryTest {
+class PlaybackEngineTest {
     @BeforeAll
     static void bootstrapMinecraftRegistries() {
         SharedConstants.tryDetectVersion();
@@ -32,17 +31,22 @@ class PlaybackSessionRegistryTest {
     void removingSessionClearsIndexesAndDisplayCount() {
         PreparedAnimation emote = PreparedAnimationFixture.create("test:remove", "Remove");
         PlaybackSession session = session(emote);
-        PlaybackSessionRegistry registry = new PlaybackSessionRegistry();
-        registry.register(session);
-        assertSame(session, registry.findSession(session.sessionId()));
-        assertEquals(1, registry.activeDisplayEntityCount());
+        PlaybackEngine engine = new PlaybackEngine();
+        PlaybackEngine.Lifecycle lifecycle = new PlaybackEngine.Lifecycle() {};
+        engine.register(session, lifecycle);
+        assertThrows(IllegalStateException.class, () -> engine.register(session, lifecycle));
+        assertSame(session, engine.findSession(session.sessionId()));
+        assertEquals(1, engine.activeDisplayEntityCount());
 
-        assertTrue(registry.remove(session));
+        PlaybackEngine.ActivePlayback removed = engine.remove(session);
+        assertSame(session, removed.session());
+        assertSame(lifecycle, removed.lifecycle());
 
-        assertTrue(registry.isEmpty());
-        assertEquals(0, registry.activeDisplayEntityCount());
-        assertTrue(!registry.remove(session));
-        assertEquals(0, registry.activeDisplayEntityCount());
+        assertEquals(0, engine.activeSessionCount());
+        assertNull(engine.findSession(session.sessionId()));
+        assertEquals(0, engine.activeDisplayEntityCount());
+        assertNull(engine.remove(session));
+        assertEquals(0, engine.activeDisplayEntityCount());
     }
 
     private static PlaybackSession session(PreparedAnimation emote) {
@@ -70,10 +74,6 @@ class PlaybackSessionRegistryTest {
         animation.bindEvents(ignored -> {
         });
         return animation;
-    }
-
-    private static PlayerPlaybackState participant() {
-        return new PlayerPlaybackState(UUID.randomUUID(), Vec3.ZERO, List.of(), false, EmotePlayerBehavior.createDefault());
     }
 
     private static PlaybackNodes playbackNodes() {

@@ -25,11 +25,11 @@ public final class PlaybackEngine implements ConfigListener {
     public static final int MAX_STRESS_TEST_INSTANCE_COUNT = PlaybackStressTest.MAX_INSTANCE_COUNT;
     public static final int DEFAULT_STRESS_TEST_PACKET_FANOUT = PlaybackStressTest.DEFAULT_PACKET_FANOUT;
     public static final int MAX_STRESS_TEST_PACKET_FANOUT = PlaybackStressTest.MAX_PACKET_FANOUT;
-    private final PlaybackSessionRegistry sessionRegistry = new PlaybackSessionRegistry();
+    private final Map<UUID, ActivePlayback> activePlaybacks = new HashMap<>();
+    private int activeDisplayEntities;
     private final PlaybackEntityController entityController = new PlaybackEntityController();
     private final PlaybackStressTest stressTest = new PlaybackStressTest(this.entityController);
     private final CallbackRegistry callbackRegistry = new CallbackRegistry();
-    private final Map<UUID, Lifecycle> lifecycles = new HashMap<>();
     private int maxActiveDisplayEntities = Config.DEFAULT_MAX_ACTIVE_DISPLAY_ENTITIES;
 
     public interface Lifecycle {
@@ -110,14 +110,13 @@ public final class PlaybackEngine implements ConfigListener {
             session = new PlaybackSession(UUID.randomUUID(), request.level().dimension(), request.playbackId(), emote.id(),
                 nodes, timeline, request.actors());
             session.bindCallbacks(bindings, segmentBindings, EmoteMod.SERVER.getTickCount());
-            this.sessionRegistry.register(session);
-            this.lifecycles.put(session.sessionId(), request.lifecycle());
+            register(session, request.lifecycle());
             request.lifecycle().onStarted(session);
-            if (this.sessionRegistry.contains(session)) session.startPlayback();
+            if (contains(session)) session.startPlayback();
             return new StartResult.Success(session);
         } catch (RuntimeException exception) {
             EmoteMod.LOGGER.warn("Failed to start emote {}", emote.id(), exception);
-            if (session != null && this.sessionRegistry.contains(session)) {
+            if (session != null && contains(session)) {
                 stop(session, PlaybackStopReason.ERROR);
             } else if (session == null && nodes != null) {
                 this.entityController.remove(request.level(), nodes);
@@ -126,19 +125,39 @@ public final class PlaybackEngine implements ConfigListener {
         }
     }
 
-    public @Nullable PlaybackSession findSession(UUID sessionId) { return this.sessionRegistry.findSession(sessionId); }
-    public boolean contains(PlaybackSession session) { return this.sessionRegistry.contains(session); }
+    record ActivePlayback(PlaybackSession session, Lifecycle lifecycle) {}
+
+    void register(PlaybackSession session, Lifecycle lifecycle) {
+        if (this.activePlaybacks.putIfAbsent(session.sessionId(), new ActivePlayback(session, lifecycle)) != null) {
+            throw new IllegalStateException("Playback session is already registered: " + session.sessionId());
+        }
+        this.activeDisplayEntities += session.nodes().displayEntityCount();
+    }
+
+    @Nullable ActivePlayback remove(PlaybackSession session) {
+        ActivePlayback playback = this.activePlaybacks.get(session.sessionId());
+        if (playback == null || playback.session() != session || !this.activePlaybacks.remove(session.sessionId(), playback)) return null;
+        this.activeDisplayEntities -= session.nodes().displayEntityCount();
+        return playback;
+    }
+
+    public @Nullable PlaybackSession findSession(UUID sessionId) {
+        ActivePlayback playback = this.activePlaybacks.get(sessionId);
+        return playback == null ? null : playback.session();
+    }
+    public boolean contains(PlaybackSession session) { return findSession(session.sessionId()) == session; }
 
     public void tick() {
         this.stressTest.tick();
-        for (PlaybackSession session : List.copyOf(this.sessionRegistry.sessions())) {
+        for (ActivePlayback playback : List.copyOf(this.activePlaybacks.values())) {
+            PlaybackSession session = playback.session();
             if (!contains(session)) continue;
             PlaybackStopReason reason = null;
             try {
-                reason = this.lifecycles.get(session.sessionId()).beforeTick(session);
+                reason = playback.lifecycle().beforeTick(session);
                 if (!contains(session)) continue;
                 if (reason == null && session.tick(EmoteMod.SERVER.getTickCount())) {
-                    this.lifecycles.get(session.sessionId()).prepareFrame(session);
+                    playback.lifecycle().prepareFrame(session);
                     if (!contains(session)) continue;
                     session.animation().restoreDeferredVisibility();
                     var result = session.animation().advance();
@@ -156,9 +175,9 @@ public final class PlaybackEngine implements ConfigListener {
     }
 
     public @Nullable PlaybackSession stop(PlaybackSession session, PlaybackStopReason reason) {
-        if (!this.sessionRegistry.remove(session)) return null;
-        if (!session.beginClose(reason)) return null;
-        Lifecycle lifecycle = this.lifecycles.remove(session.sessionId());
+        ActivePlayback playback = remove(session);
+        if (playback == null || !session.beginClose(reason)) return null;
+        Lifecycle lifecycle = playback.lifecycle();
         try { lifecycle.onClosing(session); }
         catch (RuntimeException exception) { EmoteMod.LOGGER.warn("Failed to notify emote {} closing", session.id(), exception); }
         Runnable cleanup = () -> finishCleanup(session, lifecycle, reason);
@@ -186,17 +205,18 @@ public final class PlaybackEngine implements ConfigListener {
     public void stopAll() { stopAll(PlaybackStopReason.MANUAL); }
     public void stopAll(PlaybackStopReason reason) {
         this.stressTest.stop();
-        for (var session : List.copyOf(this.sessionRegistry.sessions())) stop(session, reason);
+        for (var playback : List.copyOf(this.activePlaybacks.values())) stop(playback.session(), reason);
     }
     public void stopById(String id) { stopById(id, PlaybackStopReason.EMOTE_REMOVED); }
     public void stopById(String id, PlaybackStopReason reason) {
         this.stressTest.stopById(id);
-        for (var session : List.copyOf(this.sessionRegistry.sessions())) {
+        for (var playback : List.copyOf(this.activePlaybacks.values())) {
+            PlaybackSession session = playback.session();
             if (session.id().equals(id) || session.animationId().equals(id)) stop(session, reason);
         }
     }
-    public int activeDisplayEntityCount() { return this.stressTest.displayEntityCount() + this.sessionRegistry.activeDisplayEntityCount(); }
-    public int activeSessionCount() { return this.sessionRegistry.activeSessionCount(); }
+    public int activeDisplayEntityCount() { return this.stressTest.displayEntityCount() + this.activeDisplayEntities; }
+    public int activeSessionCount() { return this.activePlaybacks.size(); }
 
     public PlaybackStressTest.StartResult startStressTest(
         ServerLevel level,
