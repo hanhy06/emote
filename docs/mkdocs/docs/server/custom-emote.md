@@ -25,6 +25,8 @@ Select **Choose animation files** in the converter and open one or more source p
 
 In **Review**, select model parts and verify their player-skin assignments. You can reassign any parts that were detected incorrectly.
 
+The preview has limited support for Molang and does not evaluate dynamic NBT values, so it may differ from in-game playback.
+
 In **Settings**, configure the ID, name, description, and playback behavior. The ID must use the `namespace:path` format and must not duplicate another emote on the server.
 
 When the configuration is complete, use **Export** to download the Animation JSON. To connect multiple animations as one emote, download every Animation JSON together with the Sequence file.

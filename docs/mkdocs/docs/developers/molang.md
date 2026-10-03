@@ -166,11 +166,9 @@ Registered query functions are available in animation programs, vector and visib
 
 Item selectors accept `main_hand`, `off_hand`, `slot.weapon`, `slot.weapon.mainhand`, `slot.weapon.offhand`, and `slot.armor.head`, `slot.armor.chest`, `slot.armor.legs`, or `slot.armor.feet`. Numeric hand selector `0` means main hand and `1` means off hand. Scalar `q.is_item_equipped` and `q.item_is_charged` remain available as main-hand shortcuts.
 
-## Validation and preview
+## Validation
 
 Each Molang source string is limited to 16,384 characters. Invalid syntax, unsupported query names, query assignments, and persistent-variable assignments in track values reject the Animation during loading. A numeric value that evaluates to a non-finite number stops playback as a runtime failure. A dynamic NBT value also fails at runtime if it does not return a string containing valid compound SNBT or violates the NBT track's field restrictions.
-
-The web converter preserves the original schema 4 Molang source when exporting. Its preview evaluates deterministic expressions with synthetic player state: `q.is_on_ground` and `q.is_emoting` are `1`, while the other player-state queries and player-dependent query functions are `0`. General query functions such as `q.any` and `q.in_range` are evaluated normally. Dynamic NBT values are preserved for export but are not evaluated by the preview, which falls back to the Create pose. If another expression cannot be evaluated safely, export remains available and the preview also falls back to the Create pose.
 
 ## Current limitations
 
