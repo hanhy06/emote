@@ -38,7 +38,7 @@ A Minecraft time value such as `5s` is subtracted from the Emote's base cooldown
 Permission entries are checked from top to bottom. The first entry that matches the Emote, belongs to the player, and defines `cooldown` is used. Entries without `cooldown` are skipped, and the base cooldown is unchanged when no matching entry defines one.
 
 !!! tip "Time units"
-    Emote uses Minecraft time format.`1s` equals `20t`.
+    Emote uses Minecraft time format. `1s` equals `20t`.
     
     `s`: seconds<br>
     `t` or omitted: ticks<br>
