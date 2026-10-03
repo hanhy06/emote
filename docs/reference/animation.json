@@ -1,15 +1,19 @@
 {
   "type": "animation",
   "schema_version": 4,
+  "target_minecraft_version": "26.3",
   "id": "emote:format_reference",
   "metadata": {
     "name": "Format Reference",
-    "description": "Reference emote containing every runtime feature supported by schema 4."
+    "description": "Schema 4 format reference. Register example:animation before playback to use the callback.",
+    "author": "Example author",
+    "license": "Apache-2.0"
   },
   "settings": {
     "standalone": true,
     "cooldown": "0t",
     "rotation_deadzone": 50.0,
+    "display_interpolation": "1t",
     "player": {
       "hidden": true,
       "stop_conditions": {
@@ -28,6 +32,9 @@
       "loop_delay": "0t"
     }
   },
+  "callbacks": [
+    {"name": "example:animation", "payload": "format_reference"}
+  ],
   "molang": {
     "initialize": "v.wave_scale = 1; v.caption_visible = 0;",
     "tick": "v.wave_scale = 1 + math.sin(q.anim_time * 180) * 0.05; v.caption_visible = q.anim_time >= 2;"
