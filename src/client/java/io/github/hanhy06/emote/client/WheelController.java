@@ -45,7 +45,7 @@ public class WheelController {
             return;
         }
 
-        client.gui.setScreen(new WheelScreen(this, getShortcutEmotes(), findInitialPageIndex(), keyMapping));
+        client.gui.setScreen(new WheelScreen(this, this.shortcutSettings.selectedEmotes(), findInitialPageIndex(), keyMapping));
     }
 
     public void play(EmoteSummary emoteSummary) {
@@ -62,40 +62,8 @@ public class WheelController {
         Minecraft.getInstance().gui.setScreen(new WheelShortcutScreen(this));
     }
 
-    public List<EmoteSummary> getShortcutEmotes() {
-        return this.shortcutSettings.selectedEmotes();
-    }
-
-    public List<EmoteSummary> getAvailableShortcutEmotes() {
-        return this.shortcutSettings.availableEmotes();
-    }
-
-    List<String> getShortcutIds() {
-        return this.shortcutSettings.selectedIds();
-    }
-
-    void restoreShortcuts(List<String> ids) {
-        this.shortcutSettings.replaceSelectedIds(ids);
-    }
-
-    public void addShortcut(String id) {
-        this.shortcutSettings.add(id);
-    }
-
-    public void removeShortcut(String id) {
-        this.shortcutSettings.remove(id);
-    }
-
-    public void moveShortcutUp(String id) {
-        this.shortcutSettings.moveUp(id);
-    }
-
-    public void moveShortcutDown(String id) {
-        this.shortcutSettings.moveDown(id);
-    }
-
-    public void moveShortcutTo(String id, int targetIndex) {
-        this.shortcutSettings.moveToIndex(id, targetIndex);
+    public WheelShortcutSettings shortcuts() {
+        return this.shortcutSettings;
     }
 
     private void tickBinding(Minecraft client, KeyMapping keyMapping) {
@@ -109,7 +77,7 @@ public class WheelController {
     }
 
     private int findInitialPageIndex() {
-        List<EmoteSummary> shortcuts = getShortcutEmotes();
+        List<EmoteSummary> shortcuts = this.shortcutSettings.selectedEmotes();
         if (this.lastSelectedId.isEmpty() || shortcuts.isEmpty()) {
             return 0;
         }

@@ -104,7 +104,7 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
             return;
         }
 
-        this.controller.moveShortcutTo(entry.emote.id(), targetIndex);
+        this.controller.shortcuts().moveToIndex(entry.emote.id(), targetIndex);
         while (currentIndex < targetIndex) {
             swap(currentIndex, currentIndex + 1);
             currentIndex++;
@@ -163,9 +163,9 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
 
             AbstractWidget.playButtonClickSound(minecraft.getSoundManager());
             if (!selectedList) {
-                controller.addShortcut(this.emote.id());
+                controller.shortcuts().add(this.emote.id());
             } else {
-                controller.removeShortcut(this.emote.id());
+                controller.shortcuts().remove(this.emote.id());
             }
             screen.refreshLists();
             return true;
@@ -190,9 +190,9 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
             if (event.isConfirmation()) {
                 AbstractWidget.playButtonClickSound(minecraft.getSoundManager());
                 if (selectedList) {
-                    controller.removeShortcut(this.emote.id());
+                    controller.shortcuts().remove(this.emote.id());
                 } else {
-                    controller.addShortcut(this.emote.id());
+                    controller.shortcuts().add(this.emote.id());
                 }
                 screen.refreshLists();
                 return true;

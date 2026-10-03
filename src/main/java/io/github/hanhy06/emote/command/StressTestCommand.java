@@ -26,7 +26,7 @@ import net.minecraft.server.level.ServerPlayer;
 import java.util.List;
 import java.util.Locale;
 
-import static io.github.hanhy06.emote.playback.PlaybackEngine.*;
+import static io.github.hanhy06.emote.playback.stress.PlaybackStressTest.*;
 
 final class StressTestCommand {
     private static final DynamicCommandExceptionType INVALID_LOAD = new DynamicCommandExceptionType(value -> Component.literal(
@@ -53,8 +53,8 @@ final class StressTestCommand {
                 .executes(context -> startStressTest(
                     context.getSource(),
                     IntegerArgumentType.getInteger(context, "time"),
-                    new StressLoad(DEFAULT_STRESS_TEST_INSTANCE_COUNT, LoadUnit.INSTANCES),
-                    DEFAULT_STRESS_TEST_PACKET_FANOUT
+                    new StressLoad(DEFAULT_INSTANCE_COUNT, LoadUnit.INSTANCES),
+                    DEFAULT_PACKET_FANOUT
                 ))
                 .then(Commands.argument("load", StringArgumentType.word())
                     .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
@@ -65,11 +65,11 @@ final class StressTestCommand {
                         context.getSource(),
                         IntegerArgumentType.getInteger(context, "time"),
                         parseLoad(StringArgumentType.getString(context, "load")),
-                        DEFAULT_STRESS_TEST_PACKET_FANOUT
+                        DEFAULT_PACKET_FANOUT
                     ))
                     .then(Commands.argument(
                             "packets",
-                            IntegerArgumentType.integer(0, MAX_STRESS_TEST_PACKET_FANOUT)
+                            IntegerArgumentType.integer(0, MAX_PACKET_FANOUT)
                         )
                         .executes(context -> startStressTest(
                             context.getSource(),
@@ -103,7 +103,7 @@ final class StressTestCommand {
         PlaybackStressTest.StartResult startResult;
         try {
             startResult = load.unit() == LoadUnit.INSTANCES
-                ? this.playerPlaybackManager.engine().startStressTest(
+                ? this.playerPlaybackManager.engine().stressTest().start(
                     source.getLevel(),
                     source.getPosition(),
                     source.getRotation().y,
@@ -114,7 +114,7 @@ final class StressTestCommand {
                     preparedSkin,
                     report -> sendStressTestReport(source, report)
                 )
-                : this.playerPlaybackManager.engine().startStressTestByDisplayCount(
+                : this.playerPlaybackManager.engine().stressTest().startByDisplayCount(
                     source.getLevel(),
                     source.getPosition(),
                     source.getRotation().y,
@@ -159,7 +159,7 @@ final class StressTestCommand {
         } catch (NumberFormatException exception) {
             throw INVALID_LOAD.create(input);
         }
-        if (amount < 1 || (unit == LoadUnit.INSTANCES && amount > MAX_STRESS_TEST_INSTANCE_COUNT)) {
+        if (amount < 1 || (unit == LoadUnit.INSTANCES && amount > MAX_INSTANCE_COUNT)) {
             throw INVALID_LOAD.create(input);
         }
         return new StressLoad(amount, unit);
@@ -174,7 +174,7 @@ final class StressTestCommand {
     }
 
     private int stopStressTest(CommandSourceStack source) {
-        PlaybackStressTestReport report = this.playerPlaybackManager.engine().stopStressTest();
+        PlaybackStressTestReport report = this.playerPlaybackManager.engine().stressTest().stop();
         if (report == null) {
             source.sendFailure(Component.literal("No emote stress test is running."));
             return 0;

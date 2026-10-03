@@ -26,8 +26,8 @@ import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;
 
-import static io.github.hanhy06.emote.playback.PlaybackEngine.DEFAULT_STRESS_TEST_PACKET_FANOUT;
-import static io.github.hanhy06.emote.playback.PlaybackEngine.MAX_STRESS_TEST_PACKET_FANOUT;
+import static io.github.hanhy06.emote.playback.stress.PlaybackStressTest.DEFAULT_PACKET_FANOUT;
+import static io.github.hanhy06.emote.playback.stress.PlaybackStressTest.MAX_PACKET_FANOUT;
 import static org.junit.jupiter.api.Assertions.*;
 
 final class AdminCommandTest {
@@ -154,8 +154,8 @@ final class AdminCommandTest {
         var packetsType = (IntegerArgumentType) packets.getType();
         assertEquals(0, packetsType.getMinimum());
         assertEquals(500, packetsType.getMaximum());
-        assertEquals(MAX_STRESS_TEST_PACKET_FANOUT, packetsType.getMaximum());
-        assertEquals(20, DEFAULT_STRESS_TEST_PACKET_FANOUT);
+        assertEquals(MAX_PACKET_FANOUT, packetsType.getMaximum());
+        assertEquals(20, DEFAULT_PACKET_FANOUT);
     }
 
     @Test

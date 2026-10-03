@@ -41,7 +41,7 @@ public final class UserCommand {
         this.playService = playService;
     }
 
-    LiteralArgumentBuilder<CommandSourceStack> createRoot() {
+    public LiteralArgumentBuilder<CommandSourceStack> createRoot() {
         return Commands.literal("emote")
             .executes(context -> openMenu(context.getSource()))
             .then(Commands.argument("page", IntegerArgumentType.integer(1))

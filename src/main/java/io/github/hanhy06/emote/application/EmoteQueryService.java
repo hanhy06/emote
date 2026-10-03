@@ -23,7 +23,7 @@ public class EmoteQueryService {
 
     public List<EmoteSummary> getAll(ServerPlayer player) {
         return this.emoteCatalog.emotes().stream()
-            .filter(emote -> isVisible(player, emote))
+            .filter(emote -> this.visibilityChecker.isVisible(player, emote))
             .sorted(Comparator.comparing(PlayableEmote::name).thenComparing(PlayableEmote::id))
             .map(emote -> new EmoteSummary(emote.id(), emote.name(), emote.description(), emote.tags()))
             .toList();
@@ -63,7 +63,7 @@ public class EmoteQueryService {
     }
 
     public List<String> getPlayableIds(ServerPlayer player) {
-        return collectPlayIds(emote -> isVisible(player, emote));
+        return collectPlayIds(emote -> this.visibilityChecker.isVisible(player, emote));
     }
 
     private List<String> collectPlayIds(Predicate<PlayableEmote> filter) {
@@ -74,10 +74,6 @@ public class EmoteQueryService {
             }
         }
         return List.copyOf(ids);
-    }
-
-    private boolean isVisible(ServerPlayer player, PlayableEmote emote) {
-        return this.visibilityChecker.isVisible(player, emote);
     }
 
     private static int searchRank(EmoteSummary emote, SearchQuery query) {

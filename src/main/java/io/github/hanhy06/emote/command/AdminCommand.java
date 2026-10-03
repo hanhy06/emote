@@ -54,7 +54,7 @@ public final class AdminCommand {
         this.stressTestCommand = new StressTestCommand(emoteCatalog, playerPlaybackManager, permissionService);
     }
 
-    void attachTo(LiteralArgumentBuilder<CommandSourceStack> root) {
+    public void attachTo(LiteralArgumentBuilder<CommandSourceStack> root) {
         root.then(createInfoCommand())
             .then(createListCommand())
             .then(createReloadCommand())

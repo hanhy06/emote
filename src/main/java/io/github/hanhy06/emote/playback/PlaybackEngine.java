@@ -14,7 +14,6 @@ import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 import io.github.hanhy06.emote.playback.runtime.RootTransform;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
 import io.github.hanhy06.emote.playback.stress.PlaybackStressTest;
-import io.github.hanhy06.emote.playback.stress.PlaybackStressTestReport;
 import io.github.hanhy06.emote.playback.timeline.EventCommandExecutor;
 import io.github.hanhy06.emote.skin.model.PreparedPlayerSkin;
 import net.minecraft.commands.CommandSourceStack;
@@ -24,13 +23,8 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 import java.util.*;
-import java.util.function.Consumer;
 
 public final class PlaybackEngine implements ConfigListener {
-    public static final int DEFAULT_STRESS_TEST_INSTANCE_COUNT = PlaybackStressTest.DEFAULT_INSTANCE_COUNT;
-    public static final int MAX_STRESS_TEST_INSTANCE_COUNT = PlaybackStressTest.MAX_INSTANCE_COUNT;
-    public static final int DEFAULT_STRESS_TEST_PACKET_FANOUT = PlaybackStressTest.DEFAULT_PACKET_FANOUT;
-    public static final int MAX_STRESS_TEST_PACKET_FANOUT = PlaybackStressTest.MAX_PACKET_FANOUT;
     private final Map<UUID, ActivePlayback> activePlaybacks = new HashMap<>();
     private int activeDisplayEntities;
     private final PlaybackEntityController entityController = new PlaybackEntityController();
@@ -260,57 +254,7 @@ public final class PlaybackEngine implements ConfigListener {
     public int activeDisplayEntityCount() { return this.stressTest.displayEntityCount() + this.activeDisplayEntities; }
     public int activeSessionCount() { return this.activePlaybacks.size(); }
 
-    public PlaybackStressTest.StartResult startStressTest(
-        ServerLevel level,
-        Vec3 origin,
-        float yaw,
-        List<PreparedEmote> emotes,
-        int durationTicks,
-        int instanceCount,
-        int packetFanout,
-        @Nullable PreparedPlayerSkin preparedSkin,
-        Consumer<PlaybackStressTestReport> completion
-    ) {
-        return this.stressTest.start(
-            level,
-            origin,
-            yaw,
-            emotes,
-            durationTicks,
-            instanceCount,
-            packetFanout,
-            preparedSkin,
-            completion
-        );
-    }
-
-    public PlaybackStressTest.StartResult startStressTestByDisplayCount(
-        ServerLevel level,
-        Vec3 origin,
-        float yaw,
-        List<PreparedEmote> emotes,
-        int durationTicks,
-        int targetDisplayEntityCount,
-        int packetFanout,
-        @Nullable PreparedPlayerSkin preparedSkin,
-        Consumer<PlaybackStressTestReport> completion
-    ) {
-        return this.stressTest.startByDisplayCount(
-            level,
-            origin,
-            yaw,
-            emotes,
-            durationTicks,
-            targetDisplayEntityCount,
-            packetFanout,
-            preparedSkin,
-            completion
-        );
-    }
-
-    public @Nullable PlaybackStressTestReport stopStressTest() {
-        return this.stressTest.stop();
-    }
+    public PlaybackStressTest stressTest() { return this.stressTest; }
 
     static boolean exceedsDisplayEntityLimit(int projectedDisplayEntities, int limit) {
         return limit > 0 && projectedDisplayEntities > limit;
