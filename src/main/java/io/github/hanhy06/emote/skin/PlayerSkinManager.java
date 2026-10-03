@@ -6,7 +6,6 @@ import io.github.hanhy06.emote.config.ConfigListener;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
-import io.github.hanhy06.emote.skin.model.PreparedPlayerSkin;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -27,7 +26,7 @@ public class PlayerSkinManager implements ConfigListener {
     private final Map<String, CompletableFuture<PlayerSkinSource>> namedSources = new HashMap<>();
     private final List<Runnable> defaultReadyListeners = new CopyOnWriteArrayList<>();
     private final List<Consumer<UUID>> readyListeners = new CopyOnWriteArrayList<>();
-    private final Map<UUID, SkinIdentity> connectedSkins = new HashMap<>();
+    private final Map<UUID, PlayerSkinSource.Key> connectedSkins = new HashMap<>();
     private Set<PlayerSkinRegion> modelRegions = Set.of();
     private long sourceGeneration;
 
@@ -136,11 +135,11 @@ public class PlayerSkinManager implements ConfigListener {
         if (fallback == null || preparation.state() == PlayerSkinPreparation.State.READY || preparation.preparing()) return preparation;
         Map<PlayerSkinRegion, String> merged = new HashMap<>();
         for (PlayerSkinRegion region : regions) {
-            String texture = fallback.findTextureUrl(region);
+            String texture = fallback.get(region);
             if (texture != null) merged.put(region, texture);
         }
-        if (preparation.preparedPlayerSkin() != null) merged.putAll(preparation.preparedPlayerSkin().textureUrlMap());
-        return new PlayerSkinPreparation(merged.isEmpty() ? null : new PreparedPlayerSkin(merged),
+        if (preparation.textures() != null) merged.putAll(preparation.textures());
+        return new PlayerSkinPreparation(merged.isEmpty() ? null : Map.copyOf(merged),
             preparation.state(), preparation.progressPercent());
     }
 
@@ -158,8 +157,8 @@ public class PlayerSkinManager implements ConfigListener {
         if (source == null || this.modelRegions.isEmpty()) {
             return;
         }
-        SkinIdentity identity = new SkinIdentity(source.textureHash(), source.slimModel());
-        SkinIdentity previous = this.connectedSkins.put(source.playerUuid(), identity);
+        PlayerSkinSource.Key identity = new PlayerSkinSource.Key(source.textureHash(), source.slimModel());
+        PlayerSkinSource.Key previous = this.connectedSkins.put(source.playerUuid(), identity);
         if (identity.equals(previous)) {
             return;
         }
@@ -227,7 +226,5 @@ public class PlayerSkinManager implements ConfigListener {
         }
     }
 
-    private record SkinIdentity(String textureHash, boolean slimModel) {
-    }
 
 }

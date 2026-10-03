@@ -16,7 +16,7 @@ public final class SkinBindingCompiler {
             if (!(entry.getValue() instanceof EmoteAnimation.ItemNode itemNode) || itemNode.skin() == null) {
                 continue;
             }
-            PlayerSkinPart skinPart = convert(itemNode.skin().part());
+            PlayerSkinPart skinPart = itemNode.skin().part();
             byPart.computeIfAbsent(skinPart, ignored -> new ArrayList<>()).add(new RawPart(
                 entry.getKey(),
                 itemNode.skin().order(),
@@ -85,17 +85,6 @@ public final class SkinBindingCompiler {
             segmentStart = segmentEnd;
         }
         return result;
-    }
-
-    private PlayerSkinPart convert(EmoteAnimation.SkinPart part) {
-        return switch (part) {
-            case HEAD -> PlayerSkinPart.HEAD;
-            case BODY -> PlayerSkinPart.BODY;
-            case LEFT_ARM -> PlayerSkinPart.LEFT_ARM;
-            case RIGHT_ARM -> PlayerSkinPart.RIGHT_ARM;
-            case LEFT_LEG -> PlayerSkinPart.LEFT_LEG;
-            case RIGHT_LEG -> PlayerSkinPart.RIGHT_LEG;
-        };
     }
 
     private record RawPart(String nodeId, int order, double localYScale) {

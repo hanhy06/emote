@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.content;
 
+import net.minecraft.world.phys.Vec3;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
@@ -283,9 +284,9 @@ public final class PreparedEmote implements PlayableEmote {
         }
 
         public static PreparedTransform create(EmoteAnimation.LocalTransform transform, boolean preserveMatrix) {
-            EmoteAnimation.Vec3 position = transform.position();
-            EmoteAnimation.Vec3 rotation = transform.rotation();
-            EmoteAnimation.Vec3 scale = transform.scale();
+            Vec3 position = transform.position();
+            Vec3 rotation = transform.rotation();
+            Vec3 scale = transform.scale();
             Matrix4f matrix = new Matrix4f()
                 .translate((float) position.x(), (float) position.y(), (float) position.z())
                 .rotate(new Quaternionf().rotationXYZ(

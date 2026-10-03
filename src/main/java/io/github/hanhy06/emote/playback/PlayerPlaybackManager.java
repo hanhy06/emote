@@ -141,7 +141,7 @@ public final class PlayerPlaybackManager {
         };
         var result = this.engine.start(new PlaybackEngine.Request(player.level(), root, emote, definition.id(),
             Map.of("actor", player), PlayerMolangQueries.forPlayer(player), player.createCommandSourceStack(),
-            preparation.preparedPlayerSkin(), lifecycle, placement.mode()), findActive(player.getUUID()));
+            preparation.textures(), lifecycle, placement.mode()), findActive(player.getUUID()));
         return switch (result) {
             case PlaybackEngine.StartResult.Success success -> new PlayResult.Success(success.session().playbackInfo());
             case PlaybackEngine.StartResult.Failure failure -> PlayResult.failure(failure.message());
@@ -173,7 +173,7 @@ public final class PlayerPlaybackManager {
         if (session == null || player == null) return;
         var bindings = playerState(playerId).skinBindings();
         var preparation = this.skins.preparePlayerSkin(player, bindings);
-        this.engine.entities().applySkin(session.nodes(), bindings, preparation.preparedPlayerSkin());
+        this.engine.entities().applySkin(session.nodes(), bindings, preparation.textures());
     }
 
     private static void hidePlayer(ServerPlayer player, PlayerPlaybackState playerState) {

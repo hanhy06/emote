@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.playback.stress;
 
+import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.PreparedEmote;
@@ -7,7 +8,6 @@ import io.github.hanhy06.emote.playback.PlaybackPlayer;
 import io.github.hanhy06.emote.playback.runtime.EntityTimelineTarget;
 import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
-import io.github.hanhy06.emote.skin.model.PreparedPlayerSkin;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -42,7 +42,7 @@ public final class PlaybackStressTest {
         int durationTicks,
         int instanceCount,
         int packetFanout,
-        @Nullable PreparedPlayerSkin preparedSkin,
+        @Nullable Map<PlayerSkinRegion, String> preparedSkin,
         Consumer<PlaybackStressTestReport> completion
     ) {
         if (emotes.isEmpty()) {
@@ -71,7 +71,7 @@ public final class PlaybackStressTest {
         int durationTicks,
         int targetDisplayEntityCount,
         int packetFanout,
-        @Nullable PreparedPlayerSkin preparedSkin,
+        @Nullable Map<PlayerSkinRegion, String> preparedSkin,
         Consumer<PlaybackStressTestReport> completion
     ) {
         if (emotes.isEmpty()) {
@@ -95,7 +95,7 @@ public final class PlaybackStressTest {
         List<PreparedEmote> selection,
         int durationTicks,
         int packetFanout,
-        @Nullable PreparedPlayerSkin preparedSkin,
+        @Nullable Map<PlayerSkinRegion, String> preparedSkin,
         Consumer<PlaybackStressTestReport> completion,
         Random random
     ) {

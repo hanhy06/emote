@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.playback;
 
+import net.minecraft.world.phys.Vec3;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
@@ -109,7 +110,7 @@ class AnimationEventTest {
     private EmoteAnimation.Event event(String command) {
         return new EmoteAnimation.Event(
             new EmoteAnimation.CommandSource(EmoteAnimation.SourceType.SERVER, null),
-            new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, EmoteAnimation.Vec3.ZERO),
+            new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, Vec3.ZERO),
             List.of(command)
         );
     }

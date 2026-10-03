@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.skin;
 
+import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
 import com.google.gson.*;
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.config.JsonFileStore;
@@ -29,7 +30,7 @@ public final class SkinCache {
     private static final Pattern CONTENT_HASH_PATTERN = Pattern.compile("[0-9a-f]{64}");
 
     private final Path skinDirPath;
-    private final BoundedCache<SkinCacheKey, Map<PlayerSkinRegion, String>> skinTextures =
+    private final BoundedCache<PlayerSkinSource.Key, Map<PlayerSkinRegion, String>> skinTextures =
         new BoundedCache<>(SKIN_MEMORY_CACHE_MAX_ENTRIES);
     private final BoundedCache<String, String> contentTextureUrls =
         new BoundedCache<>(CONTENT_MEMORY_CACHE_MAX_ENTRIES);
@@ -56,7 +57,7 @@ public final class SkinCache {
     }
 
     public synchronized Map<PlayerSkinRegion, String> load(String textureHash, boolean slimModel) {
-        SkinCacheKey cacheKey = new SkinCacheKey(textureHash, slimModel);
+        PlayerSkinSource.Key cacheKey = new PlayerSkinSource.Key(Objects.requireNonNull(textureHash, "textureHash").toLowerCase(Locale.ROOT), slimModel);
         Path filePath = resolveFilePath(textureHash, slimModel);
         Map<PlayerSkinRegion, String> cached = this.skinTextures.get(cacheKey);
         if (cached != null) {
@@ -113,7 +114,7 @@ public final class SkinCache {
         JsonObject skinJson = createSkinJson(textureHash, slimModel, savedTextureUrls);
         try {
             JsonFileStore.writeObjectAtomically(filePath, skinJson, this.gson);
-            this.skinTextures.put(new SkinCacheKey(textureHash, slimModel), savedTextureUrls);
+            this.skinTextures.put(new PlayerSkinSource.Key(Objects.requireNonNull(textureHash, "textureHash").toLowerCase(Locale.ROOT), slimModel), savedTextureUrls);
             this.refreshedAccessTimes.put(filePath, System.currentTimeMillis());
         } catch (IOException exception) {
             EmoteMod.LOGGER.warn("Failed to write skin texture cache: {}", filePath, exception);
@@ -373,7 +374,7 @@ public final class SkinCache {
     }
 
     private Map<PlayerSkinRegion, String> cacheSkinTextures(
-        SkinCacheKey cacheKey,
+        PlayerSkinSource.Key cacheKey,
         Map<PlayerSkinRegion, String> textureUrls
     ) {
         Map<PlayerSkinRegion, String> existing = this.skinTextures.putIfAbsent(cacheKey, textureUrls);
@@ -584,11 +585,6 @@ public final class SkinCache {
         }
     }
 
-    private record SkinCacheKey(String textureHash, boolean slimModel) {
-        private SkinCacheKey {
-            textureHash = Objects.requireNonNull(textureHash, "textureHash").toLowerCase(Locale.ROOT);
-        }
-    }
 
     private static final class BoundedCache<K, V> {
         private final int maximumSize;

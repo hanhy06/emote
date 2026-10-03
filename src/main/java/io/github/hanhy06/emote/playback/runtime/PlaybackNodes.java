@@ -1,15 +1,14 @@
 package io.github.hanhy06.emote.playback.runtime;
 
+import io.github.hanhy06.emote.content.DisplayData;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4fc;
 
@@ -105,7 +104,7 @@ public final class PlaybackNodes {
         private final EmoteAnimation.Node node;
         private final Display entity;
 
-        private DisplayContent displayContent;
+        private DisplayData displayContent;
         private CompoundTag initialEntityData = new CompoundTag();
         private final Set<String> modifiedNbtFields = new HashSet<>();
 
@@ -113,7 +112,7 @@ public final class PlaybackNodes {
             String id,
             EmoteAnimation.Node node,
             Display entity,
-            DisplayContent displayContent
+            DisplayData displayContent
         ) {
             this.id = Objects.requireNonNull(id, "id");
             this.node = Objects.requireNonNull(node, "node");
@@ -133,18 +132,18 @@ public final class PlaybackNodes {
             return this.entity;
         }
 
-        public DisplayContent displayContent() {
+        public DisplayData displayContent() {
             return this.displayContent;
         }
 
         public void setItemStack(ItemStack itemStack) {
-            if (!(this.displayContent instanceof ItemContent)) {
+            if (!(this.displayContent instanceof DisplayData.Item item)) {
                 throw new IllegalStateException("Node is not an item display: " + this.id);
             }
-            this.displayContent = new ItemContent(Objects.requireNonNull(itemStack, "itemStack"));
+            this.displayContent = new DisplayData.Item(Objects.requireNonNull(itemStack, "itemStack"), item.itemDisplay());
         }
 
-        void setDisplayContent(DisplayContent displayContent) {
+        void setDisplayContent(DisplayData displayContent) {
             this.displayContent = Objects.requireNonNull(displayContent, "displayContent");
         }
 
@@ -184,29 +183,4 @@ public final class PlaybackNodes {
         }
     }
 
-    public sealed interface DisplayContent permits ItemContent, BlockContent, TextContent {
-    }
-
-    public record ItemContent(ItemStack itemStack) implements DisplayContent {
-        public ItemContent {
-            itemStack = itemStack.copy();
-        }
-
-        @Override
-        public ItemStack itemStack() {
-            return this.itemStack.copy();
-        }
-    }
-
-    public record BlockContent(BlockState blockState) implements DisplayContent {
-        public BlockContent {
-            Objects.requireNonNull(blockState, "blockState");
-        }
-    }
-
-    public record TextContent(Component text) implements DisplayContent {
-        public TextContent {
-            Objects.requireNonNull(text, "text");
-        }
-    }
 }

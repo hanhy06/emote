@@ -22,7 +22,7 @@ final class SequenceNodeLayout {
             .findFirst()
             .orElseThrow(() -> new IllegalArgumentException("Sequence must reference at least one animation"));
         Map<String, EmoteAnimation.Node> nodes = new LinkedHashMap<>();
-        Map<String, PreparedDisplayData> preparedDisplayData = new LinkedHashMap<>();
+        Map<String, DisplayData> preparedDisplayData = new LinkedHashMap<>();
         for (PreparedSequence.Step step : steps) {
             if (!(step instanceof PreparedSequence.AnimationStep emoteStep)) {
                 continue;
@@ -61,7 +61,7 @@ final class SequenceNodeLayout {
         PreparedEmote first,
         PreparedEmote animation,
         Map<String, EmoteAnimation.Node> nodes,
-        Map<String, PreparedDisplayData> preparedDisplayData
+        Map<String, DisplayData> preparedDisplayData
     ) {
         animation.model().nodes().forEach((nodeId, node) -> {
             EmoteAnimation.Node existing = nodes.putIfAbsent(nodeId, node);
@@ -70,7 +70,7 @@ final class SequenceNodeLayout {
                     "Sequence animations must use compatible nodes: " + first.id() + " and " + animation.id()
                 );
             }
-            PreparedDisplayData prepared = animation.source().preparedDisplayData().get(nodeId);
+            DisplayData prepared = animation.source().preparedDisplayData().get(nodeId);
             if (prepared != null) {
                 preparedDisplayData.putIfAbsent(nodeId, prepared);
             }

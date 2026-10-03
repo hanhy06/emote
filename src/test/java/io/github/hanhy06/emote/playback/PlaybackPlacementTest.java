@@ -163,7 +163,7 @@ class PlaybackPlacementTest {
     }
 
     private static EmoteAnimation.LocalTransform translation(double z) {
-        return new EmoteAnimation.LocalTransform(new EmoteAnimation.Vec3(0, 0, z), EmoteAnimation.Vec3.ZERO, new EmoteAnimation.Vec3(1, 1, 1));
+        return new EmoteAnimation.LocalTransform(new Vec3(0, 0, z), Vec3.ZERO, new Vec3(1, 1, 1));
     }
 
     private record Fixture(PlayerPlaybackManager manager, PlaybackEngine engine, PlaybackSession session, PlayerPlaybackState state, UUID actorId) {}

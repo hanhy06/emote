@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.skin;
 
+import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
+import java.util.Map;
 import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.skin.model.*;
 import org.junit.jupiter.api.Test;
@@ -20,22 +22,22 @@ class PlayerSkinManagerTest {
     void defaultSkinFillsMissingRegionsAfterPersonalCacheAndPreservesPreparationState() {
         PlayerSkinRegion body = new PlayerSkinRegion(PlayerSkinPart.BODY, PlayerSkinSegment.FULL);
         RecordingProvider provider = new RecordingProvider();
-        provider.fallback = new PreparedPlayerSkin(java.util.Map.of(HEAD, "default-head", body, "default-body"));
+        provider.fallback = Map.copyOf(java.util.Map.of(HEAD, "default-head", body, "default-body"));
         PlayerSkinManager manager = new PlayerSkinManager(provider, ignored -> null);
-        PlayerSkinPreparation failed = new PlayerSkinPreparation(new PreparedPlayerSkin(java.util.Map.of(HEAD, "personal-head")),
+        PlayerSkinPreparation failed = new PlayerSkinPreparation(Map.copyOf(java.util.Map.of(HEAD, "personal-head")),
             PlayerSkinPreparation.State.FAILED, 50);
         PlayerSkinPreparation combined = manager.withDefaultSkin(failed, Set.of(HEAD, body));
-        assertEquals("personal-head", combined.preparedPlayerSkin().findTextureUrl(HEAD));
-        assertEquals("default-body", combined.preparedPlayerSkin().findTextureUrl(body));
+        assertEquals("personal-head", combined.textures().get(HEAD));
+        assertEquals("default-body", combined.textures().get(body));
         assertEquals(PlayerSkinPreparation.State.FAILED, combined.state());
         PlayerSkinPreparation preparing = new PlayerSkinPreparation(null, PlayerSkinPreparation.State.PREPARING, 0);
         assertEquals(preparing, manager.withDefaultSkin(preparing, Set.of(HEAD, body)));
         PlayerSkinPreparation missing = manager.preparePlayerSkin(null, List.of(new SkinBinding("head", HEAD)));
-        assertEquals("default-head", missing.preparedPlayerSkin().findTextureUrl(HEAD));
+        assertEquals("default-head", missing.textures().get(HEAD));
         assertEquals(PlayerSkinPreparation.State.UNAVAILABLE, missing.state());
         PlayerSkinManager failedLookup = new PlayerSkinManager(provider, ignored -> { throw new IllegalStateException("API failed"); });
         assertEquals("default-head", failedLookup.preparePlayerSkin(null,
-            List.of(new SkinBinding("head", HEAD))).preparedPlayerSkin().findTextureUrl(HEAD));
+            List.of(new SkinBinding("head", HEAD))).textures().get(HEAD));
     }
 
     @Test
@@ -102,8 +104,8 @@ class PlayerSkinManagerTest {
     }
 
     private static final class RecordingProvider implements PlayerSkinProvider {
-        private PreparedPlayerSkin fallback;
-        @Override public PreparedPlayerSkin defaultSkin() { return this.fallback; }
+        private Map<PlayerSkinRegion, String> fallback;
+        @Override public Map<PlayerSkinRegion, String> defaultSkin() { return this.fallback; }
         private final List<Set<PlayerSkinRegion>> requests = new ArrayList<>();
 
         @Override

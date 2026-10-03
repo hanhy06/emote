@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.content.loader;
 
+import net.minecraft.world.phys.Vec3;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -285,7 +286,7 @@ class AnimationJsonParserTest {
         EmoteAnimation.LocalTransform displayDefault = animation.nodes().get("player_head").transform();
         EmoteAnimation.LocalTransform anchorDefault = animation.nodes().get("effect_anchor").transform();
 
-        assertEquals(new EmoteAnimation.Vec3(4.0D, 5.0D, 6.0D), displayDefault.position());
+        assertEquals(new Vec3(4.0D, 5.0D, 6.0D), displayDefault.position());
         assertEquals(displayDefault, anchorDefault);
     }
 

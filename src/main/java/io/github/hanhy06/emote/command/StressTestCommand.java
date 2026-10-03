@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.command;
 
+import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
+import java.util.Map;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -13,7 +15,6 @@ import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.playback.stress.PlaybackStressTest;
 import io.github.hanhy06.emote.playback.stress.PlaybackStressTestReport;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
-import io.github.hanhy06.emote.skin.model.PreparedPlayerSkin;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -88,7 +89,7 @@ final class StressTestCommand {
             return 0;
         }
 
-        PreparedPlayerSkin preparedSkin = null;
+        Map<PlayerSkinRegion, String> preparedSkin = null;
         if (source.getEntity() instanceof ServerPlayer player) {
             PlayerSkinPreparation skinPreparation = this.playerPlaybackManager.prepareStressTestSkin(player, emotes);
             if (skinPreparation.preparing()) {
@@ -97,7 +98,7 @@ final class StressTestCommand {
                 ));
                 return 0;
             }
-            preparedSkin = skinPreparation.preparedPlayerSkin();
+            preparedSkin = skinPreparation.textures();
         }
 
         PlaybackStressTest.StartResult startResult;

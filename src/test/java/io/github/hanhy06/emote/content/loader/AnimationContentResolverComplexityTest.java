@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.content.loader;
 
+import net.minecraft.world.phys.Vec3;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
@@ -29,7 +30,7 @@ class AnimationContentResolverComplexityTest {
         }
         EmoteAnimation.Event event = new EmoteAnimation.Event(
             new EmoteAnimation.CommandSource(EmoteAnimation.SourceType.SERVER, null),
-            new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, EmoteAnimation.Vec3.ZERO),
+            new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, Vec3.ZERO),
             commands);
         assertDoesNotThrow(() -> AnimationContentResolver.validateComplexity(loaded(
             nodes,

@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.api.animation;
 
+import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
+import net.minecraft.world.phys.Vec3;
 import com.google.gson.JsonElement;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
@@ -167,22 +169,13 @@ public record EmoteAnimation(
 
     }
 
-    public record Skin(SkinPart part, int order) {
+    public record Skin(PlayerSkinPart part, int order) {
         public Skin {
             Objects.requireNonNull(part, "part");
             if (order < 0) {
                 throw new IllegalArgumentException("skin order must not be negative");
             }
         }
-    }
-
-    public enum SkinPart {
-        HEAD,
-        BODY,
-        LEFT_ARM,
-        RIGHT_ARM,
-        LEFT_LEG,
-        RIGHT_LEG
     }
 
     public record Timeline(
@@ -410,10 +403,6 @@ public record EmoteAnimation(
     public enum OriginType {
         ROOT,
         NODE
-    }
-
-    public record Vec3(double x, double y, double z) {
-        public static final Vec3 ZERO = new Vec3(0.0D, 0.0D, 0.0D);
     }
 
     private static CompoundTag copy(CompoundTag tag) {

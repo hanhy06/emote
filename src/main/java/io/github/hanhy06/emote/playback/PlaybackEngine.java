@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.playback;
 
+import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.api.PlaybackPlacement;
@@ -15,7 +16,6 @@ import io.github.hanhy06.emote.playback.runtime.RootTransform;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
 import io.github.hanhy06.emote.playback.stress.PlaybackStressTest;
 import io.github.hanhy06.emote.playback.timeline.EventCommandExecutor;
-import io.github.hanhy06.emote.skin.model.PreparedPlayerSkin;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
@@ -45,7 +45,7 @@ public final class PlaybackEngine implements ConfigListener {
 
     public record Request(ServerLevel level, RootTransform root, PreparedEmote emote, String emoteId,
                           Map<String, Entity> actors, MolangQuerySource queries, @Nullable CommandSourceStack commandSource,
-                          @Nullable PreparedPlayerSkin skin, Lifecycle lifecycle, PlaybackPlacement.Mode placementMode) {
+                          @Nullable Map<PlayerSkinRegion, String> skin, Lifecycle lifecycle, PlaybackPlacement.Mode placementMode) {
         public Request {
             Objects.requireNonNull(level, "level");
             Objects.requireNonNull(root, "root");

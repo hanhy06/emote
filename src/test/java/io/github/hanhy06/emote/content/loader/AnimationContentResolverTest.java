@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.content.loader;
 
+import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import net.minecraft.SharedConstants;
@@ -22,7 +23,7 @@ class AnimationContentResolverTest {
     @Test
     void rejectsSkinMetadataOnNonPlayerHeadItem() {
         EmoteAnimation.ItemNode itemNode = itemNode(new EmoteAnimation.Skin(
-            EmoteAnimation.SkinPart.HEAD,
+            PlayerSkinPart.HEAD,
             0
         ));
 

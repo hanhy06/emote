@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.playback;
 
+import net.minecraft.world.phys.Vec3;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.content.PreparedAnimationTimeline;

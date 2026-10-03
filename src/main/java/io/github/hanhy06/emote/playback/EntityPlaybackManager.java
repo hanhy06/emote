@@ -84,7 +84,7 @@ public final class EntityPlaybackManager {
             if (entry.session != null && !entry.needsStart && entry.skinRevision != this.skinRevision) {
                 entry.skinRevision = this.skinRevision;
                 var preparation = this.skins.prepareNamedSkin(entry.settings.skinName(), entry.skinBindings);
-                if (!preparation.preparing()) this.engine.entities().applySkin(entry.session.nodes(), entry.skinBindings, preparation.preparedPlayerSkin());
+                if (!preparation.preparing()) this.engine.entities().applySkin(entry.session.nodes(), entry.skinBindings, preparation.textures());
             }
         }
     }
@@ -148,7 +148,7 @@ public final class EntityPlaybackManager {
             emote, definition.id(), Map.of("actor", marker), EntityMolangQueries.forEntity(marker),
             EmoteMod.SERVER.createCommandSourceStack().withEntity(marker).withLevel(level)
                 .withPosition(marker.position()).withRotation(marker.getRotationVector()),
-            preparation.preparedPlayerSkin(), lifecycle, PlaybackPlacement.Mode.ACTOR), entry.session);
+            preparation.textures(), lifecycle, PlaybackPlacement.Mode.ACTOR), entry.session);
         if (result instanceof PlaybackEngine.StartResult.Failure failure) {
             if (failure.reason() == PlaybackEngine.FailureReason.DISPLAY_LIMIT) {
                 entry.needsStart = true;

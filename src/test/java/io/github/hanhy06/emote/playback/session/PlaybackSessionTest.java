@@ -351,7 +351,7 @@ class PlaybackSessionTest {
         EmoteAnimation source = template.model();
         var event = new EmoteAnimation.Event(
             new EmoteAnimation.CommandSource(EmoteAnimation.SourceType.SERVER, null),
-            new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, EmoteAnimation.Vec3.ZERO), List.of("start-command"));
+            new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, Vec3.ZERO), List.of("start-command"));
         var stop = new EmoteAnimation.Event(event.source(), event.origin(), List.of("stop-command"));
         var animation = new EmoteAnimation(source.id(), source.metadata(), source.settings(), source.molang(), source.nodes(),
             new EmoteAnimation.Timeline(2, Map.of(), new EmoteAnimation.Events(List.of(event), List.of(), List.of(), List.of(stop))),
@@ -414,7 +414,7 @@ class PlaybackSessionTest {
     void startCallbackSeesInitialVisibilityAndCommandsAndFinalTickRunsBeforeClose() {
         EmoteAnimation source = PreparedEmoteFixture.create("test:prepared", "Prepared").model();
         var start = new EmoteAnimation.Event(new EmoteAnimation.CommandSource(EmoteAnimation.SourceType.SERVER, null),
-            new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, EmoteAnimation.Vec3.ZERO), List.of("start-command"));
+            new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, Vec3.ZERO), List.of("start-command"));
         var stop = new EmoteAnimation.Event(start.source(), start.origin(), List.of("stop-command"));
         var definition = new EmoteAnimation(source.id(), source.metadata(), source.settings(), source.molang(), source.nodes(),
             new EmoteAnimation.Timeline(1, Map.of(), new EmoteAnimation.Events(List.of(start), List.of(), List.of(), List.of(stop))), List.of());

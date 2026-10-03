@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.content.loader;
 
+import net.minecraft.world.phys.Vec3;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;

@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.playback.runtime;
 
+import io.github.hanhy06.emote.content.DisplayData;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import net.minecraft.nbt.CompoundTag;
@@ -80,10 +81,10 @@ class PlaybackNodesTest {
             "item",
             itemNode,
             null,
-            new PlaybackNodes.ItemContent(ItemStack.EMPTY)
+            new DisplayData.Item(ItemStack.EMPTY, net.minecraft.world.item.ItemDisplayContext.NONE)
         );
 
-        PlaybackNodes.DisplayContent originalContent = node.displayContent();
+        DisplayData originalContent = node.displayContent();
 
         node.setItemStack(ItemStack.EMPTY);
 

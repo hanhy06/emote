@@ -1,10 +1,10 @@
 package io.github.hanhy06.emote.skin;
 
+import java.util.Map;
 import io.github.hanhy06.emote.config.ConfigListener;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
-import io.github.hanhy06.emote.skin.model.PreparedPlayerSkin;
 
 import java.util.Set;
 import java.util.UUID;
@@ -20,7 +20,7 @@ public interface PlayerSkinProvider extends ConfigListener {
 
     default void setDefaultSource(PlayerSkinSource source) {}
 
-    default PreparedPlayerSkin defaultSkin() { return null; }
+    default Map<PlayerSkinRegion, String> defaultSkin() { return null; }
 
     default SkinProcessingStats processingStats() {
         return SkinProcessingStats.unavailable();

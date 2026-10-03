@@ -24,6 +24,8 @@ public record PlayerSkinSource(
         Objects.requireNonNull(textureUrl, "textureUrl");
     }
 
+    public record Key(String textureHash, boolean slimModel) {}
+
     public static @Nullable PlayerSkinSource fromProfile(GameProfile profile, SessionService sessionService) {
         Property packedTextures = sessionService.getPackedTextures(profile);
         if (packedTextures == null) return null;

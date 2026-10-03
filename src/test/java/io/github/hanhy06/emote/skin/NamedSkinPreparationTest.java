@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.skin;
 
+import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.skin.model.*;
 import org.junit.jupiter.api.Test;
@@ -76,7 +77,7 @@ class NamedSkinPreparationTest {
             name -> CompletableFuture.failedFuture(new IllegalStateException("Lookup unavailable")), Runnable::run);
         manager.onConfigReload(defaultConfig("Failed"));
         assertNull(provider.defaultSource);
-        assertEquals("default", manager.prepareNamedSkin("failed", BINDINGS).preparedPlayerSkin().findTextureUrl(HEAD));
+        assertEquals("default", manager.prepareNamedSkin("failed", BINDINGS).textures().get(HEAD));
     }
 
     private static Config defaultConfig(String name) {
@@ -101,7 +102,7 @@ class NamedSkinPreparationTest {
         lookup.complete(source);
         PlayerSkinPreparation ready = manager.prepareNamedSkin("TESTPLAYER", BINDINGS);
         assertEquals(PlayerSkinPreparation.State.READY, ready.state());
-        assertEquals("personal", ready.preparedPlayerSkin().findTextureUrl(HEAD));
+        assertEquals("personal", ready.textures().get(HEAD));
         assertSame(source, provider.source);
         assertEquals(Set.of(HEAD), provider.regions);
     }
@@ -118,7 +119,7 @@ class NamedSkinPreparationTest {
         for (String name : List.of("Missing", "Failed", "Missing", "Failed")) {
             PlayerSkinPreparation fallback = manager.prepareNamedSkin(name, BINDINGS);
             assertEquals(PlayerSkinPreparation.State.UNAVAILABLE, fallback.state());
-            assertEquals("default", fallback.preparedPlayerSkin().findTextureUrl(HEAD));
+            assertEquals("default", fallback.textures().get(HEAD));
         }
         assertEquals(2, requests.get());
         assertNull(provider.source);
@@ -130,7 +131,7 @@ class NamedSkinPreparationTest {
             fail("No profile lookup needed"); return null;
         });
         assertEquals(PlayerSkinPreparation.State.READY, manager.prepareNamedSkin("TestPlayer", List.of()).state());
-        assertEquals("default", manager.prepareNamedSkin("", BINDINGS).preparedPlayerSkin().findTextureUrl(HEAD));
+        assertEquals("default", manager.prepareNamedSkin("", BINDINGS).textures().get(HEAD));
     }
 
     private static final class Provider implements PlayerSkinProvider {
@@ -140,9 +141,9 @@ class NamedSkinPreparationTest {
         public PlayerSkinPreparation prepare(PlayerSkinSource source, Set<PlayerSkinRegion> regions) {
             this.source = source;
             this.regions = regions;
-            return new PlayerSkinPreparation(new PreparedPlayerSkin(Map.of(HEAD, "personal")), PlayerSkinPreparation.State.READY, 100);
+            return new PlayerSkinPreparation(Map.copyOf(Map.of(HEAD, "personal")), PlayerSkinPreparation.State.READY, 100);
         }
-        public PreparedPlayerSkin defaultSkin() { return new PreparedPlayerSkin(Map.of(HEAD, "default")); }
+        public Map<PlayerSkinRegion, String> defaultSkin() { return Map.copyOf(Map.of(HEAD, "default")); }
         public void setDefaultSource(PlayerSkinSource source) { this.defaultSource = source; }
         public void setListener(Listener listener) {}
         public void cancelPendingBakes() { this.defaultSource = null; }

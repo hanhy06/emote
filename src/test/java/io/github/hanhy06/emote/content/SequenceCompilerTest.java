@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.content;
 
+import net.minecraft.world.phys.Vec3;
 import io.github.hanhy06.emote.api.sequence.EmoteSequence;
 
 import com.google.gson.JsonPrimitive;
@@ -30,7 +31,7 @@ class SequenceCompilerTest {
         EmoteAnimation.TimelineEvent event = new EmoteAnimation.TimelineEvent(
             1,
             new EmoteAnimation.CommandSource(EmoteAnimation.SourceType.SERVER, null),
-            new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, EmoteAnimation.Vec3.ZERO),
+            new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, Vec3.ZERO),
             List.of("say transitioned"));
         PreparedEmote second = animation(
             "demo:second",
@@ -106,7 +107,7 @@ class SequenceCompilerTest {
                 List.of(new EmoteAnimation.TimelineEvent(
                     2,
                     new EmoteAnimation.CommandSource(EmoteAnimation.SourceType.SERVER, null),
-                    new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, EmoteAnimation.Vec3.ZERO),
+                    new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, Vec3.ZERO),
                     List.of("say idle"))),
                 List.of(),
                 List.of()
@@ -162,7 +163,7 @@ class SequenceCompilerTest {
             Map.of(),
             EmoteAnimation.Events.empty(),
             Map.of("flower", flowerNode),
-            Map.of("flower", new PreparedDisplayData.Text(Component.literal("flower")))
+            Map.of("flower", new DisplayData.Text(Component.literal("flower")))
         );
         PreparedEmote second = animation(
             "demo:second",
@@ -172,7 +173,7 @@ class SequenceCompilerTest {
             Map.of(),
             EmoteAnimation.Events.empty(),
             Map.of("butterfly", butterflyNode),
-            Map.of("butterfly", new PreparedDisplayData.Text(Component.literal("butterfly")))
+            Map.of("butterfly", new DisplayData.Text(Component.literal("butterfly")))
         );
         PreparedSequence sequence = PreparedSequence.resolve(
             sequence(
@@ -202,7 +203,7 @@ class SequenceCompilerTest {
     void executesLifecycleEventsWithTheirSourceAnimationContext() {
         EmoteAnimation.Event startEvent = new EmoteAnimation.Event(
             new EmoteAnimation.CommandSource(EmoteAnimation.SourceType.SERVER, null),
-            new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, EmoteAnimation.Vec3.ZERO),
+            new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, Vec3.ZERO),
             List.of("say start"));
         EmoteAnimation.Event loopEvent = new EmoteAnimation.Event(
             startEvent.source(), startEvent.origin(), List.of("say loop"));
@@ -242,7 +243,7 @@ class SequenceCompilerTest {
     void runsTheActiveInnerAnimationStopEventOnceWhenASequenceIsInterrupted() {
         EmoteAnimation.Event startEvent = new EmoteAnimation.Event(
             new EmoteAnimation.CommandSource(EmoteAnimation.SourceType.SERVER, null),
-            new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, EmoteAnimation.Vec3.ZERO),
+            new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, Vec3.ZERO),
             List.of("start"));
         EmoteAnimation.Event stopEvent = new EmoteAnimation.Event(
             startEvent.source(), startEvent.origin(), List.of("stop"));
@@ -290,7 +291,7 @@ class SequenceCompilerTest {
             Map.of(),
             EmoteAnimation.Events.empty(),
             Map.of("text", node),
-            Map.of("text", new PreparedDisplayData.Text(Component.literal("same")))
+            Map.of("text", new DisplayData.Text(Component.literal("same")))
         );
         PreparedEmote second = animation(
             "demo:second",
@@ -300,7 +301,7 @@ class SequenceCompilerTest {
             Map.of(),
             EmoteAnimation.Events.empty(),
             Map.of("text", node),
-            Map.of("text", new PreparedDisplayData.Text(Component.literal("same")))
+            Map.of("text", new DisplayData.Text(Component.literal("same")))
         );
 
         PreparedSequence sequence = PreparedSequence.resolve(
@@ -527,7 +528,7 @@ class SequenceCompilerTest {
         Map<String, EmoteAnimation.NodeTracks> tracks,
         EmoteAnimation.Events events,
         Map<String, EmoteAnimation.Node> nodes,
-        Map<String, PreparedDisplayData> preparedDisplayData
+        Map<String, DisplayData> preparedDisplayData
     ) {
         EmoteAnimation animation = new EmoteAnimation(
             Identifier.parse(id),
@@ -598,9 +599,9 @@ class SequenceCompilerTest {
 
     private static EmoteAnimation.LocalTransform transform(double x) {
         return new EmoteAnimation.LocalTransform(
-            new EmoteAnimation.Vec3(x, 0.0D, 0.0D),
-            EmoteAnimation.Vec3.ZERO,
-            new EmoteAnimation.Vec3(1.0D, 1.0D, 1.0D)
+            new Vec3(x, 0.0D, 0.0D),
+            Vec3.ZERO,
+            new Vec3(1.0D, 1.0D, 1.0D)
         );
     }
 }

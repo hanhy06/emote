@@ -58,13 +58,13 @@ class SkinBakeCoordinatorTest {
             assertEquals(1, coordinator.processingStats().retryingJobs());
             assertEquals(1, cache.loadDefault("Player").textures().size());
             assertEquals(cache.load("shared", false), cache.loadDefault("Player").textures());
-            assertEquals(1, coordinator.defaultSkin().textureUrlMap().size());
+            assertEquals(1, coordinator.defaultSkin().size());
             fail.set(false);
             coordinator.onConfigReload(defaultConfig("Player"));
             coordinator.setDefaultSource(source(UUID.randomUUID(), "shared"));
             deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
-            while (coordinator.defaultSkin().textureUrlMap().size() != 2 && System.nanoTime() < deadline) Thread.sleep(10);
-            assertEquals(2, coordinator.defaultSkin().textureUrlMap().size());
+            while (coordinator.defaultSkin().size() != 2 && System.nanoTime() < deadline) Thread.sleep(10);
+            assertEquals(2, coordinator.defaultSkin().size());
             assertEquals(2, new SkinCache(tempDir.resolve("skin")).loadDefault("Player").textures().size());
             assertEquals(3, uploads.get());
         } finally {
@@ -92,7 +92,7 @@ class SkinBakeCoordinatorTest {
             coordinator.setDefaultSource(source(UUID.randomUUID(), "fresh"));
             coordinator.setDefaultRegions(Set.of(HEAD));
             assertTrue(ready.await(5, TimeUnit.SECONDS));
-            assertEquals("fallback-texture", coordinator.defaultSkin().findTextureUrl(HEAD));
+            assertEquals("fallback-texture", coordinator.defaultSkin().get(HEAD));
             assertEquals("fresh", new SkinCache(tempDir.resolve("skin")).loadDefault("Player").textureHash());
             assertEquals(1, fallback.uploads.get());
         } finally {
@@ -120,15 +120,15 @@ class SkinBakeCoordinatorTest {
         try {
             coordinator.setDefaultRegions(Set.of(HEAD));
             coordinator.onConfigReload(defaultConfig("Player"));
-            assertEquals("saved-head", coordinator.defaultSkin().findTextureUrl(HEAD));
+            assertEquals("saved-head", coordinator.defaultSkin().get(HEAD));
             assertEquals(0, fallback.uploads.get());
             PlayerSkinRegion upper = new PlayerSkinRegion(PlayerSkinPart.LEFT_ARM, new PlayerSkinSegment(0, 4));
             coordinator.setDefaultRegions(Set.of(HEAD, upper));
             assertTrue(ready.await(5, TimeUnit.SECONDS));
-            assertEquals("saved-head", coordinator.defaultSkin().findTextureUrl(HEAD));
-            assertEquals("fallback-texture", coordinator.defaultSkin().findTextureUrl(upper));
+            assertEquals("saved-head", coordinator.defaultSkin().get(HEAD));
+            assertEquals("fallback-texture", coordinator.defaultSkin().get(upper));
             assertEquals(1, fallback.uploads.get());
-            assertEquals(coordinator.defaultSkin().textureUrlMap(), new SkinCache(tempDir.resolve("skin")).loadDefault("Player").textures());
+            assertEquals(coordinator.defaultSkin(), new SkinCache(tempDir.resolve("skin")).loadDefault("Player").textures());
             coordinator.onConfigReload(defaultConfig("Other"));
             assertNull(coordinator.defaultSkin());
             coordinator.onConfigReload(defaultConfig(""));
@@ -159,7 +159,7 @@ class SkinBakeCoordinatorTest {
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
             while (coordinator.processingStats().retryingJobs() == 0 && System.nanoTime() < deadline) Thread.sleep(10);
             assertEquals(1, coordinator.processingStats().retryingJobs());
-            assertEquals("saved-head", coordinator.defaultSkin().findTextureUrl(HEAD));
+            assertEquals("saved-head", coordinator.defaultSkin().get(HEAD));
             assertEquals("saved", cache.loadDefault("Player").textureHash());
         } finally {
             coordinator.cancelPendingBakes();

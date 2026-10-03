@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.content.loader;
 
+import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
+import net.minecraft.world.phys.Vec3;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -369,13 +371,13 @@ public final class AnimationJsonParser {
             throw document.error(path + ".skin.participant", "participant roles are no longer supported");
         }
         String partText = document.requireString(skin, "part", path + ".skin");
-        SkinPart part = switch (partText) {
-            case "head" -> SkinPart.HEAD;
-            case "body" -> SkinPart.BODY;
-            case "left_arm" -> SkinPart.LEFT_ARM;
-            case "right_arm" -> SkinPart.RIGHT_ARM;
-            case "left_leg" -> SkinPart.LEFT_LEG;
-            case "right_leg" -> SkinPart.RIGHT_LEG;
+        PlayerSkinPart part = switch (partText) {
+            case "head" -> PlayerSkinPart.HEAD;
+            case "body" -> PlayerSkinPart.BODY;
+            case "left_arm" -> PlayerSkinPart.LEFT_ARM;
+            case "right_arm" -> PlayerSkinPart.RIGHT_ARM;
+            case "left_leg" -> PlayerSkinPart.LEFT_LEG;
+            case "right_leg" -> PlayerSkinPart.RIGHT_LEG;
             default -> throw document.error(path + ".skin.part", "unsupported skin part: " + partText);
         };
         int order = document.requireInt(skin, "order", path + ".skin");
