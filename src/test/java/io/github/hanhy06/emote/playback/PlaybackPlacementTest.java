@@ -4,7 +4,7 @@ import io.github.hanhy06.emote.api.*;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.content.LoadedAnimation;
-import io.github.hanhy06.emote.content.PreparedAnimation;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.playback.runtime.*;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
@@ -62,7 +62,7 @@ class PlaybackPlacementTest {
         assertEquals(external, fixture.session().placement());
         assertTrue(PlayerPlaybackManager.shouldStopForMovement(1, 0.1));
         assertEquals(Vec3.ZERO, fixture.state().startPosition());
-        assertEquals(0, fixture.session().animation().currentTick());
+        assertEquals(0, fixture.session().playback().currentTick());
     }
 
     @Test
@@ -134,14 +134,14 @@ class PlaybackPlacementTest {
             new EmoteMetadata("Placement", "test"), new EmoteAnimation.Settings(true, 0, 50, 1,
             EmotePlayerBehavior.createDefault(), new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.ONCE, 0, 0)),
             EmoteAnimation.MolangPrograms.empty(), definitions, new EmoteAnimation.Timeline(5, Map.of(), EmoteAnimation.Events.empty()), List.of());
-        PreparedAnimation prepared = PreparedAnimation.from(new LoadedAnimation(Path.of("placement.json"), "test", source));
+        PreparedEmote prepared = PreparedEmote.from(new LoadedAnimation(Path.of("placement.json"), "test", source));
         PlaybackNodes nodes = new PlaybackNodes(RootTransform.create(Vec3.ZERO, 0), Map.of(
             "root", new PlaybackNodes.NodeInstance("root", definitions.get("root"), null, null),
             "child", new PlaybackNodes.NodeInstance("child", definitions.get("child"), null, null)));
         PlaybackEngine engine = new PlaybackEngine();
-        AnimationPlayer animation = new AnimationPlayer(prepared, new EntityTimelineTarget(prepared, nodes, engine.entities()));
+        PlaybackPlayer animation = new PlaybackPlayer(prepared, new EntityTimelineTarget(prepared, nodes, engine.entities()));
         animation.start();
-        PlaybackSession session = new PlaybackSession(UUID.randomUUID(), Level.OVERWORLD, prepared.id(), prepared.id(), nodes, animation, Map.of());
+        PlaybackSession session = new PlaybackSession(UUID.randomUUID(), Level.OVERWORLD, prepared.id(), nodes, animation, Map.of());
         PlayerPlaybackManager manager = new PlayerPlaybackManager(engine, new PlayerSkinManager(new PlayerSkinProvider() {
             public PlayerSkinPreparation prepare(PlayerSkinSource source, Set<PlayerSkinRegion> regions) { throw new UnsupportedOperationException(); }
             public void setListener(Listener listener) {}

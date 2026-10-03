@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.playback.runtime;
 
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.content.PreparedAnimation;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
@@ -138,7 +138,7 @@ class PlaybackNodesTest {
     void createsEquivalentIndependentTransformations() {
         RootTransform root = RootTransform.create(Vec3.ZERO, 0.0F);
         PlaybackNodes nodes = new PlaybackNodes(root, Map.of());
-        var transform = PreparedAnimation.PreparedTransform.create(EmoteAnimation.LocalTransform.IDENTITY, false);
+        var transform = PreparedEmote.PreparedTransform.create(EmoteAnimation.LocalTransform.IDENTITY, false);
         var first = nodes.displayTransformation(transform);
         var second = nodes.displayTransformation(transform);
         assertNotSame(first, second);

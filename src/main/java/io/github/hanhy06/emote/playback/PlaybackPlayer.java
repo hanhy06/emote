@@ -6,7 +6,7 @@ import io.github.hanhy06.emote.api.PlaybackPosition;
 import io.github.hanhy06.emote.api.PlaybackTimeline;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.AnimationEventPhase;
-import io.github.hanhy06.emote.content.PreparedAnimation;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.playback.molang.MolangQuerySource;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
@@ -18,9 +18,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public final class AnimationPlayer {
-    private final EmoteAnimation animation;
-    private final PreparedAnimation emote;
+public final class PlaybackPlayer {
+    private final EmoteAnimation model;
+    private final PreparedEmote emote;
     private final TimelineTarget target;
     private final MolangQuerySource querySource;
     private AnimationEvaluator evaluator;
@@ -43,13 +43,13 @@ public final class AnimationPlayer {
     private long holdTicks;
     private PlaybackPosition stoppedPosition;
 
-    public AnimationPlayer(PreparedAnimation emote, TimelineTarget target) {
+    public PlaybackPlayer(PreparedEmote emote, TimelineTarget target) {
         this(emote, target, MolangQuerySource.EMPTY);
     }
 
-    public AnimationPlayer(PreparedAnimation emote, TimelineTarget target, MolangQuerySource querySource) {
+    public PlaybackPlayer(PreparedEmote emote, TimelineTarget target, MolangQuerySource querySource) {
         this.emote = Objects.requireNonNull(emote, "emote");
-        this.animation = emote.animation();
+        this.model = emote.model();
         this.target = Objects.requireNonNull(target, "target");
         this.querySource = Objects.requireNonNull(querySource, "querySource");
         this.evaluator = emote.playbackSegments().isEmpty()
@@ -69,7 +69,7 @@ public final class AnimationPlayer {
         if (this.phase != PlaybackPhase.NOT_STARTED) {
             throw new IllegalStateException("Timeline already started");
         }
-        if (this.animation.settings().playback().mode() != EmoteAnimation.LoopMode.SERVER_SYNC) {
+        if (this.model.settings().playback().mode() != EmoteAnimation.LoopMode.SERVER_SYNC) {
             throw new IllegalStateException("Timeline is not server synchronized");
         }
 
@@ -86,8 +86,8 @@ public final class AnimationPlayer {
     private void startAtCyclePhaseUnchecked(long cycleTick) {
         this.phase = PlaybackPhase.RUNNING;
         clearState();
-        int duration = this.animation.timeline().durationTicks();
-        EmoteAnimation.PlaybackSettings playback = this.animation.settings().playback();
+        int duration = this.model.timeline().durationTicks();
+        EmoteAnimation.PlaybackSettings playback = this.model.settings().playback();
         int cycleStart = playback.mode() == EmoteAnimation.LoopMode.LOOP ? playback.loopStartTicks() : 0;
         int cycleEnd = duration;
         long cycleLength = (long) cycleEnd - cycleStart + playback.loopDelayTicks();
@@ -106,7 +106,7 @@ public final class AnimationPlayer {
         if (this.phase == PlaybackPhase.NOT_STARTED) {
             throw new IllegalStateException("Timeline has not started");
         }
-        this.animation.nodes().keySet().forEach(nodeId -> this.target.setVisible(nodeId, false));
+        this.model.nodes().keySet().forEach(nodeId -> this.target.setVisible(nodeId, false));
         this.initialVisibilityDeferred = true;
     }
 
@@ -115,7 +115,7 @@ public final class AnimationPlayer {
             return;
         }
         this.initialVisibilityDeferred = false;
-        this.animation.nodes().forEach((nodeId, node) -> this.target.setVisible(
+        this.model.nodes().forEach((nodeId, node) -> this.target.setVisible(
             nodeId,
             this.appliedVisibility.getOrDefault(nodeId, node.visible())
         ));
@@ -142,8 +142,8 @@ public final class AnimationPlayer {
             return;
         }
         execute(
-            this.animation.timeline().events().start(),
-            this.animation.id(),
+            this.model.timeline().events().start(),
+            this.model.id(),
             this.currentTick,
             AnimationEventPhase.START
         );
@@ -165,9 +165,9 @@ public final class AnimationPlayer {
         }
         if (result == AdvanceResult.LOOP_BOUNDARY && this.eventsStarted) {
             execute(
-                this.animation.timeline().events().loop(),
-                this.animation.id(),
-                this.animation.timeline().durationTicks(),
+                this.model.timeline().events().loop(),
+                this.model.id(),
+                this.model.timeline().durationTicks(),
                 AnimationEventPhase.LOOP
             );
             if (this.eventsStopped) return AdvanceResult.FINISHED;
@@ -194,7 +194,7 @@ public final class AnimationPlayer {
         this.currentTick++;
         boolean segmentFinished = false;
         if (this.lifecycleSegment >= 0) {
-            PreparedAnimation.PlaybackSegment segment = this.emote.playbackSegments().get(this.lifecycleSegment);
+            PreparedEmote.PlaybackSegment segment = this.emote.playbackSegments().get(this.lifecycleSegment);
             int localTick = this.currentTick - segment.startTick();
             applySegment(this.lifecycleSegment, this.currentTick);
             if (this.currentTick < segment.endTick()) applyHiddenNodes(this.currentTick);
@@ -203,7 +203,7 @@ public final class AnimationPlayer {
             this.lifecycleListener.onTick(localTick);
             if (this.eventsStopped) return AdvanceResult.FINISHED;
             if (this.currentTick >= segment.endTick()) {
-                EmoteAnimation source = segment.animation().animation();
+                EmoteAnimation source = segment.animation().model();
                 if (source.settings().playback().mode() == EmoteAnimation.LoopMode.LOOP
                     || source.settings().playback().mode() == EmoteAnimation.LoopMode.SERVER_SYNC) {
                     execute(source.timeline().events().loop(), source.id(), localTick, AnimationEventPhase.LOOP);
@@ -222,7 +222,7 @@ public final class AnimationPlayer {
             else applyHiddenNodes(this.currentTick);
             if (this.eventsStarted) startSegmentEvents();
         }
-        if (this.currentTick >= this.animation.timeline().durationTicks()) {
+        if (this.currentTick >= this.model.timeline().durationTicks()) {
             this.phase = PlaybackPhase.FINISHED;
             return AdvanceResult.FINISHED;
         }
@@ -232,10 +232,10 @@ public final class AnimationPlayer {
     private void startSegmentEvents() {
         if (this.lifecycleSegment >= 0 || this.eventsStopped) return;
         for (int index = 0; index < this.emote.playbackSegments().size(); index++) {
-            PreparedAnimation.PlaybackSegment segment = this.emote.playbackSegments().get(index);
+            PreparedEmote.PlaybackSegment segment = this.emote.playbackSegments().get(index);
             if (segment.startTick() != this.currentTick) continue;
             this.lifecycleSegment = index;
-            EmoteAnimation source = segment.animation().animation();
+            EmoteAnimation source = segment.animation().model();
             execute(source.timeline().events().start(), source.id(), 0, AnimationEventPhase.START);
             if (this.eventsStopped) return;
             execute(segment.animation().timelineEvents(0));
@@ -246,9 +246,9 @@ public final class AnimationPlayer {
 
     private void closeSegment(PlaybackStopReason reason) {
         if (this.lifecycleSegment < 0) return;
-        PreparedAnimation.PlaybackSegment segment = this.emote.playbackSegments().get(this.lifecycleSegment);
+        PreparedEmote.PlaybackSegment segment = this.emote.playbackSegments().get(this.lifecycleSegment);
         this.lifecycleSegment = -1;
-        EmoteAnimation source = segment.animation().animation();
+        EmoteAnimation source = segment.animation().model();
         try {
             execute(source.timeline().events().stop(), source.id(), this.currentTick - segment.startTick(), AnimationEventPhase.STOP);
         } finally {
@@ -285,19 +285,19 @@ public final class AnimationPlayer {
 
         this.currentTick++;
         applyTick(this.currentTick);
-        if (this.animation.settings().playback().mode() == EmoteAnimation.LoopMode.LOOP
-            && this.currentTick >= this.animation.timeline().durationTicks()) {
+        if (this.model.settings().playback().mode() == EmoteAnimation.LoopMode.LOOP
+            && this.currentTick >= this.model.timeline().durationTicks()) {
             this.phase = PlaybackPhase.LOOP_BOUNDARY;
             return AdvanceResult.LOOP_BOUNDARY;
         }
-        if (this.currentTick < this.animation.timeline().durationTicks()) {
+        if (this.currentTick < this.model.timeline().durationTicks()) {
             return AdvanceResult.CONTINUE;
         }
-        if (this.animation.settings().playback().mode() == EmoteAnimation.LoopMode.ONCE) {
+        if (this.model.settings().playback().mode() == EmoteAnimation.LoopMode.ONCE) {
             this.phase = PlaybackPhase.FINISHED;
             return AdvanceResult.FINISHED;
         }
-        if (this.animation.settings().playback().mode() == EmoteAnimation.LoopMode.HOLD) {
+        if (this.model.settings().playback().mode() == EmoteAnimation.LoopMode.HOLD) {
             this.phase = PlaybackPhase.HOLDING;
             return AdvanceResult.CONTINUE;
         }
@@ -309,7 +309,7 @@ public final class AnimationPlayer {
         if (this.phase != PlaybackPhase.LOOP_BOUNDARY) {
             throw new IllegalStateException("Timeline is not at a loop boundary");
         }
-        int loopDelay = this.animation.settings().playback().loopDelayTicks();
+        int loopDelay = this.model.settings().playback().loopDelayTicks();
         if (loopDelay == 0) {
             this.loopCount++;
             this.phase = PlaybackPhase.RUNNING;
@@ -337,7 +337,7 @@ public final class AnimationPlayer {
         if (this.emote.playbackSegments().isEmpty() && segments.getFirst().phase() == PlaybackTimeline.Phase.ANIMATION) {
             if (this.phase == PlaybackPhase.LOOP_DELAY) {
                 selected = segments.getLast();
-                phaseTick = this.animation.settings().playback().loopDelayTicks() - this.remainingLoopDelay;
+                phaseTick = this.model.settings().playback().loopDelayTicks() - this.remainingLoopDelay;
             } else if (this.phase == PlaybackPhase.HOLDING) {
                 selected = segments.getLast();
                 phaseTick = this.holdTicks;
@@ -346,7 +346,7 @@ public final class AnimationPlayer {
                 phaseTick = this.currentTick;
             }
         } else {
-            PreparedAnimation.PlaybackSegment active = this.lifecycleSegment < 0 ? null
+            PreparedEmote.PlaybackSegment active = this.lifecycleSegment < 0 ? null
                 : this.emote.playbackSegments().get(this.lifecycleSegment);
             for (PlaybackTimeline.Segment segment : segments) {
                 if (active != null && segment.phase() == PlaybackTimeline.Phase.ANIMATION
@@ -367,15 +367,15 @@ public final class AnimationPlayer {
     }
 
     public Identifier emoteId() {
-        return this.animation.id();
+        return this.model.id();
     }
 
     public float rotationDeadzone() {
         if (this.activePlaybackSegment < 0) {
-            return this.animation.settings().rotationDeadzone();
+            return this.model.settings().rotationDeadzone();
         }
         return this.emote.playbackSegments().get(this.activePlaybackSegment)
-            .animation().animation().settings().rotationDeadzone();
+            .animation().model().settings().rotationDeadzone();
     }
 
     public void stop() {
@@ -391,8 +391,8 @@ public final class AnimationPlayer {
         this.eventsStopped = true;
         if (this.emote.playbackSegments().isEmpty()) {
             execute(
-                this.animation.timeline().events().stop(),
-                this.animation.id(),
+                this.model.timeline().events().stop(),
+                this.model.id(),
                 this.currentTick,
                 AnimationEventPhase.STOP
             );
@@ -408,7 +408,7 @@ public final class AnimationPlayer {
     }
 
     private void resetToLoopStart() {
-        int tick = this.animation.settings().playback().loopStartTicks();
+        int tick = this.model.settings().playback().loopStartTicks();
         if (!this.emote.playbackSegments().isEmpty()) {
             resetToTick(tick);
             return;
@@ -458,13 +458,13 @@ public final class AnimationPlayer {
     }
 
     private void applyPlaybackSegment(int tick) {
-        List<PreparedAnimation.PlaybackSegment> segments = this.emote.playbackSegments();
+        List<PreparedEmote.PlaybackSegment> segments = this.emote.playbackSegments();
         int selected = this.activePlaybackSegment;
         if (selected >= 0 && tick > segments.get(selected).endTick()) {
             selected = -1;
         }
         for (int index = this.activePlaybackSegment + 1; index < segments.size(); index++) {
-            PreparedAnimation.PlaybackSegment next = segments.get(index);
+            PreparedEmote.PlaybackSegment next = segments.get(index);
             if (next.transitionStartTick() > tick) break;
             if (tick <= next.endTick()) selected = index;
         }
@@ -475,7 +475,7 @@ public final class AnimationPlayer {
     }
 
     private void applySegment(int selected, int tick) {
-        PreparedAnimation.PlaybackSegment segment = this.emote.playbackSegments().get(selected);
+        PreparedEmote.PlaybackSegment segment = this.emote.playbackSegments().get(selected);
         int localTick = tick - segment.startTick();
         boolean segmentChanged = selected != this.activePlaybackSegment;
         if (segmentChanged) {
@@ -577,40 +577,40 @@ public final class AnimationPlayer {
         int animationTick,
         AnimationEventPhase phase
     ) {
-        execute(events.stream().map(event -> new PreparedAnimation.PreparedEvent(event, animationId, animationTick, phase)).toList());
+        execute(events.stream().map(event -> new PreparedEmote.PreparedEvent(event, animationId, animationTick, phase)).toList());
     }
 
-    private void execute(List<PreparedAnimation.PreparedEvent> events) {
+    private void execute(List<PreparedEmote.PreparedEvent> events) {
         if (this.eventExecutor == null) {
             return;
         }
-        for (PreparedAnimation.PreparedEvent event : events) {
+        for (PreparedEmote.PreparedEvent event : events) {
             this.eventExecutor.execute(event);
         }
     }
 
     @FunctionalInterface
     public interface EventExecutor {
-        void execute(PreparedAnimation.PreparedEvent event);
+        void execute(PreparedEmote.PreparedEvent event);
     }
 
     public interface LifecycleListener {
-        default void onStart(PreparedAnimation animation) {}
+        default void onStart(PreparedEmote animation) {}
         default void onTick(int animationTick) {}
         default void onLoop() {}
         default void onClose(PlaybackStopReason reason) {}
     }
 
     public interface TimelineTarget {
-        Transformation createTransformation(String nodeId, PreparedAnimation.PreparedTransform transform);
+        Transformation createTransformation(String nodeId, PreparedEmote.PreparedTransform transform);
 
         default Transformation createTransformation(String nodeId, Matrix4fc matrix, boolean preserveMatrix) {
-            return createTransformation(nodeId, PreparedAnimation.PreparedTransform.create(new Matrix4f(matrix), preserveMatrix));
+            return createTransformation(nodeId, PreparedEmote.PreparedTransform.create(new Matrix4f(matrix), preserveMatrix));
         }
 
         void applyTransform(
             String nodeId,
-            PreparedAnimation.PreparedTransform transform,
+            PreparedEmote.PreparedTransform transform,
             int interpolationDurationTicks
         );
 
@@ -622,7 +622,7 @@ public final class AnimationPlayer {
         ) {
             applyTransform(
                 nodeId,
-                PreparedAnimation.PreparedTransform.create(new Matrix4f(matrix), preserveMatrix),
+                PreparedEmote.PreparedTransform.create(new Matrix4f(matrix), preserveMatrix),
                 interpolationDurationTicks
             );
         }

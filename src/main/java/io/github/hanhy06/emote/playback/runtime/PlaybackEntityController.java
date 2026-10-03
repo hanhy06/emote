@@ -3,7 +3,7 @@ package io.github.hanhy06.emote.playback.runtime;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.content.PreparedAnimation;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.content.PreparedDisplayData;
 import io.github.hanhy06.emote.mixin.accessor.BlockDisplayAccessor;
 import io.github.hanhy06.emote.mixin.accessor.DisplayAccessor;
@@ -77,17 +77,17 @@ public final class PlaybackEntityController {
     private static final int RESPONSIVE_INTERPOLATION_TICKS = 1;
     private static final int VIEW_ROTATION_INTERPOLATION_TICKS = 3;
 
-    public PlaybackNodes create(ServerLevel level, RootTransform root, PreparedAnimation emote) {
+    public PlaybackNodes create(ServerLevel level, RootTransform root, PreparedEmote emote) {
         LinkedHashMap<String, NodeInstance> instances = new LinkedHashMap<>();
-        for (Map.Entry<String, EmoteAnimation.Node> entry : emote.animation().nodes().entrySet()) {
+        for (Map.Entry<String, EmoteAnimation.Node> entry : emote.model().nodes().entrySet()) {
             PreparedDisplayData preparedData = emote.source().preparedDisplayData().get(entry.getKey());
-            NodeInstance instance = createNode(level, root, entry.getKey(), entry.getValue(), preparedData, emote.animation().settings().rotationDeadzone());
+            NodeInstance instance = createNode(level, root, entry.getKey(), entry.getValue(), preparedData, emote.model().settings().rotationDeadzone());
             instances.put(entry.getKey(), instance);
         }
         return new PlaybackNodes(root, instances);
     }
 
-    public PlaybackNodes create(ServerLevel level, Vec3 position, float yaw, PreparedAnimation emote) {
+    public PlaybackNodes create(ServerLevel level, Vec3 position, float yaw, PreparedEmote emote) {
         return create(level, RootTransform.create(position, yaw), emote);
     }
 
@@ -196,7 +196,7 @@ public final class PlaybackEntityController {
     public void applyTransformation(
         PlaybackNodes playbackNodes,
         NodeInstance node,
-        PreparedAnimation.PreparedTransform transform,
+        PreparedEmote.PreparedTransform transform,
         int interpolationDurationTicks
     ) {
         if (node.isAnchor()) {

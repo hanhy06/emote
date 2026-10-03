@@ -215,9 +215,9 @@ public final class EmoteMenu {
     }
 
     private String createActivePlaybackText(PlaybackSession session) {
-        PlayableEmote emote = this.emoteCatalog.find(session.id());
+        PlayableEmote emote = this.emoteCatalog.find(session.emoteId());
         String displayName = emote == null
-            ? session.id()
+            ? session.emoteId()
             : emote.name();
         return " Active: " + displayName;
     }

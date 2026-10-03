@@ -5,7 +5,7 @@ import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.LoadedAnimation;
-import io.github.hanhy06.emote.content.PreparedAnimation;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import net.minecraft.resources.Identifier;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -59,9 +59,9 @@ class AnimationEventTest {
         fixture.player().start();
         fixture.player().startEvents();
 
-        AnimationPlayer.AdvanceResult result = fixture.player().advance(false);
+        PlaybackPlayer.AdvanceResult result = fixture.player().advance(false);
 
-        assertEquals(AnimationPlayer.AdvanceResult.LOOP_BOUNDARY, result);
+        assertEquals(PlaybackPlayer.AdvanceResult.LOOP_BOUNDARY, result);
         assertEquals(List.of("start", "tick-0", "loop"), fixture.executed());
     }
 
@@ -80,8 +80,8 @@ class AnimationEventTest {
     private AnimationFixture fixture(int durationTicks, EmoteAnimation.LoopMode loopMode, int loopDelayTicks) {
         List<String> executed = new ArrayList<>();
         EmoteAnimation animation = animation(durationTicks, loopMode, loopDelayTicks);
-        PreparedAnimation emote = PreparedAnimation.from(new LoadedAnimation(Path.of("event-test.json"), "test", animation));
-        AnimationPlayer player = new AnimationPlayer(emote, new EmptyTimelineTarget());
+        PreparedEmote emote = PreparedEmote.from(new LoadedAnimation(Path.of("event-test.json"), "test", animation));
+        PlaybackPlayer player = new PlaybackPlayer(emote, new EmptyTimelineTarget());
         player.bindEvents(event -> executed.addAll(event.event().commands()));
         return new AnimationFixture(player, executed);
     }
@@ -119,19 +119,19 @@ class AnimationEventTest {
         return new EmoteAnimation.TimelineEvent(0, event.source(), event.origin(), event.commands());
     }
 
-    private record AnimationFixture(AnimationPlayer player, List<String> executed) {
+    private record AnimationFixture(PlaybackPlayer player, List<String> executed) {
     }
 
-    private static final class EmptyTimelineTarget implements AnimationPlayer.TimelineTarget {
+    private static final class EmptyTimelineTarget implements PlaybackPlayer.TimelineTarget {
         @Override
-        public Transformation createTransformation(String nodeId, PreparedAnimation.PreparedTransform transform) {
+        public Transformation createTransformation(String nodeId, PreparedEmote.PreparedTransform transform) {
             throw new UnsupportedOperationException();
         }
 
         @Override
         public void applyTransform(
             String nodeId,
-            PreparedAnimation.PreparedTransform transform,
+            PreparedEmote.PreparedTransform transform,
             int interpolationDurationTicks
         ) {
             throw new UnsupportedOperationException();

@@ -20,7 +20,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import static io.github.hanhy06.emote.content.PreparedAnimationFixture.create;
+import static io.github.hanhy06.emote.content.PreparedEmoteFixture.create;
 import static org.junit.jupiter.api.Assertions.*;
 
 class ReloadServiceTest {

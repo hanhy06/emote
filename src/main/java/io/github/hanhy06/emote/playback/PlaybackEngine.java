@@ -5,7 +5,7 @@ import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.config.ConfigListener;
-import io.github.hanhy06.emote.content.PreparedAnimation;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.playback.molang.MolangQuerySource;
 import io.github.hanhy06.emote.playback.runtime.EntityTimelineTarget;
 import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
@@ -46,19 +46,19 @@ public final class PlaybackEngine implements ConfigListener {
         default void onStopped(PlaybackSession session, PlaybackStopReason reason) {}
     }
 
-    public record Request(ServerLevel level, RootTransform root, PreparedAnimation animation, String playbackId,
+    public record Request(ServerLevel level, RootTransform root, PreparedEmote emote, String emoteId,
                           Map<String, Entity> actors, MolangQuerySource queries, @Nullable CommandSourceStack commandSource,
                           @Nullable PreparedPlayerSkin skin, Lifecycle lifecycle) {
         public Request {
             Objects.requireNonNull(level, "level");
             Objects.requireNonNull(root, "root");
-            Objects.requireNonNull(animation, "animation");
-            Objects.requireNonNull(playbackId, "playbackId");
+            Objects.requireNonNull(emote, "emote");
+            Objects.requireNonNull(emoteId, "emoteId");
             actors = Map.copyOf(actors);
             Objects.requireNonNull(queries, "queries");
             Objects.requireNonNull(lifecycle, "lifecycle");
         }
-        public Request(ServerLevel level, RootTransform root, PreparedAnimation animation) {
+        public Request(ServerLevel level, RootTransform root, PreparedEmote animation) {
             this(level, root, animation, animation.id(), Map.of(), MolangQuerySource.EMPTY, null, null, Lifecycle.NONE);
         }
     }
@@ -75,7 +75,7 @@ public final class PlaybackEngine implements ConfigListener {
     @Override public void onConfigReload(Config config) { this.maxActiveDisplayEntities = config.maxActiveDisplayEntities(); }
 
     public StartResult start(Request request, @Nullable PlaybackSession replacedSession) {
-        PreparedAnimation emote = request.animation();
+        PreparedEmote emote = request.emote();
         if (replacedSession != null && !contains(replacedSession)) {
             return new StartResult.Failure(FailureReason.START_REJECTED, "The playback being replaced is no longer active.");
         }
@@ -88,11 +88,11 @@ public final class PlaybackEngine implements ConfigListener {
             return new StartResult.Failure(FailureReason.DISPLAY_LIMIT, "Too many emotes are active right now. Try again shortly.");
         }
         List<CallbackRegistry.Binding> bindings;
-        Map<PreparedAnimation, List<CallbackRegistry.Binding>> segmentBindings = new HashMap<>();
+        Map<PreparedEmote, List<CallbackRegistry.Binding>> segmentBindings = new HashMap<>();
         try {
-            bindings = this.callbackRegistry.resolve(emote.animation().callbacks());
+            bindings = this.callbackRegistry.resolve(emote.model().callbacks());
             for (var segment : emote.playbackSegments()) {
-                segmentBindings.computeIfAbsent(segment.animation(), animation -> this.callbackRegistry.resolve(animation.animation().callbacks()));
+                segmentBindings.computeIfAbsent(segment.animation(), animation -> this.callbackRegistry.resolve(animation.model().callbacks()));
             }
         } catch (IllegalArgumentException exception) {
             return new StartResult.Failure(FailureReason.START_REJECTED, exception.getMessage());
@@ -102,9 +102,9 @@ public final class PlaybackEngine implements ConfigListener {
         PlaybackSession session = null;
         try {
             nodes = this.entityController.create(request.level(), request.root(), emote);
-            AnimationPlayer timeline = new AnimationPlayer(emote, new EntityTimelineTarget(emote, nodes, this.entityController), request.queries());
+            PlaybackPlayer timeline = new PlaybackPlayer(emote, new EntityTimelineTarget(emote, nodes, this.entityController), request.queries());
             timeline.bindEvents(new EventCommandExecutor(request.level(), request.commandSource(), nodes, timeline));
-            if (emote.animation().settings().playback().mode() == EmoteAnimation.LoopMode.SERVER_SYNC) {
+            if (emote.model().settings().playback().mode() == EmoteAnimation.LoopMode.SERVER_SYNC) {
                 timeline.startSynchronized(EmoteMod.SERVER.overworld().getGameTime());
             } else {
                 timeline.start();
@@ -112,7 +112,7 @@ public final class PlaybackEngine implements ConfigListener {
             if (request.skin() != null) this.entityController.applySkin(nodes, emote.skinBindings(), request.skin());
             timeline.deferInitialVisibility();
             this.entityController.add(request.level(), nodes);
-            session = new PlaybackSession(UUID.randomUUID(), request.level().dimension(), request.playbackId(), emote.id(),
+            session = new PlaybackSession(UUID.randomUUID(), request.level().dimension(), request.emoteId(),
                 nodes, timeline, request.actors());
             session.bindCallbacks(bindings, segmentBindings, EmoteMod.SERVER.getTickCount());
             register(session, request.lifecycle());
@@ -164,15 +164,15 @@ public final class PlaybackEngine implements ConfigListener {
                 if (reason == null && session.tick(EmoteMod.SERVER.getTickCount())) {
                     playback.lifecycle().prepareFrame(session);
                     if (!contains(session)) continue;
-                    session.animation().restoreDeferredVisibility();
-                    var result = session.animation().advance();
+                    session.playback().restoreDeferredVisibility();
+                    var result = session.playback().advance();
                     if (!contains(session)) continue;
                     session.tickCallbacks();
                     if (!contains(session)) continue;
-                    if (result == AnimationPlayer.AdvanceResult.FINISHED) reason = PlaybackStopReason.FINISHED;
+                    if (result == PlaybackPlayer.AdvanceResult.FINISHED) reason = PlaybackStopReason.FINISHED;
                 }
             } catch (RuntimeException exception) {
-                EmoteMod.LOGGER.warn("Failed to play emote {}", session.id(), exception);
+                EmoteMod.LOGGER.warn("Failed to play emote {}", session.emoteId(), exception);
                 reason = PlaybackStopReason.ERROR;
             }
             if (reason != null) stop(session, reason);
@@ -184,7 +184,7 @@ public final class PlaybackEngine implements ConfigListener {
         if (playback == null || !session.beginClose(reason)) return null;
         Lifecycle lifecycle = playback.lifecycle();
         try { lifecycle.onClosing(session); }
-        catch (RuntimeException exception) { EmoteMod.LOGGER.warn("Failed to notify emote {} closing", session.id(), exception); }
+        catch (RuntimeException exception) { EmoteMod.LOGGER.warn("Failed to notify emote {} closing", session.emoteId(), exception); }
         Runnable cleanup = () -> finishCleanup(session, lifecycle, reason);
         if (!session.deferCleanup(cleanup)) cleanup.run();
         return session;
@@ -192,12 +192,12 @@ public final class PlaybackEngine implements ConfigListener {
 
     private void finishCleanup(PlaybackSession session, Lifecycle lifecycle, PlaybackStopReason reason) {
         try {
-            try { session.animation().stop(reason); }
-            catch (RuntimeException exception) { EmoteMod.LOGGER.warn("Failed to run stop events for emote {}", session.id(), exception); }
+            try { session.playback().stop(reason); }
+            catch (RuntimeException exception) { EmoteMod.LOGGER.warn("Failed to run stop events for emote {}", session.emoteId(), exception); }
             session.closeCallbacks();
         } finally {
             try { lifecycle.onStopped(session, reason); }
-            catch (RuntimeException exception) { EmoteMod.LOGGER.warn("Failed to notify emote {} stopped", session.id(), exception); }
+            catch (RuntimeException exception) { EmoteMod.LOGGER.warn("Failed to notify emote {} stopped", session.emoteId(), exception); }
             finally {
                 try {
                     ServerLevel level = EmoteMod.SERVER.getLevel(session.levelKey());
@@ -217,7 +217,7 @@ public final class PlaybackEngine implements ConfigListener {
         this.stressTest.stopById(id);
         for (var playback : List.copyOf(this.activePlaybacks.values())) {
             PlaybackSession session = playback.session();
-            if (session.id().equals(id) || session.animationId().equals(id)) stop(session, reason);
+            if (session.emoteId().equals(id)) stop(session, reason);
         }
     }
     public int activeDisplayEntityCount() { return this.stressTest.displayEntityCount() + this.activeDisplayEntities; }
@@ -227,7 +227,7 @@ public final class PlaybackEngine implements ConfigListener {
         ServerLevel level,
         Vec3 origin,
         float yaw,
-        List<PreparedAnimation> emotes,
+        List<PreparedEmote> emotes,
         int durationTicks,
         int instanceCount,
         int packetFanout,
@@ -251,7 +251,7 @@ public final class PlaybackEngine implements ConfigListener {
         ServerLevel level,
         Vec3 origin,
         float yaw,
-        List<PreparedAnimation> emotes,
+        List<PreparedEmote> emotes,
         int durationTicks,
         int targetDisplayEntityCount,
         int packetFanout,

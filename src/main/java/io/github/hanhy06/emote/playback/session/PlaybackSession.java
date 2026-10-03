@@ -6,8 +6,8 @@ import io.github.hanhy06.emote.api.PlaybackInfo;
 import io.github.hanhy06.emote.api.PlaybackPlacement;
 import io.github.hanhy06.emote.api.PlaybackState;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
-import io.github.hanhy06.emote.content.PreparedAnimation;
-import io.github.hanhy06.emote.playback.AnimationPlayer;
+import io.github.hanhy06.emote.content.PreparedEmote;
+import io.github.hanhy06.emote.playback.PlaybackPlayer;
 import io.github.hanhy06.emote.playback.CallbackRegistry;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 import net.minecraft.resources.Identifier;
@@ -23,11 +23,11 @@ import org.jspecify.annotations.Nullable;
 import java.util.*;
 import java.util.function.Consumer;
 
-public final class PlaybackSession implements AnimationPlayer.LifecycleListener {
+public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
     private final UUID sessionId;
     private List<Context> callbackContexts = List.of();
     private List<Context> animationCallbackContexts = List.of();
-    private Map<PreparedAnimation, List<CallbackRegistry.Binding>> animationBindings = Map.of();
+    private Map<PreparedEmote, List<CallbackRegistry.Binding>> animationBindings = Map.of();
     private PlaybackState playbackState = PlaybackState.RUNNING;
     private @Nullable PlaybackStopReason stopReason;
     private long elapsedTicks;
@@ -37,28 +37,25 @@ public final class PlaybackSession implements AnimationPlayer.LifecycleListener 
     private boolean callbacksClosed;
     private @Nullable Runnable deferredCleanup;
     private final ResourceKey<Level> levelKey;
-    private final String id;
-    private final String animationId;
+    private final String emoteId;
     private final PlaybackNodes nodes;
-    private final AnimationPlayer animation;
+    private final PlaybackPlayer playback;
     private final Map<String, Entity> actors;
     private PlaybackPlacement.Mode placementMode = PlaybackPlacement.Mode.PLAYER;
 
     public PlaybackSession(
         UUID sessionId,
         ResourceKey<Level> levelKey,
-        String id,
-        String animationId,
+        String emoteId,
         PlaybackNodes nodes,
-        AnimationPlayer animation,
+        PlaybackPlayer playback,
         Map<String, Entity> actors
     ) {
         this.sessionId = Objects.requireNonNull(sessionId, "sessionId");
         this.levelKey = Objects.requireNonNull(levelKey, "levelKey");
-        this.id = Objects.requireNonNull(id, "id");
-        this.animationId = Objects.requireNonNull(animationId, "animationId");
+        this.emoteId = Objects.requireNonNull(emoteId, "emoteId");
         this.nodes = Objects.requireNonNull(nodes, "nodes");
-        this.animation = Objects.requireNonNull(animation, "animation");
+        this.playback = Objects.requireNonNull(playback, "playback");
         this.actors = Map.copyOf(actors);
     }
 
@@ -71,8 +68,8 @@ public final class PlaybackSession implements AnimationPlayer.LifecycleListener 
     }
 
     public PlaybackInfo playbackInfo(UUID playerUuid) {
-        return new PlaybackInfo(this.sessionId, playerUuid, Identifier.parse(this.id), this.playbackState,
-            this.elapsedTicks, this.animation.currentTick(), this.animation.position(), placement());
+        return new PlaybackInfo(this.sessionId, playerUuid, Identifier.parse(this.emoteId), this.playbackState,
+            this.elapsedTicks, this.playback.currentTick(), this.playback.position(), placement());
     }
 
     public PlaybackPlacement placement() {
@@ -86,26 +83,26 @@ public final class PlaybackSession implements AnimationPlayer.LifecycleListener 
     public Optional<Vec3> nodeWorldPosition(String nodeId) {
         Objects.requireNonNull(nodeId, "nodeId");
         if (!this.nodes.nodes().containsKey(nodeId)) return Optional.empty();
-        var transform = this.animation.currentTransformation(nodeId).getMatrix();
+        var transform = this.playback.currentTransformation(nodeId).getMatrix();
         Vector3f point = this.nodes.root().worldMatrix(this.nodes.orientationYaw(), transform).transformPosition(new Vector3f());
         return Optional.of(this.nodes.root().position().add(point.x, point.y, point.z));
     }
 
     public void bindCallbacks(
         List<CallbackRegistry.Binding> bindings,
-        Map<PreparedAnimation, List<CallbackRegistry.Binding>> animationBindings,
+        Map<PreparedEmote, List<CallbackRegistry.Binding>> animationBindings,
         long serverTick
     ) {
         this.callbackContexts = bindings.stream().map(binding -> new Context(binding, false)).toList();
         this.animationBindings = Map.copyOf(animationBindings);
         this.lastServerTick = serverTick;
-        this.animation.bindLifecycleListener(this);
+        this.playback.bindLifecycleListener(this);
     }
 
     public void startPlayback() {
         if (this.callbacksStarted) throw new IllegalStateException("Callbacks already started.");
-        this.animation.restoreDeferredVisibility();
-        this.animation.startEvents();
+        this.playback.restoreDeferredVisibility();
+        this.playback.startEvents();
         if (this.playbackState != PlaybackState.RUNNING) return;
         this.callbacksStarted = true;
         for (Context context : this.callbackContexts) {
@@ -125,7 +122,7 @@ public final class PlaybackSession implements AnimationPlayer.LifecycleListener 
     }
 
     @Override
-    public void onStart(PreparedAnimation animation) {
+    public void onStart(PreparedEmote animation) {
         this.animationCallbackContexts = this.animationBindings.getOrDefault(animation, List.of()).stream()
             .map(binding -> new Context(binding, true)).toList();
         if (this.callbacksStarted) startAnimationCallbacks();
@@ -222,7 +219,7 @@ public final class PlaybackSession implements AnimationPlayer.LifecycleListener 
         try {
             invokeCallback(context, context.binding.callbacks()::onClose);
         } catch (RuntimeException exception) {
-            EmoteMod.LOGGER.warn("Emote close callback failed for {}", this.id, exception);
+            EmoteMod.LOGGER.warn("Emote close callback failed for {}", this.emoteId, exception);
         }
     }
 
@@ -251,7 +248,7 @@ public final class PlaybackSession implements AnimationPlayer.LifecycleListener 
         public MinecraftServer server() { return EmoteMod.SERVER; }
         public ServerLevel level() { return Objects.requireNonNull(server().getLevel(PlaybackSession.this.levelKey), "Playback level unavailable."); }
         public long elapsedTicks() { return PlaybackSession.this.elapsedTicks - this.startTick; }
-        public int animationTick() { return this.animationScoped ? this.localTick : PlaybackSession.this.animation.currentTick(); }
+        public int animationTick() { return this.animationScoped ? this.localTick : PlaybackSession.this.playback.currentTick(); }
         public Vec3 rootPosition() { return PlaybackSession.this.nodes.root().position(); }
         public Optional<PlaybackStopReason> stopReason() { return Optional.ofNullable(this.closeReason != null ? this.closeReason : PlaybackSession.this.stopReason); }
         public @Nullable Object userState() { return this.userState; }
@@ -271,7 +268,7 @@ public final class PlaybackSession implements AnimationPlayer.LifecycleListener 
             var nodes = PlaybackSession.this.nodes;
             var node = Objects.requireNonNull(nodes.nodes().get(nodeId), "Unknown node " + nodeId);
             var root = nodes.root();
-            var transform = PlaybackSession.this.animation.currentTransformation(nodeId).getMatrix();
+            var transform = PlaybackSession.this.playback.currentTransformation(nodeId).getMatrix();
             Vector3f point = root.worldMatrix(nodes.orientationYaw(), transform).transformPosition(new Vector3f());
             return root.position().add(point.x, point.y, point.z);
         }
@@ -281,19 +278,15 @@ public final class PlaybackSession implements AnimationPlayer.LifecycleListener 
         return this.levelKey;
     }
 
-    public String id() {
-        return this.id;
+    public String emoteId() {
+        return this.emoteId;
     }
 
-    public String animationId() {
-        return this.animationId;
-    }
-
-    public PlaybackNodes nodes() {
+public PlaybackNodes nodes() {
         return this.nodes;
     }
 
-    public AnimationPlayer animation() {
-        return this.animation;
+    public PlaybackPlayer playback() {
+        return this.playback;
     }
 }

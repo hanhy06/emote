@@ -4,7 +4,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 import com.mojang.math.Transformation;
-import io.github.hanhy06.emote.content.PreparedAnimation;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.content.loader.AnimationJsonParser;
 import io.github.hanhy06.emote.playback.molang.MolangQuerySource;
 import org.junit.jupiter.api.Test;
@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class AnimationPlayerTest {
+class PlaybackPlayerTest {
     @Test
     void evaluatesMolangBeforeTracksAndComposesParentTransform() throws Exception {
         JsonObject root = base();
@@ -32,11 +32,11 @@ class AnimationPlayerTest {
             .set(0, JsonParser.parseString("\"v.offset\""));
 
         FakeTarget target = new FakeTarget();
-        AnimationPlayer player = player(root, target);
+        PlaybackPlayer player = player(root, target);
         player.start();
 
         assertEquals(4.0F, target.matrix("display").m30(), 1.0E-5F);
-        assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.advance());
+        assertEquals(PlaybackPlayer.AdvanceResult.CONTINUE, player.advance());
         assertEquals(5.6F, target.matrix("display").m30(), 1.0E-5F);
     }
 
@@ -51,7 +51,7 @@ class AnimationPlayerTest {
                 """));
 
         FakeTarget target = new FakeTarget();
-        AnimationPlayer player = player(root, target);
+        PlaybackPlayer player = player(root, target);
         player.start();
         for (int tick = 0; tick < 5; tick++) {
             player.advance();
@@ -86,7 +86,7 @@ class AnimationPlayerTest {
             session.setQuery("is_in_water", 1.0D);
         };
         FakeTarget target = new FakeTarget();
-        AnimationPlayer player = new AnimationPlayer(PreparedAnimation.from(load(root)), target, queries);
+        PlaybackPlayer player = new PlaybackPlayer(PreparedEmote.from(load(root)), target, queries);
 
         player.start();
         assertEquals(15.0F, target.matrix("display").m30(), 1.0E-5F);
@@ -109,13 +109,13 @@ class AnimationPlayerTest {
             .set(0, JsonParser.parseString("\"v.count\""));
 
         FakeTarget target = new FakeTarget();
-        AnimationPlayer player = player(root, target);
+        PlaybackPlayer player = player(root, target);
         player.start();
         assertEquals(2.0F, target.matrix("display").m30(), 1.0E-5F);
 
-        assertEquals(AnimationPlayer.AdvanceResult.LOOP_BOUNDARY, player.advance());
+        assertEquals(PlaybackPlayer.AdvanceResult.LOOP_BOUNDARY, player.advance());
         assertEquals(3.0F, target.matrix("display").m30(), 1.0E-5F);
-        assertEquals(AnimationPlayer.AdvanceResult.RESTARTED, player.continueAfterLoopEvent());
+        assertEquals(PlaybackPlayer.AdvanceResult.RESTARTED, player.continueAfterLoopEvent());
         assertEquals(4.0F, target.matrix("display").m30(), 1.0E-5F);
     }
 
@@ -126,10 +126,10 @@ class AnimationPlayerTest {
         root.getAsJsonObject("timeline").addProperty("duration", "1t");
         positionTrack(root).remove(1);
         positionTrack(root).get(0).getAsJsonObject().remove("interpolation");
-        AnimationPlayer player = player(root, new FakeTarget());
+        PlaybackPlayer player = player(root, new FakeTarget());
         int[] loops = {0};
         player.bindEvents(event -> {});
-        player.bindLifecycleListener(new AnimationPlayer.LifecycleListener() {
+        player.bindLifecycleListener(new PlaybackPlayer.LifecycleListener() {
             public void onLoop() { loops[0]++; }
         });
         player.start();
@@ -152,10 +152,10 @@ class AnimationPlayerTest {
              "timeline":[{"time":"4t","source":{"type":"server"},"origin":{"type":"root"},"commands":["restart-command"]}]}
             """));
         FakeTarget target = new FakeTarget();
-        AnimationPlayer player = player(root, target);
+        PlaybackPlayer player = player(root, target);
         List<String> calls = new ArrayList<>();
         player.bindEvents(event -> calls.addAll(event.event().commands()));
-        player.bindLifecycleListener(new AnimationPlayer.LifecycleListener() {
+        player.bindLifecycleListener(new PlaybackPlayer.LifecycleListener() {
             public void onLoop() {
                 assertEquals(4, player.currentTick());
                 assertEquals(5.0F, target.matrix("display").m30(), 1.0E-5F);
@@ -183,12 +183,12 @@ class AnimationPlayerTest {
         root.getAsJsonObject("timeline").addProperty("duration", "10t");
 
         FakeTarget target = new FakeTarget();
-        AnimationPlayer player = player(root, target);
+        PlaybackPlayer player = player(root, target);
         player.start();
 
         assertEquals(0, player.currentTick());
         for (int tick = 0; tick < 10; tick++) player.advance();
-        assertEquals(AnimationPlayer.AdvanceResult.RESTARTED, player.continueAfterLoopEvent());
+        assertEquals(PlaybackPlayer.AdvanceResult.RESTARTED, player.continueAfterLoopEvent());
         assertEquals(4, player.currentTick());
         assertEquals(5.0F, target.matrix("display").m30(), 1.0E-5F);
     }
@@ -202,19 +202,19 @@ class AnimationPlayerTest {
         playback.addProperty("loop_end", "6t");
 
         FakeTarget target = new FakeTarget();
-        AnimationPlayer player = player(root, target);
+        PlaybackPlayer player = player(root, target);
         player.start();
 
         for (int tick = 0; tick < 9; tick++) {
-            assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.advance());
+            assertEquals(PlaybackPlayer.AdvanceResult.CONTINUE, player.advance());
         }
-        assertEquals(AnimationPlayer.AdvanceResult.LOOP_BOUNDARY, player.advance(false));
+        assertEquals(PlaybackPlayer.AdvanceResult.LOOP_BOUNDARY, player.advance(false));
         assertEquals(10, player.currentTick());
-        assertEquals(AnimationPlayer.AdvanceResult.RESTARTED, player.continueAfterLoopEvent());
+        assertEquals(PlaybackPlayer.AdvanceResult.RESTARTED, player.continueAfterLoopEvent());
         assertEquals(2, player.currentTick());
 
         player.stop(io.github.hanhy06.emote.api.PlaybackStopReason.MANUAL);
-        assertEquals(AnimationPlayer.AdvanceResult.FINISHED, player.advance());
+        assertEquals(PlaybackPlayer.AdvanceResult.FINISHED, player.advance());
         assertEquals(2, player.currentTick());
     }
     @Test
@@ -225,13 +225,13 @@ class AnimationPlayerTest {
         playback.addProperty("loop_end", "6t");
         playback.addProperty("loop_delay", "5t");
 
-        AnimationPlayer player = player(root, new FakeTarget());
+        PlaybackPlayer player = player(root, new FakeTarget());
         player.start();
         for (int tick = 0; tick < 10; tick++) player.advance(false);
-        assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.continueAfterLoopEvent());
+        assertEquals(PlaybackPlayer.AdvanceResult.CONTINUE, player.continueAfterLoopEvent());
 
         player.stop(io.github.hanhy06.emote.api.PlaybackStopReason.MANUAL);
-        assertEquals(AnimationPlayer.AdvanceResult.FINISHED, player.advance());
+        assertEquals(PlaybackPlayer.AdvanceResult.FINISHED, player.advance());
         assertEquals(10, player.currentTick());
     }
 
@@ -251,18 +251,18 @@ class AnimationPlayerTest {
                 """));
 
         FakeTarget target = new FakeTarget();
-        AnimationPlayer player = player(root, target);
+        PlaybackPlayer player = player(root, target);
         player.start();
         player.advance();
 
         assertEquals(1, target.nbtApplyCount);
         assertTrue(target.nbt.get("display").toString().contains("minecraft:stone"));
 
-        assertEquals(AnimationPlayer.AdvanceResult.LOOP_BOUNDARY, player.advance());
+        assertEquals(PlaybackPlayer.AdvanceResult.LOOP_BOUNDARY, player.advance());
         assertEquals(2, target.nbtApplyCount);
         assertTrue(target.nbt.get("display").toString().contains("minecraft:diamond"));
 
-        assertEquals(AnimationPlayer.AdvanceResult.RESTARTED, player.continueAfterLoopEvent());
+        assertEquals(PlaybackPlayer.AdvanceResult.RESTARTED, player.continueAfterLoopEvent());
         assertEquals(3, target.nbtApplyCount);
         assertTrue(target.nbt.get("display").toString().contains("minecraft:stone"));
     }
@@ -286,17 +286,17 @@ class AnimationPlayerTest {
         AtomicBoolean sneaking = new AtomicBoolean();
         MolangQuerySource queries = session -> session.setQuery("is_sneaking", sneaking.get() ? 1.0D : 0.0D);
         FakeTarget target = new FakeTarget();
-        AnimationPlayer player = new AnimationPlayer(PreparedAnimation.from(load(root)), target, queries);
+        PlaybackPlayer player = new PlaybackPlayer(PreparedEmote.from(load(root)), target, queries);
 
         player.start();
         assertFalse(target.nbt.get("display").getBooleanOr("Glowing", false));
 
         sneaking.set(true);
-        assertEquals(AnimationPlayer.AdvanceResult.LOOP_BOUNDARY, player.advance());
+        assertEquals(PlaybackPlayer.AdvanceResult.LOOP_BOUNDARY, player.advance());
         assertEquals(1, target.nbtApplyCount);
         assertFalse(target.nbt.get("display").getBooleanOr("Glowing", false));
 
-        assertEquals(AnimationPlayer.AdvanceResult.RESTARTED, player.continueAfterLoopEvent());
+        assertEquals(PlaybackPlayer.AdvanceResult.RESTARTED, player.continueAfterLoopEvent());
         assertEquals(2, target.nbtApplyCount);
         assertTrue(target.nbt.get("display").getBooleanOr("Glowing", false));
     }
@@ -313,7 +313,7 @@ class AnimationPlayerTest {
                   }
                 }]
                 """));
-        AnimationPlayer player = player(root, new FakeTarget());
+        PlaybackPlayer player = player(root, new FakeTarget());
 
         IllegalStateException exception = assertThrows(IllegalStateException.class, player::start);
 
@@ -327,7 +327,7 @@ class AnimationPlayerTest {
             .add("nbt", JsonParser.parseString("""
                 [{"time":"0t","value":{"molang":"'not compound SNBT'"}}]
                 """));
-        AnimationPlayer player = player(root, new FakeTarget());
+        PlaybackPlayer player = player(root, new FakeTarget());
 
         IllegalStateException exception = assertThrows(IllegalStateException.class, player::start);
 
@@ -341,7 +341,7 @@ class AnimationPlayerTest {
             .add("nbt", JsonParser.parseString("""
                 [{"time":"0t","value":{"molang":"'{transformation:{}}'"}}]
                 """));
-        AnimationPlayer player = player(root, new FakeTarget());
+        PlaybackPlayer player = player(root, new FakeTarget());
 
         IllegalStateException exception = assertThrows(IllegalStateException.class, player::start);
 
@@ -364,7 +364,7 @@ class AnimationPlayerTest {
                 ]
                 """));
         FakeTarget target = new FakeTarget();
-        AnimationPlayer player = player(root, target);
+        PlaybackPlayer player = player(root, target);
 
         player.startAtCyclePhase(5L);
 
@@ -379,14 +379,14 @@ class AnimationPlayerTest {
             .set(0, JsonParser.parseString("\"v.count = v.count + 1; return v.count;\""));
 
         FakeTarget target = new FakeTarget();
-        AnimationPlayer player = player(root, target);
+        PlaybackPlayer player = player(root, target);
         player.start();
         assertEquals(2.0F, target.matrix("display").m30(), 1.0E-5F);
 
         root.getAsJsonObject("settings").getAsJsonObject("playback").addProperty("mode", "server_sync");
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
-            () -> PreparedAnimation.from(load(root))
+            () -> PreparedEmote.from(load(root))
         );
 
         assertTrue(exception.getMessage().contains("must not assign persistent variables during server_sync playback"));
@@ -399,7 +399,7 @@ class AnimationPlayerTest {
 
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
-            () -> PreparedAnimation.from(load(root))
+            () -> PreparedEmote.from(load(root))
         );
 
         assertTrue(exception.getMessage().contains("must not assign queries"));
@@ -419,11 +419,11 @@ class AnimationPlayerTest {
                 + " + q.item_in_use_duration + query.item_remaining_use_duration + q.item_max_use_duration"
         ));
 
-        assertDoesNotThrow(() -> PreparedAnimation.from(load(root)));
+        assertDoesNotThrow(() -> PreparedEmote.from(load(root)));
     }
 
-    private AnimationPlayer player(JsonObject root, FakeTarget target) throws Exception {
-        return new AnimationPlayer(PreparedAnimation.from(load(root)), target);
+    private PlaybackPlayer player(JsonObject root, FakeTarget target) throws Exception {
+        return new PlaybackPlayer(PreparedEmote.from(load(root)), target);
     }
 
     private io.github.hanhy06.emote.content.LoadedAnimation load(JsonObject root) throws Exception {
@@ -493,19 +493,19 @@ class AnimationPlayerTest {
             """).getAsJsonObject();
     }
 
-    private static final class FakeTarget implements AnimationPlayer.TimelineTarget {
+    private static final class FakeTarget implements PlaybackPlayer.TimelineTarget {
         private final Map<String, Transformation> transforms = new HashMap<>();
         private final Map<String, Boolean> visibility = new HashMap<>();
         private final Map<String, net.minecraft.nbt.CompoundTag> nbt = new HashMap<>();
         private int nbtApplyCount;
 
         @Override
-        public Transformation createTransformation(String nodeId, PreparedAnimation.PreparedTransform transform) {
+        public Transformation createTransformation(String nodeId, PreparedEmote.PreparedTransform transform) {
             return new Transformation(transform.localMatrix());
         }
 
         @Override
-        public void applyTransform(String nodeId, PreparedAnimation.PreparedTransform transform, int interpolationDurationTicks) {
+        public void applyTransform(String nodeId, PreparedEmote.PreparedTransform transform, int interpolationDurationTicks) {
             this.transforms.put(nodeId, createTransformation(nodeId, transform));
         }
 

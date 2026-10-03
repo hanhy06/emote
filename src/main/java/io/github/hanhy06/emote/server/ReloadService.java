@@ -122,7 +122,7 @@ public final class ReloadService {
             .filter(Objects::nonNull)
             .toList();
         var animationsById = emotes.stream().collect(Collectors.toMap(
-            PreparedAnimation::id,
+            PreparedEmote::id,
             Function.identity()
         ));
         var sequences = contents.sequences().stream()
@@ -146,9 +146,9 @@ public final class ReloadService {
         return new ReloadStats(prepared.detectedFileCount(), this.emoteCatalog.fileEmotes().size(), ReloadResult.Failure.NONE);
     }
 
-    private PreparedAnimation prepareAnimation(LoadedAnimation animation) {
+    private PreparedEmote prepareAnimation(LoadedAnimation animation) {
         try {
-            return PreparedAnimation.from(animation);
+            return PreparedEmote.from(animation);
         } catch (IllegalArgumentException exception) {
             EmoteMod.LOGGER.warn("Ignoring invalid emote animation {}: {}", animation.sourcePath(), exception.getMessage());
             return null;
@@ -157,7 +157,7 @@ public final class ReloadService {
 
     private PreparedSequence resolveSequence(
         LoadedSequence sequence,
-        Map<String, PreparedAnimation> animationsById
+        Map<String, PreparedEmote> animationsById
     ) {
         try {
             return PreparedSequence.resolve(sequence, animationsById);

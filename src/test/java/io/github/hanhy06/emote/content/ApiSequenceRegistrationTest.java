@@ -18,9 +18,9 @@ import static org.junit.jupiter.api.Assertions.*;
 class ApiSequenceRegistrationTest {
     @Test
     void registersPublicSequenceAndSeparatesDefinitionFromChosenPlayback() {
-        PreparedAnimation first = PreparedAnimationFixture.create("test:first", "First");
-        PreparedAnimation second = PreparedAnimationFixture.create("test:second", "Second");
-        EmoteSequence source = sequence(new EmoteSequence.EmoteStep(List.of(first.animation().id(), second.animation().id()), 2));
+        PreparedEmote first = PreparedEmoteFixture.create("test:first", "First");
+        PreparedEmote second = PreparedEmoteFixture.create("test:second", "Second");
+        EmoteSequence source = sequence(new EmoteSequence.AnimationStep(List.of(first.model().id(), second.model().id()), 2));
         PreparedSequence prepared = PreparedSequence.resolve(source, Map.of(first.id(), first, second.id(), second));
         EmoteCatalog catalog = new EmoteCatalog();
         catalog.register(first);
@@ -34,7 +34,7 @@ class ApiSequenceRegistrationTest {
         assertNull(info.durationTicks());
         assertEquals(EmoteInfo.Kind.ANIMATION, ApiEventDispatcher.toInfo(first).kind());
         assertEquals(first.durationTicks(), ApiEventDispatcher.toInfo(first).durationTicks());
-        PreparedAnimation playback = ((PreparedSequence) catalog.find(prepared.id())).compile(new Random(0));
+        PreparedEmote playback = ((PreparedSequence) catalog.find(prepared.id())).compile(new Random(0));
         assertEquals(playback.durationTicks(), playback.playbackTimeline().durationTicks());
         assertEquals(2, playback.playbackSegments().size());
         assertThrows(UnsupportedOperationException.class, () -> source.steps().clear());
@@ -46,35 +46,35 @@ class ApiSequenceRegistrationTest {
 
     @Test
     void reportsFixedSequenceDurationIncludingWaitAndTransition() {
-        PreparedAnimation animation = PreparedAnimationFixture.create("test:wave", "Wave");
+        PreparedEmote animation = PreparedEmoteFixture.create("test:wave", "Wave");
         PreparedSequence prepared = PreparedSequence.resolve(sequence(
-            new EmoteSequence.EmoteStep(animation.animation().id(), 1),
+            new EmoteSequence.AnimationStep(animation.model().id(), 1),
             new EmoteSequence.WaitStep(3),
-            new EmoteSequence.EmoteStep(animation.animation().id(), 1, 4)), Map.of(animation.id(), animation));
+            new EmoteSequence.AnimationStep(animation.model().id(), 1, 4)), Map.of(animation.id(), animation));
         assertEquals(animation.durationTicks() * 2 + 7, ApiEventDispatcher.toInfo(prepared).durationTicks());
     }
 
     @Test
     void rejectsMissingReferencesAndSequenceReferencesBeforeRegistration() {
-        EmoteSequence source = sequence(new EmoteSequence.EmoteStep(Identifier.parse("test:missing"), 1));
+        EmoteSequence source = sequence(new EmoteSequence.AnimationStep(Identifier.parse("test:missing"), 1));
         assertThrows(IllegalArgumentException.class, () -> PreparedSequence.resolve(source, Map.of()));
-        PreparedAnimation animation = PreparedAnimationFixture.create("test:wave", "Wave");
-        PreparedSequence prepared = PreparedSequence.resolve(sequence(new EmoteSequence.EmoteStep(animation.animation().id(), 1)),
+        PreparedEmote animation = PreparedEmoteFixture.create("test:wave", "Wave");
+        PreparedSequence prepared = PreparedSequence.resolve(sequence(new EmoteSequence.AnimationStep(animation.model().id(), 1)),
             Map.of(animation.id(), animation));
         EmoteCatalog catalog = new EmoteCatalog();
         catalog.register(animation);
         catalog.register(prepared);
-        var animations = catalog.animations().stream().collect(java.util.stream.Collectors.toMap(PreparedAnimation::id, item -> item));
+        var animations = catalog.animations().stream().collect(java.util.stream.Collectors.toMap(PreparedEmote::id, item -> item));
         assertThrows(IllegalArgumentException.class, () -> PreparedSequence.resolve(
-            sequence(new EmoteSequence.EmoteStep(Identifier.parse(prepared.id()), 1)), animations));
+            sequence(new EmoteSequence.AnimationStep(Identifier.parse(prepared.id()), 1)), animations));
     }
 
     @Test
     void unregisteringDependencyInvalidatesAllReferencingApiSequences() {
-        PreparedAnimation animation = PreparedAnimationFixture.create("test:wave", "Wave");
+        PreparedEmote animation = PreparedEmoteFixture.create("test:wave", "Wave");
         EmoteCatalog catalog = new EmoteCatalog();
         var animationRegistration = catalog.register(animation);
-        PreparedSequence prepared = PreparedSequence.resolve(sequence(new EmoteSequence.EmoteStep(animation.animation().id(), 1)),
+        PreparedSequence prepared = PreparedSequence.resolve(sequence(new EmoteSequence.AnimationStep(animation.model().id(), 1)),
             Map.of(animation.id(), animation));
         var sequenceRegistration = catalog.register(prepared);
         assertTrue(catalog.unregister(animation.id(), animationRegistration));
@@ -86,11 +86,11 @@ class ApiSequenceRegistrationTest {
 
     @Test
     void fileReloadRebindsApiSequenceAndRemovalInvalidatesIt() {
-        PreparedAnimation first = PreparedAnimationFixture.create("test:wave", "First");
-        PreparedAnimation replacement = PreparedAnimationFixture.create("test:wave", "Replacement");
+        PreparedEmote first = PreparedEmoteFixture.create("test:wave", "First");
+        PreparedEmote replacement = PreparedEmoteFixture.create("test:wave", "Replacement");
         EmoteCatalog catalog = new EmoteCatalog();
         catalog.replace(List.of(first));
-        PreparedSequence prepared = PreparedSequence.resolve(sequence(new EmoteSequence.EmoteStep(first.animation().id(), 1)),
+        PreparedSequence prepared = PreparedSequence.resolve(sequence(new EmoteSequence.AnimationStep(first.model().id(), 1)),
             Map.of(first.id(), first));
         var registration = catalog.register(prepared);
         catalog.replace(List.of(replacement));
@@ -104,8 +104,8 @@ class ApiSequenceRegistrationTest {
 
     @Test
     void fileSourcesRetainTheirPathOutsideThePublicDefinition() {
-        PreparedAnimation animation = PreparedAnimationFixture.create("test:wave", "Wave");
-        EmoteSequence source = sequence(new EmoteSequence.EmoteStep(animation.animation().id(), 1));
+        PreparedEmote animation = PreparedEmoteFixture.create("test:wave", "Wave");
+        EmoteSequence source = sequence(new EmoteSequence.AnimationStep(animation.model().id(), 1));
         Path path = Path.of("custom", "sequence.json");
         PreparedSequence prepared = PreparedSequence.resolve(new LoadedSequence(path, source), Map.of(animation.id(), animation));
         assertSame(source, prepared.source());

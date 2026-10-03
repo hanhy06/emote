@@ -93,7 +93,7 @@ public final class SequenceJsonParser {
             int transitionTicks = stepObject.has("transition")
                 ? document.requireTime(stepObject, "transition", path, 0)
                 : 0;
-            steps.add(new EmoteSequence.EmoteStep(choices, repeat, transitionTicks));
+            steps.add(new EmoteSequence.AnimationStep(choices, repeat, transitionTicks));
         }
         return List.copyOf(steps);
     }

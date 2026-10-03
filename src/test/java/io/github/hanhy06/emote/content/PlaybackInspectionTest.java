@@ -5,7 +5,7 @@ import io.github.hanhy06.emote.api.sequence.EmoteSequence;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.*;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.playback.AnimationPlayer;
+import io.github.hanhy06.emote.playback.PlaybackPlayer;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 import io.github.hanhy06.emote.playback.runtime.RootTransform;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
@@ -37,13 +37,13 @@ class PlaybackInspectionTest {
 
     @Test
     void exposesActualSequencePositionsAcrossWaitTransitionAndRepeatDelay() {
-        PreparedAnimation animation = animation(EmoteAnimation.LoopMode.LOOP, 2);
-        PreparedAnimation compiled = sequence(animation,
+        PreparedEmote animation = animation(EmoteAnimation.LoopMode.LOOP, 2);
+        PreparedEmote compiled = sequence(animation,
             skip(animation),
             new EmoteSequence.WaitStep(2),
-            new EmoteSequence.EmoteStep(animation.animation().id(), 2, 1),
+            new EmoteSequence.AnimationStep(animation.model().id(), 2, 1),
             new EmoteSequence.WaitStep(3), skip(animation)).compile(firstChoice());
-        AnimationPlayer player = player(compiled);
+        PlaybackPlayer player = player(compiled);
         player.start();
         player.startEvents();
         PlaybackTimeline timeline = player.timeline();
@@ -56,15 +56,15 @@ class PlaybackInspectionTest {
         assertPosition(player, WAIT, 0, null, null);
         advance(player, 2);
         PlaybackPosition initial = player.position();
-        assertPosition(player, ANIMATION, 0, animation.animation().id(), 0);
+        assertPosition(player, ANIMATION, 0, animation.model().id(), 0);
         assertEquals(2, initial.stepIndex());
         assertEquals(0, initial.repeatIndex());
         advance(player, 2);
         assertPosition(player, LOOP_DELAY, 0, null, null);
         advance(player, 2);
-        assertPosition(player, TRANSITION, 0, animation.animation().id(), null);
+        assertPosition(player, TRANSITION, 0, animation.model().id(), null);
         advance(player, 1);
-        assertPosition(player, ANIMATION, 0, animation.animation().id(), 0);
+        assertPosition(player, ANIMATION, 0, animation.model().id(), 0);
         assertEquals(1, player.position().repeatIndex());
         advance(player, 2);
         assertPosition(player, WAIT, 0, null, null);
@@ -76,36 +76,36 @@ class PlaybackInspectionTest {
 
     @Test
     void preservesOriginalRepeatNumbersAfterContinueAndBreak() {
-        PreparedAnimation animation = animation(EmoteAnimation.LoopMode.ONCE, 0);
-        PreparedSequence prepared = sequence(animation, new EmoteSequence.EmoteStep(List.of(
+        PreparedEmote animation = animation(EmoteAnimation.LoopMode.ONCE, 0);
+        PreparedSequence prepared = sequence(animation, new EmoteSequence.AnimationStep(List.of(
             new EmoteSequence.Choice(EmoteSequence.Control.CONTINUE.id(), 0),
-            new EmoteSequence.Choice(animation.animation().id(), 0),
+            new EmoteSequence.Choice(animation.model().id(), 0),
             new EmoteSequence.Choice(EmoteSequence.Control.BREAK.id(), 0)), 4));
         AtomicInteger choice = new AtomicInteger();
         int[] choices = {0, 1, 2};
-        PreparedAnimation compiled = prepared.compile(new Random() {
+        PreparedEmote compiled = prepared.compile(new Random() {
             @Override public int nextInt(int bound) { return choices[choice.getAndIncrement()]; }
         });
         var segment = compiled.playbackTimeline().segments().getFirst();
         assertEquals(1, segment.repeatIndex());
         assertEquals(0, segment.stepIndex());
-        assertEquals(animation.animation().id(), segment.animationId());
+        assertEquals(animation.model().id(), segment.animationId());
         assertEquals(2, compiled.playbackTimeline().durationTicks());
         assertEquals(3, choice.get());
     }
 
     @Test
     void identifiesWaitOnlyAndEmptySelectionsWithoutReportingAnAnimation() {
-        PreparedAnimation animation = animation(EmoteAnimation.LoopMode.ONCE, 0);
-        EmoteSequence.EmoteStep skip = skip(animation);
-        AnimationPlayer waits = player(sequence(animation, skip, new EmoteSequence.WaitStep(2), skip,
+        PreparedEmote animation = animation(EmoteAnimation.LoopMode.ONCE, 0);
+        EmoteSequence.AnimationStep skip = skip(animation);
+        PlaybackPlayer waits = player(sequence(animation, skip, new EmoteSequence.WaitStep(2), skip,
             new EmoteSequence.WaitStep(3), skip).compile(firstChoice()));
         waits.start();
         assertEquals(1, waits.position().stepIndex());
         advance(waits, 2);
         assertEquals(3, waits.position().stepIndex());
         assertPosition(waits, WAIT, 0, null, null);
-        AnimationPlayer empty = player(sequence(animation, skip).compile(firstChoice()));
+        PlaybackPlayer empty = player(sequence(animation, skip).compile(firstChoice()));
         empty.start();
         assertPosition(empty, WAIT, 0, null, null);
         assertEquals(1, empty.timeline().durationTicks());
@@ -113,7 +113,7 @@ class PlaybackInspectionTest {
 
     @Test
     void reportsStandaloneLoopDelayAndRewindWithoutChangingSnapshots() {
-        AnimationPlayer player = player(animation(EmoteAnimation.LoopMode.LOOP, 3));
+        PlaybackPlayer player = player(animation(EmoteAnimation.LoopMode.LOOP, 3));
         player.start();
         player.startEvents();
         advance(player, 2);
@@ -131,7 +131,7 @@ class PlaybackInspectionTest {
 
     @Test
     void reportsSynchronizedPhaseAndPreservesItOnStop() {
-        AnimationPlayer player = player(animation(EmoteAnimation.LoopMode.SERVER_SYNC, 3));
+        PlaybackPlayer player = player(animation(EmoteAnimation.LoopMode.SERVER_SYNC, 3));
         player.startSynchronized(3);
         assertPosition(player, LOOP_DELAY, 1, null, null);
         assertEquals(2, player.currentTick());
@@ -142,7 +142,7 @@ class PlaybackInspectionTest {
 
     @Test
     void reportsHoldDurationAndAnUnboundedTimelineSegment() {
-        AnimationPlayer player = player(animation(EmoteAnimation.LoopMode.HOLD, 0));
+        PlaybackPlayer player = player(animation(EmoteAnimation.LoopMode.HOLD, 0));
         player.start();
         advance(player, 2);
         assertEquals(HOLD, player.position().phase());
@@ -158,12 +158,12 @@ class PlaybackInspectionTest {
 
     @Test
     void playbackInfoSeparatesSequenceAndAnimationIdsAndElapsedTicks() {
-        PreparedAnimation animation = animation(EmoteAnimation.LoopMode.ONCE, 0);
-        AnimationPlayer player = player(sequence(animation, skip(animation), new EmoteSequence.WaitStep(1),
-            new EmoteSequence.EmoteStep(animation.animation().id(), 1)).compile(firstChoice()));
+        PreparedEmote animation = animation(EmoteAnimation.LoopMode.ONCE, 0);
+        PlaybackPlayer player = player(sequence(animation, skip(animation), new EmoteSequence.WaitStep(1),
+            new EmoteSequence.AnimationStep(animation.model().id(), 1)).compile(firstChoice()));
         player.start();
         UUID actorId = UUID.randomUUID();
-        PlaybackSession session = new PlaybackSession(UUID.randomUUID(), Level.OVERWORLD, "test:sequence", "test:sequence",
+        PlaybackSession session = new PlaybackSession(UUID.randomUUID(), Level.OVERWORLD, "test:sequence",
             new PlaybackNodes(RootTransform.create(Vec3.ZERO, 0), Map.of()), player, Map.of());
         session.bindCallbacks(List.of(), Map.of(), 100);
         session.startPlayback();
@@ -171,7 +171,7 @@ class PlaybackInspectionTest {
         player.advance();
         PlaybackInfo info = session.playbackInfo(actorId);
         assertEquals(Identifier.parse("test:sequence"), info.emoteId());
-        assertEquals(animation.animation().id(), info.position().animationId());
+        assertEquals(animation.model().id(), info.position().animationId());
         assertEquals(1, info.elapsedTicks());
         assertEquals(1, info.timelineTick());
         assertEquals(0, info.position().animationTick());
@@ -179,10 +179,10 @@ class PlaybackInspectionTest {
 
     @Test
     void endingTickCallbacksStillSeeTheirOwnAnimation() {
-        PreparedAnimation animation = animation(EmoteAnimation.LoopMode.ONCE, 0);
-        AnimationPlayer player = player(sequence(animation, new EmoteSequence.EmoteStep(animation.animation().id(), 2))
+        PreparedEmote animation = animation(EmoteAnimation.LoopMode.ONCE, 0);
+        PlaybackPlayer player = player(sequence(animation, new EmoteSequence.AnimationStep(animation.model().id(), 2))
             .compile(new Random(0)));
-        player.bindLifecycleListener(new AnimationPlayer.LifecycleListener() {
+        player.bindLifecycleListener(new PlaybackPlayer.LifecycleListener() {
             @Override public void onTick(int tick) {
                 assertEquals(tick, player.position().animationTick());
                 assertEquals(ANIMATION, player.position().phase());
@@ -197,7 +197,7 @@ class PlaybackInspectionTest {
         assertEquals(2, player.position().animationTick());
     }
 
-    private static void assertPosition(AnimationPlayer player, PlaybackTimeline.Phase phase, long tick,
+    private static void assertPosition(PlaybackPlayer player, PlaybackTimeline.Phase phase, long tick,
                                        Identifier animationId, Integer animationTick) {
         PlaybackPosition position = player.position();
         assertEquals(phase, position.phase());
@@ -206,7 +206,7 @@ class PlaybackInspectionTest {
         assertEquals(animationTick, position.animationTick());
     }
 
-    private static void advance(AnimationPlayer player, int ticks) {
+    private static void advance(PlaybackPlayer player, int ticks) {
         for (int tick = 0; tick < ticks; tick++) player.advance();
     }
 
@@ -214,33 +214,33 @@ class PlaybackInspectionTest {
         return new Random() { @Override public int nextInt(int bound) { return 0; } };
     }
 
-    private static EmoteSequence.EmoteStep skip(PreparedAnimation animation) {
-        return new EmoteSequence.EmoteStep(List.of(
+    private static EmoteSequence.AnimationStep skip(PreparedEmote animation) {
+        return new EmoteSequence.AnimationStep(List.of(
             new EmoteSequence.Choice(EmoteSequence.Control.CONTINUE.id(), 0),
-            new EmoteSequence.Choice(animation.animation().id(), 0)), 1);
+            new EmoteSequence.Choice(animation.model().id(), 0)), 1);
     }
 
-    private static PreparedSequence sequence(PreparedAnimation animation, EmoteSequence.Step... steps) {
+    private static PreparedSequence sequence(PreparedEmote animation, EmoteSequence.Step... steps) {
         return PreparedSequence.resolve(new EmoteSequence(Identifier.parse("test:sequence"),
             new EmoteMetadata("Sequence", "test"), new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()),
             List.of(steps)), Map.of(animation.id(), animation));
     }
 
-    private static PreparedAnimation animation(EmoteAnimation.LoopMode mode, int delay) {
+    private static PreparedEmote animation(EmoteAnimation.LoopMode mode, int delay) {
         EmoteAnimation animation = new EmoteAnimation(Identifier.parse("test:animation"), new EmoteMetadata("Animation", "test"),
             new EmoteAnimation.Settings(true, 0, 50, 1, EmotePlayerBehavior.createDefault(),
                 new EmoteAnimation.PlaybackSettings(mode, 0, delay)), EmoteAnimation.MolangPrograms.empty(),
             Map.of("root", new EmoteAnimation.AnchorNode(null, EmoteAnimation.LocalTransform.IDENTITY)),
             new EmoteAnimation.Timeline(2, Map.of(), EmoteAnimation.Events.empty()), List.of());
-        return PreparedAnimation.from(new LoadedAnimation(Path.of("animation.json"), "test", animation));
+        return PreparedEmote.from(new LoadedAnimation(Path.of("animation.json"), "test", animation));
     }
 
-    private static AnimationPlayer player(PreparedAnimation animation) {
-        return new AnimationPlayer(animation, new AnimationPlayer.TimelineTarget() {
-            public Transformation createTransformation(String nodeId, PreparedAnimation.PreparedTransform transform) {
+    private static PlaybackPlayer player(PreparedEmote animation) {
+        return new PlaybackPlayer(animation, new PlaybackPlayer.TimelineTarget() {
+            public Transformation createTransformation(String nodeId, PreparedEmote.PreparedTransform transform) {
                 return new Transformation(transform.localMatrix());
             }
-            public void applyTransform(String nodeId, PreparedAnimation.PreparedTransform transform, int duration) {}
+            public void applyTransform(String nodeId, PreparedEmote.PreparedTransform transform, int duration) {}
             public void setVisible(String nodeId, boolean visible) {}
             public void applyNbt(String nodeId, CompoundTag nbt) {}
             public void resetAll() {}

@@ -2,8 +2,8 @@ package io.github.hanhy06.emote.playback.stress;
 
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.content.PreparedAnimation;
-import io.github.hanhy06.emote.playback.AnimationPlayer;
+import io.github.hanhy06.emote.content.PreparedEmote;
+import io.github.hanhy06.emote.playback.PlaybackPlayer;
 import io.github.hanhy06.emote.playback.runtime.EntityTimelineTarget;
 import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
@@ -38,7 +38,7 @@ public final class PlaybackStressTest {
         ServerLevel level,
         Vec3 origin,
         float yaw,
-        List<PreparedAnimation> emotes,
+        List<PreparedEmote> emotes,
         int durationTicks,
         int instanceCount,
         int packetFanout,
@@ -59,7 +59,7 @@ public final class PlaybackStressTest {
         }
 
         Random random = new Random(RANDOM_SEED);
-        List<PreparedAnimation> selection = createRandomizedSelection(emotes, random, instanceCount);
+        List<PreparedEmote> selection = createRandomizedSelection(emotes, random, instanceCount);
         return startSelection(level, origin, yaw, selection, durationTicks, packetFanout, preparedSkin, completion, random);
     }
 
@@ -67,7 +67,7 @@ public final class PlaybackStressTest {
         ServerLevel level,
         Vec3 origin,
         float yaw,
-        List<PreparedAnimation> emotes,
+        List<PreparedEmote> emotes,
         int durationTicks,
         int targetDisplayEntityCount,
         int packetFanout,
@@ -81,7 +81,7 @@ public final class PlaybackStressTest {
             throw new IllegalArgumentException("Stress-test display count must be positive");
         }
         Random random = new Random(RANDOM_SEED);
-        List<PreparedAnimation> selection = createDisplayLimitedSelection(emotes, random, targetDisplayEntityCount);
+        List<PreparedEmote> selection = createDisplayLimitedSelection(emotes, random, targetDisplayEntityCount);
         if (selection.isEmpty()) {
             throw new IllegalArgumentException("No registered emote fits within the requested display count: " + targetDisplayEntityCount);
         }
@@ -92,7 +92,7 @@ public final class PlaybackStressTest {
         ServerLevel level,
         Vec3 origin,
         float yaw,
-        List<PreparedAnimation> selection,
+        List<PreparedEmote> selection,
         int durationTicks,
         int packetFanout,
         @Nullable PreparedPlayerSkin preparedSkin,
@@ -116,18 +116,18 @@ public final class PlaybackStressTest {
         int displayEntityCount = 0;
         try {
             for (int index = 0; index < instanceCount; index++) {
-                PreparedAnimation emote = selection.get(index);
+                PreparedEmote emote = selection.get(index);
                 PlaybackNodes nodes = this.entityController.create(
                     level,
                     gridPosition(origin, index, instanceCount),
                     yaw,
                     emote
                 );
-                AnimationPlayer timeline = new AnimationPlayer(
+                PlaybackPlayer timeline = new PlaybackPlayer(
                     emote,
                     new EntityTimelineTarget(emote, nodes, this.entityController)
                 );
-                startAtInitialTick(timeline, emote.animation(), initialTick(random, index));
+                startAtInitialTick(timeline, emote.model(), initialTick(random, index));
                 this.entityController.applySkin(nodes, emote.skinBindings(), preparedSkin);
                 this.entityController.add(level, nodes);
                 try {
@@ -222,9 +222,9 @@ public final class PlaybackStressTest {
                 try {
                     long emoteStartedNanos = System.nanoTime();
                     try {
-                        AnimationPlayer.AdvanceResult result = advanceTimeline(instance.timeline);
-                        if (result == AnimationPlayer.AdvanceResult.FINISHED) {
-                            instance.timeline = new AnimationPlayer(
+                        PlaybackPlayer.AdvanceResult result = advanceTimeline(instance.timeline);
+                        if (result == PlaybackPlayer.AdvanceResult.FINISHED) {
+                            instance.timeline = new PlaybackPlayer(
                                 instance.emote,
                                 new EntityTimelineTarget(instance.emote, instance.nodes, this.entityController)
                             );
@@ -319,12 +319,12 @@ public final class PlaybackStressTest {
         return List.copyOf(selection);
     }
 
-    private static List<PreparedAnimation> createDisplayLimitedSelection(
-        List<PreparedAnimation> emotes,
+    private static List<PreparedEmote> createDisplayLimitedSelection(
+        List<PreparedEmote> emotes,
         Random random,
         int displayLimit
     ) {
-        return createDisplayLimitedSelection(emotes, random, displayLimit, PreparedAnimation::displayNodeCount);
+        return createDisplayLimitedSelection(emotes, random, displayLimit, PreparedEmote::displayNodeCount);
     }
 
     public record StartResult(int instanceCount, int displayEntityCount) {
@@ -338,7 +338,7 @@ public final class PlaybackStressTest {
         };
     }
 
-    private void startAtInitialTick(AnimationPlayer timeline, EmoteAnimation animation, int requestedTick) {
+    private void startAtInitialTick(PlaybackPlayer timeline, EmoteAnimation animation, int requestedTick) {
         int initialTick = requestedTick;
         if (animation.settings().playback().mode() == EmoteAnimation.LoopMode.ONCE
             || animation.settings().playback().mode() == EmoteAnimation.LoopMode.HOLD) {
@@ -351,9 +351,9 @@ public final class PlaybackStressTest {
         timeline.startAtCyclePhase(initialTick);
     }
 
-    private AnimationPlayer.AdvanceResult advanceTimeline(AnimationPlayer timeline) {
-        AnimationPlayer.AdvanceResult result = timeline.advance();
-        if (result == AnimationPlayer.AdvanceResult.LOOP_BOUNDARY) {
+    private PlaybackPlayer.AdvanceResult advanceTimeline(PlaybackPlayer timeline) {
+        PlaybackPlayer.AdvanceResult result = timeline.advance();
+        if (result == PlaybackPlayer.AdvanceResult.LOOP_BOUNDARY) {
             result = timeline.continueAfterLoopEvent();
         }
         return result;
@@ -517,12 +517,12 @@ public final class PlaybackStressTest {
     }
 
     private static final class StressTestInstance {
-        private final PreparedAnimation emote;
+        private final PreparedEmote emote;
         private final PlaybackNodes nodes;
 
-        private AnimationPlayer timeline;
+        private PlaybackPlayer timeline;
 
-        private StressTestInstance(PreparedAnimation emote, PlaybackNodes nodes, AnimationPlayer timeline) {
+        private StressTestInstance(PreparedEmote emote, PlaybackNodes nodes, PlaybackPlayer timeline) {
             this.emote = emote;
             this.nodes = nodes;
             this.timeline = timeline;

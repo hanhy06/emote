@@ -7,7 +7,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.content.EmoteCatalog;
-import io.github.hanhy06.emote.content.PreparedAnimation;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.playback.stress.PlaybackStressTest;
@@ -82,7 +82,7 @@ final class StressTestCommand {
     }
 
     private int startStressTest(CommandSourceStack source, int durationTicks, StressLoad load, int packetFanout) {
-        List<PreparedAnimation> emotes = this.emoteCatalog.animations();
+        List<PreparedEmote> emotes = this.emoteCatalog.animations();
         if (emotes.isEmpty()) {
             source.sendFailure(Component.literal("No emotes are registered."));
             return 0;

@@ -1,8 +1,8 @@
 package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.content.PreparedAnimation;
-import io.github.hanhy06.emote.content.PreparedAnimationFixture;
+import io.github.hanhy06.emote.content.PreparedEmote;
+import io.github.hanhy06.emote.content.PreparedEmoteFixture;
 import io.github.hanhy06.emote.playback.runtime.EntityTimelineTarget;
 import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
@@ -30,7 +30,7 @@ class PlaybackEngineTest {
 
     @Test
     void removingSessionClearsIndexesAndDisplayCount() {
-        PreparedAnimation emote = PreparedAnimationFixture.create("test:remove", "Remove");
+        PreparedEmote emote = PreparedEmoteFixture.create("test:remove", "Remove");
         PlaybackSession session = session(emote);
         PlaybackEngine engine = new PlaybackEngine();
         PlaybackEngine.Lifecycle lifecycle = new PlaybackEngine.Lifecycle() {};
@@ -50,11 +50,10 @@ class PlaybackEngineTest {
         assertEquals(0, engine.activeDisplayEntityCount());
     }
 
-    private static PlaybackSession session(PreparedAnimation emote) {
+    private static PlaybackSession session(PreparedEmote emote) {
         return new PlaybackSession(
             UUID.randomUUID(),
             Level.OVERWORLD,
-            emote.id(),
             emote.id(),
             playbackNodes(),
             timeline(emote),
@@ -62,12 +61,12 @@ class PlaybackEngineTest {
         );
     }
 
-    private static AnimationPlayer timeline(PreparedAnimation emote) {
+    private static PlaybackPlayer timeline(PreparedEmote emote) {
         PlaybackNodes nodes = new PlaybackNodes(
             RootTransform.create(Vec3.ZERO, 0.0F),
             Map.of()
         );
-        AnimationPlayer animation = new AnimationPlayer(emote, new EntityTimelineTarget(
+        PlaybackPlayer animation = new PlaybackPlayer(emote, new EntityTimelineTarget(
             emote,
             nodes,
             new PlaybackEntityController()

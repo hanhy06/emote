@@ -4,7 +4,7 @@ import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.PlayableEmote;
-import io.github.hanhy06.emote.content.PreparedAnimation;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.playback.molang.EntityMolangQueries;
 import io.github.hanhy06.emote.playback.runtime.RootTransform;
@@ -93,24 +93,24 @@ public final class EntityPlaybackManager {
         if (definition == null) {
             entry.blocked = true;
             EmoteMod.LOGGER.warn("Marker {} references unknown emote {}", entry.marker.getUUID(), entry.settings.emoteId());
-            if (entry.session != null && this.catalog.find(entry.session.id()) == null) {
+            if (entry.session != null && this.catalog.find(entry.session.emoteId()) == null) {
                 this.engine.stop(entry.session, PlaybackStopReason.EMOTE_REMOVED);
             }
             return;
         }
-        PreparedAnimation animation = switch (definition) {
-            case PreparedAnimation prepared -> prepared;
+        PreparedEmote emote = switch (definition) {
+            case PreparedEmote prepared -> prepared;
             case PreparedSequence sequence -> sequence.compile(this.random);
         };
-        var preparation = this.skins.prepareNamedSkin(entry.settings.skinName(), animation.skinBindings());
+        var preparation = this.skins.prepareNamedSkin(entry.settings.skinName(), emote.skinBindings());
         if (preparation.preparing()) {
             entry.nextAttempt = tick + 20;
             return;
         }
         entry.needsStart = false;
         entry.skinRevision = this.skinRevision;
-        entry.skinBindings = animation.skinBindings();
-        if (!entry.settings.skinName().isEmpty() && !animation.skinBindings().isEmpty()
+        entry.skinBindings = emote.skinBindings();
+        if (!entry.settings.skinName().isEmpty() && !emote.skinBindings().isEmpty()
             && preparation.state() != PlayerSkinPreparation.State.READY && !entry.skinWarning) {
             entry.skinWarning = true;
             EmoteMod.LOGGER.warn("Marker {} skin {} is {}; using any prepared default skin", entry.marker.getUUID(),
@@ -140,7 +140,7 @@ public final class EntityPlaybackManager {
         Marker marker = entry.marker;
         ServerLevel level = (ServerLevel) marker.level();
         var result = this.engine.start(new PlaybackEngine.Request(level, RootTransform.create(marker.position(), marker.getYRot()),
-            animation, definition.id(), Map.of("actor", marker), EntityMolangQueries.forEntity(marker),
+            emote, definition.id(), Map.of("actor", marker), EntityMolangQueries.forEntity(marker),
             EmoteMod.SERVER.createCommandSourceStack().withEntity(marker).withLevel(level)
                 .withPosition(marker.position()).withRotation(marker.getRotationVector()),
             preparation.preparedPlayerSkin(), lifecycle), entry.session);

@@ -67,11 +67,11 @@ public record EmoteSequence(
         }
     }
 
-    public sealed interface Step permits EmoteStep, WaitStep {
+    public sealed interface Step permits AnimationStep, WaitStep {
     }
 
-    public record EmoteStep(List<Choice> choices, int repeat, int transitionTicks) implements Step {
-        public EmoteStep {
+    public record AnimationStep(List<Choice> choices, int repeat, int transitionTicks) implements Step {
+        public AnimationStep {
             choices = List.copyOf(choices);
             if (choices.isEmpty()) {
                 throw new IllegalArgumentException("sequence emote candidates must not be empty");
@@ -97,19 +97,19 @@ public record EmoteSequence(
             }
         }
 
-        public EmoteStep(List<Choice> choices, int repeat) {
+        public AnimationStep(List<Choice> choices, int repeat) {
             this(choices, repeat, 0);
         }
 
-        public EmoteStep(Identifier targetId, int repeat) {
+        public AnimationStep(Identifier targetId, int repeat) {
             this(List.of(new Choice(Objects.requireNonNull(targetId, "targetId"), 0)), repeat, 0);
         }
 
-        public EmoteStep(Identifier targetId, int repeat, int transitionTicks) {
+        public AnimationStep(Identifier targetId, int repeat, int transitionTicks) {
             this(List.of(new Choice(Objects.requireNonNull(targetId, "targetId"), 0)), repeat, transitionTicks);
         }
 
-        public EmoteStep(Collection<Identifier> targetIds, int repeat) {
+        public AnimationStep(Collection<Identifier> targetIds, int repeat) {
             this(targetIds.stream().map(targetId -> new Choice(targetId, 0)).toList(), repeat, 0);
         }
 

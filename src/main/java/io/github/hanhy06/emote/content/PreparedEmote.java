@@ -15,11 +15,11 @@ import org.joml.Vector3f;
 import java.nio.file.Path;
 import java.util.*;
 
-public final class PreparedAnimation implements PlayableEmote {
+public final class PreparedEmote implements PlayableEmote {
     private static final SkinBindingCompiler SKIN_BINDING_COMPILER = new SkinBindingCompiler();
     private final LoadedAnimation source;
     private final List<SkinBinding> skinBindings;
-    private final EmoteAnimation animation;
+    private final EmoteAnimation model;
     private final PreparedAnimationTimeline preparedTimeline;
     private final Map<Integer, List<PreparedEvent>> timelineEvents;
     private final Map<String, PreparedTransform> defaultTransforms;
@@ -28,10 +28,10 @@ public final class PreparedAnimation implements PlayableEmote {
     private final Map<Integer, Set<String>> hiddenNodes;
     private final PlaybackTimeline playbackTimeline;
 
-    private PreparedAnimation(
+    private PreparedEmote(
         LoadedAnimation source,
         List<SkinBinding> skinBindings,
-        EmoteAnimation animation,
+        EmoteAnimation model,
         PreparedAnimationTimeline preparedTimeline,
         Map<Integer, List<PreparedEvent>> timelineEvents,
         Map<String, PreparedTransform> defaultTransforms,
@@ -42,7 +42,7 @@ public final class PreparedAnimation implements PlayableEmote {
     ) {
         this.source = source;
         this.skinBindings = skinBindings;
-        this.animation = animation;
+        this.model = model;
         this.preparedTimeline = preparedTimeline;
         this.timelineEvents = timelineEvents;
         this.defaultTransforms = defaultTransforms;
@@ -52,11 +52,11 @@ public final class PreparedAnimation implements PlayableEmote {
         this.playbackTimeline = playbackTimeline;
     }
 
-    public static PreparedAnimation from(LoadedAnimation source) {
+    public static PreparedEmote from(LoadedAnimation source) {
         return from(source, SKIN_BINDING_COMPILER.compile(source.animation()));
     }
 
-    public static PreparedAnimation from(LoadedAnimation source, List<SkinBinding> skinBindings) {
+    public static PreparedEmote from(LoadedAnimation source, List<SkinBinding> skinBindings) {
         Objects.requireNonNull(source, "source");
         skinBindings = List.copyOf(skinBindings);
         EmoteAnimation animation = source.animation();
@@ -74,7 +74,7 @@ public final class PreparedAnimation implements PlayableEmote {
             ));
         }
 
-        return new PreparedAnimation(
+        return new PreparedEmote(
             source,
             skinBindings,
             animation,
@@ -88,8 +88,8 @@ public final class PreparedAnimation implements PlayableEmote {
         );
     }
 
-    static PreparedAnimation sequence(
-        PreparedAnimation layout,
+    static PreparedEmote sequence(
+        PreparedEmote layout,
         List<PlaybackSegment> playbackSegments,
         Map<Integer, Set<String>> hiddenNodes,
         List<PlaybackTimeline.Segment> timelineSegments
@@ -97,17 +97,17 @@ public final class PreparedAnimation implements PlayableEmote {
         Objects.requireNonNull(layout, "layout");
         Map<Integer, Set<String>> copiedHiddenNodes = new HashMap<>();
         hiddenNodes.forEach((tick, nodeIds) -> copiedHiddenNodes.put(tick, Set.copyOf(nodeIds)));
-        return new PreparedAnimation(
+        return new PreparedEmote(
             layout.source,
             layout.skinBindings,
-            layout.animation,
+            layout.model,
             layout.preparedTimeline,
             Map.of(),
             compileSequenceDefaultTransforms(layout),
             layout.displayNodeCount,
             List.copyOf(playbackSegments),
             Map.copyOf(copiedHiddenNodes),
-            new PlaybackTimeline(layout.animation.id(), layout.durationTicks(), EmoteAnimation.LoopMode.ONCE,
+            new PlaybackTimeline(layout.model.id(), layout.durationTicks(), EmoteAnimation.LoopMode.ONCE,
                 0, timelineSegments)
         );
     }
@@ -128,11 +128,11 @@ public final class PreparedAnimation implements PlayableEmote {
         return new PlaybackTimeline(animation.id(), duration, playback.mode(), playback.loopStartTicks(), segments);
     }
 
-    private static Map<String, PreparedTransform> compileSequenceDefaultTransforms(PreparedAnimation layout) {
+    private static Map<String, PreparedTransform> compileSequenceDefaultTransforms(PreparedEmote layout) {
         Map<String, Matrix4f> worldMatrices = new HashMap<>();
         Map<String, PreparedTransform> transforms = new HashMap<>();
         for (String nodeId : layout.preparedTimeline.nodeOrder()) {
-            EmoteAnimation.Node node = layout.animation.nodes().get(nodeId);
+            EmoteAnimation.Node node = layout.model.nodes().get(nodeId);
             Matrix4f world = new Matrix4f(layout.defaultTransforms.get(nodeId).localMatrix());
             if (node.parentId() != null) {
                 world.set(worldMatrices.get(node.parentId())).mul(layout.defaultTransforms.get(nodeId).localMatrix());
@@ -147,8 +147,8 @@ public final class PreparedAnimation implements PlayableEmote {
         return this.source;
     }
 
-    public EmoteAnimation animation() {
-        return this.animation;
+    public EmoteAnimation model() {
+        return this.model;
     }
 
     public PreparedAnimationTimeline preparedTimeline() {
@@ -156,20 +156,20 @@ public final class PreparedAnimation implements PlayableEmote {
     }
 
     public String id() {
-        return animation().id().toString();
+        return model().id().toString();
     }
 
     public EmoteMetadata metadata() {
-        return animation().metadata();
+        return model().metadata();
     }
 
     @Override
     public boolean standalone() {
-        return animation().settings().standalone();
+        return model().settings().standalone();
     }
 
     public EmotePlayerBehavior playerBehavior() {
-        return animation().settings().player();
+        return model().settings().player();
     }
 
     public Path sourcePath() {
@@ -177,22 +177,22 @@ public final class PreparedAnimation implements PlayableEmote {
     }
 
     public int nodeCount() {
-        return animation().nodes().size();
+        return model().nodes().size();
     }
 
     @Override
     public int durationTicks() {
-        return animation().timeline().durationTicks();
+        return model().timeline().durationTicks();
     }
 
     @Override
     public int cooldownTicks() {
-        return animation().settings().cooldownTicks();
+        return model().settings().cooldownTicks();
     }
 
     @Override
     public EmoteAnimation.LoopMode loopMode() {
-        return animation().settings().playback().mode();
+        return model().settings().playback().mode();
     }
 
     public List<SkinBinding> skinBindings() {
@@ -237,7 +237,7 @@ public final class PreparedAnimation implements PlayableEmote {
         int transitionStartTick,
         int startTick,
         int endTick,
-        PreparedAnimation animation
+        PreparedEmote animation
     ) {
         public PlaybackSegment {
             if (transitionStartTick < 0 || startTick < transitionStartTick || endTick < startTick) {

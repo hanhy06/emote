@@ -6,7 +6,7 @@ import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.*;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.*;
-import io.github.hanhy06.emote.playback.AnimationPlayer;
+import io.github.hanhy06.emote.playback.PlaybackPlayer;
 import io.github.hanhy06.emote.playback.CallbackRegistry;
 import io.github.hanhy06.emote.playback.PlayerPlaybackState;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
@@ -61,7 +61,7 @@ class PlaybackSessionTest {
         assertTrue(session.tick(1));
         session.tickCallbacks();
         assertTrue(session.beginClose(PlaybackStopReason.MANUAL));
-        session.animation().stop(PlaybackStopReason.MANUAL);
+        session.playback().stop(PlaybackStopReason.MANUAL);
         session.closeCallbacks();
         session.completeClose();
         assertEquals(List.of("start", "tick", "close"), calls);
@@ -233,8 +233,8 @@ class PlaybackSessionTest {
     @ParameterizedTest
     @CsvSource({"0,0", "1,0", "0,2", "1,2"})
     void repeatedAnimationsKeepIndependentStateAndCloseBeforeTheNextStart(int transitionTicks, int waitTicks) {
-        PreparedAnimation template = PreparedAnimationFixture.create("test:repeated", "Repeated");
-        EmoteAnimation source = template.animation();
+        PreparedEmote template = PreparedEmoteFixture.create("test:repeated", "Repeated");
+        EmoteAnimation source = template.model();
         var event = new EmoteAnimation.Event(
             new EmoteAnimation.CommandSource(EmoteAnimation.SourceType.SERVER, null),
             new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, EmoteAnimation.Vec3.ZERO), List.of("start-command"));
@@ -242,21 +242,21 @@ class PlaybackSessionTest {
         var animation = new EmoteAnimation(source.id(), source.metadata(), source.settings(), source.molang(), source.nodes(),
             new EmoteAnimation.Timeline(2, Map.of(), new EmoteAnimation.Events(List.of(event), List.of(), List.of(), List.of(stop))),
             List.of(new EmoteAnimation.Callback(Identifier.parse("test:animation"), "node")));
-        PreparedAnimation repeated = PreparedAnimation.from(new LoadedAnimation(Path.of("repeated.json"), "test", animation));
+        PreparedEmote repeated = PreparedEmote.from(new LoadedAnimation(Path.of("repeated.json"), "test", animation));
         List<EmoteSequence.Step> steps = new ArrayList<>();
-        steps.add(new EmoteSequence.EmoteStep(source.id(), 1));
+        steps.add(new EmoteSequence.AnimationStep(source.id(), 1));
         if (waitTicks > 0) steps.add(new EmoteSequence.WaitStep(waitTicks));
-        steps.add(new EmoteSequence.EmoteStep(source.id(), 1, transitionTicks));
+        steps.add(new EmoteSequence.AnimationStep(source.id(), 1, transitionTicks));
         EmoteSequence sequence = new EmoteSequence(Identifier.parse("test:sequence"), source.metadata(),
             new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()),
             steps, List.of());
-        PreparedAnimation compiled = PreparedSequence.resolve(sequence, Map.of(repeated.id(), repeated)).compiledAnimation();
+        PreparedEmote compiled = PreparedSequence.resolve(sequence, Map.of(repeated.id(), repeated)).compiledEmote();
         List<String> calls = new ArrayList<>();
         List<PlaybackContext> contexts = new ArrayList<>();
-        AnimationPlayer player = new AnimationPlayer(compiled, new EmptyTimelineTarget());
+        PlaybackPlayer player = new PlaybackPlayer(compiled, new EmptyTimelineTarget());
         player.bindEvents(command -> calls.addAll(command.event().commands()));
         player.start();
-        PlaybackSession session = new PlaybackSession(UUID.randomUUID(), Level.OVERWORLD, compiled.id(), compiled.id(),
+        PlaybackSession session = new PlaybackSession(UUID.randomUUID(), Level.OVERWORLD, compiled.id(),
             new PlaybackNodes(RootTransform.create(Vec3.ZERO, 0), Map.of()), player, Map.of());
         var callbacks = new EmoteCallbacks() {
             public void onStart(PlaybackContext context) {
@@ -298,20 +298,20 @@ class PlaybackSessionTest {
 
     @Test
     void startCallbackSeesInitialVisibilityAndCommandsAndFinalTickRunsBeforeClose() {
-        EmoteAnimation source = PreparedAnimationFixture.create("test:prepared", "Prepared").animation();
+        EmoteAnimation source = PreparedEmoteFixture.create("test:prepared", "Prepared").model();
         var start = new EmoteAnimation.Event(new EmoteAnimation.CommandSource(EmoteAnimation.SourceType.SERVER, null),
             new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, EmoteAnimation.Vec3.ZERO), List.of("start-command"));
         var stop = new EmoteAnimation.Event(start.source(), start.origin(), List.of("stop-command"));
         var definition = new EmoteAnimation(source.id(), source.metadata(), source.settings(), source.molang(), source.nodes(),
             new EmoteAnimation.Timeline(1, Map.of(), new EmoteAnimation.Events(List.of(start), List.of(), List.of(), List.of(stop))), List.of());
-        PreparedAnimation prepared = PreparedAnimation.from(new LoadedAnimation(Path.of("prepared.json"), "test", definition));
+        PreparedEmote prepared = PreparedEmote.from(new LoadedAnimation(Path.of("prepared.json"), "test", definition));
         EmptyTimelineTarget target = new EmptyTimelineTarget();
-        AnimationPlayer player = new AnimationPlayer(prepared, target);
+        PlaybackPlayer player = new PlaybackPlayer(prepared, target);
         List<String> calls = new ArrayList<>();
         player.bindEvents(event -> calls.addAll(event.event().commands()));
         player.start();
         player.deferInitialVisibility();
-        PlaybackSession session = new PlaybackSession(UUID.randomUUID(), Level.OVERWORLD, prepared.id(), prepared.id(),
+        PlaybackSession session = new PlaybackSession(UUID.randomUUID(), Level.OVERWORLD, prepared.id(),
             new PlaybackNodes(RootTransform.create(Vec3.ZERO, 0), Map.of()), player, Map.of());
         session.bindCallbacks(List.of(new CallbackRegistry.Binding(new EmoteCallbacks() {
             public void onStart(PlaybackContext context) {
@@ -324,7 +324,7 @@ class PlaybackSessionTest {
         }, "")), Map.of(), 100);
         session.startPlayback();
         session.tick(101);
-        assertEquals(AnimationPlayer.AdvanceResult.FINISHED, player.advance());
+        assertEquals(PlaybackPlayer.AdvanceResult.FINISHED, player.advance());
         session.tickCallbacks();
         session.beginClose(PlaybackStopReason.FINISHED);
         player.stop(PlaybackStopReason.FINISHED);
@@ -334,16 +334,15 @@ class PlaybackSessionTest {
     }
 
     private SessionFixture fixture() throws Exception {
-        PreparedAnimation offer = PreparedAnimationFixture.create("test:offer", "Offer");
+        PreparedEmote offer = PreparedEmoteFixture.create("test:offer", "Offer");
         PlaybackSession session = new PlaybackSession(
             UUID.randomUUID(),
             Level.OVERWORLD,
             offer.id(),
-            offer.id(),
             new PlaybackNodes(RootTransform.create(Vec3.ZERO, 0.0F), Map.of()),
             timeline(offer), Map.of()
         );
-        session.animation().start();
+        session.playback().start();
         return new SessionFixture(session, offer);
     }
 
@@ -351,25 +350,25 @@ class PlaybackSessionTest {
         return new PlayerPlaybackState(UUID.randomUUID(), Vec3.ZERO, List.of(), false, EmotePlayerBehavior.createDefault());
     }
 
-    private static AnimationPlayer timeline(PreparedAnimation emote) {
-        AnimationPlayer animation = new AnimationPlayer(emote, new EmptyTimelineTarget());
+    private static PlaybackPlayer timeline(PreparedEmote emote) {
+        PlaybackPlayer animation = new PlaybackPlayer(emote, new EmptyTimelineTarget());
         animation.bindEvents(ignored -> {
         });
         return animation;
     }
 
-    private record SessionFixture(PlaybackSession session, PreparedAnimation offer) {
+    private record SessionFixture(PlaybackSession session, PreparedEmote offer) {
     }
 
-    private static final class EmptyTimelineTarget implements AnimationPlayer.TimelineTarget {
+    private static final class EmptyTimelineTarget implements PlaybackPlayer.TimelineTarget {
         private final Map<String, Boolean> visibility = new java.util.HashMap<>();
         @Override
-        public Transformation createTransformation(String nodeId, PreparedAnimation.PreparedTransform transform) {
+        public Transformation createTransformation(String nodeId, PreparedEmote.PreparedTransform transform) {
             return new Transformation(new org.joml.Matrix4f());
         }
 
         @Override
-        public void applyTransform(String nodeId, PreparedAnimation.PreparedTransform transform, int interpolationDurationTicks) {
+        public void applyTransform(String nodeId, PreparedEmote.PreparedTransform transform, int interpolationDurationTicks) {
         }
 
         @Override

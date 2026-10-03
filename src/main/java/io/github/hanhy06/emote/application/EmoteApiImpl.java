@@ -7,7 +7,7 @@ import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.api.sequence.EmoteSequence;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.LoadedAnimation;
-import io.github.hanhy06.emote.content.PreparedAnimation;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.content.loader.AnimationContentResolver;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
@@ -103,7 +103,7 @@ public final class EmoteApiImpl extends EmoteApi {
             "api:" + animation.id(),
             animation
         );
-        PreparedAnimation emote = PreparedAnimation.from(this.contentResolver.resolve(loaded));
+        PreparedEmote emote = PreparedEmote.from(this.contentResolver.resolve(loaded));
         UUID registrationId = this.emoteCatalog.register(emote);
         this.changeNotifier.notifyChanged();
         return new ApiRegistration(animation.id(), registrationId);
@@ -113,7 +113,7 @@ public final class EmoteApiImpl extends EmoteApi {
     public Registration register(EmoteSequence sequence) {
         Objects.requireNonNull(sequence, "sequence");
         requireServerThread();
-        var animations = this.emoteCatalog.animations().stream().collect(Collectors.toMap(PreparedAnimation::id, Function.identity()));
+        var animations = this.emoteCatalog.animations().stream().collect(Collectors.toMap(PreparedEmote::id, Function.identity()));
         PreparedSequence prepared = PreparedSequence.resolve(sequence, animations);
         UUID registrationId = this.emoteCatalog.register(prepared);
         this.changeNotifier.notifyChanged();
@@ -162,7 +162,7 @@ public final class EmoteApiImpl extends EmoteApi {
         Objects.requireNonNull(sessionId, "sessionId");
         requireServerThread();
         return Optional.ofNullable(this.playerPlaybackManager.findSession(sessionId))
-            .map(session -> session.animation().timeline());
+            .map(session -> session.playback().timeline());
     }
 
     @Override

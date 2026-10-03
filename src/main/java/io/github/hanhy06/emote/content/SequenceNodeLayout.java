@@ -11,10 +11,10 @@ final class SequenceNodeLayout {
     private SequenceNodeLayout() {
     }
 
-    static PreparedAnimation validateAndCreateLayout(List<PreparedSequence.Step> steps) {
-        PreparedAnimation first = steps.stream()
-            .filter(PreparedSequence.EmoteStep.class::isInstance)
-            .map(PreparedSequence.EmoteStep.class::cast)
+    static PreparedEmote validateAndCreateLayout(List<PreparedSequence.Step> steps) {
+        PreparedEmote first = steps.stream()
+            .filter(PreparedSequence.AnimationStep.class::isInstance)
+            .map(PreparedSequence.AnimationStep.class::cast)
             .flatMap(step -> step.candidates().stream())
             .filter(PreparedSequence.AnimationChoice.class::isInstance)
             .map(PreparedSequence.AnimationChoice.class::cast)
@@ -24,14 +24,14 @@ final class SequenceNodeLayout {
         Map<String, EmoteAnimation.Node> nodes = new LinkedHashMap<>();
         Map<String, PreparedDisplayData> preparedDisplayData = new LinkedHashMap<>();
         for (PreparedSequence.Step step : steps) {
-            if (!(step instanceof PreparedSequence.EmoteStep emoteStep)) {
+            if (!(step instanceof PreparedSequence.AnimationStep emoteStep)) {
                 continue;
             }
             for (PreparedSequence.Choice choice : emoteStep.candidates()) {
                 if (!(choice instanceof PreparedSequence.AnimationChoice animationChoice)) {
                     continue;
                 }
-                PreparedAnimation animation = animationChoice.animation();
+                PreparedEmote animation = animationChoice.animation();
                 if (!first.skinBindings().equals(animation.skinBindings())) {
                     throw new IllegalArgumentException(
                         "Sequence animations must use the same skin layout: " + first.id() + " and " + animation.id()
@@ -41,29 +41,29 @@ final class SequenceNodeLayout {
             }
         }
 
-        EmoteAnimation layoutAnimation = new EmoteAnimation(
-            first.animation().id(),
-            first.animation().metadata(),
-            first.animation().settings(),
+        EmoteAnimation layoutModel = new EmoteAnimation(
+            first.model().id(),
+            first.model().metadata(),
+            first.model().settings(),
             EmoteAnimation.MolangPrograms.empty(),
             nodes,
             new EmoteAnimation.Timeline(1, Map.of(), EmoteAnimation.Events.empty()), List.of());
         LoadedAnimation loaded = new LoadedAnimation(
             first.sourcePath(),
             first.source().sha256(),
-            layoutAnimation,
+            layoutModel,
             preparedDisplayData
         );
-        return PreparedAnimation.from(loaded, first.skinBindings());
+        return PreparedEmote.from(loaded, first.skinBindings());
     }
 
     private static void mergeNodes(
-        PreparedAnimation first,
-        PreparedAnimation animation,
+        PreparedEmote first,
+        PreparedEmote animation,
         Map<String, EmoteAnimation.Node> nodes,
         Map<String, PreparedDisplayData> preparedDisplayData
     ) {
-        animation.animation().nodes().forEach((nodeId, node) -> {
+        animation.model().nodes().forEach((nodeId, node) -> {
             EmoteAnimation.Node existing = nodes.putIfAbsent(nodeId, node);
             if (existing != null && !compatibleNode(existing, node)) {
                 throw new IllegalArgumentException(

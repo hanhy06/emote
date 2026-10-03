@@ -2,7 +2,7 @@ package io.github.hanhy06.emote.playback.runtime;
 
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.content.PreparedAnimation;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
@@ -53,7 +53,7 @@ public final class PlaybackNodes {
     }
 
     public Transformation displayTransformation(
-        PreparedAnimation.PreparedTransform transform
+        PreparedEmote.PreparedTransform transform
     ) {
         Objects.requireNonNull(transform, "transform");
         return root().displayTransformation(transform);

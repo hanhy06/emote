@@ -5,9 +5,9 @@ import io.github.hanhy06.emote.api.EmotePlaybackListener;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.PlaybackInfo;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
-import io.github.hanhy06.emote.content.PreparedAnimation;
-import io.github.hanhy06.emote.content.PreparedAnimationFixture;
-import io.github.hanhy06.emote.playback.AnimationPlayer;
+import io.github.hanhy06.emote.content.PreparedEmote;
+import io.github.hanhy06.emote.content.PreparedEmoteFixture;
+import io.github.hanhy06.emote.playback.PlaybackPlayer;
 import io.github.hanhy06.emote.playback.PlayerPlaybackState;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 import io.github.hanhy06.emote.playback.runtime.RootTransform;
@@ -83,16 +83,15 @@ class ApiEventDispatcherTest {
     }
 
     private static PlaybackSession session(PlayerPlaybackState participant) {
-        PreparedAnimation emote = PreparedAnimationFixture.create("test:api-event", "API Event");
+        PreparedEmote emote = PreparedEmoteFixture.create("test:api-event", "API Event");
         PlaybackNodes nodes = new PlaybackNodes(
             RootTransform.create(Vec3.ZERO, 0.0F),
             Map.of()
         );
-        AnimationPlayer animation = new AnimationPlayer(emote, new EmptyTimelineTarget());
+        PlaybackPlayer animation = new PlaybackPlayer(emote, new EmptyTimelineTarget());
         return new PlaybackSession(
             UUID.randomUUID(),
             Level.OVERWORLD,
-            emote.id(),
             emote.id(),
             nodes,
             animation,
@@ -111,14 +110,14 @@ class ApiEventDispatcherTest {
         }
     }
 
-    private static final class EmptyTimelineTarget implements AnimationPlayer.TimelineTarget {
+    private static final class EmptyTimelineTarget implements PlaybackPlayer.TimelineTarget {
         @Override
-        public Transformation createTransformation(String nodeId, PreparedAnimation.PreparedTransform transform) {
+        public Transformation createTransformation(String nodeId, PreparedEmote.PreparedTransform transform) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        public void applyTransform(String nodeId, PreparedAnimation.PreparedTransform transform, int interpolationDurationTicks) {
+        public void applyTransform(String nodeId, PreparedEmote.PreparedTransform transform, int interpolationDurationTicks) {
             throw new UnsupportedOperationException();
         }
 

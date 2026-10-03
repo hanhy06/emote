@@ -2,8 +2,8 @@ package io.github.hanhy06.emote.playback.timeline;
 
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.content.PreparedAnimation;
-import io.github.hanhy06.emote.playback.AnimationPlayer;
+import io.github.hanhy06.emote.content.PreparedEmote;
+import io.github.hanhy06.emote.playback.PlaybackPlayer;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 import io.github.hanhy06.emote.playback.runtime.RootTransform;
 import net.minecraft.commands.CommandSourceStack;
@@ -17,17 +17,17 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.Objects;
 
-public final class EventCommandExecutor implements AnimationPlayer.EventExecutor {
+public final class EventCommandExecutor implements PlaybackPlayer.EventExecutor {
     private final ServerLevel level;
     private final @Nullable CommandSourceStack actorSource;
     private final PlaybackNodes nodes;
-    private final AnimationPlayer timeline;
+    private final PlaybackPlayer timeline;
 
     public EventCommandExecutor(
         ServerLevel level,
         @Nullable CommandSourceStack actorSource,
         PlaybackNodes nodes,
-        AnimationPlayer timeline
+        PlaybackPlayer timeline
     ) {
         this.level = Objects.requireNonNull(level, "level");
         this.actorSource = actorSource;
@@ -36,7 +36,7 @@ public final class EventCommandExecutor implements AnimationPlayer.EventExecutor
     }
 
     @Override
-    public void execute(PreparedAnimation.PreparedEvent preparedEvent) {
+    public void execute(PreparedEmote.PreparedEvent preparedEvent) {
         EmoteAnimation.Event event = preparedEvent.event();
         Vec3 origin = resolveOrigin(event.origin());
         if (!event.commands().isEmpty()) {

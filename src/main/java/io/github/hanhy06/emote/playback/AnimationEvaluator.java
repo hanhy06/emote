@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.content.PreparedAnimation;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.content.PreparedAnimationTimeline;
 import io.github.hanhy06.emote.molang.MolangEngine;
 import io.github.hanhy06.emote.playback.molang.MolangQuerySource;
@@ -23,7 +23,7 @@ final class AnimationEvaluator {
         "id", "UUID", "Pos", "Motion", "Rotation", "Tags", "Passengers",
         "transformation", "interpolation_duration", "start_interpolation", "teleport_duration"
     );
-    private final PreparedAnimation animation;
+    private final PreparedEmote animation;
     private final PreparedAnimationTimeline timeline;
     private final MolangQuerySource querySource;
     private final NodeState[] nodes;
@@ -38,13 +38,13 @@ final class AnimationEvaluator {
 
     private MolangEngine.Session session;
 
-    AnimationEvaluator(PreparedAnimation animation, MolangQuerySource querySource) {
+    AnimationEvaluator(PreparedEmote animation, MolangQuerySource querySource) {
         this.animation = animation;
         this.timeline = animation.preparedTimeline();
         this.querySource = querySource;
         this.nodes = new NodeState[this.timeline.nodeOrder().size()];
         Map<String, Integer> indexes = new HashMap<>();
-        EmoteAnimation source = animation.animation();
+        EmoteAnimation source = animation.model();
         for (int index = 0; index < this.nodes.length; index++) {
             String nodeId = this.timeline.nodeOrder().get(index);
             Node node = source.nodes().get(nodeId);
@@ -87,7 +87,7 @@ final class AnimationEvaluator {
     }
 
     int displayInterpolationTicks() {
-        return this.animation.animation().settings().displayInterpolationTicks();
+        return this.animation.model().settings().displayInterpolationTicks();
     }
 
     String nodeId(int index) {

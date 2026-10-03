@@ -1,20 +1,20 @@
 package io.github.hanhy06.emote.playback.runtime;
 
 import com.mojang.math.Transformation;
-import io.github.hanhy06.emote.content.PreparedAnimation;
-import io.github.hanhy06.emote.playback.AnimationPlayer;
+import io.github.hanhy06.emote.content.PreparedEmote;
+import io.github.hanhy06.emote.playback.PlaybackPlayer;
 import net.minecraft.nbt.CompoundTag;
 import org.joml.Matrix4fc;
 
 import java.util.Objects;
 
-public final class EntityTimelineTarget implements AnimationPlayer.TimelineTarget {
-    private final PreparedAnimation emote;
+public final class EntityTimelineTarget implements PlaybackPlayer.TimelineTarget {
+    private final PreparedEmote emote;
     private final PlaybackNodes nodes;
     private final PlaybackEntityController entityController;
 
     public EntityTimelineTarget(
-        PreparedAnimation emote,
+        PreparedEmote emote,
         PlaybackNodes nodes,
         PlaybackEntityController entityController
     ) {
@@ -24,7 +24,7 @@ public final class EntityTimelineTarget implements AnimationPlayer.TimelineTarge
     }
 
     @Override
-    public Transformation createTransformation(String nodeId, PreparedAnimation.PreparedTransform transform) {
+    public Transformation createTransformation(String nodeId, PreparedEmote.PreparedTransform transform) {
         PlaybackNodes.NodeInstance node = requiredNode(nodeId);
         return this.nodes.displayTransformation(transform);
     }
@@ -38,7 +38,7 @@ public final class EntityTimelineTarget implements AnimationPlayer.TimelineTarge
     @Override
     public void applyTransform(
         String nodeId,
-        PreparedAnimation.PreparedTransform transform,
+        PreparedEmote.PreparedTransform transform,
         int interpolationDurationTicks
     ) {
         this.entityController.applyTransformation(

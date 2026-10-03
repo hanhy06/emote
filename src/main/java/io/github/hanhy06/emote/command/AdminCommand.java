@@ -312,8 +312,8 @@ public final class AdminCommand {
                 continue;
             }
 
-            PlayableEmote emote = this.emoteCatalog.find(session.id());
-            String displayName = emote == null ? session.id() : emote.name();
+            PlayableEmote emote = this.emoteCatalog.find(session.emoteId());
+            String displayName = emote == null ? session.emoteId() : emote.name();
             source.sendSuccess(
                 () -> Component.literal("Stopped " + displayName + " for " + player.getName().getString() + "."),
                 true

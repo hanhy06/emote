@@ -100,7 +100,7 @@ public class EmoteCatalog {
         return removedCount;
     }
 
-    public List<PreparedAnimation> animations() {
+    public List<PreparedEmote> animations() {
         return this.state.animations();
     }
 
@@ -150,12 +150,12 @@ public class EmoteCatalog {
         combined.addAll(fileList);
         combined.sort(Comparator.comparing(PlayableEmote::id));
 
-        Map<String, PreparedAnimation> animations = new HashMap<>();
+        Map<String, PreparedEmote> animations = new HashMap<>();
         for (PlayableEmote definition : this.fileEmotes.values()) {
-            if (definition instanceof PreparedAnimation animation) animations.put(animation.id(), animation);
+            if (definition instanceof PreparedEmote animation) animations.put(animation.id(), animation);
         }
         for (ApiEntry entry : this.apiEmotes.values()) {
-            if (entry.emote() instanceof PreparedAnimation animation) animations.put(animation.id(), animation);
+            if (entry.emote() instanceof PreparedEmote animation) animations.put(animation.id(), animation);
         }
         boolean removedSequence = false;
         for (int index = 0; index < combined.size(); index++) {
@@ -188,7 +188,7 @@ public class EmoteCatalog {
             Map.copyOf(emotesById),
             Map.copyOf(fileEmotesById),
             List.copyOf(combined),
-            combined.stream().filter(PreparedAnimation.class::isInstance).map(PreparedAnimation.class::cast).toList(),
+            combined.stream().filter(PreparedEmote.class::isInstance).map(PreparedEmote.class::cast).toList(),
             List.copyOf(fileList)
         );
     }
@@ -243,7 +243,7 @@ public class EmoteCatalog {
         Map<String, PlayableEmote> emotesById,
         Map<String, PlayableEmote> fileEmotesById,
         List<PlayableEmote> emotes,
-        List<PreparedAnimation> animations,
+        List<PreparedEmote> animations,
         List<PlayableEmote> fileEmotes
     ) {
         private static RegistryState empty() {

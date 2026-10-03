@@ -4,7 +4,7 @@ import io.github.hanhy06.emote.application.*;
 import io.github.hanhy06.emote.command.*;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.content.EmoteCatalog;
-import io.github.hanhy06.emote.content.PreparedAnimation;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.content.loader.AnimationContentResolver;
 import io.github.hanhy06.emote.content.loader.EmoteDirectoryLoader;
@@ -54,7 +54,7 @@ final class EmoteBootstrap {
             new SkinBakeCoordinator(accounts, skinBaker, minecraftSkins, skinCache, accountQueue, mineSkin)
         );
         catalog.addListener(emotes -> skins.setModelBindings(emotes.stream().flatMap(emote -> switch (emote) {
-            case PreparedAnimation animation -> animation.skinBindings().stream();
+            case PreparedEmote animation -> animation.skinBindings().stream();
             case PreparedSequence sequence -> sequence.layoutAnchor().skinBindings().stream();
         }).toList()));
         PlaybackEngine engine = new PlaybackEngine();

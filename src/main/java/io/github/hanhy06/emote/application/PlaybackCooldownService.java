@@ -83,7 +83,7 @@ public final class PlaybackCooldownService implements PlaybackStateListener {
 
     @Override
     public void onStopped(ServerPlayer player, PlaybackSession session, PlayerPlaybackState playerState, PlaybackStopReason reason) {
-        onPlaybackEnded(player, session.id());
+        onPlaybackEnded(player, session.emoteId());
     }
 
     void onPlaybackEnded(ServerPlayer player, String emoteId) {

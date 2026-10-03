@@ -36,10 +36,10 @@ class SequenceJsonParserTest {
         assertEquals(new JsonPrimitive("author"), sequence.metadata().additional().get("credit"));
         assertEquals(100, sequence.settings().cooldownTicks());
         assertEquals(0.1D, sequence.settings().player().stopConditions().movementDistance());
-        assertEquals(1, ((EmoteSequence.EmoteStep) sequence.steps().get(0)).repeat());
+        assertEquals(1, ((EmoteSequence.AnimationStep) sequence.steps().get(0)).repeat());
         assertEquals(10, ((EmoteSequence.WaitStep) sequence.steps().get(1)).ticks());
-        assertEquals(3, ((EmoteSequence.EmoteStep) sequence.steps().get(2)).repeat());
-        assertEquals(4, ((EmoteSequence.EmoteStep) sequence.steps().get(2)).transitionTicks());
+        assertEquals(3, ((EmoteSequence.AnimationStep) sequence.steps().get(2)).repeat());
+        assertEquals(4, ((EmoteSequence.AnimationStep) sequence.steps().get(2)).transitionTicks());
     }
 
     @Test
@@ -77,8 +77,8 @@ class SequenceJsonParserTest {
             {"emote": ["example:idle_1", 30, "example:idle_2", 70], "repeat": 4}
             """));
 
-        EmoteSequence.EmoteStep equalStep = assertInstanceOf(EmoteSequence.EmoteStep.class, equal.steps().getFirst());
-        EmoteSequence.EmoteStep weightedStep = assertInstanceOf(EmoteSequence.EmoteStep.class, weighted.steps().getFirst());
+        EmoteSequence.AnimationStep equalStep = assertInstanceOf(EmoteSequence.AnimationStep.class, equal.steps().getFirst());
+        EmoteSequence.AnimationStep weightedStep = assertInstanceOf(EmoteSequence.AnimationStep.class, weighted.steps().getFirst());
         assertEquals(List.of("example:idle_1", "example:idle_2", "example:idle_3"), equalStep.targetIds().stream().map(Object::toString).toList());
         assertEquals(List.of(30, 70), weightedStep.choices().stream().map(EmoteSequence.Choice::chance).toList());
     }
@@ -89,7 +89,7 @@ class SequenceJsonParserTest {
             {"emote": ["example:idle", 70, "emote:continue", 20, "emote:break", 10], "repeat": 5}
             """));
 
-        EmoteSequence.EmoteStep step = assertInstanceOf(EmoteSequence.EmoteStep.class, sequence.steps().getFirst());
+        EmoteSequence.AnimationStep step = assertInstanceOf(EmoteSequence.AnimationStep.class, sequence.steps().getFirst());
 
         assertEquals(List.of("example:idle", "emote:continue", "emote:break"), step.targetIds().stream().map(Object::toString).toList());
         assertEquals(EmoteSequence.Control.CONTINUE, EmoteSequence.Control.fromId(step.targetIds().get(1)));
