@@ -2,9 +2,10 @@ package io.github.hanhy06.emote.application;
 
 import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaySource;
+import io.github.hanhy06.emote.api.PlaybackPlacement;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.PlayableEmote;
-import io.github.hanhy06.emote.playback.PlaybackEngine;
+import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -17,13 +18,13 @@ public class EmotePlayService {
     public EmotePlayService(
         EmoteCatalog emoteCatalog,
         PlaybackPolicyService playbackPolicy,
-        PlaybackEngine playbackEngine,
+        PlayerPlaybackManager playerPlaybackManager,
         ApiEventDispatcher apiEvents
     ) {
         this(
             emoteCatalog,
             playbackPolicy,
-            playbackEngine::start,
+            playerPlaybackManager::start,
             apiEvents::beforePlay
         );
     }
@@ -45,6 +46,10 @@ public class EmotePlayService {
     }
 
     public PlayResult play(ServerPlayer player, String id, PlaySource source) {
+        return play(player, id, source, PlaybackPlacement.actor());
+    }
+
+    public PlayResult play(ServerPlayer player, String id, PlaySource source, PlaybackPlacement placement) {
         PlayableEmote emote = this.emoteCatalog.find(id);
         if (emote == null) {
             return PlayResult.failure("That emote does not exist.");
@@ -60,7 +65,7 @@ public class EmotePlayService {
         this.playbackPolicy.claimCooldown(decision);
         PlayResult result;
         try {
-            result = this.emoteStarter.start(player, emote);
+            result = this.emoteStarter.start(player, emote, placement);
         } catch (RuntimeException | Error exception) {
             this.playbackPolicy.releaseCooldown(decision);
             throw exception;
@@ -73,7 +78,7 @@ public class EmotePlayService {
 
     @FunctionalInterface
     interface PlaybackStarter {
-        PlayResult start(ServerPlayer player, PlayableEmote emote);
+        PlayResult start(ServerPlayer player, PlayableEmote emote, PlaybackPlacement placement);
     }
 
     @FunctionalInterface

@@ -29,8 +29,8 @@ export function createAnimatedJavaRuntime(
   if (cubeRuntime && cubeRuntime.kind !== "native") throw new Error("Animated Java cube runtime must use native animation output.");
   const nodes: Record<string, RuntimeNode> = { ...(cubeRuntime?.nodes ?? {}) };
   const tracks: Record<string, RuntimeNodeTracks> = { ...(cubeRuntime?.tracks ?? {}) };
-  const editorNodeByRuntimeNode: Record<string, string> = { ...(cubeRuntime?.bindings.editorNodeByRuntimeNode ?? {}) };
-  const editorSpaceGroupByRuntimeRoot: Record<string, string> = { ...(cubeRuntime?.bindings.editorSpaceGroupByRuntimeRoot ?? {}) };
+  const editorNodeByRuntimeNode: Record<string, string> = { ...(cubeRuntime?.bindings ?? {}) };
+
   const addNode = (id: string, node: RuntimeNode) => {
     if (nodes[id]) throw new Error(`Animated Java runtime produces more than one node named ${id}.`);
     nodes[id] = node;
@@ -43,12 +43,12 @@ export function createAnimatedJavaRuntime(
     const parentId = parentGroupUuid ? hierarchy.runtimeParentByGroupUuid[parentGroupUuid] : hierarchy.sceneId;
     if (parentGroupUuid && !parentId) throw new Error(`Animated Java display ${element.name} references an unavailable runtime group ${parentGroupUuid}.`);
     const parentOrigin = parentGroupUuid ? hierarchy.groupOrigins.get(parentGroupUuid) : undefined;
-    const spaceGroup = sourceNode.binding.spaceGroupId ?? ajRuntimeRootId(element.uuid);
+
     const basePosition = element.position.map((value, axis) => (value - (parentOrigin?.[axis] ?? 0)) / 16) as [number, number, number];
     const baseRotation = element.rotation;
     addNode(ids.x, {
       type: "anchor",
-      ...(parentId ? { parent: parentId } : { space: sourceNode.space ?? "initiator" }),
+      ...(parentId ? { parent: parentId } : {}),
       transform: { position: basePosition, rotation: [baseRotation[0], 0, 0], scale: ONE_VECTOR },
     });
     addNode(ids.y, { type: "anchor", parent: ids.x, transform: { position: ZERO_VECTOR, rotation: [0, baseRotation[1], 0], scale: ONE_VECTOR } });
@@ -59,7 +59,7 @@ export function createAnimatedJavaRuntime(
       : IDENTITY_TRANSFORM;
     addNode(element.uuid, importedNodeToRuntimeNode(sourceNode, nodeTransform, ids.z));
     editorNodeByRuntimeNode[element.uuid] = element.uuid;
-    if (!parentId) editorSpaceGroupByRuntimeRoot[ids.x] = spaceGroup;
+
     const keyframes = animation.animators[element.uuid]?.keyframes ?? [];
     const position = ajProjectFrames(keyframes, "position", ZERO_VECTOR, basePosition, startDelayTicks, durationTicks, (value, axis) => affineMolang(value, (axis === 0 ? -1 : 1) * blendWeight / 16, basePosition[axis]));
     const rotation = ajProjectFrames(keyframes, "rotation", ZERO_VECTOR, ZERO_VECTOR, startDelayTicks, durationTicks, (value, axis) => affineMolang(value, (axis === 2 ? 1 : -1) * blendWeight, 0));
@@ -79,7 +79,7 @@ export function createAnimatedJavaRuntime(
     ...(cubeRuntime?.molang ? { molang: cubeRuntime.molang } : {}),
     nodes,
     tracks,
-    bindings: { editorNodeByRuntimeNode, editorSpaceGroupByRuntimeRoot },
+    bindings: editorNodeByRuntimeNode,
   };
 }
 

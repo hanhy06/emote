@@ -2,7 +2,7 @@ package io.github.hanhy06.emote.content.loader;
 
 import com.google.gson.JsonPrimitive;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
-import io.github.hanhy06.emote.content.EmoteSequence;
+import io.github.hanhy06.emote.api.sequence.EmoteSequence;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -16,6 +16,15 @@ class SequenceJsonParserTest {
     private final SequenceJsonParser parser = new SequenceJsonParser();
 
     @Test
+    void loadsRootStringCallbacks(@TempDir Path tempDir) throws Exception {
+        var root = com.google.gson.JsonParser.parseString(baseJson("{\"emote\":\"example:wave\"}")).getAsJsonObject();
+        root.add("callbacks", com.google.gson.JsonParser.parseString("[{\"name\":\"test:shared\",\"payload\":\"hello\"}]"));
+        EmoteSequence sequence = load(tempDir, "callback.json", root.toString());
+        assertEquals(List.of(new io.github.hanhy06.emote.api.animation.EmoteAnimation.Callback(
+            net.minecraft.resources.Identifier.parse("test:shared"), "hello")), sequence.callbacks());
+    }
+
+    @Test
     void loadsSchemaFourSettingsMetadataEmotesAndWait(@TempDir Path tempDir) throws Exception {
         EmoteSequence sequence = load(tempDir, "sit.json", baseJson("""
             {"emote": "example:sit_down"},
@@ -27,10 +36,10 @@ class SequenceJsonParserTest {
         assertEquals(new JsonPrimitive("author"), sequence.metadata().additional().get("credit"));
         assertEquals(100, sequence.settings().cooldownTicks());
         assertEquals(0.1D, sequence.settings().player().stopConditions().movementDistance());
-        assertEquals(1, ((EmoteSequence.EmoteStep) sequence.steps().get(0)).repeat());
+        assertEquals(1, ((EmoteSequence.AnimationStep) sequence.steps().get(0)).repeat());
         assertEquals(10, ((EmoteSequence.WaitStep) sequence.steps().get(1)).ticks());
-        assertEquals(3, ((EmoteSequence.EmoteStep) sequence.steps().get(2)).repeat());
-        assertEquals(4, ((EmoteSequence.EmoteStep) sequence.steps().get(2)).transitionTicks());
+        assertEquals(3, ((EmoteSequence.AnimationStep) sequence.steps().get(2)).repeat());
+        assertEquals(4, ((EmoteSequence.AnimationStep) sequence.steps().get(2)).transitionTicks());
     }
 
     @Test
@@ -44,40 +53,19 @@ class SequenceJsonParserTest {
     }
 
     @Test
-    void loadsParticipantsAndAwaitPartnerBranches(@TempDir Path tempDir) throws Exception {
-        EmoteSequence sequence = load(tempDir, "handshake.json", partnerJson(
-            "^ ^ ^1.2",
-            """
-                {"emote": ["example:handshake_left", "example:handshake_right"], "repeat": 3}
-                """,
-            """
-                {"emote": "example:handshake_withdraw"}
-                """
-        ));
-
-        EmoteSequence.AwaitPartnerStep await = assertInstanceOf(
-            EmoteSequence.AwaitPartnerStep.class,
-            sequence.steps().getFirst()
-        );
-        assertEquals(60, await.timeoutTicks());
-        assertEquals("example:handshake_offer", await.offerAnimationId().toString());
-        assertEquals(3, assertInstanceOf(EmoteSequence.EmoteStep.class, await.matched().getFirst()).repeat());
-        assertEquals("example:handshake_withdraw", assertInstanceOf(EmoteSequence.EmoteStep.class, await.timeout().getFirst()).targetIds().getFirst().toString());
-        assertEquals(1.2D, ((net.minecraft.commands.arguments.coordinates.LocalCoordinates) sequence.participants().partner().position()).forwards());
+    void rejectsRetiredParticipants(@TempDir Path tempDir) throws Exception {
+        Path path = tempDir.resolve("participants.json");
+        Files.writeString(path, partnerJson("^ ^ ^1.2", "{\"emote\":\"example:wave\"}", "{\"emote\":\"example:wave\"}"));
+        EmoteAnimationLoadException exception = assertThrows(EmoteAnimationLoadException.class, () -> this.parser.parse(path));
+        assertEquals("$.participants", exception.fieldPath());
     }
 
     @Test
-    void rejectsAbsoluteParticipantPosition(@TempDir Path tempDir) throws Exception {
-        Path path = tempDir.resolve("absolute-partner.json");
-        Files.writeString(path, partnerJson(
-            "0 64 0",
-            "{\"emote\":\"example:handshake\"}",
-            "{\"emote\":\"example:withdraw\"}"
-        ));
-
+    void rejectsRetiredAwaitPartner(@TempDir Path tempDir) throws Exception {
+        Path path = tempDir.resolve("await-partner.json");
+        Files.writeString(path, baseJson("{\"await_partner\": {\"emote\": \"example:wave\", \"timeout\": \"1s\"}}"));
         EmoteAnimationLoadException exception = assertThrows(EmoteAnimationLoadException.class, () -> this.parser.parse(path));
-
-        assertEquals("$.participants.partner.position", exception.fieldPath());
+        assertEquals("$.steps[0].await_partner", exception.fieldPath());
     }
 
     @Test
@@ -89,8 +77,8 @@ class SequenceJsonParserTest {
             {"emote": ["example:idle_1", 30, "example:idle_2", 70], "repeat": 4}
             """));
 
-        EmoteSequence.EmoteStep equalStep = assertInstanceOf(EmoteSequence.EmoteStep.class, equal.steps().getFirst());
-        EmoteSequence.EmoteStep weightedStep = assertInstanceOf(EmoteSequence.EmoteStep.class, weighted.steps().getFirst());
+        EmoteSequence.AnimationStep equalStep = assertInstanceOf(EmoteSequence.AnimationStep.class, equal.steps().getFirst());
+        EmoteSequence.AnimationStep weightedStep = assertInstanceOf(EmoteSequence.AnimationStep.class, weighted.steps().getFirst());
         assertEquals(List.of("example:idle_1", "example:idle_2", "example:idle_3"), equalStep.targetIds().stream().map(Object::toString).toList());
         assertEquals(List.of(30, 70), weightedStep.choices().stream().map(EmoteSequence.Choice::chance).toList());
     }
@@ -101,25 +89,11 @@ class SequenceJsonParserTest {
             {"emote": ["example:idle", 70, "emote:continue", 20, "emote:break", 10], "repeat": 5}
             """));
 
-        EmoteSequence.EmoteStep step = assertInstanceOf(EmoteSequence.EmoteStep.class, sequence.steps().getFirst());
+        EmoteSequence.AnimationStep step = assertInstanceOf(EmoteSequence.AnimationStep.class, sequence.steps().getFirst());
 
         assertEquals(List.of("example:idle", "emote:continue", "emote:break"), step.targetIds().stream().map(Object::toString).toList());
         assertEquals(EmoteSequence.Control.CONTINUE, EmoteSequence.Control.fromId(step.targetIds().get(1)));
         assertEquals(EmoteSequence.Control.BREAK, EmoteSequence.Control.fromId(step.targetIds().get(2)));
-    }
-
-    @Test
-    void rejectsASequenceControlAsTheCollaborationOffer(@TempDir Path tempDir) throws Exception {
-        Path path = tempDir.resolve("control-offer.json");
-        Files.writeString(path, partnerJson(
-            "^ ^ ^1.2",
-            "{\"emote\":\"example:handshake\"}",
-            "{\"emote\":\"example:withdraw\"}"
-        ).replace("example:handshake_offer", "emote:break"));
-
-        EmoteAnimationLoadException exception = assertThrows(EmoteAnimationLoadException.class, () -> this.parser.parse(path));
-
-        assertEquals("$.steps[0].await_partner.emote", exception.fieldPath());
     }
 
     @Test
@@ -173,7 +147,7 @@ class SequenceJsonParserTest {
     private EmoteSequence load(Path tempDir, String fileName, String json) throws Exception {
         Path path = tempDir.resolve(fileName);
         Files.writeString(path, json);
-        return this.parser.parse(path);
+        return this.parser.parse(path).sequence();
     }
 
     private static String baseJson(String steps) {
@@ -200,7 +174,7 @@ class SequenceJsonParserTest {
               "id": "example:handshake",
               "metadata": {"name": "Handshake", "description": "Two-player handshake"},
               "participants": {
-                "initiator": {"position": "~ ~ ~", "rotation": "~ 0"},
+                "actor": {"position": "~ ~ ~", "rotation": "~ 0"},
                 "partner": {"position": "%s", "rotation": "~180 0"}
               },
               "settings": {

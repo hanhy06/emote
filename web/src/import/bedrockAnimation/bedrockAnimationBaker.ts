@@ -1,3 +1,4 @@
+import type { AnimationSamplePlan } from "../common/animationSampling";
 import type {
   BedrockAnimation,
   BedrockChannel,
@@ -29,11 +30,6 @@ const MOLANG_EVALUATOR = new MolangBakeEvaluator({
   },
 });
 
-export interface BedrockSamplePlan {
-  sourceTimes: Map<number, number>;
-  stepTicks: Set<number>;
-}
-
 interface Anchor {
   time: number;
   priority: number;
@@ -60,7 +56,7 @@ export function bedrockAnimationDurationSeconds(animation: BedrockAnimation): nu
   return duration;
 }
 
-export function planBedrockAnimationSamples(animation: BedrockAnimation, durationTicks: number, playbackRate: number): BedrockSamplePlan {
+export function planBedrockAnimationSamples(animation: BedrockAnimation, durationTicks: number, playbackRate: number): AnimationSamplePlan {
   const anchors = collectAnchors(animation)
     .map((anchor) => ({ ...anchor, playbackTime: anchor.time / playbackRate }))
     .filter((anchor) => anchor.playbackTime * TICKS_PER_SECOND <= durationTicks + 1e-9);

@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.content.loader;
 
+import net.minecraft.world.phys.Vec3;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
@@ -29,10 +30,8 @@ class AnimationContentResolverComplexityTest {
         }
         EmoteAnimation.Event event = new EmoteAnimation.Event(
             new EmoteAnimation.CommandSource(EmoteAnimation.SourceType.SERVER, null),
-            new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, EmoteAnimation.Vec3.ZERO),
-            commands,
-            List.of()
-        );
+            new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, Vec3.ZERO),
+            commands);
         assertDoesNotThrow(() -> AnimationContentResolver.validateComplexity(loaded(
             nodes,
             20,
@@ -62,22 +61,20 @@ class AnimationContentResolverComplexityTest {
         EmoteAnimation animation = new EmoteAnimation(
             Identifier.parse("test:complexity"),
             new EmoteMetadata("Complexity", "Complexity"),
-            new EmoteAnimation.Settings(true, 0, 50.0F, 1, EmotePlayerBehavior.createDefault(), new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.ONCE, 0, 0, 0)),
+            new EmoteAnimation.Settings(true, 0, 50.0F, 1, EmotePlayerBehavior.createDefault(), new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.ONCE, 0, 0)),
             EmoteAnimation.MolangPrograms.empty(),
             nodes,
             new EmoteAnimation.Timeline(
                 durationTicks,
                 Map.of(),
                 events
-            )
-        );
+            ), List.of());
         return new LoadedAnimation(Path.of("complexity.json"), "test", animation);
     }
 
     private EmoteAnimation.BlockNode blockNode() {
         return new EmoteAnimation.BlockNode(
             true,
-            EmoteAnimation.NodeSpace.SCENE,
             null,
             EmoteAnimation.LocalTransform.IDENTITY,
             new CompoundTag(),

@@ -1,5 +1,5 @@
 import { compileConversionAnimationArtifact } from "../compiler/animationCompiler";
-import type { ConversionDocument } from "../domain/conversionDocument";
+import { animationOutputId, type ConversionDocument } from "../domain/conversionDocument";
 import { formatMinecraftTime, parseMinecraftTime } from "../format/time";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { serializeEmoteAnimation } from "../format/serializer";
@@ -7,14 +7,6 @@ import { removeRedundantKeyframes } from "../format/keyframeCleanup";
 import type { ExportResult } from "./types";
 import { isSequenceControlId, type SequenceAnimationStep, type SequenceStep } from "../domain/emoteDefinition";
 import { ConversionError } from "../foundation/diagnostics";
-
-export function exportDocumentAnimation(document: ConversionDocument, animationIndex: number): ExportResult {
-  return compileAnimationFile(document, animationIndex).file;
-}
-
-export function exportDocumentAnimationFiles(document: ConversionDocument, includeSequence: boolean): ExportResult[] {
-  return compileAnimationFiles(document, includeSequence).files;
-}
 
 export async function createDocumentAnimationDownload(document: ConversionDocument, animationIndex: number): Promise<ExportResult[]> {
   const compiled = compileAnimationFile(document, animationIndex);
@@ -50,7 +42,7 @@ function compileAnimationFile(document: ConversionDocument, animationIndex: numb
     generatedResourceReferences: compiled.generatedResourceReferences,
     file: {
       blob: new Blob([serializeEmoteAnimation(animation)], { type: "application/json" }),
-      fileName: emoteFileName(animation.id),
+      fileName: animationFileNames(document.animations.map((entry, index) => index === animationIndex ? animation.id : animationOutputId(entry)))[animationIndex],
     },
   };
 }
@@ -63,38 +55,61 @@ function compileAnimationFiles(document: ConversionDocument, includeSequence: bo
     includeSequence ? { standalone: false } : undefined,
   ));
   const animations = compiled.map((entry) => removeRedundantKeyframes(entry.animation));
+  const fileNames = animationFileNames(animations.map((animation) => animation.id));
   const generatedResourceReferences = new Set(compiled.flatMap((entry) => [...entry.generatedResourceReferences]));
-  const files: ExportResult[] = animations.map((animation) => {
+  const files: ExportResult[] = animations.map((animation, index) => {
     return {
       blob: new Blob([serializeEmoteAnimation(animation)], { type: "application/json" }),
-      fileName: emoteFileName(animation.id),
+      fileName: fileNames[index],
     };
   });
   if (includeSequence) {
     const sequenceOutput = document.sequence;
-    const outputIdBySourceId = new Map(document.animations.flatMap((entry, index) => entry.source.sourceReferenceId
-      ? [[entry.source.sourceReferenceId, animations[index].id] as const] : []));
-    const sequenceId = `${sanitizeNamespace(sequenceOutput.namespace)}:${sanitizeResourcePath(sequenceOutput.idPath ?? sequenceOutput.displayName)}`;
-    if (animations.some((animation) => animation.id === sequenceId)) {
-      throw new ConversionError("duplicate_emote_id", `Animation and sequence normalize to the same id: ${sequenceId}`, sequenceId);
-    }
+    const outputIdBySourceId = new Map(document.animations.flatMap((entry, index) => entry.runtime.sourceReferenceId
+      ? [[entry.runtime.sourceReferenceId, animations[index].id] as const] : []));
+    const baseSequenceId = `${sanitizeNamespace(sequenceOutput.namespace)}:${sanitizeResourcePath(sequenceOutput.idPath ?? sequenceOutput.displayName)}`;
+    let sequenceId = baseSequenceId;
+    let suffix = 1;
+    while (animations.some((animation) => animation.id === sequenceId)) sequenceId = `${baseSequenceId}.${suffix++}`;
     const sequence = {
       type: "sequence",
       schema_version: 4,
       target_minecraft_version: document.targetMinecraftVersion,
       id: sequenceId,
+      ...(sequenceOutput.callbacks?.length ? { callbacks: sequenceOutput.callbacks.map((callback) => ({ ...callback })) } : {}),
       metadata: { ...sequenceOutput.additionalMetadata, name: sequenceOutput.displayName, description: sequenceOutput.description },
       settings: { cooldown: formatMinecraftTime(parseMinecraftTime(sequenceOutput.cooldown)), player: sequenceOutput.player },
       steps: sequenceOutput.steps
         ? sequenceOutput.steps.map((step) => remapSequenceStep(step, outputIdBySourceId))
         : animations.map((animation) => ({ emote: animation.id })),
     };
+    const baseFileName = emoteFileName(sequence.id);
+    let fileName = baseFileName;
+    suffix = 1;
+    while (fileNames.includes(fileName)) fileName = `${baseFileName.slice(0, -5)}.${suffix++}.json`;
     files.push({
       blob: new Blob([`${JSON.stringify(sequence, null, 2)}\n`], { type: "application/json" }),
-      fileName: emoteFileName(sequence.id),
+      fileName,
     });
   }
   return { generatedResourceReferences, files };
+}
+
+function animationFileNames(animationIds: readonly string[]): string[] {
+  const baseNames = animationIds.map(emoteFileName);
+  const reservedNames = new Set(baseNames);
+  const usedNames = new Set<string>();
+  return baseNames.map((baseName) => {
+    let fileName = baseName;
+    let suffix = 1;
+    if (usedNames.has(fileName)) {
+      do {
+        fileName = `${baseName.slice(0, -5)}.${suffix++}.json`;
+      } while (reservedNames.has(fileName) || usedNames.has(fileName));
+    }
+    usedNames.add(fileName);
+    return fileName;
+  });
 }
 
 function remapSequenceStep(step: SequenceStep, outputIdBySourceId: ReadonlyMap<string, string>): Record<string, unknown> {
@@ -122,10 +137,6 @@ function requireRemappedAnimationId(sourceId: string, outputIdBySourceId: Readon
   const outputId = outputIdBySourceId.get(sourceId);
   if (!outputId) throw new ConversionError("missing_sequence_animation", `Sequence references an animation that is not in the document: ${sourceId}`, sourceId);
   return outputId;
-}
-
-export function sanitizeAnimationFileName(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9_-]+/g, "_").replace(/^_+|_+$/g, "") || "emote";
 }
 
 export function emoteFileName(id: string): string {

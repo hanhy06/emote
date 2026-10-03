@@ -1,4 +1,4 @@
-import type { Matrix16 } from "./matrix";
+import type { PreviewTransformKeyframe, PreviewVisibilityKeyframe } from "./previewProjection";
 
 export interface RawNbtField {
   name: string;
@@ -25,25 +25,14 @@ export interface DisplayNbtPatch {
   rawFields: RawNbtField[];
 }
 
-export interface BakedRuntimeTransformKeyframe {
-  tick: number;
-  matrix: Matrix16;
-  interpolation: { type: "step" } | { type: "linear"; durationTicks?: number };
-}
-
-export interface BakedRuntimeVisibilityKeyframe {
-  tick: number;
-  visible: boolean;
-}
-
 export interface BakedRuntimeNbtKeyframe {
   tick: number;
   value: DisplayNbtPatch;
 }
 
 export interface BakedRuntimeNodeTracks {
-  transforms: BakedRuntimeTransformKeyframe[];
-  visibility: BakedRuntimeVisibilityKeyframe[];
+  transforms: PreviewTransformKeyframe[];
+  visibility: PreviewVisibilityKeyframe[];
   nbt: BakedRuntimeNbtKeyframe[];
 }
 
@@ -52,7 +41,6 @@ export type DisplayNbtValue = DisplayNbtPatch | { molang: string; generatedResou
 export type RuntimeScalar = number | string;
 export type RuntimeVector = readonly [RuntimeScalar, RuntimeScalar, RuntimeScalar];
 export type RuntimeVec3 = readonly [number, number, number];
-export type RuntimeNodeSpace = "scene" | "initiator" | "partner";
 
 export interface RuntimeLocalTransform {
   position: RuntimeVec3;
@@ -62,7 +50,7 @@ export interface RuntimeLocalTransform {
 
 interface RuntimeNodeBase {
   parent?: string;
-  space?: RuntimeNodeSpace;
+
   transform: RuntimeLocalTransform;
 }
 

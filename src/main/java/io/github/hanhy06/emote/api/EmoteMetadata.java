@@ -3,11 +3,7 @@ package io.github.hanhy06.emote.api;
 import com.google.gson.JsonElement;
 import io.github.hanhy06.emote.util.EmoteTags;
 
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 public record EmoteMetadata(String name, String description, List<String> tags, Map<String, JsonElement> additional) {
     public EmoteMetadata(String name, String description) {

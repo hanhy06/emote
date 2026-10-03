@@ -17,6 +17,22 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class SkinCacheTest {
     @Test
+    void defaultSkinSurvivesRestartAndCleanupAndMatchesConfiguredName(@TempDir Path tempDir) throws IOException {
+        PlayerSkinRegion head = new PlayerSkinRegion(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL);
+        var saved = new SkinCache.DefaultSkin("PlayerName", "abcdef", "https://textures.minecraft.net/texture/source", false,
+            Map.of(head, "https://textures.minecraft.net/texture/baked"));
+        assertTrue(new SkinCache(tempDir).saveDefault(saved));
+        Path path = tempDir.resolve("default_skin.json");
+        Files.setLastModifiedTime(path, FileTime.fromMillis(1));
+        SkinCache restarted = new SkinCache(tempDir);
+        restarted.cleanup(1, 1, System.currentTimeMillis());
+        assertEquals(saved.textures(), restarted.loadDefault("playername").textures());
+        assertNull(restarted.loadDefault("DifferentName"));
+        assertNull(restarted.loadDefault(""));
+        assertTrue(Files.isRegularFile(path));
+    }
+
+    @Test
     void saveAndLoadRoundTrip(@TempDir Path tempDir) {
         SkinCache store = new SkinCache(tempDir);
         Map<PlayerSkinRegion, String> savedTextureUrls = Map.of(

@@ -399,9 +399,8 @@ public final class MineSkinClient {
             if (message == null) {
                 return false;
             }
-            String normalized = message.toLowerCase(java.util.Locale.ROOT);
-            return normalized.contains("rate_limit")
-                || normalized.contains("rate limit")
+            String normalized = message.toLowerCase(java.util.Locale.ROOT).replace('-', ' ').replace('_', ' ');
+            return normalized.contains("rate limit")
                 || normalized.contains("too many requests");
         }
 

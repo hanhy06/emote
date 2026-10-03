@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.command;
 
+import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
+import java.util.Map;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -7,13 +9,12 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.content.EmoteCatalog;
-import io.github.hanhy06.emote.content.PreparedAnimation;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.permission.PermissionService;
-import io.github.hanhy06.emote.playback.PlaybackEngine;
+import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.playback.stress.PlaybackStressTest;
 import io.github.hanhy06.emote.playback.stress.PlaybackStressTestReport;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
-import io.github.hanhy06.emote.skin.model.PreparedPlayerSkin;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -26,23 +27,23 @@ import net.minecraft.server.level.ServerPlayer;
 import java.util.List;
 import java.util.Locale;
 
-import static io.github.hanhy06.emote.playback.PlaybackEngine.*;
+import static io.github.hanhy06.emote.playback.stress.PlaybackStressTest.*;
 
 final class StressTestCommand {
     private static final DynamicCommandExceptionType INVALID_LOAD = new DynamicCommandExceptionType(value -> Component.literal(
         "Invalid stress-test load '" + value + "'. Use a positive number followed by i or d."
     ));
     private final EmoteCatalog emoteCatalog;
-    private final PlaybackEngine playbackEngine;
+    private final PlayerPlaybackManager playerPlaybackManager;
     private final PermissionService permissionService;
 
     StressTestCommand(
         EmoteCatalog emoteCatalog,
-        PlaybackEngine playbackEngine,
+        PlayerPlaybackManager playerPlaybackManager,
         PermissionService permissionService
     ) {
         this.emoteCatalog = emoteCatalog;
-        this.playbackEngine = playbackEngine;
+        this.playerPlaybackManager = playerPlaybackManager;
         this.permissionService = permissionService;
     }
 
@@ -53,8 +54,8 @@ final class StressTestCommand {
                 .executes(context -> startStressTest(
                     context.getSource(),
                     IntegerArgumentType.getInteger(context, "time"),
-                    new StressLoad(DEFAULT_STRESS_TEST_INSTANCE_COUNT, LoadUnit.INSTANCES),
-                    DEFAULT_STRESS_TEST_PACKET_FANOUT
+                    new StressLoad(DEFAULT_INSTANCE_COUNT, LoadUnit.INSTANCES),
+                    DEFAULT_PACKET_FANOUT
                 ))
                 .then(Commands.argument("load", StringArgumentType.word())
                     .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
@@ -65,11 +66,11 @@ final class StressTestCommand {
                         context.getSource(),
                         IntegerArgumentType.getInteger(context, "time"),
                         parseLoad(StringArgumentType.getString(context, "load")),
-                        DEFAULT_STRESS_TEST_PACKET_FANOUT
+                        DEFAULT_PACKET_FANOUT
                     ))
                     .then(Commands.argument(
                             "packets",
-                            IntegerArgumentType.integer(0, MAX_STRESS_TEST_PACKET_FANOUT)
+                            IntegerArgumentType.integer(0, MAX_PACKET_FANOUT)
                         )
                         .executes(context -> startStressTest(
                             context.getSource(),
@@ -82,28 +83,28 @@ final class StressTestCommand {
     }
 
     private int startStressTest(CommandSourceStack source, int durationTicks, StressLoad load, int packetFanout) {
-        List<PreparedAnimation> emotes = this.emoteCatalog.animations();
+        List<PreparedEmote> emotes = this.emoteCatalog.animations();
         if (emotes.isEmpty()) {
             source.sendFailure(Component.literal("No emotes are registered."));
             return 0;
         }
 
-        PreparedPlayerSkin preparedSkin = null;
+        Map<PlayerSkinRegion, String> preparedSkin = null;
         if (source.getEntity() instanceof ServerPlayer player) {
-            PlayerSkinPreparation skinPreparation = this.playbackEngine.prepareStressTestSkin(player, emotes);
+            PlayerSkinPreparation skinPreparation = this.playerPlaybackManager.prepareStressTestSkin(player, emotes);
             if (skinPreparation.preparing()) {
                 source.sendFailure(Component.literal(
                     "Preparing your skin… " + skinPreparation.progressPercent() + "% Run the stress test again when it is ready."
                 ));
                 return 0;
             }
-            preparedSkin = skinPreparation.preparedPlayerSkin();
+            preparedSkin = skinPreparation.textures();
         }
 
         PlaybackStressTest.StartResult startResult;
         try {
             startResult = load.unit() == LoadUnit.INSTANCES
-                ? this.playbackEngine.startStressTest(
+                ? this.playerPlaybackManager.engine().stressTest().start(
                     source.getLevel(),
                     source.getPosition(),
                     source.getRotation().y,
@@ -114,7 +115,7 @@ final class StressTestCommand {
                     preparedSkin,
                     report -> sendStressTestReport(source, report)
                 )
-                : this.playbackEngine.startStressTestByDisplayCount(
+                : this.playerPlaybackManager.engine().stressTest().startByDisplayCount(
                     source.getLevel(),
                     source.getPosition(),
                     source.getRotation().y,
@@ -159,7 +160,7 @@ final class StressTestCommand {
         } catch (NumberFormatException exception) {
             throw INVALID_LOAD.create(input);
         }
-        if (amount < 1 || (unit == LoadUnit.INSTANCES && amount > MAX_STRESS_TEST_INSTANCE_COUNT)) {
+        if (amount < 1 || (unit == LoadUnit.INSTANCES && amount > MAX_INSTANCE_COUNT)) {
             throw INVALID_LOAD.create(input);
         }
         return new StressLoad(amount, unit);
@@ -174,7 +175,7 @@ final class StressTestCommand {
     }
 
     private int stopStressTest(CommandSourceStack source) {
-        PlaybackStressTestReport report = this.playbackEngine.stopStressTest();
+        PlaybackStressTestReport report = this.playerPlaybackManager.engine().stressTest().stop();
         if (report == null) {
             source.sendFailure(Component.literal("No emote stress test is running."));
             return 0;

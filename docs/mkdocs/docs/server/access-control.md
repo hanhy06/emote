@@ -7,7 +7,7 @@ Permissions are resolved through a Fabric Permissions API-compatible mod such as
 
 | Permission        | Purpose                                                             | Default                          |
 |-------------------|---------------------------------------------------------------------|----------------------------------|
-| `emote.manage`    | Can use admin command                                               | Game-master permission level     |
+| `emote.manage`    | Allows administrative commands                                     | Game-master permission level     |
 | `emote.bypass`    | Ignore selection and playback policy for administration and testing | Denied                           |
 | `emote.default`   | Built-in group used by `emotes.json`                                | Allowed unless explicitly denied |
 | Custom permission | Server-defined groups such as VIP, supporter, or administrator      | Denied unless granted            |

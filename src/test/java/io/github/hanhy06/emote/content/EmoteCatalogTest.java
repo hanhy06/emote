@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.content;
 
+import io.github.hanhy06.emote.api.sequence.EmoteSequence;
+
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import net.minecraft.resources.Identifier;
@@ -13,7 +15,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static io.github.hanhy06.emote.content.PreparedAnimationFixture.create;
+import static io.github.hanhy06.emote.content.PreparedEmoteFixture.create;
 import static org.junit.jupiter.api.Assertions.*;
 
 class EmoteCatalogTest {
@@ -81,7 +83,7 @@ class EmoteCatalogTest {
 
     @Test
     void keepsOnlyTheFirst512EmotesById() {
-        List<PreparedAnimation> emotes = new ArrayList<>();
+        List<PreparedEmote> emotes = new ArrayList<>();
         for (int index = 0; index <= EmoteCatalog.MAX_EMOTE_COUNT; index++) {
             String id = "test:%04d".formatted(index);
             emotes.add(create(id, id));
@@ -101,7 +103,7 @@ class EmoteCatalogTest {
     @Test
     void keepsApiEmotesAcrossFileReplacement() {
         EmoteCatalog registry = new EmoteCatalog();
-        PreparedAnimation apiEmote = create("api:wave", "API Wave");
+        PreparedEmote apiEmote = create("api:wave", "API Wave");
         registry.register(apiEmote);
 
         int ignoredCount = registry.replace(List.of(
@@ -140,8 +142,8 @@ class EmoteCatalogTest {
     @Test
     void findsOnlyActiveFileEmotesById() {
         EmoteCatalog registry = new EmoteCatalog();
-        PreparedAnimation fileWave = create("demo:wave", "File Wave");
-        PreparedAnimation fileDance = create("demo:dance", "File Dance");
+        PreparedEmote fileWave = create("demo:wave", "File Wave");
+        PreparedEmote fileDance = create("demo:dance", "File Dance");
         UUID registrationId = registry.register(create("demo:wave", "API Wave"));
 
         registry.replace(List.of(fileWave, fileDance));
@@ -156,7 +158,7 @@ class EmoteCatalogTest {
 
     @Test
     void apiRegistrationTemporarilyTakesARegistrySlotFromFileEmotes() {
-        List<PreparedAnimation> fileEmotes = new ArrayList<>();
+        List<PreparedEmote> fileEmotes = new ArrayList<>();
         for (int index = 0; index < EmoteCatalog.MAX_EMOTE_COUNT; index++) {
             String id = "file:%04d".formatted(index);
             fileEmotes.add(create(id, id));
@@ -195,13 +197,11 @@ class EmoteCatalogTest {
 
     @Test
     void includesResolvedSequencesInDefinitionLookup() {
-        PreparedAnimation animation = create("demo:sit_down", "Sit Down");
-        EmoteSequence source = new EmoteSequence(
-            Path.of("sit.json"),
-            Identifier.parse("demo:sit"),
+        PreparedEmote animation = create("demo:sit_down", "Sit Down");
+        EmoteSequence source = new EmoteSequence(Identifier.parse("demo:sit"),
             new EmoteMetadata("Sit", "Sit sequence"),
             new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()),
-            List.of(new EmoteSequence.EmoteStep(Identifier.parse(animation.id()), 1))
+            List.of(new EmoteSequence.AnimationStep(Identifier.parse(animation.id()), 1))
         );
         PreparedSequence sequence = PreparedSequence.resolve(source, java.util.Map.of(animation.id(), animation));
         EmoteCatalog registry = new EmoteCatalog();
@@ -217,13 +217,11 @@ class EmoteCatalogTest {
 
     @Test
     void restoresFileSequenceWhenApiCollisionIsRemoved() {
-        PreparedAnimation animation = create("demo:offer", "Offer");
-        EmoteSequence source = new EmoteSequence(
-            Path.of("pair.json"),
-            Identifier.parse("demo:pair"),
+        PreparedEmote animation = create("demo:offer", "Offer");
+        EmoteSequence source = new EmoteSequence(Identifier.parse("demo:pair"),
             new EmoteMetadata("Pair", "Pair sequence"),
             new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()),
-            List.of(new EmoteSequence.EmoteStep(Identifier.parse(animation.id()), 1))
+            List.of(new EmoteSequence.AnimationStep(Identifier.parse(animation.id()), 1))
         );
         PreparedSequence sequence = PreparedSequence.resolve(source, java.util.Map.of(animation.id(), animation));
         EmoteCatalog registry = new EmoteCatalog();
@@ -237,13 +235,11 @@ class EmoteCatalogTest {
 
     @Test
     void appliesTheRegistryLimitAcrossAnimationsAndSequencesById() {
-        PreparedAnimation animation = create("test:animation", "Animation");
-        EmoteSequence source = new EmoteSequence(
-            Path.of("sequence.json"),
-            Identifier.parse("test:0000"),
+        PreparedEmote animation = create("test:animation", "Animation");
+        EmoteSequence source = new EmoteSequence(Identifier.parse("test:0000"),
             new EmoteMetadata("Sequence", "Sequence"),
             new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()),
-            List.of(new EmoteSequence.EmoteStep(Identifier.parse(animation.id()), 1))
+            List.of(new EmoteSequence.AnimationStep(Identifier.parse(animation.id()), 1))
         );
         PreparedSequence sequence = PreparedSequence.resolve(source, java.util.Map.of(animation.id(), animation));
         List<PlayableEmote> definitions = new ArrayList<>();

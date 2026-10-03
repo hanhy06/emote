@@ -1,7 +1,7 @@
 import type { EmoteEvent } from "../format/emoteAnimation";
 import type { RuntimeNode, RuntimeNodeTracks } from "./minecraftData";
 import type { ImportedAnimation, ImportedTimelineEvent } from "./conversionSeed";
-import { remapNativeRuntimeBindings } from "./nodeBindings";
+import { remapRuntimeNodeBindings } from "./nodeBindings";
 import type { PreviewProjection } from "./previewProjection";
 import type { AnimationRuntimeData } from "./runtimeProjection";
 
@@ -24,11 +24,7 @@ export function remapAnimationRuntimeData(runtime: AnimationRuntimeData, ids: Im
     ...runtime,
     nodes: remapRuntimeNodes(runtime.nodes, ids.runtimeNodeId),
     tracks: remapRuntimeTracks(runtime.tracks, ids.runtimeNodeId),
-    bindings: remapNativeRuntimeBindings(runtime.bindings, {
-      editorNodeId: ids.editorNodeId,
-      editorGroupId: ids.editorGroupId ?? ids.editorNodeId,
-      runtimeNodeId: ids.runtimeNodeId,
-    }),
+    bindings: remapRuntimeNodeBindings(runtime.bindings, ids),
   };
 }
 

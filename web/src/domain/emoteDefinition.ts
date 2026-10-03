@@ -1,9 +1,10 @@
-import type { EmoteMetadata, EmotePlayerBehavior } from "../format/emoteAnimation";
+import type { EmoteCallback, EmoteMetadata, EmotePlayerBehavior } from "../format/emoteAnimation";
 import type { ImportedAnimation } from "./conversionSeed";
 
 export type EmoteDefinition = ImportedAnimation | ImportedSequence;
 
 export interface ImportedSequence {
+  callbacks?: EmoteCallback[];
   kind: "sequence";
   source: "emote_sequence";
   sourceName: string;

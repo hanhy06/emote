@@ -7,8 +7,8 @@ import { serializeSnbtString } from "../../format/snbt";
 import { formatMinecraftTime, requireAnimationDurationTicks, TICKS_PER_SECOND } from "../../format/time";
 import { ConversionError, PreviewUnavailableError, skippedAnimationIssue } from "../../foundation/diagnostics";
 import type { ImportedAnimation, ImportedNode, ImportedTimelineEvent, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
-import type { BakedRuntimeNodeTracks, BakedRuntimeTransformKeyframe } from "../../domain/minecraftData";
-import type { PreviewNodeTrack, PreviewProjection } from "../../domain/previewProjection";
+import type { BakedRuntimeNodeTracks } from "../../domain/minecraftData";
+import type { PreviewNodeTrack, PreviewProjection, PreviewTransformKeyframe } from "../../domain/previewProjection";
 import type { AnimationRuntimeData } from "../../domain/runtimeProjection";
 import {
   type BbAnimation,
@@ -97,11 +97,10 @@ export function importBlockbenchCubeContent(
     const playableCubes = playableCubesByBone.get(bone.uuid) ?? [];
     if (playableCubes.length === 0) {
       nodes[bone.id] = {
-        binding: { sourceNodeId: bone.id, spaceGroupId: options.runtimeSceneId },
+        binding: { sourceNodeId: bone.id},
         type: "anchor",
         defaultMatrix: matrix4ToRowMajor(boneMatrix, `${formatLabel} bone ${bone.id}`),
-        space: "initiator",
-      };
+        };
       bone.nodes.push({ id: bone.id, localMatrix: new Matrix4() });
       bindEditorNode(bone.uuid, bone.id);
     } else for (const [cubeIndex, cube] of playableCubes.entries()) {
@@ -117,13 +116,11 @@ export function importBlockbenchCubeContent(
       nodes[nodeId] = {
         binding: {
           sourceNodeId: nodeId,
-          spaceGroupId: options.runtimeSceneId,
           ...(skin ? { skinGroupId: `${skin.part}_${skin.order}` } : {}),
         },
         type: "item_display",
         defaultMatrix: matrix4ToRowMajor(boneMatrix.clone().multiply(localMatrix), `${formatLabel} cube ${nodeId}`),
         visible: true,
-        space: "initiator",
         itemDisplay: "none",
         itemStack: {
           id: "minecraft:paper",
@@ -131,7 +128,7 @@ export function importBlockbenchCubeContent(
           components: [{ name: "minecraft:item_model", value: serializeSnbtString(`${namespace}:${modelPath}`) }],
           generatedResourceReferences: [itemModelResourcePath(namespace, modelPath)],
         },
-        ...(conversionMatrix ? { playerHeadConversion: { matrix: conversionMatrix } } : {}),
+        ...(conversionMatrix ? { playerHeadConversionMatrix: conversionMatrix } : {}),
         ...(skin ? { suggestedSkin: skin } : {}),
       };
       bindEditorNode(bone.uuid, nodeId);
@@ -143,11 +140,10 @@ export function importBlockbenchCubeContent(
       const locatorBoneMatrix = locator.ignore_inherited_scale ? matrixWithoutScale(boneMatrix) : boneMatrix;
       bone.nodes.push({ id: nodeId, localMatrix, ignoreInheritedScale: locator.ignore_inherited_scale, locatorName: locator.name });
       nodes[nodeId] = {
-        binding: { sourceNodeId: nodeId, spaceGroupId: options.runtimeSceneId },
+        binding: { sourceNodeId: nodeId},
         type: "anchor",
         defaultMatrix: matrix4ToRowMajor(locatorBoneMatrix.clone().multiply(localMatrix), `${formatLabel} locator ${nodeId}`),
-        space: "initiator",
-      };
+        };
       bindEditorNode(bone.uuid, nodeId);
       bindEditorNode(locator.uuid, nodeId);
     }
@@ -411,7 +407,7 @@ function projectBlockbenchRuntime(
     validateBoneAnimator(source.animation, source.animationIndex, bone, source.animators.get(bone.uuid), formatLabel, diagnosticPrefix);
     const boneSampling = Object.values(source.channelSampling.get(bone.uuid) ?? {}).filter((sampling) => sampling !== undefined);
     const sourceTimes = boneSampling[0]?.sourceTimes;
-    const transforms: BakedRuntimeTransformKeyframe[] = [];
+    const transforms: PreviewTransformKeyframe[] = [];
     for (let tick = 0; tick <= source.durationTicks; tick++) {
       const cache = new Map<string, Matrix4>();
       const sourceTime = source.startDelaySeconds > 0

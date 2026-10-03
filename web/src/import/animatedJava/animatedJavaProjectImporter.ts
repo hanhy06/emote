@@ -44,9 +44,7 @@ interface ProjectNodeStateFrame {
   nbt?: DisplayNbtPatch;
 }
 
-interface ProjectNodeBindings {
-  outputNodeIdsBySourceUuid: ReadonlyMap<string, readonly string[]>;
-}
+type ProjectNodeBindings = ReadonlyMap<string, readonly string[]>;
 
 interface AnimatedJavaAnimationState {
   startEvents: ImportedAnimation["events"]["start"];
@@ -84,8 +82,8 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
     const node = importProjectElement(element, projectElementMatrix(element, undefined, 0, transformGraph, 1, sceneScale));
     addProjectNode(nodes, element.uuid, {
       ...node,
-      binding: { ...node.binding, spaceGroupId: cubeContent?.runtimeSceneId ?? ajRuntimeRootId(element.uuid) },
-      ...(cubeContent ? { space: "initiator" as const } : {}),
+      binding: { ...node.binding},
+      ...(cubeContent ? { } : {}),
     });
     bindOutputNode(element.uuid, element.uuid);
   }
@@ -93,7 +91,7 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
     addProjectNode(nodes, element.uuid, importProjectAnchor(element, projectElementMatrix(element, undefined, 0, transformGraph, 1, sceneScale)));
     bindOutputNode(element.uuid, element.uuid);
   }
-  const nodeBindings: ProjectNodeBindings = { outputNodeIdsBySourceUuid };
+  const nodeBindings = outputNodeIdsBySourceUuid;
   applyGroupDefaultConfigs(nodes, project, transformGraph, nodeBindings);
   if (Object.keys(nodes).length === 0) throw new Error("Animated Java project does not contain importable nodes.");
 
@@ -499,13 +497,13 @@ function projectAnimatedJavaRuntimeState(
 
 function projectOutputNodeIds(sourceId: string, graph: ProjectTransformGraph, bindings: ProjectNodeBindings, includeDescendants = true): string[] {
   const result = new Set<string>();
-  for (const nodeId of bindings.outputNodeIdsBySourceUuid.get(sourceId) ?? []) result.add(nodeId);
+  for (const nodeId of bindings.get(sourceId) ?? []) result.add(nodeId);
   const groupIds = [sourceId, ...(includeDescendants ? [...graph.groups.keys()].filter((id) => projectGroupDescendsFrom(id, sourceId, graph)) : [])];
   for (const groupId of groupIds) {
-    for (const nodeId of bindings.outputNodeIdsBySourceUuid.get(groupId) ?? []) result.add(nodeId);
+    for (const nodeId of bindings.get(groupId) ?? []) result.add(nodeId);
     for (const [elementId, parentId] of graph.elementParents) {
       if (parentId !== groupId) continue;
-      for (const nodeId of bindings.outputNodeIdsBySourceUuid.get(elementId) ?? []) result.add(nodeId);
+      for (const nodeId of bindings.get(elementId) ?? []) result.add(nodeId);
     }
   }
   return [...result];

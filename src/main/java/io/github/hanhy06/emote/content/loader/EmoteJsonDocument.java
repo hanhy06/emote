@@ -1,7 +1,9 @@
 package io.github.hanhy06.emote.content.loader;
 
 import com.google.gson.*;
+import io.github.hanhy06.emote.api.animation.EmoteAnimation.Node;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
+import io.github.hanhy06.emote.molang.MolangEngine;
 import io.github.hanhy06.emote.util.MinecraftTime;
 import net.minecraft.resources.Identifier;
 
@@ -9,6 +11,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.Objects;
 
 final class EmoteJsonDocument {
@@ -170,6 +173,20 @@ final class EmoteJsonDocument {
             throw error(path, "must be a valid lowercase Minecraft identifier");
         }
         return id;
+    }
+
+    Node requireNode(Map<String, Node> nodes, String nodeId, String path) throws EmoteAnimationLoadException {
+        Node node = nodes.get(nodeId);
+        if (node == null) throw error(path, "references unknown node: " + nodeId);
+        return node;
+    }
+
+    void requireMolang(String source, String path) throws EmoteAnimationLoadException {
+        try {
+            MolangEngine.INSTANCE.compile(source);
+        } catch (MolangEngine.MolangCompileException exception) {
+            throw error(path, "invalid Molang program", exception);
+        }
     }
 
     void requireExactInt(JsonObject object, String key, String path, int expected)

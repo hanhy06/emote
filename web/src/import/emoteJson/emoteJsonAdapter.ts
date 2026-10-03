@@ -10,13 +10,9 @@ import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import { ConversionError, PreviewUnavailableError } from "../../foundation/diagnostics";
 import { parseInputJson, probeParsedInput } from "../common/inputCache";
 import type { ImportedAnimation, ImportedNode, ImportedNodeBase, ImportedProject } from "../../domain/conversionSeed";
-import type { NativeRuntimeBindings } from "../../domain/nodeBindings";
+import type { RuntimeNodeBindings } from "../../domain/nodeBindings";
 import type { BakedRuntimeNodeTracks, RuntimeNode, RuntimeNodeTracks, RuntimeVectorKeyframe } from "../../domain/minecraftData";
 import type { PreviewNodeTrack, PreviewProjection, PreviewTransformKeyframe } from "../../domain/previewProjection";
-import { migrateSchema1Animation } from "./schema1Migration";
-import { migrateSchema3Animation } from "./animationSchema3/animationSchema3Migration";
-import { requireSchema3Animation } from "./animationSchema3/animationSchema3Runtime";
-import { validateSchema3Animation } from "./animationSchema3/animationSchema3Validator";
 import { bakeSchema4Preview } from "./schema4PreviewBaker";
 import { createMolangPreviewFallback } from "../common/previewFallback";
 
@@ -30,8 +26,7 @@ export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {
       if (!isRecord(value) || !isRecord(value.nodes) || !isRecord(value.timeline)) {
         return { confidence: 0, reason: "does not match an emote animation schema" };
       }
-      if (value.schema_version === 1) return { confidence: 100, reason: "matches emote animation schema 1" };
-      return value.type === "animation" && (value.schema_version === 3 || value.schema_version === 4)
+      return value.type === "animation" && value.schema_version === 4
         ? { confidence: 100, reason: `matches emote animation schema ${value.schema_version}` }
         : { confidence: 0, reason: "does not match a supported emote animation schema" };
     }, "not JSON");
@@ -39,10 +34,7 @@ export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {
 
   async import(input: ImportInput): Promise<ImportedProject> {
     const parsed = parseInputJson(input);
-    const schema1 = isRecord(parsed) && parsed.schema_version === 1 ? migrateSchema1Animation(parsed) : null;
-    const schema3 = schema1?.animation ?? (isRecord(parsed) && parsed.schema_version === 3 ? requireSchema3Animation(parsed) : null);
-    if (schema3) requireValidSchema3Animation(schema3);
-    const animation = schema3 ? migrateSchema3Animation(schema3) : requireEmoteAnimation(parsed);
+    const animation = requireEmoteAnimation(parsed);
     const issues = validateEmoteAnimation(animation);
     if (issues.length > 0) {
       throw new ConversionError("invalid_emote_animation", `Invalid emote animation at ${issues[0].path}: ${issues[0].message}`, issues[0].path);
@@ -57,7 +49,7 @@ export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {
       nodes = importNodes(animation);
       importedAnimation = importTimeline(animation, animationId, animation.id);
     } catch (reason) {
-      if (!(reason instanceof ConversionError) || reason.code !== "unsupported_schema_4_import" || schema3) throw reason;
+      if (!(reason instanceof ConversionError) || reason.code !== "unsupported_schema_4_import") throw reason;
       nodes = importRuntimeNodes(animation);
       try {
         importedAnimation = importRuntimeTimeline(animation, animationId, animation.id, bakeSchema4Preview(animation));
@@ -75,7 +67,7 @@ export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {
       suggestedPlayer: { ...animation.settings.player, stop_conditions: { ...animation.settings.player.stop_conditions } },
       ...(typeof animation.target_minecraft_version === "string"
         ? { suggestedMinecraftVersion: animation.target_minecraft_version }
-        : schema1 ? { suggestedMinecraftVersion: schema1.minecraftVersion } : {}),
+        : {}),
       suggestedNamespace: namespace,
       suggestedStandalone: animation.settings.standalone,
       suggestedCooldown: animation.settings.cooldown,
@@ -88,13 +80,6 @@ export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {
     };
   },
 };
-
-function requireValidSchema3Animation(animation: Parameters<typeof validateSchema3Animation>[0]): void {
-  const issues = validateSchema3Animation(animation);
-  if (issues.length > 0) {
-    throw new ConversionError("invalid_emote_animation", `Invalid emote animation at ${issues[0].path}: ${issues[0].message}`, issues[0].path);
-  }
-}
 
 function importRuntimeNodes(animation: EmoteAnimation): Record<string, ImportedNode> {
   const worldMatrices = new Map<string, Matrix16>();
@@ -121,9 +106,8 @@ function importRuntimeNodes(animation: EmoteAnimation): Record<string, ImportedN
 
   return Object.fromEntries(Object.entries(animation.nodes).map(([id, node]) => {
     const root = rootId(id);
-    const space = animation.nodes[root].space!;
     const defaultMatrix = worldMatrix(id);
-    return [id, importNode(id, node, { defaultMatrix, space, binding: { sourceNodeId: id, spaceGroupId: root } })];
+    return [id, importNode(id, node, { defaultMatrix, binding: { sourceNodeId: id} })];
   }));
 }
 
@@ -131,14 +115,14 @@ function importNodes(animation: EmoteAnimation): Record<string, ImportedNode> {
   return Object.fromEntries(Object.entries(animation.nodes).map(([id, node]) => {
     if (node.parent) throw unsupportedSchema4(`${id}.parent`, "parented schema 4 nodes cannot be represented by the web editor");
     const defaultMatrix = localTransformToMatrix(node.transform, `${id}.transform`);
-    return [id, importNode(id, node, { defaultMatrix, space: node.space, binding: { sourceNodeId: id, spaceGroupId: id } })];
+    return [id, importNode(id, node, { defaultMatrix, binding: { sourceNodeId: id} })];
   }));
 }
 
 function importNode(
   id: string,
   node: EmoteAnimation["nodes"][string],
-  placement: Pick<ImportedNodeBase, "defaultMatrix" | "space" | "binding">,
+  placement: Pick<ImportedNodeBase, "defaultMatrix" | "binding">,
 ): ImportedNode {
   if (node.type === "anchor") return { type: "anchor", ...placement };
   const common = {
@@ -191,8 +175,8 @@ function importTimeline(animation: EmoteAnimation, id: string, sourceReferenceId
     durationTicks,
     playbackMode: animation.settings.playback.mode,
     loopStartTicks: parseMinecraftTime(animation.settings.playback.loop_start ?? "0t"),
-    loopEndTicks: parseMinecraftTime(animation.settings.playback.loop_end ?? "0t"),
     loopDelayTicks: parseMinecraftTime(animation.settings.playback.loop_delay ?? "0t"),
+    callbacks: animation.callbacks?.map((callback) => ({ ...callback })),
     events: importEvents(animation),
     preview: { durationTicks, tracks: previewTracks, availability: { status: "full" } },
     exportAvailability: { exportable: true },
@@ -216,8 +200,8 @@ function importRuntimeTimeline(
     durationTicks,
     playbackMode: animation.settings.playback.mode,
     loopStartTicks: parseMinecraftTime(animation.settings.playback.loop_start ?? "0t"),
-    loopEndTicks: parseMinecraftTime(animation.settings.playback.loop_end ?? "0t"),
     loopDelayTicks: parseMinecraftTime(animation.settings.playback.loop_delay ?? "0t"),
+    callbacks: animation.callbacks?.map((callback) => ({ ...callback })),
     events: importEvents(animation),
     ...(previewTracks
       ? { preview: { durationTicks, tracks: previewTracks, availability: { status: "full" as const } } }
@@ -239,21 +223,16 @@ function importRuntimeTimeline(
   };
 }
 
-function runtimeBindings(animation: EmoteAnimation): NativeRuntimeBindings {
-  return {
-    editorNodeByRuntimeNode: Object.fromEntries(Object.entries(animation.nodes)
-      .filter(([, node]) => node.type !== "anchor")
-      .map(([nodeId]) => [nodeId, nodeId])),
-    editorSpaceGroupByRuntimeRoot: Object.fromEntries(Object.entries(animation.nodes)
-      .filter(([, node]) => !node.parent)
-      .map(([nodeId]) => [nodeId, nodeId])),
-  };
+function runtimeBindings(animation: EmoteAnimation): RuntimeNodeBindings {
+  return Object.fromEntries(Object.entries(animation.nodes)
+    .filter(([, node]) => node.type !== "anchor")
+    .map(([nodeId]) => [nodeId, nodeId]));
 }
 
 function readRuntimeNodes(animation: EmoteAnimation): Record<string, RuntimeNode> {
   return Object.fromEntries(Object.entries(animation.nodes).map(([id, node]): [string, RuntimeNode] => {
     const common = {
-      ...(node.parent ? { parent: node.parent } : { space: node.space! }),
+      ...(node.parent ? { parent: node.parent } : {}),
       transform: node.transform,
     };
     if (node.type === "anchor") return [id, { type: "anchor", ...common }];
@@ -357,6 +336,5 @@ function copyEvent(event: EmoteEvent): EmoteEvent {
     source: { ...event.source },
     origin: { ...event.origin, ...(event.origin.offset ? { offset: [...event.origin.offset] as [number, number, number] } : {}) },
     commands: [...event.commands],
-    ...(event.callbacks ? { callbacks: event.callbacks.map((callback) => ({ ...callback })) } : {}),
   };
 }

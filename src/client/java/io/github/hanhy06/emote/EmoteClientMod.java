@@ -36,10 +36,6 @@ public class EmoteClientMod implements ClientModInitializer {
         wheelController.registerBinding(EMOTE_WHEEL_KEY);
     }
 
-    public static boolean shouldHideLocalPlayerEquipment() {
-        return PerspectiveController.INSTANCE.shouldHideLocalPlayerEquipment();
-    }
-
     private static void clearClientState(
         PerspectiveController perspectiveController,
         WheelController wheelController

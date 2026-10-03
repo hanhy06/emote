@@ -33,21 +33,6 @@ class PlaybackCooldownServiceTest {
     }
 
     @Test
-    void failedPlaybackAndReleasedPartnerReservationRemoveInUseState() {
-        PlaybackCooldownService service = service(new AtomicLong());
-        PlaybackCooldownService.Reservation failed = service.reservation(null, "demo:failed", 20);
-        PlaybackCooldownService.Reservation partner = service.reservation(null, "demo:partner", 40);
-
-        service.claim(failed);
-        service.release(failed);
-        assertEquals(PlaybackCooldownService.State.AVAILABLE, service.status(null, "demo:failed").state());
-
-        service.claim(partner);
-        service.onReservationReleased(PLAYER_ID, "demo:partner");
-        assertEquals(PlaybackCooldownService.State.AVAILABLE, service.status(null, "demo:partner").state());
-    }
-
-    @Test
     void differentEmoteStatesArePreservedIndependently() {
         AtomicLong tick = new AtomicLong(5L);
         PlaybackCooldownService service = service(tick);

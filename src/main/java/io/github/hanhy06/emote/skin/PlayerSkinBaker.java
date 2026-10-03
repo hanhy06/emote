@@ -76,8 +76,8 @@ public final class PlayerSkinBaker {
     ) throws IOException {
         BufferedImage bakingImage = preparedSkin.imageFor(skinPart);
         BufferedImage outputImage = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
-        FaceMap baseFaces = baseFaces(skinPart);
-        FaceMap overlayFaces = overlayFaces(skinPart);
+        FaceMap baseFaces = PARTS.get(skinPart).base();
+        FaceMap overlayFaces = PARTS.get(skinPart).overlay();
 
         drawFace(outputImage, bakingImage, baseFaces.top(), BASE_TOP);
         drawFace(outputImage, bakingImage, baseFaces.bottom(), BASE_BOTTOM);
@@ -200,8 +200,8 @@ public final class PlayerSkinBaker {
 
     private BufferedImage expandSlimArmToWideAtlas(BufferedImage sourceImage, PlayerSkinPart skinPart) {
         BufferedImage expandedImage = copyImage(sourceImage);
-        copyFaceMap(expandedImage, sourceImage, slimBaseFaces(skinPart), baseFaces(skinPart));
-        copyFaceMap(expandedImage, sourceImage, slimOverlayFaces(skinPart), overlayFaces(skinPart));
+        copyFaceMap(expandedImage, sourceImage, slimBaseFaces(skinPart), PARTS.get(skinPart).base());
+        copyFaceMap(expandedImage, sourceImage, slimOverlayFaces(skinPart), PARTS.get(skinPart).overlay());
         return expandedImage;
     }
 
@@ -226,24 +226,12 @@ public final class PlayerSkinBaker {
         drawFace(targetImage, sourceImage, sourceRect, new FaceTarget(targetRect.x(), targetRect.y(), targetRect.width(), targetRect.height()));
     }
 
-    private static FaceMap baseFaces(PlayerSkinPart part) {
-        return part(part).base();
-    }
-
-    private static FaceMap overlayFaces(PlayerSkinPart part) {
-        return part(part).overlay();
-    }
-
     private static FaceMap slimBaseFaces(PlayerSkinPart part) {
-        return requireSlimFaces(part, part(part).slimBase());
+        return requireSlimFaces(part, PARTS.get(part).slimBase());
     }
 
     private static FaceMap slimOverlayFaces(PlayerSkinPart part) {
-        return requireSlimFaces(part, part(part).slimOverlay());
-    }
-
-    private static PartAtlas part(PlayerSkinPart part) {
-        return PARTS.get(part);
+        return requireSlimFaces(part, PARTS.get(part).slimOverlay());
     }
 
     private static FaceMap requireSlimFaces(PlayerSkinPart part, FaceMap faces) {

@@ -8,7 +8,6 @@ import io.github.hanhy06.emote.skin.account.MinecraftSkinClient;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
-import io.github.hanhy06.emote.skin.model.PreparedPlayerSkin;
 
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -19,6 +18,7 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
     private static final long FAILED_BAKE_RETRY_MILLIS = TimeUnit.MINUTES.toMillis(5);
     private static final long CACHE_CLEANUP_INTERVAL_MILLIS = TimeUnit.DAYS.toMillis(1);
     private static final long MEBIBYTE_BYTES = 1_024L * 1_024L;
+    private static final UUID DEFAULT_SUBSCRIBER = new UUID(0L, 0L);
 
     private final MinecraftAccountManager accounts;
     private final PlayerSkinBaker baker;
@@ -26,15 +26,19 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
     private final SkinCache cache;
     private final AccountBakeQueue accountUploads;
     private final FallbackUploader fallbackUploader;
-    private final Map<SkinKey, Bake> bakes = new HashMap<>();
+    private final Map<PlayerSkinSource.Key, Bake> bakes = new HashMap<>();
     private final Map<String, CompletableFuture<String>> uploads = new HashMap<>();
-    private final Map<SkinKey, Long> failures = new LinkedHashMap<>();
+    private final Map<PlayerSkinSource.Key, Long> failures = new LinkedHashMap<>();
 
     private ExecutorService executor;
     private ScheduledExecutorService scheduler;
     private ScheduledFuture<?> cacheCleanup;
     private Listener listener = new Listener() {};
     private long generation;
+    private String defaultName = "";
+    private Set<PlayerSkinRegion> defaultRegions = Set.of();
+    private PlayerSkinSource defaultSource;
+    private Map<PlayerSkinRegion, String> defaultSkin;
 
     public SkinBakeCoordinator(
         MinecraftAccountManager accounts,
@@ -52,16 +56,66 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
         this.fallbackUploader = Objects.requireNonNull(fallbackUploader, "fallbackUploader");
     }
 
+    @Override public synchronized Map<PlayerSkinRegion, String> defaultSkin() { return this.defaultSkin; }
+
+    @Override
+    public synchronized void setDefaultRegions(Set<PlayerSkinRegion> regions) {
+        this.defaultRegions = Set.copyOf(regions);
+        prepareDefault();
+    }
+
+    @Override
+    public synchronized void setDefaultSource(PlayerSkinSource source) {
+        if (this.defaultName.isEmpty()) return;
+        this.defaultSource = new PlayerSkinSource(DEFAULT_SUBSCRIBER, this.defaultName,
+            source.textureHash(), source.textureUrl(), source.slimModel());
+        this.failures.remove(new PlayerSkinSource.Key(source.textureHash(), source.slimModel()));
+        prepareDefault();
+    }
+
+    private synchronized void prepareDefault() {
+        if (this.defaultSource == null || this.defaultRegions.isEmpty()) return;
+        // Seed the normal bake cache from the pinned result so only new regions need uploading.
+        SkinCache.DefaultSkin stored = this.cache.loadDefault(this.defaultName);
+        if (stored != null && stored.textureHash().equals(this.defaultSource.textureHash())
+            && stored.slimModel() == this.defaultSource.slimModel()) {
+            this.cache.save(stored.textureHash(), stored.slimModel(), stored.textures());
+        }
+        PlayerSkinPreparation preparation = prepare(this.defaultSource, this.defaultRegions);
+        if (preparation.state() == PlayerSkinPreparation.State.READY && preparation.textures() != null) {
+            publishDefault();
+        }
+    }
+
+    private synchronized void publishDefault() {
+        if (this.defaultSource == null || this.defaultRegions.isEmpty()) return;
+        Map<PlayerSkinRegion, String> ready = this.cache.load(this.defaultSource.textureHash(), this.defaultSource.slimModel());
+        if (ready.isEmpty()) return;
+        SkinCache.DefaultSkin previous = this.cache.loadDefault(this.defaultName);
+        boolean changingSource = previous != null && (!previous.textureHash().equals(this.defaultSource.textureHash())
+            || previous.slimModel() != this.defaultSource.slimModel());
+        // Keep the previous complete skin while a changed source is still being prepared.
+        if (changingSource && !ready.keySet().containsAll(this.defaultRegions)) return;
+        var saved = new SkinCache.DefaultSkin(this.defaultName, this.defaultSource.textureHash(), this.defaultSource.textureUrl(),
+            this.defaultSource.slimModel(), ready);
+        if (!this.cache.saveDefault(saved)) return;
+        Map<PlayerSkinRegion, String> updated = Map.copyOf(ready);
+        if (!updated.equals(this.defaultSkin)) {
+            this.defaultSkin = updated;
+            this.listener.onDefaultReady();
+        }
+    }
+
     @Override
     public synchronized PlayerSkinPreparation prepare(PlayerSkinSource source, Set<PlayerSkinRegion> requiredRegions) {
         Map<PlayerSkinRegion, String> ready = loadReady(source, requiredRegions);
         int progress = requiredRegions.isEmpty() ? 100 : ready.size() * 100 / requiredRegions.size();
-        PreparedPlayerSkin skin = ready.isEmpty() ? null : new PreparedPlayerSkin(ready);
+        Map<PlayerSkinRegion, String> skin = ready.isEmpty() ? null : Map.copyOf(ready);
         if (progress == 100) {
             return new PlayerSkinPreparation(skin, PlayerSkinPreparation.State.READY, 100);
         }
 
-        SkinKey key = new SkinKey(source.textureHash(), source.slimModel());
+        PlayerSkinSource.Key key = new PlayerSkinSource.Key(source.textureHash(), source.slimModel());
         removeExpiredFailures();
         if (this.failures.containsKey(key)) {
             return new PlayerSkinPreparation(skin, PlayerSkinPreparation.State.FAILED, progress);
@@ -90,6 +144,16 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
     @Override
     public synchronized void onConfigReload(Config config) {
         this.fallbackUploader.configure(config);
+        this.defaultName = config.defaultSkin();
+        this.defaultSource = null;
+        this.defaultSkin = null;
+        SkinCache.DefaultSkin stored = this.cache.loadDefault(this.defaultName);
+        if (stored != null) {
+            this.defaultSkin = Map.copyOf(stored.textures());
+            this.defaultSource = new PlayerSkinSource(DEFAULT_SUBSCRIBER, this.defaultName, stored.textureHash(), stored.textureUrl(), stored.slimModel());
+        }
+        if (this.defaultSource != null) this.failures.remove(new PlayerSkinSource.Key(this.defaultSource.textureHash(), this.defaultSource.slimModel()));
+        prepareDefault();
         if (!hasUploadProvider()) {
             EmoteMod.LOGGER.error("No bake accounts or MineSkin API key configured; only cached skin textures are available");
         }
@@ -116,6 +180,9 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
         List<CompletableFuture<String>> pendingUploads;
         synchronized (this) {
             this.generation++;
+            this.defaultSource = null;
+            this.defaultSkin = null;
+            this.defaultName = "";
             this.bakes.clear();
             this.failures.clear();
             pendingUploads = List.copyOf(this.uploads.values());
@@ -151,7 +218,7 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
         return new SkinProcessingStats(provider, active, queued, this.failures.size());
     }
 
-    private void bake(SkinKey key, Bake bake) {
+    private void bake(PlayerSkinSource.Key key, Bake bake) {
         try {
             synchronized (this) {
                 if (!isCurrent(key, bake)) {
@@ -181,7 +248,8 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
                 }
                 if (completedSubscribers != null) {
                     Listener listener = completionListener;
-                    completedSubscribers.forEach(listener::onReady);
+                    if (completedSubscribers.contains(DEFAULT_SUBSCRIBER)) publishDefault();
+                    completedSubscribers.stream().filter(uuid -> !uuid.equals(DEFAULT_SUBSCRIBER)).forEach(listener::onReady);
                     return;
                 }
 
@@ -195,6 +263,11 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
                         this.cache.save(source.textureHash(), source.slimModel(), Map.of(region, url));
                         if (!url.equals(this.cache.load(source.textureHash(), source.slimModel()).get(region))) {
                             throw new IOException("Could not save baked skin texture");
+                        }
+                        if (bake.subscribers.contains(DEFAULT_SUBSCRIBER) && this.defaultSource != null
+                            && source.textureHash().equals(this.defaultSource.textureHash())
+                            && source.slimModel() == this.defaultSource.slimModel()) {
+                            publishDefault();
                         }
                     }
                 }
@@ -291,7 +364,7 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
         result.completeExceptionally(exception);
     }
 
-    private void fail(SkinKey key, Bake bake, Throwable exception) {
+    private void fail(PlayerSkinSource.Key key, Bake bake, Throwable exception) {
         Set<UUID> subscribers;
         Listener currentListener;
         synchronized (this) {
@@ -306,7 +379,7 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
             subscribers = Set.copyOf(bake.subscribers);
             currentListener = this.listener;
         }
-        subscribers.forEach(currentListener::onFailed);
+        subscribers.stream().filter(uuid -> !uuid.equals(DEFAULT_SUBSCRIBER)).forEach(currentListener::onFailed);
         EmoteMod.LOGGER.warn("Skin bake failed for {}; retry later or check /emote account", bake.source.playerUuid(), exception);
     }
 
@@ -356,7 +429,7 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
         return Map.copyOf(ready);
     }
 
-    private boolean isCurrent(SkinKey key, Bake bake) {
+    private boolean isCurrent(PlayerSkinSource.Key key, Bake bake) {
         return bake.generation == this.generation && this.bakes.get(key) == bake;
     }
 
@@ -390,8 +463,6 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
         }
     }
 
-    private record SkinKey(String textureHash, boolean slimModel) {
-    }
 
     private static final class Bake {
         private final PlayerSkinSource source;

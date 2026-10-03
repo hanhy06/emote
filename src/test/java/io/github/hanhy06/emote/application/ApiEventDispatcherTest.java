@@ -3,16 +3,18 @@ package io.github.hanhy06.emote.application;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.EmotePlaybackListener;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
-import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.PlaybackInfo;
+import io.github.hanhy06.emote.api.PlaybackPlacement;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
-import io.github.hanhy06.emote.content.PreparedAnimation;
-import io.github.hanhy06.emote.content.PreparedAnimationFixture;
-import io.github.hanhy06.emote.playback.AnimationPlayer;
+import io.github.hanhy06.emote.content.PreparedEmote;
+import io.github.hanhy06.emote.content.PreparedEmoteFixture;
+import io.github.hanhy06.emote.content.PreparedSequence;
+import io.github.hanhy06.emote.api.sequence.EmoteSequence;
+import net.minecraft.resources.Identifier;
+import io.github.hanhy06.emote.playback.PlaybackPlayer;
+import io.github.hanhy06.emote.playback.PlayerPlaybackState;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 import io.github.hanhy06.emote.playback.runtime.RootTransform;
-import io.github.hanhy06.emote.playback.runtime.SceneRootResolver;
-import io.github.hanhy06.emote.playback.session.PlaybackParticipant;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
 import net.minecraft.SharedConstants;
 import net.minecraft.server.Bootstrap;
@@ -26,9 +28,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 class ApiEventDispatcherTest {
+    @Test
+    void exposesStandalonePolicyForAnimationsAndSequences() {
+        PreparedEmote animation = PreparedEmoteFixture.create("test:component", "Component", false);
+        assertFalse(ApiEventDispatcher.toInfo(animation).standalone());
+        EmoteSequence source = new EmoteSequence(Identifier.parse("test:sequence"), animation.metadata(),
+            new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()),
+            List.of(new EmoteSequence.AnimationStep(animation.model().id(), 1)));
+        assertTrue(ApiEventDispatcher.toInfo(PreparedSequence.resolve(source, Map.of(animation.id(), animation))).standalone());
+    }
+
     @BeforeAll
     static void bootstrapMinecraftRegistries() {
         SharedConstants.tryDetectVersion();
@@ -38,14 +50,14 @@ class ApiEventDispatcherTest {
     @Test
     void stopsStartDispatchWithoutNotifyingLaterListeners() {
         ApiEventDispatcher dispatcher = new ApiEventDispatcher();
-        PlaybackParticipant participant = participant();
+        PlayerPlaybackState participant = participant();
         PlaybackSession session = session(participant);
         List<String> events = new ArrayList<>();
         dispatcher.addPlaybackListener(new EmotePlaybackListener() {
             @Override
             public void onStarted(PlaybackInfo playback) {
                 events.add("first-started");
-                dispatcher.onStopped(null, session, participant, PlaybackStopReason.MANUAL);
+                dispatcher.onStopped(session, PlaybackStopReason.MANUAL);
             }
 
             @Override
@@ -65,7 +77,7 @@ class ApiEventDispatcherTest {
             }
         });
 
-        dispatcher.onStarted(null, session, participant);
+        dispatcher.onStarted(session);
 
         assertEquals(List.of("first-started", "first-stopped"), events);
     }
@@ -73,39 +85,36 @@ class ApiEventDispatcherTest {
     @Test
     void notifiesEveryListenerWhenStopIsNotReentrant() {
         ApiEventDispatcher dispatcher = new ApiEventDispatcher();
-        PlaybackParticipant participant = participant();
+        PlayerPlaybackState participant = participant();
         PlaybackSession session = session(participant);
         List<String> events = new ArrayList<>();
         dispatcher.addPlaybackListener(new StopRecordingListener("first", events));
         dispatcher.addPlaybackListener(new StopRecordingListener("second", events));
 
-        dispatcher.onStopped(null, session, participant, PlaybackStopReason.MANUAL);
+        dispatcher.onStopped(session, PlaybackStopReason.MANUAL);
 
         assertEquals(List.of("first-stopped", "second-stopped"), events);
     }
 
-    private static PlaybackSession session(PlaybackParticipant participant) {
-        PreparedAnimation emote = PreparedAnimationFixture.create("test:api-event", "API Event");
+    private static PlaybackSession session(PlayerPlaybackState participant) {
+        PreparedEmote emote = PreparedEmoteFixture.create("test:api-event", "API Event");
         PlaybackNodes nodes = new PlaybackNodes(
-            SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)),
+            RootTransform.create(Vec3.ZERO, 0.0F),
             Map.of()
         );
-        AnimationPlayer animation = new AnimationPlayer(emote, new EmptyTimelineTarget());
+        PlaybackPlayer animation = new PlaybackPlayer(emote, new EmptyTimelineTarget());
         return new PlaybackSession(
             UUID.randomUUID(),
             Level.OVERWORLD,
             emote.id(),
-            emote.id(),
             nodes,
             animation,
-            EmotePlayerBehavior.createDefault(),
-            participant,
-            null
+            Map.of(), PlaybackPlacement.Mode.EXTERNAL
         );
     }
 
-    private static PlaybackParticipant participant() {
-        return new PlaybackParticipant(UUID.randomUUID(), ParticipantRole.INITIATOR, Vec3.ZERO, List.of(), false);
+    private static PlayerPlaybackState participant() {
+        return new PlayerPlaybackState(UUID.randomUUID(), Vec3.ZERO, List.of(), false, EmotePlayerBehavior.createDefault());
     }
 
     private record StopRecordingListener(String name, List<String> events) implements EmotePlaybackListener {
@@ -115,14 +124,14 @@ class ApiEventDispatcherTest {
         }
     }
 
-    private static final class EmptyTimelineTarget implements AnimationPlayer.TimelineTarget {
+    private static final class EmptyTimelineTarget implements PlaybackPlayer.TimelineTarget {
         @Override
-        public Transformation createTransformation(String nodeId, PreparedAnimation.PreparedTransform transform) {
+        public Transformation createTransformation(String nodeId, PreparedEmote.PreparedTransform transform) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        public void applyTransform(String nodeId, PreparedAnimation.PreparedTransform transform, int interpolationDurationTicks) {
+        public void applyTransform(String nodeId, PreparedEmote.PreparedTransform transform, int interpolationDurationTicks) {
             throw new UnsupportedOperationException();
         }
 

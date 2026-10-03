@@ -1,6 +1,6 @@
 package io.github.hanhy06.emote.playback.runtime;
 
-import io.github.hanhy06.emote.content.PreparedAnimation;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
@@ -47,7 +47,7 @@ class RootTransformTest {
 
         Matrix4fc expected = root.displayMatrix(matrix);
         Matrix4fc actual = root.displayTransformation(
-            PreparedAnimation.PreparedTransform.create(matrix, false)
+            PreparedEmote.PreparedTransform.create(matrix, false)
         ).getMatrix();
 
         for (int column = 0; column < 4; column++) {

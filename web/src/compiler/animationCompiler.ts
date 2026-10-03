@@ -11,6 +11,7 @@ import type {
 } from "../format/emoteAnimation";
 import { ConversionError } from "../foundation/diagnostics";
 import {
+  animationOutputId,
   documentMetadata,
   documentSkinAssignments,
   type AnimationOutputSettings,
@@ -21,23 +22,14 @@ import {
 import { multiplyMatrix16 } from "../format/matrix";
 import { localTransformToMatrix, matrixToContinuousLocalTransform, matrixToLocalTransform } from "../format/localTransform";
 import { formatMinecraftTime, parseMinecraftTime, requireTick } from "../format/time";
-import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import type { BakedRuntimeNodeTracks, DisplayNbtPatch, DisplayNbtValue, ItemStackData, RuntimeNode, RuntimeNodeTracks } from "../domain/minecraftData";
 import { readDisplayNbt, writeBlockState, writeDisplayNbt, writeItemStack } from "../format/minecraftData";
 import { minecraftVersionProfile, type MinecraftVersionProfile } from "../format/minecraftVersionProfiles";
-import type { NativeRuntimeBindings } from "../domain/nodeBindings";
+import type { RuntimeNodeBindings } from "../domain/nodeBindings";
 import type { AnimationRuntimeProjection } from "../domain/runtimeProjection";
 import { rewriteMolangStringLiterals } from "../format/molang/sourceTransformer";
 
 const PLAYER_HEAD: ItemStackData = { id: "minecraft:player_head", count: 1 };
-
-export function compileConversionAnimation(
-  document: ConversionDocument,
-  animationIndex: number,
-  outputOverride?: Partial<AnimationOutputSettings>,
-): EmoteAnimation {
-  return compileConversionAnimationArtifact(document, animationIndex, outputOverride).animation;
-}
 
 export interface CompiledConversionAnimation {
   animation: EmoteAnimation;
@@ -56,7 +48,6 @@ export function compileConversionAnimationArtifact(
   validateAnimationIds(document);
 
   const output = { ...entry.output, ...outputOverride };
-  const namespace = sanitizeNamespace(output.namespace || output.displayName);
   const animation = entry.runtime;
   const availability = animation.availability;
   if (!availability.exportable) {
@@ -64,7 +55,6 @@ export function compileConversionAnimationArtifact(
   }
   const mode = output.playbackMode === "source" ? animation.sourcePlaybackMode : output.playbackMode;
   const loopStartTicks = mode === "loop" ? parseMinecraftTime(output.loopStart) : 0;
-  const loopEndTicks = mode === "loop" ? parseMinecraftTime(output.loopEnd) : 0;
   const loopDelayTicks = mode === "once" || mode === "hold" ? 0 : parseMinecraftTime(output.loopDelay);
   const profile = minecraftVersionProfile(document.targetMinecraftVersion);
   const runtime = animation.data;
@@ -73,8 +63,9 @@ export function compileConversionAnimationArtifact(
     type: "animation",
     schema_version: 4,
     target_minecraft_version: document.targetMinecraftVersion,
-    id: `${namespace}:${sanitizeResourcePath(animation.id)}`,
+    id: animationOutputId(entry, output),
     metadata: documentMetadata(output),
+    ...(entry.callbacks?.length ? { callbacks: entry.callbacks.map((callback) => ({ ...callback })) } : {}),
     settings: {
       standalone: output.standalone,
       cooldown: formatMinecraftTime(parseMinecraftTime(output.cooldown)),
@@ -84,7 +75,6 @@ export function compileConversionAnimationArtifact(
       playback: {
         mode,
         ...(loopStartTicks === 0 ? {} : { loop_start: formatMinecraftTime(loopStartTicks) }),
-        ...(mode === "loop" && loopEndTicks !== 0 ? { loop_end: formatMinecraftTime(loopEndTicks) } : {}),
         ...(loopDelayTicks === 0 ? {} : { loop_delay: formatMinecraftTime(loopDelayTicks) }),
       },
     },
@@ -102,22 +92,19 @@ export function compileConversionAnimationArtifact(
 function compileRuntimeNodes(
   document: ConversionDocument,
   sourceNodes: Record<string, RuntimeNode>,
-  bindings: NativeRuntimeBindings,
+  bindings: RuntimeNodeBindings,
   profile: MinecraftVersionProfile,
   generatedResourceReferences: Set<string>,
 ): Record<string, EmoteNode> {
   const assignments = documentSkinAssignments(document);
   return Object.fromEntries(Object.entries(sourceNodes).map(([id, sourceNode]): [string, EmoteNode] => {
-    const editorNodeId = bindings.editorNodeByRuntimeNode[id];
+    const editorNodeId = bindings[id];
     const editorNode = editorNodeId ? document.nodes[editorNodeId] : undefined;
     if (sourceNode.type !== "anchor" && !editorNode) {
       throw new ConversionError("missing_runtime_node_binding", `Runtime display ${id} is not bound to an editor node.`, id);
     }
-    const spaceGroupId = bindings.editorSpaceGroupByRuntimeRoot[id];
-    const space = !sourceNode.parent && spaceGroupId ? documentSpaceGroup(document, spaceGroupId) : sourceNode.space;
     const common = {
       ...(sourceNode.parent ? { parent: sourceNode.parent } : {}),
-      ...(space ? { space } : {}),
       transform: sourceNode.transform,
     };
     if (sourceNode.type === "anchor") return [id, { type: "anchor", ...common }];
@@ -133,9 +120,9 @@ function compileRuntimeNodes(
     const assignment = editorNodeId ? assignments[editorNodeId] : undefined;
     const outputItem = assignment ? PLAYER_HEAD : sourceNode.itemStack;
     includeGeneratedResourceReferences(generatedResourceReferences, outputItem.generatedResourceReferences);
-    const transform = assignment && editorNode?.type === "item_display" && editorNode.playerHeadConversion
+    const transform = assignment && editorNode?.type === "item_display" && editorNode.playerHeadConversionMatrix
       ? matrixToLocalTransform(
-          multiplyMatrix16(localTransformToMatrix(sourceNode.transform, `Runtime node ${id}`), editorNode.playerHeadConversion.matrix, `Runtime player head node ${id}`),
+          multiplyMatrix16(localTransformToMatrix(sourceNode.transform, `Runtime node ${id}`), editorNode.playerHeadConversionMatrix, `Runtime player head node ${id}`),
           `Runtime player head node ${id}`,
         )
       : sourceNode.transform;
@@ -145,25 +132,16 @@ function compileRuntimeNodes(
       transform,
       item_stack_snbt: writeItemStack(outputItem, profile),
       item_display: sourceNode.itemDisplay,
-      skin: assignment ? { participant: assignment.participant ?? "initiator", part: assignment.part, order: assignment.order } : undefined,
+      skin: assignment ? { part: assignment.part, order: assignment.order } : undefined,
     }];
   }));
 }
 
-function documentSpaceGroup(document: ConversionDocument, groupId: string): EmoteNode["space"] {
-  const spaces = new Set(Object.entries(document.nodes)
-    .filter(([nodeId, node]) => (node.binding.spaceGroupId ?? nodeId) === groupId)
-    .map(([, node]) => node.space));
-  if (spaces.size !== 1) {
-    throw new ConversionError("invalid_runtime_space_binding", `Runtime space group ${groupId} must resolve to exactly one editor space.`, groupId);
-  }
-  return spaces.values().next().value!;
-}
 
 function validateAnimationIds(document: ConversionDocument): void {
   const ids = new Set<string>();
   for (const animation of document.animations) {
-    const id = `${sanitizeNamespace(animation.output.namespace || animation.output.displayName)}:${sanitizeResourcePath(animation.runtime.id)}`;
+    const id = animationOutputId(animation);
     if (ids.has(id)) throw new ConversionError("duplicate_animation_id", `Multiple animations normalize to the same id: ${id}`);
     ids.add(id);
   }
@@ -173,16 +151,15 @@ function compileNodes(document: ConversionDocument, animation: AnimationRuntimeP
   return Object.fromEntries(nodeIds.map((id) => [id, document.nodes[id]] as const).filter((entry): entry is readonly [string, ConversionNode] => Boolean(entry[1])).map(([id, node]) => {
     const sourceMatrix = tracks[id]?.transforms.find((transform) => transform.tick === 0)?.matrix ?? node.defaultMatrix;
     const transform = matrixToLocalTransform(compileNodeMatrix(document, id, node, sourceMatrix), `${animation.id}/${id} default transform`);
-    if (node.type === "anchor") return [id, { type: "anchor", space: node.space, transform }];
+    if (node.type === "anchor") return [id, { type: "anchor", transform }];
     const common = {
-      space: node.space,
       ...(node.visible ? {} : { visible: false }),
       transform,
       ...(node.entityNbt ? { entity_nbt: node.entityNbt } : {}),
     };
     if (node.type === "item_display") {
       const assignment = node.binding.skinGroupId ? document.skinGroups[node.binding.skinGroupId]?.assignment : null;
-      const outputItem = assignment && node.playerHeadConversion ? PLAYER_HEAD : node.itemStack;
+      const outputItem = assignment && node.playerHeadConversionMatrix ? PLAYER_HEAD : node.itemStack;
       includeGeneratedResourceReferences(generatedResourceReferences, outputItem.generatedResourceReferences);
       return [id, {
         ...common,
@@ -191,7 +168,6 @@ function compileNodes(document: ConversionDocument, animation: AnimationRuntimeP
         item_display: node.itemDisplay,
         ...(assignment ? {
           skin: {
-            participant: node.space === "partner" ? "partner" : "initiator",
             part: assignment.part,
             order: assignment.order,
           },
@@ -209,9 +185,9 @@ function compileNodeMatrix(
   node: ConversionNode,
   matrix: Matrix16,
 ): Matrix16 {
-  if (node.type !== "item_display" || !node.binding.skinGroupId || !node.playerHeadConversion) return matrix;
+  if (node.type !== "item_display" || !node.binding.skinGroupId || !node.playerHeadConversionMatrix) return matrix;
   if (!document.skinGroups[node.binding.skinGroupId]?.assignment) return matrix;
-  return multiplyMatrix16(matrix, node.playerHeadConversion.matrix, `Player head node ${nodeId}`);
+  return multiplyMatrix16(matrix, node.playerHeadConversionMatrix, `Player head node ${nodeId}`);
 }
 
 function compileTimeline(document: ConversionDocument, animation: AnimationRuntimeProjection, events: ConversionAnimationEvents, sourceTracks: Record<string, BakedRuntimeNodeTracks>, profile: MinecraftVersionProfile, generatedResourceReferences: Set<string>): EmoteAnimation["timeline"] {
@@ -264,7 +240,7 @@ function compileRuntimeTimeline(
   animation: AnimationRuntimeProjection,
   events: ConversionAnimationEvents,
   sourceTracks: Record<string, RuntimeNodeTracks>,
-  bindings: NativeRuntimeBindings,
+  bindings: RuntimeNodeBindings,
   profile: MinecraftVersionProfile,
   generatedResourceReferences: Set<string>,
 ): EmoteAnimation["timeline"] {
@@ -284,7 +260,7 @@ function compileRuntimeTimeline(
     };
     if (!track.nbt) return [nodeId, output];
     const nbt = track.nbt.flatMap((frame) => {
-      const editorNodeId = bindings.editorNodeByRuntimeNode[nodeId];
+      const editorNodeId = bindings[nodeId];
       if (!editorNodeId) {
         throw new ConversionError("missing_runtime_node_binding", `Runtime NBT track ${nodeId} is not bound to an editor node.`, nodeId);
       }
@@ -349,7 +325,7 @@ function compileMolangNbtLiterals(
 
 function compileNodeNbt(document: ConversionDocument, nodeId: string, value: DisplayNbtPatch, profile: MinecraftVersionProfile, generatedResourceReferences: Set<string>): string | undefined {
   const node = document.nodes[nodeId];
-  if (node?.type !== "item_display" || !node.playerHeadConversion || !node.binding.skinGroupId
+  if (node?.type !== "item_display" || !node.playerHeadConversionMatrix || !node.binding.skinGroupId
     || !document.skinGroups[node.binding.skinGroupId]?.assignment) {
     includeGeneratedResourceReferences(generatedResourceReferences, value.itemStack?.generatedResourceReferences);
     return writeDisplayNbt(value, profile);

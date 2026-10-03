@@ -36,7 +36,7 @@ export function validateEmoteAnimation(animation: EmoteAnimation): ValidationIss
   const issues: ValidationIssue[] = [];
   if (animation.type !== "animation") add(issues, "type", "must be animation");
   if (animation.schema_version !== 4) add(issues, "schema_version", "must be 4");
-  const { loopStartTicks, loopEndTicks } = validateCommon(animation, issues);
+  const { loopStartTicks } = validateCommon(animation, issues);
 
   const nodeIds = new Set(Object.keys(animation.nodes));
   if (nodeIds.size === 0) add(issues, "nodes", "must not be empty");
@@ -45,10 +45,8 @@ export function validateEmoteAnimation(animation: EmoteAnimation): ValidationIss
     if (!nodeId.trim()) add(issues, "nodes", "node id must not be blank");
     if (node.parent) {
       if (!nodeIds.has(node.parent)) add(issues, `${path}.parent`, "references an unknown node");
-      if (node.space !== undefined) add(issues, `${path}.space`, "is not allowed on child nodes");
-    } else if (!(node.space && (["scene", "initiator", "partner"] as const).includes(node.space))) {
-      add(issues, `${path}.space`, "root node must define scene, initiator, or partner");
     }
+    if ("space" in node) add(issues, `${path}.space`, "coordinate spaces are no longer supported");
     validateVec3(node.transform.position, `${path}.transform.position`, issues);
     validateVec3(node.transform.rotation, `${path}.transform.rotation`, issues);
     validateVec3(node.transform.scale, `${path}.transform.scale`, issues);
@@ -65,15 +63,6 @@ export function validateEmoteAnimation(animation: EmoteAnimation): ValidationIss
   }
   if (loopStartTicks !== null && durationTicks !== null && loopStartTicks >= durationTicks) {
     add(issues, "settings.playback.loop_start", "must be within 0..duration - 1 tick");
-  }
-  if (animation.settings.playback.mode === "loop" && durationTicks !== null) {
-    const effectiveLoopEndTicks = loopEndTicks === null || loopEndTicks === 0 ? durationTicks : loopEndTicks;
-    if (loopStartTicks !== null && effectiveLoopEndTicks <= loopStartTicks) {
-      add(issues, "settings.playback.loop_end", "must be after loop_start");
-    }
-    if (effectiveLoopEndTicks > durationTicks) {
-      add(issues, "settings.playback.loop_end", "must not exceed timeline duration");
-    }
   }
   for (const [nodeId, tracks] of Object.entries(animation.timeline.tracks)) {
     const path = `timeline.tracks.${nodeId}`;
@@ -96,7 +85,6 @@ export function validateEmoteAnimation(animation: EmoteAnimation): ValidationIss
 
 function validateCommon(animation: EmoteAnimation, issues: ValidationIssue[]): {
   loopStartTicks: number | null;
-  loopEndTicks: number | null;
 } {
   if (!isResourceLocation(animation.id)) add(issues, "id", "must be a Minecraft resource location");
   if (!animation.metadata.name.trim()) add(issues, "metadata.name", "must not be empty");
@@ -111,20 +99,14 @@ function validateCommon(animation: EmoteAnimation, issues: ValidationIssue[]): {
   validateTime(animation.settings.cooldown, 0, "settings.cooldown", issues);
   validateTime(animation.settings.display_interpolation ?? "1t", 0, "settings.display_interpolation", issues);
   const loopStartTicks = validateTime(animation.settings.playback.loop_start ?? "0t", 0, "settings.playback.loop_start", issues);
-  const loopEndTicks = animation.settings.playback.loop_end === undefined
-    ? null
-    : validateTime(animation.settings.playback.loop_end, 0, "settings.playback.loop_end", issues);
   const loopDelayTicks = validateTime(animation.settings.playback.loop_delay ?? "0t", 0, "settings.playback.loop_delay", issues);
   if (animation.settings.playback.mode !== "loop" && loopStartTicks !== null && loopStartTicks !== 0) {
     add(issues, "settings.playback.loop_start", "must resolve to 0 ticks unless mode is loop");
   }
-  if (animation.settings.playback.mode !== "loop" && loopEndTicks !== null && loopEndTicks !== 0) {
-    add(issues, "settings.playback.loop_end", "must resolve to 0 ticks unless mode is loop");
-  }
   if (["once", "hold"].includes(animation.settings.playback.mode) && loopDelayTicks !== null && loopDelayTicks !== 0) {
     add(issues, "settings.playback.loop_delay", "must resolve to 0 ticks when mode is once or hold");
   }
-  return { loopStartTicks, loopEndTicks };
+  return { loopStartTicks };
 }
 
 function validateItemNode(
@@ -136,21 +118,9 @@ function validateItemNode(
 ): void {
   if (!ITEM_DISPLAY_VALUES.has(node.item_display)) add(issues, `${path}.item_display`, "uses an unsupported item display context");
   if (node.skin && !isNonNegativeInt32(node.skin.order)) add(issues, `${path}.skin.order`, "must be a non-negative Java integer");
-  if (node.skin) {
-    const rootSpace = inheritedNodeSpace(animation, nodeId);
-    if (rootSpace && node.skin.participant !== rootSpace) add(issues, `${path}.skin.participant`, "must match the node space");
-  }
+
 }
 
-function inheritedNodeSpace(animation: EmoteAnimation, nodeId: string): EmoteAnimation["nodes"][string]["space"] {
-  const seen = new Set<string>();
-  let current = animation.nodes[nodeId];
-  while (current?.parent && !seen.has(current.parent)) {
-    seen.add(current.parent);
-    current = animation.nodes[current.parent];
-  }
-  return current?.space;
-}
 
 function validateParentCycles(animation: EmoteAnimation, issues: ValidationIssue[]): void {
   for (const nodeId of Object.keys(animation.nodes)) {
@@ -311,11 +281,6 @@ function validateEvent(event: EmoteEvent, path: string, animation: EmoteAnimatio
   if (event.origin.offset && (event.origin.offset.length !== 3 || event.origin.offset.some((value) => !Number.isFinite(value)))) {
     add(issues, `${path}.origin.offset`, "must contain three finite numbers");
   }
-  event.callbacks?.forEach((callback, index) => {
-    const callbackPath = `${path}.callbacks[${index}]`;
-    if (!isResourceLocation(callback.name)) add(issues, `${callbackPath}.name`, "must be a namespaced identifier");
-    if (callback.payload !== undefined && typeof callback.payload !== "string") add(issues, `${callbackPath}.payload`, "must be a string");
-  });
 }
 
 function isNonNegativeInt32(value: number): boolean {

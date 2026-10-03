@@ -1,10 +1,11 @@
 package io.github.hanhy06.emote.playback;
 
+import net.minecraft.world.phys.Vec3;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.content.PreparedAnimation;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.content.PreparedAnimationTimeline;
 import io.github.hanhy06.emote.molang.MolangEngine;
-import io.github.hanhy06.emote.playback.molang.PlayerMolangQueries;
+import io.github.hanhy06.emote.playback.molang.MolangQuerySource;
 import net.minecraft.nbt.CompoundTag;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
@@ -23,9 +24,9 @@ final class AnimationEvaluator {
         "id", "UUID", "Pos", "Motion", "Rotation", "Tags", "Passengers",
         "transformation", "interpolation_duration", "start_interpolation", "teleport_duration"
     );
-    private final PreparedAnimation animation;
+    private final PreparedEmote animation;
     private final PreparedAnimationTimeline timeline;
-    private final PlayerMolangQueries.Source querySource;
+    private final MolangQuerySource querySource;
     private final NodeState[] nodes;
     private final Map<String, Integer> nodeIndexes;
     private final Matrix4f localMatrix = new Matrix4f();
@@ -38,13 +39,13 @@ final class AnimationEvaluator {
 
     private MolangEngine.Session session;
 
-    AnimationEvaluator(PreparedAnimation animation, PlayerMolangQueries.Source querySource) {
+    AnimationEvaluator(PreparedEmote animation, MolangQuerySource querySource) {
         this.animation = animation;
         this.timeline = animation.preparedTimeline();
         this.querySource = querySource;
         this.nodes = new NodeState[this.timeline.nodeOrder().size()];
         Map<String, Integer> indexes = new HashMap<>();
-        EmoteAnimation source = animation.animation();
+        EmoteAnimation source = animation.model();
         for (int index = 0; index < this.nodes.length; index++) {
             String nodeId = this.timeline.nodeOrder().get(index);
             Node node = source.nodes().get(nodeId);
@@ -78,6 +79,11 @@ final class AnimationEvaluator {
         evaluate(tick, loopCount, 0.0D, this.timeline.tick() != null);
     }
 
+    void setTick(int tick, int loopCount) {
+        for (NodeState node : this.nodes) node.resetCursors(tick);
+        evaluate(tick, loopCount, 0.0D, false);
+    }
+
     void evaluate(int tick, int loopCount) {
         evaluate(tick, loopCount, 0.05D, this.timeline.tick() != null);
     }
@@ -87,7 +93,7 @@ final class AnimationEvaluator {
     }
 
     int displayInterpolationTicks() {
-        return this.animation.animation().settings().displayInterpolationTicks();
+        return this.animation.model().settings().displayInterpolationTicks();
     }
 
     String nodeId(int index) {

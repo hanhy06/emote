@@ -70,7 +70,6 @@ public class ConfigManager {
         }
         broadcastConfig();
         broadcastAccessConfig();
-        EmoteMod.LOGGER.info("Applied emote configuration");
     }
 
     public boolean configure() {
@@ -117,7 +116,6 @@ public class ConfigManager {
             }
         }
 
-        EmoteMod.LOGGER.info("Installed bundled emotes");
     }
 
     public Config getConfig() {
@@ -241,7 +239,6 @@ public class ConfigManager {
 
         try {
             JsonFileStore.writeObjectAtomically(filePath, json, this.gson);
-            EmoteMod.LOGGER.info("Saved {}", fileName);
             return true;
         } catch (IOException exception) {
             EmoteMod.LOGGER.error("Failed to write {}", fileName, exception);

@@ -1,10 +1,10 @@
 package io.github.hanhy06.emote.content.loader;
 
+import net.minecraft.world.phys.Vec3;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
-import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -92,7 +92,7 @@ final class TimelineEventJsonParser {
             }
             previousTick = tick;
             Event event = parseEvent(object, path, nodes, document);
-            events.add(new TimelineEvent(tick, event.source(), event.origin(), event.commands(), event.callbacks()));
+            events.add(new TimelineEvent(tick, event.source(), event.origin(), event.commands()));
         }
         return List.copyOf(events);
     }
@@ -133,20 +133,10 @@ final class TimelineEventJsonParser {
             }
             commands.add(command);
         }
-        JsonArray callbackArray = document.optionalArray(object, "callbacks", path);
-        List<Callback> callbacks = new ArrayList<>();
-        if (callbackArray != null) {
-            for (int index = 0; index < callbackArray.size(); index++) {
-                String callbackPath = path + ".callbacks[" + index + "]";
-                JsonObject callback = document.requireObject(callbackArray.get(index), callbackPath);
-                String nameValue = document.requireString(callback, "name", callbackPath);
-                Identifier name = Identifier.tryParse(nameValue);
-                if (name == null) throw document.error(callbackPath + ".name", "must be a valid namespaced identifier");
-                String payload = callback.has("payload") ? document.requireString(callback, "payload", callbackPath) : "";
-                callbacks.add(new Callback(name, payload));
-            }
+        if (object.has("callbacks")) {
+            throw document.error(path + ".callbacks", "JSON callbacks have been removed; register Java lifecycle callbacks instead");
         }
-        return new Event(source, origin, commands, callbacks);
+        return new Event(source, origin, commands);
     }
 
     private CommandSource parseCommandSource(
@@ -162,7 +152,7 @@ final class TimelineEventJsonParser {
             case "server" -> new CommandSource(SourceType.SERVER, null);
             case "node" -> {
                 String nodeId = document.requireString(object, "node", path);
-                Node node = TimelineJsonParser.requireNode(nodes, nodeId, path + ".node", document);
+                Node node = document.requireNode(nodes, nodeId, path + ".node");
                 if (node instanceof AnchorNode) {
                     throw document.error(path + ".node", "anchor nodes cannot be command sources");
                 }
@@ -185,7 +175,7 @@ final class TimelineEventJsonParser {
             case "root" -> new CommandOrigin(OriginType.ROOT, null, offset);
             case "node" -> {
                 String nodeId = document.requireString(object, "node", path);
-                TimelineJsonParser.requireNode(nodes, nodeId, path + ".node", document);
+                document.requireNode(nodes, nodeId, path + ".node");
                 yield new CommandOrigin(OriginType.NODE, nodeId, offset);
             }
             default -> throw document.error(path + ".type", "unsupported origin type: " + type);

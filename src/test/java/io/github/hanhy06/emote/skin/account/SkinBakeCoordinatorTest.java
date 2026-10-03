@@ -4,14 +4,13 @@ import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.skin.PlayerSkinBaker;
 import io.github.hanhy06.emote.skin.PlayerSkinProvider;
 import io.github.hanhy06.emote.skin.SkinBakeCoordinator;
-import io.github.hanhy06.emote.skin.account.MinecraftAccountClient.MinecraftSession;
 import io.github.hanhy06.emote.skin.SkinCache;
+import io.github.hanhy06.emote.skin.account.MinecraftAccountClient.MinecraftSession;
 import io.github.hanhy06.emote.skin.model.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.awt.image.BufferedImage;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Set;
@@ -20,12 +19,160 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class SkinBakeCoordinatorTest {
     private static final PlayerSkinRegion HEAD = new PlayerSkinRegion(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL);
+
+    @Test
+    void defaultSkinPersistsEachSharedBakeResultAndReloadRetriesMissingRegion(@TempDir Path tempDir) throws Exception {
+        MinecraftAccountManager accounts = accountManager(tempDir);
+        SkinCache cache = new SkinCache(tempDir.resolve("skin"));
+        PlayerSkinRegion body = new PlayerSkinRegion(PlayerSkinPart.BODY, PlayerSkinSegment.FULL);
+        MinecraftSkinClient skinClient = new MinecraftSkinClient() {
+            @Override public BufferedImage downloadSkin(String textureUrl) {
+                BufferedImage image = opaqueSkin();
+                for (int y = 0; y < 16; y++) for (int x = 0; x < 32; x++) image.setRGB(x, y, 0xFF0000FF);
+                return image;
+            }
+        };
+        AtomicInteger uploads = new AtomicInteger();
+        java.util.concurrent.atomic.AtomicBoolean fail = new java.util.concurrent.atomic.AtomicBoolean(true);
+        SkinBakeCoordinator.FallbackUploader uploader = new SkinBakeCoordinator.FallbackUploader() {
+            @Override public void configure(Config config) {}
+            @Override public boolean available() { return true; }
+            @Override public String upload(byte[] png, boolean slim) throws java.io.IOException {
+                int count = uploads.incrementAndGet();
+                if (count > 1 && fail.get()) throw new java.io.IOException("second region API failure");
+                return "texture-" + count;
+            }
+        };
+        SkinBakeCoordinator coordinator = new SkinBakeCoordinator(accounts, new PlayerSkinBaker(), skinClient, cache,
+            new AccountBakeQueue(accounts, skinClient), uploader);
+        try {
+            coordinator.setDefaultRegions(Set.of(HEAD, body));
+            coordinator.onConfigReload(defaultConfig("Player"));
+            coordinator.setDefaultSource(source(UUID.randomUUID(), "shared"));
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (coordinator.processingStats().retryingJobs() == 0 && System.nanoTime() < deadline) Thread.sleep(10);
+            assertEquals(1, coordinator.processingStats().retryingJobs());
+            assertEquals(1, cache.loadDefault("Player").textures().size());
+            assertEquals(cache.load("shared", false), cache.loadDefault("Player").textures());
+            assertEquals(1, coordinator.defaultSkin().size());
+            fail.set(false);
+            coordinator.onConfigReload(defaultConfig("Player"));
+            coordinator.setDefaultSource(source(UUID.randomUUID(), "shared"));
+            deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (coordinator.defaultSkin().size() != 2 && System.nanoTime() < deadline) Thread.sleep(10);
+            assertEquals(2, coordinator.defaultSkin().size());
+            assertEquals(2, new SkinCache(tempDir.resolve("skin")).loadDefault("Player").textures().size());
+            assertEquals(3, uploads.get());
+        } finally {
+            coordinator.cancelPendingBakes();
+            accounts.close();
+        }
+    }
+
+    @Test
+    void freshDefaultSkinIsBakedAndSavedAtStartup(@TempDir Path tempDir) throws Exception {
+        MinecraftAccountManager accounts = accountManager(tempDir);
+        SkinCache cache = new SkinCache(tempDir.resolve("skin"));
+        MinecraftSkinClient skinClient = new MinecraftSkinClient() {
+            @Override public BufferedImage downloadSkin(String textureUrl) { return opaqueSkin(); }
+        };
+        RecordingFallback fallback = new RecordingFallback();
+        SkinBakeCoordinator coordinator = new SkinBakeCoordinator(accounts, new PlayerSkinBaker(), skinClient, cache,
+            new AccountBakeQueue(accounts, skinClient), fallback);
+        CountDownLatch ready = new CountDownLatch(1);
+        coordinator.setListener(new PlayerSkinProvider.Listener() {
+            @Override public void onDefaultReady() { ready.countDown(); }
+        });
+        try {
+            coordinator.onConfigReload(defaultConfig("Player"));
+            coordinator.setDefaultSource(source(UUID.randomUUID(), "fresh"));
+            coordinator.setDefaultRegions(Set.of(HEAD));
+            assertTrue(ready.await(5, TimeUnit.SECONDS));
+            assertEquals("fallback-texture", coordinator.defaultSkin().get(HEAD));
+            assertEquals("fresh", new SkinCache(tempDir.resolve("skin")).loadDefault("Player").textureHash());
+            assertEquals(1, fallback.uploads.get());
+        } finally {
+            coordinator.cancelPendingBakes();
+            accounts.close();
+        }
+    }
+
+    @Test
+    void defaultSkinUsesPinnedCacheWithoutLookupAndBakesNewRegions(@TempDir Path tempDir) throws Exception {
+        MinecraftAccountManager accounts = accountManager(tempDir);
+        SkinCache cache = new SkinCache(tempDir.resolve("skin"));
+        cache.saveDefault(new SkinCache.DefaultSkin("Player", "saved", "https://textures.example/saved", false,
+            java.util.Map.of(HEAD, "saved-head")));
+        MinecraftSkinClient skinClient = new MinecraftSkinClient() {
+            @Override public BufferedImage downloadSkin(String textureUrl) { return opaqueSkin(); }
+        };
+        RecordingFallback fallback = new RecordingFallback();
+        SkinBakeCoordinator coordinator = new SkinBakeCoordinator(accounts, new PlayerSkinBaker(), skinClient, cache,
+            new AccountBakeQueue(accounts, skinClient), fallback);
+        CountDownLatch ready = new CountDownLatch(1);
+        coordinator.setListener(new PlayerSkinProvider.Listener() {
+            @Override public void onDefaultReady() { ready.countDown(); }
+        });
+        try {
+            coordinator.setDefaultRegions(Set.of(HEAD));
+            coordinator.onConfigReload(defaultConfig("Player"));
+            assertEquals("saved-head", coordinator.defaultSkin().get(HEAD));
+            assertEquals(0, fallback.uploads.get());
+            PlayerSkinRegion upper = new PlayerSkinRegion(PlayerSkinPart.LEFT_ARM, new PlayerSkinSegment(0, 4));
+            coordinator.setDefaultRegions(Set.of(HEAD, upper));
+            assertTrue(ready.await(5, TimeUnit.SECONDS));
+            assertEquals("saved-head", coordinator.defaultSkin().get(HEAD));
+            assertEquals("fallback-texture", coordinator.defaultSkin().get(upper));
+            assertEquals(1, fallback.uploads.get());
+            assertEquals(coordinator.defaultSkin(), new SkinCache(tempDir.resolve("skin")).loadDefault("Player").textures());
+            coordinator.onConfigReload(defaultConfig("Other"));
+            assertNull(coordinator.defaultSkin());
+            coordinator.onConfigReload(defaultConfig(""));
+            assertNull(coordinator.defaultSkin());
+        } finally {
+            coordinator.cancelPendingBakes();
+            accounts.close();
+        }
+    }
+
+    @Test
+    void failedDefaultRefreshKeepsPreviousPinnedSkin(@TempDir Path tempDir) throws Exception {
+        MinecraftAccountManager accounts = accountManager(tempDir);
+        SkinCache cache = new SkinCache(tempDir.resolve("skin"));
+        cache.saveDefault(new SkinCache.DefaultSkin("Player", "saved", "https://textures.example/saved", false,
+            java.util.Map.of(HEAD, "saved-head")));
+        MinecraftSkinClient skinClient = new MinecraftSkinClient() {
+            @Override public BufferedImage downloadSkin(String textureUrl) throws java.io.IOException {
+                throw new java.io.IOException("API unavailable");
+            }
+        };
+        SkinBakeCoordinator coordinator = new SkinBakeCoordinator(accounts, new PlayerSkinBaker(), skinClient, cache,
+            new AccountBakeQueue(accounts, skinClient), new RecordingFallback());
+        try {
+            coordinator.setDefaultRegions(Set.of(HEAD));
+            coordinator.onConfigReload(defaultConfig("Player"));
+            coordinator.setDefaultSource(source(UUID.randomUUID(), "changed"));
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (coordinator.processingStats().retryingJobs() == 0 && System.nanoTime() < deadline) Thread.sleep(10);
+            assertEquals(1, coordinator.processingStats().retryingJobs());
+            assertEquals("saved-head", coordinator.defaultSkin().get(HEAD));
+            assertEquals("saved", cache.loadDefault("Player").textureHash());
+        } finally {
+            coordinator.cancelPendingBakes();
+            accounts.close();
+        }
+    }
+
+    private static Config defaultConfig(String name) {
+        Config defaults = Config.createDefault();
+        return new Config(defaults.schemaVersion(), defaults.menuPageSize(), defaults.mineSkinApiKey(),
+            defaults.mineSkinPollIntervalSeconds(), defaults.mineSkinCacheRetentionDays(), defaults.mineSkinCacheMaxMiB(),
+            defaults.maxActiveDisplayEntities(), name);
+    }
 
     @Test
     void mergesSubscribersIntoOneBakeAndOneUpload(@TempDir Path tempDir) throws Exception {

@@ -1,0 +1,577 @@
+package io.github.hanhy06.emote.playback;
+
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
+import com.mojang.math.Transformation;
+import io.github.hanhy06.emote.content.PreparedEmote;
+import io.github.hanhy06.emote.content.loader.AnimationJsonParser;
+import io.github.hanhy06.emote.playback.molang.MolangQuerySource;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class PlaybackPlayerTest {
+    @Test
+    void settingTickRestoresTracksAndRunsOnlyDestinationCommands() throws Exception {
+        JsonObject root = base();
+        var tracks = root.getAsJsonObject("timeline").getAsJsonObject("tracks").getAsJsonObject("display");
+        tracks.add("nbt", JsonParser.parseString("""
+            [{"time":"0t","value":"{item:{id:'minecraft:stone',count:1}}"},
+             {"time":"4t","value":"{item:{id:'minecraft:diamond',count:1}}"}]
+            """));
+        tracks.add("visible", JsonParser.parseString("""
+            [{"time":"0t","value":true},{"time":"4t","value":false}]
+            """));
+        root.getAsJsonObject("timeline").add("events", JsonParser.parseString("""
+            {"timeline":[
+              {"time":"2t","source":{"type":"server"},"origin":{"type":"root"},"commands":["skipped"]},
+              {"time":"4t","source":{"type":"server"},"origin":{"type":"root"},"commands":["destination"]}
+            ]}
+            """));
+        FakeTarget target = new FakeTarget();
+        PlaybackPlayer player = player(root, target);
+        List<String> calls = new ArrayList<>();
+        player.bindEvents(event -> calls.addAll(event.event().commands()));
+        player.start();
+        player.startEvents();
+        player.setTick(4);
+        assertEquals(List.of("destination"), calls);
+        assertTrue(target.nbt.get("display").toString().contains("minecraft:diamond"));
+        assertFalse(target.visibility.get("display"));
+        player.setTick(4);
+        assertEquals(List.of("destination"), calls);
+        player.setTick(0);
+        assertTrue(target.nbt.get("display").toString().contains("minecraft:stone"));
+        assertTrue(target.visibility.get("display"));
+        assertEquals(0, player.currentTick());
+        player.advance();
+        assertEquals(1, player.currentTick());
+        root.getAsJsonObject("settings").getAsJsonObject("playback").addProperty("mode", "server_sync");
+        PlaybackPlayer synchronizedPlayer = player(root, new FakeTarget());
+        synchronizedPlayer.startSynchronized(0);
+        assertFalse(synchronizedPlayer.canSetTick(4));
+        synchronizedPlayer.setTick(4);
+        assertEquals(0, synchronizedPlayer.currentTick());
+    }
+
+    @Test
+    void evaluatesMolangBeforeTracksAndComposesParentTransform() throws Exception {
+        JsonObject root = base();
+        root.add("molang", JsonParser.parseString("""
+            {"initialize":"v.offset = 2;","tick":"v.offset = v.offset + 1;"}
+            """));
+        positionTrack(root).get(0).getAsJsonObject().getAsJsonArray("value")
+            .set(0, JsonParser.parseString("\"v.offset\""));
+
+        FakeTarget target = new FakeTarget();
+        PlaybackPlayer player = player(root, target);
+        player.start();
+
+        assertEquals(4.0F, target.matrix("display").m30(), 1.0E-5F);
+        assertEquals(PlaybackPlayer.AdvanceResult.CONTINUE, player.advance());
+        assertEquals(5.6F, target.matrix("display").m30(), 1.0E-5F);
+    }
+
+    @Test
+    void appliesEasingAndDynamicVisibilityAtServerTicks() throws Exception {
+        JsonObject root = base();
+        JsonObject first = positionTrack(root).get(0).getAsJsonObject();
+        first.addProperty("easing", "ease_in_quad");
+        root.getAsJsonObject("timeline").getAsJsonObject("tracks").getAsJsonObject("display")
+            .add("visible", JsonParser.parseString("""
+                [{"time":"0t","value":"q.anim_time_ticks < 5"}]
+                """));
+
+        FakeTarget target = new FakeTarget();
+        PlaybackPlayer player = player(root, target);
+        player.start();
+        for (int tick = 0; tick < 5; tick++) {
+            player.advance();
+        }
+
+        assertEquals(3.5F, target.matrix("display").m30(), 1.0E-5F);
+        assertFalse(target.visibility.get("display"));
+    }
+
+    @Test
+    void evaluatesInitiatorQueriesAndLifeTimeBeforeTracks() throws Exception {
+        JsonObject root = base();
+        positionTrack(root).remove(1);
+        JsonObject frame = positionTrack(root).get(0).getAsJsonObject();
+        frame.remove("interpolation");
+        frame.getAsJsonArray("value").set(0, JsonParser.parseString(
+            "\"q.life_time + q.ground_speed + q.vertical_speed + q.is_moving + q.is_on_ground + q.is_sprinting"
+                + " + q.is_swimming + q.is_gliding + q.is_riding + q.is_using_item + q.is_on_fire + q.is_in_water\""
+        ));
+
+        MolangQuerySource queries = session -> {
+            session.setQuery("ground_speed", 2.0D);
+            session.setQuery("vertical_speed", 3.0D);
+            session.setQuery("is_moving", 1.0D);
+            session.setQuery("is_on_ground", 1.0D);
+            session.setQuery("is_sprinting", 1.0D);
+            session.setQuery("is_swimming", 1.0D);
+            session.setQuery("is_gliding", 1.0D);
+            session.setQuery("is_riding", 1.0D);
+            session.setQuery("is_using_item", 1.0D);
+            session.setQuery("is_on_fire", 1.0D);
+            session.setQuery("is_in_water", 1.0D);
+        };
+        FakeTarget target = new FakeTarget();
+        PlaybackPlayer player = new PlaybackPlayer(PreparedEmote.from(load(root)), target, queries);
+
+        player.start();
+        assertEquals(15.0F, target.matrix("display").m30(), 1.0E-5F);
+
+        player.advance();
+        assertEquals(15.05F, target.matrix("display").m30(), 1.0E-5F);
+    }
+
+    @Test
+    void preservesPersistentVariablesAtLoopBoundary() throws Exception {
+        JsonObject root = base();
+        root.getAsJsonObject("settings").getAsJsonObject("playback").addProperty("mode", "loop");
+        root.getAsJsonObject("timeline").addProperty("duration", "1t");
+        positionTrack(root).remove(1);
+        positionTrack(root).get(0).getAsJsonObject().remove("interpolation");
+        root.add("molang", JsonParser.parseString("""
+            {"initialize":"v.count = 0;","tick":"v.count = v.count + 1;"}
+            """));
+        positionTrack(root).get(0).getAsJsonObject().getAsJsonArray("value")
+            .set(0, JsonParser.parseString("\"v.count\""));
+
+        FakeTarget target = new FakeTarget();
+        PlaybackPlayer player = player(root, target);
+        player.start();
+        assertEquals(2.0F, target.matrix("display").m30(), 1.0E-5F);
+
+        assertEquals(PlaybackPlayer.AdvanceResult.LOOP_BOUNDARY, player.advance());
+        assertEquals(3.0F, target.matrix("display").m30(), 1.0E-5F);
+        assertEquals(PlaybackPlayer.AdvanceResult.RESTARTED, player.continueAfterLoopEvent());
+        assertEquals(4.0F, target.matrix("display").m30(), 1.0E-5F);
+    }
+
+    @Test
+    void lifecycleLoopListenerRunsOnceAtEachBoundary() throws Exception {
+        JsonObject root = base();
+        root.getAsJsonObject("settings").getAsJsonObject("playback").addProperty("mode", "loop");
+        root.getAsJsonObject("timeline").addProperty("duration", "1t");
+        positionTrack(root).remove(1);
+        positionTrack(root).get(0).getAsJsonObject().remove("interpolation");
+        PlaybackPlayer player = player(root, new FakeTarget());
+        int[] loops = {0};
+        player.bindEvents(event -> {});
+        player.bindLifecycleListener(new PlaybackPlayer.LifecycleListener() {
+            public void onLoop() { loops[0]++; }
+        });
+        player.start();
+        player.startEvents();
+        assertEquals(0, loops[0]);
+        player.advance();
+        assertEquals(1, loops[0]);
+        player.advance();
+        assertEquals(2, loops[0]);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 2})
+    void loopCallbackSeesRestartPoseAfterLoopDelayAndCommands(int delay) throws Exception {
+        JsonObject root = base();
+        root.getAsJsonObject("settings").add("playback", JsonParser.parseString(
+            "{\"mode\":\"loop\",\"loop_start\":\"4t\",\"loop_delay\":\"" + delay + "t\"}"));
+        root.getAsJsonObject("timeline").add("events", JsonParser.parseString("""
+            {"loop":[{"source":{"type":"server"},"origin":{"type":"root"},"commands":["loop-command"]}],
+             "timeline":[{"time":"4t","source":{"type":"server"},"origin":{"type":"root"},"commands":["restart-command"]}]}
+            """));
+        FakeTarget target = new FakeTarget();
+        PlaybackPlayer player = player(root, target);
+        List<String> calls = new ArrayList<>();
+        player.bindEvents(event -> calls.addAll(event.event().commands()));
+        player.bindLifecycleListener(new PlaybackPlayer.LifecycleListener() {
+            public void onLoop() {
+                assertEquals(4, player.currentTick());
+                assertEquals(5.0F, target.matrix("display").m30(), 1.0E-5F);
+                calls.add("loop-callback");
+            }
+        });
+        player.start();
+        player.startEvents();
+        for (int tick = 0; tick < 9; tick++) player.advance();
+        calls.clear();
+        player.advance();
+        if (delay > 0) {
+            assertEquals(List.of("loop-command"), calls);
+            for (int tick = 0; tick < delay; tick++) player.advance();
+        }
+        assertEquals(List.of("loop-command", "restart-command", "loop-callback"), calls);
+    }
+
+    @Test
+    void firstCycleStartsAtZeroAndLaterCyclesRestartFromConfiguredTick() throws Exception {
+        JsonObject root = base();
+        JsonObject playback = root.getAsJsonObject("settings").getAsJsonObject("playback");
+        playback.addProperty("mode", "loop");
+        playback.addProperty("loop_start", "4t");
+        root.getAsJsonObject("timeline").addProperty("duration", "10t");
+
+        FakeTarget target = new FakeTarget();
+        PlaybackPlayer player = player(root, target);
+        player.start();
+
+        assertEquals(0, player.currentTick());
+        for (int tick = 0; tick < 10; tick++) player.advance();
+        assertEquals(PlaybackPlayer.AdvanceResult.RESTARTED, player.continueAfterLoopEvent());
+        assertEquals(4, player.currentTick());
+        assertEquals(5.0F, target.matrix("display").m30(), 1.0E-5F);
+    }
+
+    @Test
+    void ignoresLegacyLoopEndAndLoopsToTimelineEnd() throws Exception {
+        JsonObject root = base();
+        JsonObject playback = root.getAsJsonObject("settings").getAsJsonObject("playback");
+        playback.addProperty("mode", "loop");
+        playback.addProperty("loop_start", "2t");
+        playback.addProperty("loop_end", "6t");
+
+        FakeTarget target = new FakeTarget();
+        PlaybackPlayer player = player(root, target);
+        player.start();
+
+        for (int tick = 0; tick < 9; tick++) {
+            assertEquals(PlaybackPlayer.AdvanceResult.CONTINUE, player.advance());
+        }
+        assertEquals(PlaybackPlayer.AdvanceResult.LOOP_BOUNDARY, player.advance(false));
+        assertEquals(10, player.currentTick());
+        assertEquals(PlaybackPlayer.AdvanceResult.RESTARTED, player.continueAfterLoopEvent());
+        assertEquals(2, player.currentTick());
+
+        player.stop(io.github.hanhy06.emote.api.PlaybackStopReason.MANUAL);
+        assertEquals(PlaybackPlayer.AdvanceResult.FINISHED, player.advance());
+        assertEquals(2, player.currentTick());
+    }
+    @Test
+    void stoppingDuringLoopDelayFinishesImmediately() throws Exception {
+        JsonObject root = base();
+        JsonObject playback = root.getAsJsonObject("settings").getAsJsonObject("playback");
+        playback.addProperty("mode", "loop");
+        playback.addProperty("loop_end", "6t");
+        playback.addProperty("loop_delay", "5t");
+
+        PlaybackPlayer player = player(root, new FakeTarget());
+        player.start();
+        for (int tick = 0; tick < 10; tick++) player.advance(false);
+        assertEquals(PlaybackPlayer.AdvanceResult.CONTINUE, player.continueAfterLoopEvent());
+
+        player.stop(io.github.hanhy06.emote.api.PlaybackStopReason.MANUAL);
+        assertEquals(PlaybackPlayer.AdvanceResult.FINISHED, player.advance());
+        assertEquals(10, player.currentTick());
+    }
+
+    @Test
+    void appliesNbtOnlyWhenTheStepFrameChangesAndRestoresItOnLoop() throws Exception {
+        JsonObject root = base();
+        root.getAsJsonObject("settings").getAsJsonObject("playback").addProperty("mode", "loop");
+        root.getAsJsonObject("timeline").addProperty("duration", "2t");
+        positionTrack(root).remove(1);
+        positionTrack(root).get(0).getAsJsonObject().remove("interpolation");
+        root.getAsJsonObject("timeline").getAsJsonObject("tracks").getAsJsonObject("display")
+            .add("nbt", JsonParser.parseString("""
+                [
+                  {"time":"0t","value":"{item:{id:'minecraft:stone',count:1}}"},
+                  {"time":"2t","value":"{item:{id:'minecraft:diamond',count:1}}"}
+                ]
+                """));
+
+        FakeTarget target = new FakeTarget();
+        PlaybackPlayer player = player(root, target);
+        player.start();
+        player.advance();
+
+        assertEquals(1, target.nbtApplyCount);
+        assertTrue(target.nbt.get("display").toString().contains("minecraft:stone"));
+
+        assertEquals(PlaybackPlayer.AdvanceResult.LOOP_BOUNDARY, player.advance());
+        assertEquals(2, target.nbtApplyCount);
+        assertTrue(target.nbt.get("display").toString().contains("minecraft:diamond"));
+
+        assertEquals(PlaybackPlayer.AdvanceResult.RESTARTED, player.continueAfterLoopEvent());
+        assertEquals(3, target.nbtApplyCount);
+        assertTrue(target.nbt.get("display").toString().contains("minecraft:stone"));
+    }
+
+    @Test
+    void evaluatesMolangNbtOncePerKeyframeAndAgainForANewLoop() throws Exception {
+        JsonObject root = base();
+        root.getAsJsonObject("settings").getAsJsonObject("playback").addProperty("mode", "loop");
+        root.getAsJsonObject("timeline").addProperty("duration", "1t");
+        positionTrack(root).remove(1);
+        positionTrack(root).get(0).getAsJsonObject().remove("interpolation");
+        root.getAsJsonObject("timeline").getAsJsonObject("tracks").getAsJsonObject("display")
+            .add("nbt", JsonParser.parseString("""
+                [{
+                  "time":"0t",
+                  "value":{
+                    "molang":"q.is_sneaking ? '{Glowing:1b}' : '{Glowing:0b}'"
+                  }
+                }]
+                """));
+        AtomicBoolean sneaking = new AtomicBoolean();
+        MolangQuerySource queries = session -> session.setQuery("is_sneaking", sneaking.get() ? 1.0D : 0.0D);
+        FakeTarget target = new FakeTarget();
+        PlaybackPlayer player = new PlaybackPlayer(PreparedEmote.from(load(root)), target, queries);
+
+        player.start();
+        assertFalse(target.nbt.get("display").getBooleanOr("Glowing", false));
+
+        sneaking.set(true);
+        assertEquals(PlaybackPlayer.AdvanceResult.LOOP_BOUNDARY, player.advance());
+        assertEquals(1, target.nbtApplyCount);
+        assertFalse(target.nbt.get("display").getBooleanOr("Glowing", false));
+
+        assertEquals(PlaybackPlayer.AdvanceResult.RESTARTED, player.continueAfterLoopEvent());
+        assertEquals(2, target.nbtApplyCount);
+        assertTrue(target.nbt.get("display").getBooleanOr("Glowing", false));
+    }
+
+    @Test
+    void rejectsNonStringMolangNbtResult() throws Exception {
+        JsonObject root = base();
+        root.getAsJsonObject("timeline").getAsJsonObject("tracks").getAsJsonObject("display")
+            .add("nbt", JsonParser.parseString("""
+                [{
+                  "time":"0t",
+                  "value":{
+                    "molang":"2"
+                  }
+                }]
+                """));
+        PlaybackPlayer player = player(root, new FakeTarget());
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class, player::start);
+
+        assertTrue(exception.getMessage().contains("must evaluate to compound SNBT"));
+    }
+
+    @Test
+    void rejectsInvalidMolangNbtResult() throws Exception {
+        JsonObject root = base();
+        root.getAsJsonObject("timeline").getAsJsonObject("tracks").getAsJsonObject("display")
+            .add("nbt", JsonParser.parseString("""
+                [{"time":"0t","value":{"molang":"'not compound SNBT'"}}]
+                """));
+        PlaybackPlayer player = player(root, new FakeTarget());
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class, player::start);
+
+        assertTrue(exception.getMessage().contains("evaluated to invalid compound SNBT"));
+    }
+
+    @Test
+    void rejectsRuntimeOwnedFieldFromMolangNbt() throws Exception {
+        JsonObject root = base();
+        root.getAsJsonObject("timeline").getAsJsonObject("tracks").getAsJsonObject("display")
+            .add("nbt", JsonParser.parseString("""
+                [{"time":"0t","value":{"molang":"'{transformation:{}}'"}}]
+                """));
+        PlaybackPlayer player = player(root, new FakeTarget());
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class, player::start);
+
+        assertTrue(exception.getMessage().contains("must not modify runtime-owned field transformation"));
+    }
+
+    @Test
+    void rebuildsMolangNbtStateWhenStartingInsideTheTimeline() throws Exception {
+        JsonObject root = base();
+        root.getAsJsonObject("timeline").getAsJsonObject("tracks").getAsJsonObject("display")
+            .add("nbt", JsonParser.parseString("""
+                [
+                  {"time":"0t","value":"{item:{id:'minecraft:poppy',count:1},Glowing:false}"},
+                  {
+                    "time":"5t",
+                    "value":{
+                      "molang":"'{Glowing:true}'"
+                    }
+                  }
+                ]
+                """));
+        FakeTarget target = new FakeTarget();
+        PlaybackPlayer player = player(root, target);
+
+        player.startAtCyclePhase(5L);
+
+        assertTrue(target.nbt.get("display").toString().contains("minecraft:poppy"));
+        assertTrue(target.nbt.get("display").getBooleanOr("Glowing", false));
+    }
+
+    @Test
+    void allowsPersistentVariableAssignmentInsideTrackValueExceptDuringServerSync() throws Exception {
+        JsonObject root = base();
+        positionTrack(root).get(0).getAsJsonObject().getAsJsonArray("value")
+            .set(0, JsonParser.parseString("\"v.count = v.count + 1; return v.count;\""));
+
+        FakeTarget target = new FakeTarget();
+        PlaybackPlayer player = player(root, target);
+        player.start();
+        assertEquals(2.0F, target.matrix("display").m30(), 1.0E-5F);
+
+        root.getAsJsonObject("settings").getAsJsonObject("playback").addProperty("mode", "server_sync");
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> PreparedEmote.from(load(root))
+        );
+
+        assertTrue(exception.getMessage().contains("must not assign persistent variables during server_sync playback"));
+    }
+
+    @Test
+    void rejectsQueryAssignmentInsideTickProgram() throws Exception {
+        JsonObject root = base();
+        root.add("molang", JsonParser.parseString("{\"tick\":\"q.anim_time = 100;\"}"));
+
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> PreparedEmote.from(load(root))
+        );
+
+        assertTrue(exception.getMessage().contains("must not assign queries"));
+    }
+
+    @Test
+    void acceptsBedrockPlayerAnimationQueries() throws Exception {
+        JsonObject root = base();
+        positionTrack(root).get(0).getAsJsonObject().getAsJsonArray("value").set(0, new JsonPrimitive(
+            "q.target_x_rotation + q.target_y_rotation + q.body_x_rotation + q.body_y_rotation"
+                + " + q.head_x_rotation + q.head_y_rotation + q.eye_target_x_rotation + q.eye_target_y_rotation"
+                + " + q.modified_distance_moved + q.walk_distance + q.is_sneaking + q.is_sleeping"
+                + " + q.is_emoting + q.item_is_charged + q.sleep_rotation"
+                + " + q.health + query.max_health + q.is_alive + query.is_spectator"
+                + " + q.head_is_in_water + query.is_in_lava + q.is_in_water_or_rain"
+                + " + q.hurt_time + query.death_ticks + q.invulnerable_ticks + query.player_level"
+                + " + q.item_in_use_duration + query.item_remaining_use_duration + q.item_max_use_duration"
+        ));
+
+        assertDoesNotThrow(() -> PreparedEmote.from(load(root)));
+    }
+
+    private PlaybackPlayer player(JsonObject root, FakeTarget target) throws Exception {
+        return new PlaybackPlayer(PreparedEmote.from(load(root)), target);
+    }
+
+    private io.github.hanhy06.emote.content.LoadedAnimation load(JsonObject root) throws Exception {
+        return new AnimationJsonParser().parse(
+            Path.of("schema4-player-test.json"),
+            root.toString().getBytes(StandardCharsets.UTF_8)
+        );
+    }
+
+    private com.google.gson.JsonArray positionTrack(JsonObject root) {
+        return root.getAsJsonObject("timeline").getAsJsonObject("tracks").getAsJsonObject("display")
+            .getAsJsonArray("position");
+    }
+
+    private JsonObject base() {
+        return JsonParser.parseString("""
+            {
+              "type":"animation",
+              "schema_version":4,
+              "id":"example:runtime",
+              "metadata":{"name":"Runtime","description":"test"},
+              "settings":{
+                "standalone":true,
+                "cooldown":"0t",
+                "rotation_deadzone":50,
+                "player":{
+                  "hidden":true,
+                  "stop_conditions":{
+                    "movement_distance":0,
+                    "jump":true,
+                    "submerge":true,
+                    "ride":true,
+                    "damage":true,
+                    "attack":true,
+                    "game_mode_change":true
+                  }
+                },
+                "playback":{"mode":"once","loop_delay":"0t"}
+              },
+              "nodes":{
+                "root":{
+                  "type":"anchor",
+                  "transform":{"position":[1,0,0],"rotation":[0,0,0],"scale":[1,1,1]}
+                },
+                "display":{
+                  "type":"item_display",
+                  "parent":"root",
+                  "visible":true,
+                  "item_display":"none",
+                  "item_stack_snbt":"{id:'minecraft:stone',count:1}",
+                  "transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]}
+                }
+              },
+              "timeline":{
+                "duration":"10t",
+                "tracks":{
+                  "display":{
+                    "position":[
+                      {"time":"0t","value":[0,0,0],"interpolation":"linear"},
+                      {"time":"10t","value":[10,0,0]}
+                    ]
+                  }
+                },
+                "events":{}
+              }
+            }
+            """).getAsJsonObject();
+    }
+
+    private static final class FakeTarget implements PlaybackPlayer.TimelineTarget {
+        private final Map<String, Transformation> transforms = new HashMap<>();
+        private final Map<String, Boolean> visibility = new HashMap<>();
+        private final Map<String, net.minecraft.nbt.CompoundTag> nbt = new HashMap<>();
+        private int nbtApplyCount;
+
+        @Override
+        public Transformation createTransformation(String nodeId, PreparedEmote.PreparedTransform transform) {
+            return new Transformation(transform.localMatrix());
+        }
+
+        @Override
+        public void applyTransform(String nodeId, PreparedEmote.PreparedTransform transform, int interpolationDurationTicks) {
+            this.transforms.put(nodeId, createTransformation(nodeId, transform));
+        }
+
+        @Override
+        public void setVisible(String nodeId, boolean visible) {
+            this.visibility.put(nodeId, visible);
+        }
+
+        @Override
+        public void applyNbt(String nodeId, net.minecraft.nbt.CompoundTag nbt) {
+            this.nbt.put(nodeId, nbt.copy());
+            this.nbtApplyCount++;
+        }
+
+        @Override
+        public void resetAll() {
+            this.transforms.clear();
+            this.visibility.clear();
+            this.nbt.clear();
+        }
+
+        private org.joml.Matrix4fc matrix(String nodeId) {
+            return this.transforms.get(nodeId).getMatrix();
+        }
+    }
+}

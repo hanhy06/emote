@@ -9,7 +9,7 @@ import io.github.hanhy06.emote.config.AccessConfig;
 import io.github.hanhy06.emote.config.AccessConfigListener;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.PlayableEmote;
-import io.github.hanhy06.emote.playback.PlaybackEngine;
+import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.util.WeightedChoiceSelector;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Util;
@@ -40,13 +40,13 @@ public final class IdlePlaybackService implements AccessConfigListener {
     public IdlePlaybackService(
         PlaybackPolicyService playbackPolicy,
         EmotePlayService playService,
-        PlaybackEngine playbackEngine,
+        PlayerPlaybackManager playerPlaybackManager,
         EmoteCatalog emoteCatalog
     ) {
         this(
             playbackPolicy::findIdleSettings,
             (player, id) -> playService.play(player, id, PlaySource.IDLE),
-            player -> playbackEngine.findActive(player.getUUID()) != null,
+            player -> playerPlaybackManager.findActive(player.getUUID()) != null,
             () -> emoteCatalog.emotes().stream().map(PlayableEmote::id).toList(),
             Util::getMillis,
             RandomGenerator.getDefault()
@@ -152,6 +152,7 @@ public final class IdlePlaybackService implements AccessConfigListener {
     @Override
     public void onAccessConfigReload(AccessConfig newConfig) {
         this.idleResolutions.clear();
+        this.playerStates.clear();
         this.ticksUntilCheck = 0;
     }
 

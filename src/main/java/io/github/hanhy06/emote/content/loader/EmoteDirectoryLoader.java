@@ -2,7 +2,7 @@ package io.github.hanhy06.emote.content.loader;
 
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
-import io.github.hanhy06.emote.content.EmoteSequence;
+import io.github.hanhy06.emote.content.LoadedSequence;
 import io.github.hanhy06.emote.content.LoadedAnimation;
 
 import java.io.IOException;
@@ -37,7 +37,7 @@ public final class EmoteDirectoryLoader {
 
     LoadResult load(Path directory, AnimationResolver resolver) {
         List<LoadedAnimation> candidates = new ArrayList<>();
-        List<EmoteSequence> sequenceCandidates = new ArrayList<>();
+        List<LoadedSequence> sequenceCandidates = new ArrayList<>();
         List<Path> detectedFiles = findJsonFiles(directory);
         for (Path path : detectedFiles) {
             try {
@@ -79,7 +79,7 @@ public final class EmoteDirectoryLoader {
 
     private LoadResult rejectDuplicateIds(
         List<LoadedAnimation> candidates,
-        List<EmoteSequence> sequenceCandidates,
+        List<LoadedSequence> sequenceCandidates,
         int detectedFileCount
     ) {
         Map<String, List<Path>> pathsById = new LinkedHashMap<>();
@@ -87,7 +87,7 @@ public final class EmoteDirectoryLoader {
             pathsById.computeIfAbsent(candidate.animation().id().toString(), ignored -> new ArrayList<>())
                 .add(candidate.sourcePath());
         }
-        for (EmoteSequence candidate : sequenceCandidates) {
+        for (LoadedSequence candidate : sequenceCandidates) {
             pathsById.computeIfAbsent(candidate.id().toString(), ignored -> new ArrayList<>()).add(candidate.sourcePath());
         }
 
@@ -100,14 +100,14 @@ public final class EmoteDirectoryLoader {
             .filter(candidate -> !duplicateIds.contains(candidate.animation().id().toString()))
             .sorted(Comparator.comparing(candidate -> candidate.animation().id().toString()))
             .toList();
-        List<EmoteSequence> sequences = sequenceCandidates.stream()
+        List<LoadedSequence> sequences = sequenceCandidates.stream()
             .filter(candidate -> !duplicateIds.contains(candidate.id().toString()))
             .sorted(Comparator.comparing(candidate -> candidate.id().toString()))
             .toList();
         return new LoadResult(loaded, sequences, detectedFileCount);
     }
 
-    public record LoadResult(List<LoadedAnimation> animations, List<EmoteSequence> sequences, int detectedFileCount) {
+    public record LoadResult(List<LoadedAnimation> animations, List<LoadedSequence> sequences, int detectedFileCount) {
         public LoadResult {
             animations = List.copyOf(animations);
             sequences = List.copyOf(sequences);

@@ -38,8 +38,8 @@ A Minecraft time value such as `5s` is subtracted from the Emote's base cooldown
 Permission entries are checked from top to bottom. The first entry that matches the Emote, belongs to the player, and defines `cooldown` is used. Entries without `cooldown` are skipped, and the base cooldown is unchanged when no matching entry defines one.
 
 !!! tip "Time units"
-    Emote uses Minecraft time format.`1s` equals `20t`.
-
+    Emote uses Minecraft time format. `1s` equals `20t`.
+    
     `s`: seconds<br>
     `t` or omitted: ticks<br>
     `d`: Minecraft days
@@ -105,6 +105,22 @@ If a player has multiple permissions, entries are checked from top to bottom in 
 ```
 
 An idle emote does not start while another emote is playing. A failed attempt is retried after one second. When several candidates are available, Emote avoids selecting the most recently played emote twice in a row when possible.
+
+---
+
+## Marker Mannequin
+
+Marker mannequins are used to play emotes at a fixed position in the world without attaching them to a player.
+
+They are created by summoning a Minecraft `marker` entity with the emote data:
+
+```mcfunction
+summon minecraft:marker ~ ~ ~ {"data":{"emote":"emote id","emote_skin":"player name"}}
+```
+
+`emote` specifies the Emote ID to play, and `emote_skin` specifies the player name whose skin is used for the mannequin.
+
+The mannequin remains at the marker's position and plays the specified emote independently of any player.
 
 ---
 
@@ -183,7 +199,4 @@ Intermediate Animations referenced by a Sequence are usually hidden from direct 
 
 If the Sequence does not load, check the server log for missing Animation IDs, incompatible nodes, unsupported playback modes, or invalid wait-step messages.
 
-!!! note "Complete example pack"
-    The repository includes a ready-to-install [two-player handshake sample](https://github.com/hanhy06/emote/tree/dev/docs/sample/handshake). The JSON on this page only demonstrates a linear Sequence and requires separate referenced Animation files.
-
-To create random selection, waits, repeat control, or two-player cooperative Sequences, see the [Sequence format specification](../developers/sequence.md).
+To create random selection, waits, or repeat control, see the [Sequence format specification](../developers/sequence.md).

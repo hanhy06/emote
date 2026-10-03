@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.resource;
 
-import io.github.hanhy06.emote.config.ConfigManager;
 import eu.pb4.polymer.resourcepack.api.OutputGenerator;
+import io.github.hanhy06.emote.config.ConfigManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -9,9 +9,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class PolymerResourcePackDistributorTest {
     @Test

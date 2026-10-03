@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.content;
 
+import io.github.hanhy06.emote.api.sequence.EmoteSequence;
+
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
@@ -11,55 +13,49 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.random.RandomGenerator;
+import org.jspecify.annotations.Nullable;
 
 public record PreparedSequence(
     EmoteSequence source,
-    Playback playback,
-    PreparedAnimation layoutAnchor,
-    PreparedAnimation compiledAnimation
+    Path sourcePath,
+    List<Step> steps,
+    PreparedEmote layoutAnchor,
+    PreparedEmote compiledEmote
 ) implements PlayableEmote {
     public PreparedSequence {
         Objects.requireNonNull(source, "source");
-        Objects.requireNonNull(playback, "playback");
+        Objects.requireNonNull(sourcePath, "sourcePath");
+        steps = List.copyOf(steps);
+        if (steps.isEmpty()) throw new IllegalArgumentException("sequence steps must not be empty");
         Objects.requireNonNull(layoutAnchor, "layoutAnchor");
-        Objects.requireNonNull(compiledAnimation, "compiledAnimation");
+        Objects.requireNonNull(compiledEmote, "compiledEmote");
     }
 
-    public static PreparedSequence resolve(EmoteSequence source, Map<String, PreparedAnimation> animations) {
-        Playback playback = resolvePlayback(source, animations);
-        PreparedAnimation layoutAnchor = SequenceNodeLayout.validateAndCreateLayout(playback.validationSteps());
-        List<SelectedStep> initialSteps = switch (playback) {
-            case LinearPlayback linear -> selectFirstCandidates(linear.branch());
-            case PartnerPlayback partner -> List.of(new SelectedEmoteStep(partner.offer(), false, 0));
-        };
+    public static PreparedSequence resolve(EmoteSequence source, Map<String, PreparedEmote> animations) {
+        return resolve(new LoadedSequence(Path.of("api", source.id().getNamespace(), source.id().getPath() + ".json"), source), animations);
+    }
+
+    public static PreparedSequence resolve(LoadedSequence loaded, Map<String, PreparedEmote> animations) {
+        EmoteSequence source = loaded.sequence();
+        List<Step> steps = resolveSteps(source.steps(), animations);
+        PreparedEmote layoutAnchor = SequenceNodeLayout.validateAndCreateLayout(steps);
         return new PreparedSequence(
             source,
-            playback,
+            loaded.sourcePath(),
+            steps,
             layoutAnchor,
-            SequenceCompiler.compile(source, initialSteps, layoutAnchor, false)
+            SequenceCompiler.compile(source, loaded.sourcePath(), selectFirstCandidates(steps), layoutAnchor)
         );
     }
 
-    private static Playback resolvePlayback(EmoteSequence source, Map<String, PreparedAnimation> animations) {
-        if (source.steps().getFirst() instanceof EmoteSequence.AwaitPartnerStep await) {
-            return new PartnerPlayback(
-                resolveAnimation(await.offerAnimationId().toString(), animations),
-                await.timeoutTicks(),
-                resolveBranch(await.matched(), animations),
-                resolveBranch(await.timeout(), animations)
-            );
-        }
-        return new LinearPlayback(resolveBranch(source.steps(), animations));
-    }
-
-    private static Branch resolveBranch(List<EmoteSequence.Step> sourceSteps, Map<String, PreparedAnimation> animations) {
+    private static List<Step> resolveSteps(List<EmoteSequence.Step> sourceSteps, Map<String, PreparedEmote> animations) {
         List<Step> resolvedSteps = new ArrayList<>(sourceSteps.size());
         for (EmoteSequence.Step sourceStep : sourceSteps) {
             if (sourceStep instanceof EmoteSequence.WaitStep(int ticks)) {
                 resolvedSteps.add(new WaitStep(ticks));
                 continue;
             }
-            EmoteSequence.EmoteStep step = (EmoteSequence.EmoteStep) sourceStep;
+            EmoteSequence.AnimationStep step = (EmoteSequence.AnimationStep) sourceStep;
             List<Choice> candidates = new ArrayList<>(step.choices().size());
             for (EmoteSequence.Choice choice : step.choices()) {
                 EmoteSequence.Control control = EmoteSequence.Control.fromId(choice.targetId());
@@ -67,16 +63,16 @@ public record PreparedSequence(
                     candidates.add(new ControlChoice(control, choice.chance()));
                     continue;
                 }
-                PreparedAnimation animation = resolveAnimation(choice.targetId().toString(), animations);
+                PreparedEmote animation = resolveAnimation(choice.targetId().toString(), animations);
                 candidates.add(new AnimationChoice(animation, choice.chance()));
             }
-            resolvedSteps.add(new EmoteStep(candidates, step.repeat(), step.transitionTicks()));
+            resolvedSteps.add(new AnimationStep(candidates, step.repeat(), step.transitionTicks()));
         }
-        return new Branch(resolvedSteps);
+        return List.copyOf(resolvedSteps);
     }
 
-    private static PreparedAnimation resolveAnimation(String id, Map<String, PreparedAnimation> animations) {
-        PreparedAnimation animation = animations.get(id);
+    private static PreparedEmote resolveAnimation(String id, Map<String, PreparedEmote> animations) {
+        PreparedEmote animation = animations.get(id);
         if (animation == null) {
             throw new IllegalArgumentException("Unknown or disabled animation: " + id);
         }
@@ -89,49 +85,25 @@ public record PreparedSequence(
         return animation;
     }
 
-    public PreparedAnimation compile(RandomGenerator random) {
-        if (!(this.playback instanceof LinearPlayback linear)) {
-            throw new IllegalStateException("Partner sequence branches must be compiled separately: " + id());
-        }
-        return SequenceCompiler.compile(this.source, selectSteps(linear.branch(), random), this.layoutAnchor, false);
-    }
-
-    public PreparedAnimation compileMatch(RandomGenerator random) {
-        return SequenceCompiler.compile(this.source, selectSteps(partnerPlayback().matched(), random), this.layoutAnchor, true);
-    }
-
-    public PreparedAnimation compileTimeout(RandomGenerator random) {
-        return SequenceCompiler.compile(this.source, selectSteps(partnerPlayback().timeout(), random), this.layoutAnchor, true);
-    }
-
-    public boolean hasPartner() {
-        return this.playback instanceof PartnerPlayback;
-    }
-
-    public PartnerPlayback partnerPlayback() {
-        if (!(this.playback instanceof PartnerPlayback partnerPlayback)) {
-            throw new IllegalStateException("Sequence is not partner: " + id());
-        }
-        return partnerPlayback;
+    public PreparedEmote compile(RandomGenerator random) {
+        return SequenceCompiler.compile(this.source, this.sourcePath, selectSteps(this.steps, random), this.layoutAnchor);
     }
 
     List<SelectedStep> selectSteps(RandomGenerator random) {
-        if (!(this.playback instanceof LinearPlayback linear)) {
-            throw new IllegalStateException("Partner sequence branches must be selected separately: " + id());
-        }
-        return selectSteps(linear.branch(), random);
+        return selectSteps(this.steps, random);
     }
 
-    private static List<SelectedStep> selectSteps(Branch branch, RandomGenerator random) {
+    private static List<SelectedStep> selectSteps(List<Step> steps, RandomGenerator random) {
         Objects.requireNonNull(random, "random");
         List<SelectedStep> selectedSteps = new ArrayList<>();
-        for (Step step : branch.steps()) {
+        for (int stepIndex = 0; stepIndex < steps.size(); stepIndex++) {
+            Step step = steps.get(stepIndex);
             if (step instanceof WaitStep(int ticks)) {
-                selectedSteps.add(new SelectedWaitStep(ticks));
+                selectedSteps.add(new SelectedWaitStep(ticks, stepIndex));
                 continue;
             }
-            EmoteStep emoteStep = (EmoteStep) step;
-            List<PreparedAnimation> selectedAnimations = new ArrayList<>();
+            AnimationStep emoteStep = (AnimationStep) step;
+            List<SelectedAnimationStep> selectedAnimations = new ArrayList<>();
             int animationCandidateCount = (int) emoteStep.candidates().stream().filter(AnimationChoice.class::isInstance).count();
             int previousAnimationIndex = -1;
             for (int repeat = 0; repeat < emoteStep.repeat(); repeat++) {
@@ -139,49 +111,52 @@ public record PreparedSequence(
                 int selectedIndex = WeightedChoiceSelector.selectIndex(random, emoteStep.candidates(), Choice::chance, excludedIndex);
                 Choice selected = emoteStep.candidates().get(selectedIndex);
                 if (selected instanceof AnimationChoice animation) {
-                    selectedAnimations.add(animation.animation());
+                    selectedAnimations.add(new SelectedAnimationStep(animation.animation(), false, emoteStep.transitionTicks(), stepIndex, repeat));
                     previousAnimationIndex = selectedIndex;
                 } else if (((ControlChoice) selected).control() == EmoteSequence.Control.BREAK) {
                     break;
                 }
             }
-            appendSelectedAnimations(selectedSteps, selectedAnimations, emoteStep.transitionTicks());
+            appendSelectedAnimations(selectedSteps, selectedAnimations);
         }
         return selectedSteps;
     }
 
-    private static List<SelectedStep> selectFirstCandidates(Branch branch) {
+    private static List<SelectedStep> selectFirstCandidates(List<Step> steps) {
         List<SelectedStep> selectedSteps = new ArrayList<>();
-        for (Step step : branch.steps()) {
+        for (int stepIndex = 0; stepIndex < steps.size(); stepIndex++) {
+            Step step = steps.get(stepIndex);
             if (step instanceof WaitStep(int ticks)) {
-                selectedSteps.add(new SelectedWaitStep(ticks));
+                selectedSteps.add(new SelectedWaitStep(ticks, stepIndex));
                 continue;
             }
-            EmoteStep emoteStep = (EmoteStep) step;
-            List<PreparedAnimation> selectedAnimations = new ArrayList<>();
+            AnimationStep emoteStep = (AnimationStep) step;
+            List<SelectedAnimationStep> selectedAnimations = new ArrayList<>();
             for (int repeat = 0; repeat < emoteStep.repeat(); repeat++) {
                 Choice selected = emoteStep.candidates().getFirst();
                 if (selected instanceof AnimationChoice animation) {
-                    selectedAnimations.add(animation.animation());
+                    selectedAnimations.add(new SelectedAnimationStep(animation.animation(), false, emoteStep.transitionTicks(), stepIndex, repeat));
                 } else if (((ControlChoice) selected).control() == EmoteSequence.Control.BREAK) {
                     break;
                 }
             }
-            appendSelectedAnimations(selectedSteps, selectedAnimations, emoteStep.transitionTicks());
+            appendSelectedAnimations(selectedSteps, selectedAnimations);
         }
         return selectedSteps;
     }
 
     private static void appendSelectedAnimations(
         List<SelectedStep> selectedSteps,
-        List<PreparedAnimation> animations,
-        int transitionTicks
+        List<SelectedAnimationStep> animations
     ) {
         for (int index = 0; index < animations.size(); index++) {
-            selectedSteps.add(new SelectedEmoteStep(
-                animations.get(index),
+            SelectedAnimationStep selected = animations.get(index);
+            selectedSteps.add(new SelectedAnimationStep(
+                selected.animation(),
                 index + 1 < animations.size(),
-                transitionTicks
+                selected.transitionTicks(),
+                selected.stepIndex(),
+                selected.repeatIndex()
             ));
         }
     }
@@ -206,14 +181,15 @@ public record PreparedSequence(
         return this.source.settings().player();
     }
 
-    @Override
-    public Path sourcePath() {
-        return this.source.sourcePath();
+    public @Nullable Integer fixedDurationTicks() {
+        boolean fixed = this.steps.stream().allMatch(step -> step instanceof WaitStep
+            || (step instanceof AnimationStep emote && emote.candidates().size() == 1 && emote.candidates().getFirst() instanceof AnimationChoice));
+        return fixed ? this.compiledEmote.durationTicks() : null;
     }
 
     @Override
     public int durationTicks() {
-        return this.compiledAnimation.durationTicks();
+        return this.compiledEmote.durationTicks();
     }
 
     @Override
@@ -228,63 +204,14 @@ public record PreparedSequence(
 
     @Override
     public int nodeCount() {
-        return this.compiledAnimation.nodeCount();
+        return this.compiledEmote.nodeCount();
     }
 
-    public sealed interface Playback permits LinearPlayback, PartnerPlayback {
-        List<Step> validationSteps();
+    public sealed interface Step permits AnimationStep, WaitStep {
     }
 
-    public record LinearPlayback(Branch branch) implements Playback {
-        public LinearPlayback {
-            Objects.requireNonNull(branch, "branch");
-        }
-
-        @Override
-        public List<Step> validationSteps() {
-            return this.branch.steps();
-        }
-    }
-
-    public record PartnerPlayback(
-        PreparedAnimation offer,
-        int timeoutTicks,
-        Branch matched,
-        Branch timeout
-    ) implements Playback {
-        public PartnerPlayback {
-            Objects.requireNonNull(offer, "offer");
-            if (timeoutTicks < 1) {
-                throw new IllegalArgumentException("await_partner timeout must be at least 1 tick");
-            }
-            Objects.requireNonNull(matched, "matched");
-            Objects.requireNonNull(timeout, "timeout");
-        }
-
-        @Override
-        public List<Step> validationSteps() {
-            List<Step> steps = new ArrayList<>(1 + this.matched.steps().size() + this.timeout.steps().size());
-            steps.add(new EmoteStep(List.of(new AnimationChoice(this.offer, 0)), 1, 0));
-            steps.addAll(this.matched.steps());
-            steps.addAll(this.timeout.steps());
-            return List.copyOf(steps);
-        }
-    }
-
-    public record Branch(List<Step> steps) {
-        public Branch {
-            steps = List.copyOf(steps);
-            if (steps.isEmpty()) {
-                throw new IllegalArgumentException("sequence branch steps must not be empty");
-            }
-        }
-    }
-
-    public sealed interface Step permits EmoteStep, WaitStep {
-    }
-
-    public record EmoteStep(List<Choice> candidates, int repeat, int transitionTicks) implements Step {
-        public EmoteStep {
+    public record AnimationStep(List<Choice> candidates, int repeat, int transitionTicks) implements Step {
+        public AnimationStep {
             candidates = List.copyOf(candidates);
             if (candidates.isEmpty()) {
                 throw new IllegalArgumentException("sequence emote candidates must not be empty");
@@ -300,7 +227,7 @@ public record PreparedSequence(
             }
         }
 
-        public EmoteStep(List<Choice> candidates, int repeat) {
+        public AnimationStep(List<Choice> candidates, int repeat) {
             this(candidates, repeat, 0);
         }
     }
@@ -317,7 +244,7 @@ public record PreparedSequence(
         int chance();
     }
 
-    public record AnimationChoice(PreparedAnimation animation, int chance) implements Choice {
+    public record AnimationChoice(PreparedEmote animation, int chance) implements Choice {
         public AnimationChoice {
             Objects.requireNonNull(animation, "animation");
         }
@@ -329,15 +256,17 @@ public record PreparedSequence(
         }
     }
 
-    sealed interface SelectedStep permits SelectedEmoteStep, SelectedWaitStep {
+    sealed interface SelectedStep permits SelectedAnimationStep, SelectedWaitStep {
     }
 
-    record SelectedEmoteStep(
-        PreparedAnimation animation,
+    record SelectedAnimationStep(
+        PreparedEmote animation,
         boolean loopDelayAfter,
-        int transitionTicks
+        int transitionTicks,
+        int stepIndex,
+        int repeatIndex
     ) implements SelectedStep {
-        SelectedEmoteStep {
+        SelectedAnimationStep {
             Objects.requireNonNull(animation, "animation");
             if (transitionTicks < 0) {
                 throw new IllegalArgumentException("sequence transition must not be negative");
@@ -345,7 +274,7 @@ public record PreparedSequence(
         }
     }
 
-    record SelectedWaitStep(int ticks) implements SelectedStep {
+    record SelectedWaitStep(int ticks, int stepIndex) implements SelectedStep {
         SelectedWaitStep {
             if (ticks < 1) {
                 throw new IllegalArgumentException("sequence wait must be at least 1 tick");

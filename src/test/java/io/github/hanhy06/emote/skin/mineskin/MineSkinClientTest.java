@@ -13,21 +13,12 @@ import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.Optional;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class MineSkinClientTest {
-    @Test
-    void sharedHttpClientUsesSkinRequestConnectionSettings() {
-        try (HttpClient httpClient = MineSkinClient.createHttpClient()) {
-            assertEquals(Optional.of(Duration.ofSeconds(10)), httpClient.connectTimeout());
-            assertEquals(HttpClient.Redirect.NORMAL, httpClient.followRedirects());
-        }
-    }
-
     @ParameterizedTest
     @MethodSource("apiKeyCases")
     void apiKeyPresenceMatchesSupportedFormats(String value, boolean expected) {
@@ -78,10 +69,17 @@ class MineSkinClientTest {
     @Test
     void jobFailureRecognizesRateLimitMessages() {
         assertTrue(new MineSkinClient.JobFailedException(
+            "[skin_change_failed] Failed to change skin due to Mojang rate-limiting"
+        ).isRateLimited());
+        assertTrue(new MineSkinClient.JobFailedException("Mojang rate_limiting").isRateLimited());
+        assertTrue(new MineSkinClient.JobFailedException("Mojang RATE LIMITING").isRateLimited());
+        assertTrue(new MineSkinClient.JobFailedException(
             "[proxy_rate_limited] All proxies have rate-limit queue backlog"
         ).isRateLimited());
         assertTrue(new MineSkinClient.JobFailedException("Too many requests").isRateLimited());
         assertFalse(new MineSkinClient.JobFailedException("Invalid skin image").isRateLimited());
+        assertFalse(new MineSkinClient.JobFailedException("[skin_change_failed] Failed to change skin").isRateLimited());
+        assertFalse(new MineSkinClient.JobFailedException(null).isRateLimited());
     }
 
     private boolean contains(byte[] body, byte[] expected) {

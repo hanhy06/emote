@@ -3,15 +3,11 @@ package io.github.hanhy06.emote.content.loader;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.mojang.brigadier.StringReader;
-import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
-import io.github.hanhy06.emote.content.EmoteSequence;
-import net.minecraft.commands.arguments.coordinates.Coordinates;
-import net.minecraft.commands.arguments.coordinates.RotationArgument;
-import net.minecraft.commands.arguments.coordinates.Vec3Argument;
+import io.github.hanhy06.emote.api.sequence.EmoteSequence;
+import io.github.hanhy06.emote.content.LoadedSequence;
 import net.minecraft.resources.Identifier;
 
 import java.nio.file.Path;
@@ -21,11 +17,11 @@ import java.util.List;
 public final class SequenceJsonParser {
     private static final int SCHEMA_VERSION = 4;
 
-    public EmoteSequence parse(Path sourcePath) throws EmoteAnimationLoadException {
+    public LoadedSequence parse(Path sourcePath) throws EmoteAnimationLoadException {
         return parse(EmoteJsonDocument.read(sourcePath));
     }
 
-    EmoteSequence parse(EmoteJsonDocument document) throws EmoteAnimationLoadException {
+    LoadedSequence parse(EmoteJsonDocument document) throws EmoteAnimationLoadException {
         JsonObject root = document.root();
         if (!document.type().equals("sequence")) {
             throw document.error("$.type", "must equal sequence");
@@ -33,7 +29,9 @@ public final class SequenceJsonParser {
         document.requireExactInt(root, "schema_version", "$", SCHEMA_VERSION);
         Identifier id = document.requireIdentifier(document.requireString(root, "id", "$"), "$.id");
         EmoteMetadata metadata = AnimationJsonParser.parseMetadata(document.requireObject(root, "metadata", "$"), document);
-        EmoteSequence.Participants participants = parseParticipants(root, document);
+        if (root.has("participants") && !root.get("participants").isJsonNull()) {
+            throw document.error("$.participants", "two-player matching is no longer supported");
+        }
         JsonObject settingsObject = document.requireObject(root, "settings", "$");
         int cooldownTicks = document.requireTime(settingsObject, "cooldown", "$.settings", 0);
         EmotePlayerBehavior player = AnimationJsonParser.parsePlayer(
@@ -43,76 +41,17 @@ public final class SequenceJsonParser {
         );
         EmoteSequence.Settings settings = new EmoteSequence.Settings(cooldownTicks, player);
 
-        List<EmoteSequence.Step> steps = parseSteps(document.requireArray(root, "steps", "$"), "$.steps", true, document);
+        List<EmoteSequence.Step> steps = parseSteps(document.requireArray(root, "steps", "$"), "$.steps", document);
         try {
-            return new EmoteSequence(document.sourcePath(), id, metadata, settings, participants, steps);
+            return new LoadedSequence(document.sourcePath(), new EmoteSequence(id, metadata, settings, steps, AnimationJsonParser.parseCallbacks(root, document)));
         } catch (IllegalArgumentException | NullPointerException exception) {
             throw document.error("$.steps", exception.getMessage(), exception);
-        }
-    }
-
-    private EmoteSequence.Participants parseParticipants(JsonObject root, EmoteJsonDocument document)
-        throws EmoteAnimationLoadException {
-        JsonElement element = root.get("participants");
-        if (element == null || element.isJsonNull()) {
-            return null;
-        }
-        JsonObject participants = document.requireObject(element, "$.participants");
-        return new EmoteSequence.Participants(
-            parseParticipant(participants, "initiator", document),
-            parseParticipant(participants, "partner", document)
-        );
-    }
-
-    private EmoteSequence.ParticipantPlacement parseParticipant(
-        JsonObject participants,
-        String role,
-        EmoteJsonDocument document
-    ) throws EmoteAnimationLoadException {
-        String path = "$.participants." + role;
-        JsonObject placement = document.requireObject(participants, role, "$.participants");
-        Coordinates position = parseCoordinates(
-            document.requireString(placement, "position", path),
-            path + ".position",
-            true,
-            document
-        );
-        if (!position.isXRelative() || !position.isYRelative() || !position.isZRelative()) {
-            throw document.error(path + ".position", "must use only relative ~ or local ^ coordinates");
-        }
-        Coordinates rotation = parseCoordinates(
-            document.requireString(placement, "rotation", path),
-            path + ".rotation",
-            false,
-            document
-        );
-        return new EmoteSequence.ParticipantPlacement(position, rotation);
-    }
-
-    private Coordinates parseCoordinates(
-        String value,
-        String path,
-        boolean position,
-        EmoteJsonDocument document
-    ) throws EmoteAnimationLoadException {
-        StringReader stringReader = new StringReader(value);
-        try {
-            Coordinates coordinates = position
-                ? Vec3Argument.vec3(false).parse(stringReader)
-                : RotationArgument.rotation().parse(stringReader);
-            if (stringReader.canRead()) {
-                throw document.error(path, "contains trailing input");
-            }
-            return coordinates;
-        } catch (CommandSyntaxException exception) {
-            throw document.error(path, "invalid Minecraft coordinates", exception);
         }
     }
 
     private List<EmoteSequence.Step> parseSteps(
         JsonArray stepsArray,
         String stepsPath,
-        boolean allowAwaitPartner,
         EmoteJsonDocument document
     ) throws EmoteAnimationLoadException {
         if (stepsArray.isEmpty()) {
@@ -124,17 +63,11 @@ public final class SequenceJsonParser {
             JsonObject stepObject = document.requireObject(stepsArray.get(index), path);
             boolean hasEmote = stepObject.has("emote") && !stepObject.get("emote").isJsonNull();
             boolean hasWait = stepObject.has("wait") && !stepObject.get("wait").isJsonNull();
-            boolean hasAwaitPartner = stepObject.has("await_partner") && !stepObject.get("await_partner").isJsonNull();
-            if ((hasEmote ? 1 : 0) + (hasWait ? 1 : 0) + (hasAwaitPartner ? 1 : 0) != 1) {
-                throw document.error(path, "must contain exactly one of emote, wait, or await_partner");
+            if (stepObject.has("await_partner")) {
+                throw document.error(path + ".await_partner", "two-player matching is no longer supported");
             }
-            if (hasAwaitPartner) {
-                rejectTransition(stepObject, path, document);
-                if (!allowAwaitPartner) {
-                    throw document.error(path + ".await_partner", "is not supported inside a collaboration branch");
-                }
-                steps.add(parseAwaitPartner(stepObject, path, document));
-                continue;
+            if (hasEmote == hasWait) {
+                throw document.error(path, "must contain exactly one of emote or wait");
             }
             if (hasWait) {
                 rejectTransition(stepObject, path, document);
@@ -160,7 +93,7 @@ public final class SequenceJsonParser {
             int transitionTicks = stepObject.has("transition")
                 ? document.requireTime(stepObject, "transition", path, 0)
                 : 0;
-            steps.add(new EmoteSequence.EmoteStep(choices, repeat, transitionTicks));
+            steps.add(new EmoteSequence.AnimationStep(choices, repeat, transitionTicks));
         }
         return List.copyOf(steps);
     }
@@ -170,38 +103,6 @@ public final class SequenceJsonParser {
         if (stepObject.has("transition")) {
             throw document.error(path + ".transition", "is supported only on an emote step");
         }
-    }
-
-    private EmoteSequence.AwaitPartnerStep parseAwaitPartner(
-        JsonObject stepObject,
-        String path,
-        EmoteJsonDocument document
-    ) throws EmoteAnimationLoadException {
-        if (stepObject.has("repeat")) {
-            throw document.error(path + ".repeat", "is not supported on an await_partner step");
-        }
-        JsonObject await = document.requireObject(stepObject, "await_partner", path);
-        Identifier offer = document.requireIdentifier(
-            document.requireString(await, "emote", path + ".await_partner"),
-            path + ".await_partner.emote"
-        );
-        if (EmoteSequence.Control.fromId(offer) != null) {
-            throw document.error(path + ".await_partner.emote", "must reference an animation");
-        }
-        int timeoutTicks = document.requireTime(await, "timeout", path + ".await_partner", 1);
-        List<EmoteSequence.Step> matched = parseSteps(
-            document.requireArray(stepObject, "matched", path),
-            path + ".matched",
-            false,
-            document
-        );
-        List<EmoteSequence.Step> timeout = parseSteps(
-            document.requireArray(stepObject, "timeout", path),
-            path + ".timeout",
-            false,
-            document
-        );
-        return new EmoteSequence.AwaitPartnerStep(offer, timeoutTicks, matched, timeout);
     }
 
     private List<EmoteSequence.Choice> readEmoteChoices(JsonObject stepObject, String path, EmoteJsonDocument document)

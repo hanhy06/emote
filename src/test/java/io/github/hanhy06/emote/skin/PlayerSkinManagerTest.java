@@ -1,19 +1,44 @@
 package io.github.hanhy06.emote.skin;
 
-import io.github.hanhy06.emote.api.ParticipantRole;
+import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
+import java.util.Map;
 import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.skin.model.*;
 import org.junit.jupiter.api.Test;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PlayerSkinManagerTest {
     private static final PlayerSkinRegion HEAD = new PlayerSkinRegion(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL);
+
+    @Test
+    void defaultSkinFillsMissingRegionsAfterPersonalCacheAndPreservesPreparationState() {
+        PlayerSkinRegion body = new PlayerSkinRegion(PlayerSkinPart.BODY, PlayerSkinSegment.FULL);
+        RecordingProvider provider = new RecordingProvider();
+        provider.fallback = Map.copyOf(java.util.Map.of(HEAD, "default-head", body, "default-body"));
+        PlayerSkinManager manager = new PlayerSkinManager(provider, ignored -> null);
+        PlayerSkinPreparation failed = new PlayerSkinPreparation(Map.copyOf(java.util.Map.of(HEAD, "personal-head")),
+            PlayerSkinPreparation.State.FAILED, 50);
+        PlayerSkinPreparation combined = manager.withDefaultSkin(failed, Set.of(HEAD, body));
+        assertEquals("personal-head", combined.textures().get(HEAD));
+        assertEquals("default-body", combined.textures().get(body));
+        assertEquals(PlayerSkinPreparation.State.FAILED, combined.state());
+        PlayerSkinPreparation preparing = new PlayerSkinPreparation(null, PlayerSkinPreparation.State.PREPARING, 0);
+        assertEquals(preparing, manager.withDefaultSkin(preparing, Set.of(HEAD, body)));
+        PlayerSkinPreparation missing = manager.preparePlayerSkin(null, List.of(new SkinBinding("head", HEAD)));
+        assertEquals("default-head", missing.textures().get(HEAD));
+        assertEquals(PlayerSkinPreparation.State.UNAVAILABLE, missing.state());
+        PlayerSkinManager failedLookup = new PlayerSkinManager(provider, ignored -> { throw new IllegalStateException("API failed"); });
+        assertEquals("default-head", failedLookup.preparePlayerSkin(null,
+            List.of(new SkinBinding("head", HEAD))).textures().get(HEAD));
+    }
 
     @Test
     void preparesSharedModelRegionsOnJoinAndSkinChangeOnly() {
@@ -27,11 +52,11 @@ class PlayerSkinManagerTest {
         PlayerSkinRegion lower = new PlayerSkinRegion(PlayerSkinPart.LEFT_ARM, new PlayerSkinSegment(4, 12));
         PlayerSkinRegion joint = new PlayerSkinRegion(PlayerSkinPart.LEFT_ARM, new PlayerSkinSegment(4, 6));
         manager.setModelBindings(List.of(
-            new SkinBinding("normal_head", ParticipantRole.INITIATOR, HEAD),
-            new SkinBinding("normal_upper", ParticipantRole.INITIATOR, upper),
-            new SkinBinding("normal_lower", ParticipantRole.INITIATOR, lower),
-            new SkinBinding("jointed_upper", ParticipantRole.PARTNER, upper),
-            new SkinBinding("jointed_joint", ParticipantRole.PARTNER, joint)
+            new SkinBinding("normal_head", HEAD),
+            new SkinBinding("normal_upper", upper),
+            new SkinBinding("normal_lower", lower),
+            new SkinBinding("jointed_upper", upper),
+            new SkinBinding("jointed_joint", joint)
         ));
 
         manager.checkPlayerSkin(null);
@@ -62,7 +87,7 @@ class PlayerSkinManagerTest {
         PlayerSkinManager manager = new PlayerSkinManager(provider, ignored -> source.get());
         List<UUID> refreshedPlayers = new ArrayList<>();
         manager.addReadyListener(refreshedPlayers::add);
-        manager.setModelBindings(List.of(new SkinBinding("head", ParticipantRole.INITIATOR, HEAD)));
+        manager.setModelBindings(List.of(new SkinBinding("head", HEAD)));
 
         manager.checkPlayerSkin(null);
         assertTrue(provider.requests.isEmpty());
@@ -74,11 +99,13 @@ class PlayerSkinManagerTest {
         assertEquals(List.of(playerId), refreshedPlayers);
 
         PlayerSkinRegion body = new PlayerSkinRegion(PlayerSkinPart.BODY, PlayerSkinSegment.FULL);
-        manager.preparePlayerSkin(null, List.of(new SkinBinding("body", ParticipantRole.INITIATOR, body)));
+        manager.preparePlayerSkin(null, List.of(new SkinBinding("body", body)));
         assertEquals(Set.of(HEAD, body), provider.requests.getLast());
     }
 
     private static final class RecordingProvider implements PlayerSkinProvider {
+        private Map<PlayerSkinRegion, String> fallback;
+        @Override public Map<PlayerSkinRegion, String> defaultSkin() { return this.fallback; }
         private final List<Set<PlayerSkinRegion>> requests = new ArrayList<>();
 
         @Override
