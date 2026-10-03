@@ -112,12 +112,6 @@ public record EmoteAnimation(
             itemStackNbt = copy(itemStackNbt);
             Objects.requireNonNull(itemDisplay, "itemDisplay");
         }
-
-        @Override
-        public CompoundTag entityNbt() { return this.entityNbt.copy(); }
-
-        @Override
-        public CompoundTag itemStackNbt() { return this.itemStackNbt.copy(); }
     }
 
     public record BlockNode(
@@ -132,12 +126,6 @@ public record EmoteAnimation(
             entityNbt = copy(entityNbt);
             blockStateNbt = copy(blockStateNbt);
         }
-
-        @Override
-        public CompoundTag entityNbt() { return this.entityNbt.copy(); }
-
-        @Override
-        public CompoundTag blockStateNbt() { return this.blockStateNbt.copy(); }
     }
 
     public record TextNode(
@@ -152,9 +140,6 @@ public record EmoteAnimation(
             entityNbt = copy(entityNbt);
             text = Objects.requireNonNull(text, "text").deepCopy();
         }
-
-        @Override
-        public CompoundTag entityNbt() { return this.entityNbt.copy(); }
 
         @Override
         public JsonElement text() {
