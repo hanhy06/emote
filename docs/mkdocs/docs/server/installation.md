@@ -42,15 +42,17 @@ File names are only for organization. The mod identifies emotes by `id` and reje
   "mineskin_poll_interval_seconds": 3,
   "mineskin_cache_retention_days": 30,
   "mineskin_cache_max_mib": 256,
-  "max_active_display_entities": 512
+  "max_active_display_entities": 512,
+  "default_skin": ""
 }
 ```
 
-| Field                            | Behavior                                                                                            |
-|----------------------------------|-----------------------------------------------------------------------------------------------------|
-| `menu_page_size`                 | Number of emotes shown on each `/emote` menu page. Minimum: `1`.                                    |
+| Field                            | Behavior                                                                                                                            |
+|----------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|
+| `menu_page_size`                 | Number of emotes shown on each `/emote` menu page. Minimum: `1`.                                                                    |
 | `mineskin_api_key`               | Used to generate player-skin textures when no bake accounts are registered. Cached textures remain usable without a key or account. |
-| `mineskin_poll_interval_seconds` | Interval for checking MineSkin job status. Range: `1`–`60` seconds.                                 |
-| `mineskin_cache_retention_days`  | Skin-cache retention period. Range: `1`–`3650` days.                                                |
-| `mineskin_cache_max_mib`         | Maximum skin-cache size in MiB.                                                                     |
-| `max_active_display_entities`    | A value of 0 allows an unlimited number of active display entities.                                 |
+| `mineskin_poll_interval_seconds` | Interval for checking MineSkin job status. Range: `1`–`60` seconds.                                                                 |
+| `mineskin_cache_retention_days`  | Skin-cache retention period. Range: `1`–`3650` days.                                                                                |
+| `mineskin_cache_max_mib`         | Maximum skin-cache size in MiB.                                                                                                     |
+| `max_active_display_entities`    | A value of 0 allows an unlimited number of active display entities.                                                                 |
+| `default_skin`                   | Minecraft player name whose skin supplies fallback textures when a player's skin cannot be baked. Leave empty to disable this fallback. |

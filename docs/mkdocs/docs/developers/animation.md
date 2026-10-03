@@ -15,6 +15,7 @@ Animation files use schema version `4`. An Animation defines a hierarchy of disp
     "standalone": true,
     "cooldown": "2s",
     "rotation_deadzone": 50,
+    "display_interpolation": "1t",
     "player": {
       "hidden": true,
       "stop_conditions": {
@@ -115,6 +116,12 @@ Animation JSON files are limited to 8 MiB and timelines are limited to 10 minute
 
 - `cooldown`: Nonnegative playback cooldown. It starts after a successful playback ends.
 - `rotation_deadzone`: Finite angle from `0` to `180` degrees. During standalone playback, the display root follows the player's yaw only when the difference exceeds this angle. `0` follows every yaw change without display rotation interpolation; positive values use three ticks of rotation interpolation, and `180` keeps the initial orientation. The interpolation setting updates with the active Animation step in a Sequence.
+
+### Display interpolation
+
+`settings.display_interpolation` is an optional nonnegative Minecraft time that controls client interpolation of display-node transformations. It defaults to `1t`; `0t` applies each transformation immediately. For example, `"display_interpolation": "2t"` interpolates transformations over two ticks.
+
+This setting controls how clients display transform updates; timeline evaluation and command events still run on server ticks. It is separate from the root position and yaw interpolation controlled by `rotation_deadzone`. In a Sequence, each active Animation step supplies its own display interpolation duration.
 
 ### Player behavior
 
@@ -303,7 +310,7 @@ Each event contains object-shaped `source` and `origin` fields and a `commands` 
 
 `source.type` may be `player`, `server`, or `node`. A node source also requires `node` and must reference a display node. `origin.type` may be `root` or `node`; a node origin requires `node`. Every origin may include an optional three-number `offset`, which defaults to zero.
 
-Timeline events must be ordered by time and occur before the end of the timeline.
+Timeline events must be ordered by time and occur within `0t` through `timeline.duration`, inclusive. Events at the end of the timeline are allowed.
 
 ## Callbacks
 
@@ -316,7 +323,3 @@ Select named lifecycle callbacks in the Animation's root `callbacks` array:
 ```
 
 `name` is the registered callback identifier. `payload` is an optional string, defaults to empty, and is passed through unchanged. For registration, see the [Mod API](api.md#lifecycle-callbacks).
-
-## Converter preview
-
-Schema 4 runtime data is preserved when exported again. The web converter bakes deterministic parented nodes, independent tracks, Molang, easing, and discontinuous `pre`/`post` values for preview. If a runtime value cannot be evaluated safely, export remains available and the preview falls back to the Create pose.

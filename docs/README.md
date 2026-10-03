@@ -74,7 +74,8 @@ Place JSON exported by the converter under `emote/`. Subdirectories are loaded a
   "mineskin_poll_interval_seconds": 3,
   "mineskin_cache_retention_days": 30,
   "mineskin_cache_max_mib": 256,
-  "max_active_display_entities": 512
+  "max_active_display_entities": 512,
+  "default_skin": ""
 }
 ```
 
@@ -159,6 +160,8 @@ Connect short animation clips in order and combine waits, weighted random choice
 ## Mod API
 
 `EmoteApi.getInstance()` provides playback control, runtime registration, state queries, cancellable play listeners, playback lifecycle listeners, and named lifecycle callbacks. Register callbacks with `EmoteApi.registerCallbacks` and select them in the Animation or Sequence's root `callbacks` array. State changes must run on the server thread, and runtime registrations survive reloads.
+
+- [Mod API](https://hanhy06.github.io/emote/developers/api/)
 
 ## Troubleshooting
 

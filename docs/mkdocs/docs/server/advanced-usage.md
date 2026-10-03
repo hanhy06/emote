@@ -108,6 +108,22 @@ An idle emote does not start while another emote is playing. A failed attempt is
 
 ---
 
+## Marker Mannequin
+
+Marker mannequins are used to play emotes at a fixed position in the world without attaching them to a player.
+
+They are created by summoning a Minecraft `marker` entity with the emote data:
+
+```mcfunction
+summon minecraft:marker ~ ~ ~ {"data":{"emote":"emote id","emote_skin":"player name"}}
+```
+
+`emote` specifies the Emote ID to play, and `emote_skin` specifies the player name whose skin is used for the mannequin.
+
+The mannequin remains at the marker's position and plays the specified emote independently of any player.
+
+---
+
 ## Sequences
 
 A Sequence connects multiple Animations in order and presents them to the player as one emote. Server operators must install both the Sequence JSON and every Animation JSON it references.
