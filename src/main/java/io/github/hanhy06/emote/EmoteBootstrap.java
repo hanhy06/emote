@@ -81,6 +81,7 @@ final class EmoteBootstrap {
             catalog,
             play,
             playback,
+            engine,
             apiEvents,
             wheelSync::syncAll,
             new AnimationContentResolver()

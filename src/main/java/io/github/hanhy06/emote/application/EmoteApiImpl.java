@@ -10,6 +10,7 @@ import io.github.hanhy06.emote.content.LoadedAnimation;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.content.loader.AnimationContentResolver;
+import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
 import net.minecraft.resources.Identifier;
@@ -28,6 +29,7 @@ public final class EmoteApiImpl extends EmoteApi {
     private final EmoteCatalog emoteCatalog;
     private final EmotePlayService playService;
     private final PlayerPlaybackManager playerPlaybackManager;
+    private final PlaybackEngine engine;
     private final ApiEventDispatcher events;
     private final ChangeNotifier changeNotifier;
     private final AnimationContentResolver contentResolver;
@@ -36,6 +38,7 @@ public final class EmoteApiImpl extends EmoteApi {
         EmoteCatalog emoteCatalog,
         EmotePlayService playService,
         PlayerPlaybackManager playerPlaybackManager,
+        PlaybackEngine engine,
         ApiEventDispatcher events,
         ChangeNotifier changeNotifier,
         AnimationContentResolver contentResolver
@@ -43,6 +46,7 @@ public final class EmoteApiImpl extends EmoteApi {
         this.emoteCatalog = Objects.requireNonNull(emoteCatalog, "emoteCatalog");
         this.playService = Objects.requireNonNull(playService, "playService");
         this.playerPlaybackManager = Objects.requireNonNull(playerPlaybackManager, "playerPlaybackManager");
+        this.engine = Objects.requireNonNull(engine, "engine");
         this.events = Objects.requireNonNull(events, "events");
         this.changeNotifier = Objects.requireNonNull(changeNotifier, "changeNotifier");
         this.contentResolver = Objects.requireNonNull(contentResolver, "contentResolver");
@@ -73,7 +77,7 @@ public final class EmoteApiImpl extends EmoteApi {
     public boolean stop(UUID sessionId) {
         Objects.requireNonNull(sessionId, "sessionId");
         requireServerThread();
-        return this.playerPlaybackManager.engine().stop(sessionId, PlaybackStopReason.MANUAL) != null;
+        return this.engine.stop(sessionId, PlaybackStopReason.MANUAL) != null;
     }
 
     @Override
@@ -82,7 +86,7 @@ public final class EmoteApiImpl extends EmoteApi {
         Objects.requireNonNull(placement, "placement");
         requireServerThread();
         return this.playerPlaybackManager.setPlacement(sessionId, placement)
-            || this.playerPlaybackManager.engine().setPlacement(sessionId, placement);
+            || this.engine.setPlacement(sessionId, placement);
     }
 
     @Override
@@ -90,7 +94,7 @@ public final class EmoteApiImpl extends EmoteApi {
         Objects.requireNonNull(sessionId, "sessionId");
         requireServerThread();
         if (tick < 0) throw new IllegalArgumentException("Tick must not be negative");
-        PlaybackSession session = this.playerPlaybackManager.engine().findSession(sessionId);
+        PlaybackSession session = this.engine.findSession(sessionId);
         return session != null && session.setTick(tick);
     }
 
@@ -99,7 +103,7 @@ public final class EmoteApiImpl extends EmoteApi {
         Objects.requireNonNull(sessionId, "sessionId");
         requireServerThread();
         if (tick < 0) throw new IllegalArgumentException("Tick must not be negative");
-        PlaybackSession session = this.playerPlaybackManager.engine().findSession(sessionId);
+        PlaybackSession session = this.engine.findSession(sessionId);
         return session != null && session.setAnimationTick(tick);
     }
 
@@ -108,7 +112,7 @@ public final class EmoteApiImpl extends EmoteApi {
         Objects.requireNonNull(sessionId, "sessionId");
         requireServerThread();
         if (stepIndex < 0 || repeatIndex < 0 || tick < 0) throw new IllegalArgumentException("Step, repeat and tick must not be negative");
-        PlaybackSession session = this.playerPlaybackManager.engine().findSession(sessionId);
+        PlaybackSession session = this.engine.findSession(sessionId);
         return session != null && session.setStep(stepIndex, repeatIndex, tick);
     }
 
@@ -117,7 +121,7 @@ public final class EmoteApiImpl extends EmoteApi {
         Objects.requireNonNull(sessionId, "sessionId");
         Objects.requireNonNull(nodeId, "nodeId");
         requireServerThread();
-        return Optional.ofNullable(this.playerPlaybackManager.engine().findSession(sessionId))
+        return Optional.ofNullable(this.engine.findSession(sessionId))
             .flatMap(session -> session.nodeWorldPosition(nodeId));
     }
 
@@ -182,20 +186,20 @@ public final class EmoteApiImpl extends EmoteApi {
     public Optional<PlaybackInfo> getPlayback(UUID sessionId) {
         Objects.requireNonNull(sessionId, "sessionId");
         requireServerThread();
-        return Optional.ofNullable(this.playerPlaybackManager.engine().findSession(sessionId)).map(PlaybackSession::playbackInfo);
+        return Optional.ofNullable(this.engine.findSession(sessionId)).map(PlaybackSession::playbackInfo);
     }
 
     @Override
     public Optional<PlaybackTimeline> getTimeline(UUID sessionId) {
         Objects.requireNonNull(sessionId, "sessionId");
         requireServerThread();
-        return Optional.ofNullable(this.playerPlaybackManager.engine().findSession(sessionId))
+        return Optional.ofNullable(this.engine.findSession(sessionId))
             .map(session -> session.playback().timeline());
     }
 
     @Override
     public Registration registerCallbacks(Identifier id, EmoteCallbacks callbacks) {
-        return this.playerPlaybackManager.engine().callbackRegistry().register(id, callbacks);
+        return this.engine.callbackRegistry().register(id, callbacks);
     }
 
     @Override
@@ -243,10 +247,10 @@ public final class EmoteApiImpl extends EmoteApi {
             if (!EmoteApiImpl.this.emoteCatalog.unregister(this.id.toString(), this.registrationId)) {
                 return false;
             }
-            EmoteApiImpl.this.playerPlaybackManager.engine().stopById(this.id.toString(), PlaybackStopReason.EMOTE_REMOVED);
+            EmoteApiImpl.this.engine.stopById(this.id.toString(), PlaybackStopReason.EMOTE_REMOVED);
             for (String previousId : previousIds) {
                 if (!previousId.equals(this.id.toString()) && EmoteApiImpl.this.emoteCatalog.find(previousId) == null) {
-                    EmoteApiImpl.this.playerPlaybackManager.engine().stopById(previousId, PlaybackStopReason.EMOTE_REMOVED);
+                    EmoteApiImpl.this.engine.stopById(previousId, PlaybackStopReason.EMOTE_REMOVED);
                 }
             }
             EmoteApiImpl.this.changeNotifier.notifyChanged();
