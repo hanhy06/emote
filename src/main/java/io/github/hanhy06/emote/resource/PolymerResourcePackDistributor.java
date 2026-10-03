@@ -71,7 +71,6 @@ public final class PolymerResourcePackDistributor {
             PublishedPack published = this.publishedPack;
             if ((published == null && snapshot.isEmpty())
                 || (published != null && snapshot.hasSameContent(published.snapshot()))) {
-                EmoteMod.LOGGER.info("Skipping emote resource pack rebuild because resources are unchanged");
                 return BuildResult.UNCHANGED;
             }
         } catch (IOException exception) {
@@ -97,6 +96,7 @@ public final class PolymerResourcePackDistributor {
 
             publish(stagingPath);
             this.publishedPack = new PublishedPack(snapshot, staged.hash());
+            EmoteMod.LOGGER.info("Emote resource pack built with {} resources", snapshot.resourceCount());
             return BuildResult.BUILT;
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
@@ -122,8 +122,7 @@ public final class PolymerResourcePackDistributor {
         ResourcePackCreator creator = ResourcePackCreator.create();
         creator.creationEvent.register(builder -> {
             try {
-                int resourceCount = this.contributor.addTo(snapshot, builder);
-                EmoteMod.LOGGER.info("Added {} resources to the emote resource pack", resourceCount);
+                this.contributor.addTo(snapshot, builder);
             } catch (IOException exception) {
                 throw new UncheckedIOException(exception);
             }

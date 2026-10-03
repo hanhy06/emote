@@ -174,7 +174,6 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
                         if (expectedDefaultGeneration != this.defaultGeneration) return;
                         this.defaultSource = new PlayerSkinSource(DEFAULT_SUBSCRIBER, name, resolved.textureHash(), resolved.textureUrl(), resolved.slimModel());
                         this.failures.remove(new SkinKey(resolved.textureHash(), resolved.slimModel()));
-                        EmoteMod.LOGGER.info("Preparing default skin for {} using the shared skin bake pipeline", name);
                         prepareDefault();
                     }
                 } catch (RuntimeException exception) {

@@ -111,7 +111,6 @@ final class EmoteBootstrap {
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> accounts.close());
         commands.register();
 
-        EmoteMod.LOGGER.info("Emote initialized");
     }
 
     private static void registerPayloads() {

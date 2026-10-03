@@ -187,7 +187,7 @@ public class PlayerSkinManager implements ConfigListener {
             for (Consumer<UUID> readyListener : this.readyListeners) readyListener.accept(playerUuid);
             ServerPlayer player = server.getPlayerList().getPlayer(playerUuid);
             if (player != null) {
-                player.sendSystemMessage(Component.literal("We could not prepare your skin. Try again later."));
+                player.sendSystemMessage(Component.literal("Your skin could not be prepared. Emotes may use a default skin. Ask a server administrator to check the server log."));
             }
         });
     }
