@@ -1,6 +1,5 @@
 package io.github.hanhy06.emote.content;
 
-import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 
 import java.util.LinkedHashMap;
@@ -12,52 +11,10 @@ final class SequenceNodeLayout {
     private SequenceNodeLayout() {
     }
 
-    static Expansion expandPartnerLayout(
-        boolean partner,
-        EmoteAnimation animation,
-        Map<String, PreparedDisplayData> preparedDisplayData
-    ) {
-        if (!partner || animation.nodes().values().stream().anyMatch(node -> node.space() == EmoteAnimation.NodeSpace.PARTNER)) {
-            return new Expansion(animation, preparedDisplayData, false, Map.of());
-        }
-
-        Map<String, String> partnerIds = partnerNodeIds(animation.nodes());
-        Map<String, EmoteAnimation.Node> nodes = new LinkedHashMap<>(animation.nodes());
-        Map<String, PreparedDisplayData> expandedPreparedData = new LinkedHashMap<>(preparedDisplayData);
-        partnerIds.forEach((sourceId, partnerId) -> {
-            nodes.put(partnerId, asPartnerNode(animation.nodes().get(sourceId), partnerIds));
-            PreparedDisplayData prepared = preparedDisplayData.get(sourceId);
-            if (prepared != null) {
-                expandedPreparedData.put(partnerId, prepared);
-            }
-        });
-
-        Map<String, EmoteAnimation.NodeTracks> tracks = new LinkedHashMap<>(animation.timeline().tracks());
-        partnerIds.forEach((sourceId, partnerId) -> {
-            EmoteAnimation.NodeTracks sourceTracks = animation.timeline().tracks().get(sourceId);
-            if (sourceTracks != null) {
-                tracks.put(partnerId, sourceTracks);
-            }
-        });
-        EmoteAnimation expanded = new EmoteAnimation(
-            animation.id(),
-            animation.metadata(),
-            animation.settings(),
-            animation.molang(),
-            nodes,
-            new EmoteAnimation.Timeline(
-                animation.timeline().durationTicks(),
-                tracks,
-                animation.timeline().events()
-            )
-        );
-        return new Expansion(expanded, expandedPreparedData, true, partnerIds);
-    }
-
-    static PreparedAnimation validateAndCreateLayout(List<PreparedSequence.Step> steps) {
-        PreparedAnimation first = steps.stream()
-            .filter(PreparedSequence.EmoteStep.class::isInstance)
-            .map(PreparedSequence.EmoteStep.class::cast)
+    static PreparedEmote validateAndCreateLayout(List<PreparedSequence.Step> steps) {
+        PreparedEmote first = steps.stream()
+            .filter(PreparedSequence.AnimationStep.class::isInstance)
+            .map(PreparedSequence.AnimationStep.class::cast)
             .flatMap(step -> step.candidates().stream())
             .filter(PreparedSequence.AnimationChoice.class::isInstance)
             .map(PreparedSequence.AnimationChoice.class::cast)
@@ -65,16 +22,16 @@ final class SequenceNodeLayout {
             .findFirst()
             .orElseThrow(() -> new IllegalArgumentException("Sequence must reference at least one animation"));
         Map<String, EmoteAnimation.Node> nodes = new LinkedHashMap<>();
-        Map<String, PreparedDisplayData> preparedDisplayData = new LinkedHashMap<>();
+        Map<String, DisplayData> preparedDisplayData = new LinkedHashMap<>();
         for (PreparedSequence.Step step : steps) {
-            if (!(step instanceof PreparedSequence.EmoteStep emoteStep)) {
+            if (!(step instanceof PreparedSequence.AnimationStep emoteStep)) {
                 continue;
             }
             for (PreparedSequence.Choice choice : emoteStep.candidates()) {
                 if (!(choice instanceof PreparedSequence.AnimationChoice animationChoice)) {
                     continue;
                 }
-                PreparedAnimation animation = animationChoice.animation();
+                PreparedEmote animation = animationChoice.animation();
                 if (!first.skinBindings().equals(animation.skinBindings())) {
                     throw new IllegalArgumentException(
                         "Sequence animations must use the same skin layout: " + first.id() + " and " + animation.id()
@@ -84,92 +41,43 @@ final class SequenceNodeLayout {
             }
         }
 
-        EmoteAnimation layoutAnimation = new EmoteAnimation(
-            first.animation().id(),
-            first.animation().metadata(),
-            first.animation().settings(),
+        EmoteAnimation layoutModel = new EmoteAnimation(
+            first.model().id(),
+            first.model().metadata(),
+            first.model().settings(),
             EmoteAnimation.MolangPrograms.empty(),
             nodes,
-            new EmoteAnimation.Timeline(1, Map.of(), EmoteAnimation.Events.empty())
-        );
+            new EmoteAnimation.Timeline(1, Map.of(), EmoteAnimation.Events.empty()), List.of());
         LoadedAnimation loaded = new LoadedAnimation(
             first.sourcePath(),
             first.source().sha256(),
-            layoutAnimation,
+            layoutModel,
             preparedDisplayData
         );
-        return PreparedAnimation.from(loaded, first.skinBindings());
+        return PreparedEmote.from(loaded, first.skinBindings());
     }
 
     private static void mergeNodes(
-        PreparedAnimation first,
-        PreparedAnimation animation,
+        PreparedEmote first,
+        PreparedEmote animation,
         Map<String, EmoteAnimation.Node> nodes,
-        Map<String, PreparedDisplayData> preparedDisplayData
+        Map<String, DisplayData> preparedDisplayData
     ) {
-        animation.animation().nodes().forEach((nodeId, node) -> {
+        animation.model().nodes().forEach((nodeId, node) -> {
             EmoteAnimation.Node existing = nodes.putIfAbsent(nodeId, node);
             if (existing != null && !compatibleNode(existing, node)) {
                 throw new IllegalArgumentException(
                     "Sequence animations must use compatible nodes: " + first.id() + " and " + animation.id()
                 );
             }
-            PreparedDisplayData prepared = animation.source().preparedDisplayData().get(nodeId);
+            DisplayData prepared = animation.source().preparedDisplayData().get(nodeId);
             if (prepared != null) {
                 preparedDisplayData.putIfAbsent(nodeId, prepared);
             }
         });
     }
 
-    private static Map<String, String> partnerNodeIds(Map<String, EmoteAnimation.Node> nodes) {
-        List<String> initiatorIds = nodes.entrySet().stream()
-            .filter(entry -> entry.getValue().space() == EmoteAnimation.NodeSpace.INITIATOR)
-            .map(Map.Entry::getKey)
-            .toList();
-        String prefix = "__partner__";
-        while (initiatorIds.stream().map(prefix::concat).anyMatch(nodes::containsKey)) {
-            prefix += "_";
-        }
-        Map<String, String> ids = new LinkedHashMap<>();
-        for (String initiatorId : initiatorIds) {
-            ids.put(initiatorId, prefix + initiatorId);
-        }
-        return ids;
-    }
-
-    private static EmoteAnimation.Node asPartnerNode(EmoteAnimation.Node node, Map<String, String> partnerIds) {
-        String parentId = node.parentId() == null ? null : partnerIds.get(node.parentId());
-        return switch (node) {
-            case EmoteAnimation.ItemNode item -> new EmoteAnimation.ItemNode(
-                item.visible(),
-                EmoteAnimation.NodeSpace.PARTNER,
-                parentId,
-                item.transform(),
-                item.entityNbt(),
-                item.itemStackNbt(),
-                item.itemDisplay(),
-                item.skin() == null ? null : new EmoteAnimation.Skin(
-                    ParticipantRole.PARTNER,
-                    item.skin().part(),
-                    item.skin().order()
-                )
-            );
-            case EmoteAnimation.BlockNode block -> new EmoteAnimation.BlockNode(
-                block.visible(), EmoteAnimation.NodeSpace.PARTNER, parentId, block.transform(), block.entityNbt(), block.blockStateNbt()
-            );
-            case EmoteAnimation.TextNode text -> new EmoteAnimation.TextNode(
-                text.visible(), EmoteAnimation.NodeSpace.PARTNER, parentId, text.transform(), text.entityNbt(), text.text()
-            );
-            case EmoteAnimation.AnchorNode anchor -> new EmoteAnimation.AnchorNode(
-                EmoteAnimation.NodeSpace.PARTNER, parentId, anchor.transform()
-            );
-        };
-    }
-
     private static boolean compatibleNode(EmoteAnimation.Node first, EmoteAnimation.Node candidate) {
-        if (first.space() != candidate.space()) {
-            return false;
-        }
         return switch (first) {
             case EmoteAnimation.ItemNode item -> candidate instanceof EmoteAnimation.ItemNode other
                 && item.entityNbt().equals(other.entityNbt())
@@ -186,16 +94,4 @@ final class SequenceNodeLayout {
         };
     }
 
-    record Expansion(
-        EmoteAnimation animation,
-        Map<String, PreparedDisplayData> preparedDisplayData,
-        boolean generatedPartner,
-        Map<String, String> partnerNodeIds
-    ) {
-        Expansion {
-            Objects.requireNonNull(animation, "animation");
-            preparedDisplayData = Map.copyOf(preparedDisplayData);
-            partnerNodeIds = Map.copyOf(partnerNodeIds);
-        }
-    }
 }

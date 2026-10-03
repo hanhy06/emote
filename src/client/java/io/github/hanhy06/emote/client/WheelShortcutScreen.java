@@ -33,7 +33,7 @@ public class WheelShortcutScreen extends Screen {
     public WheelShortcutScreen(WheelController controller) {
         super(Component.translatable("screen.emote.shortcuts.title"));
         this.controller = controller;
-        this.initialShortcutIds = List.copyOf(controller.getShortcutIds());
+        this.initialShortcutIds = List.copyOf(controller.shortcuts().selectedIds());
     }
 
     @Override
@@ -93,7 +93,7 @@ public class WheelShortcutScreen extends Screen {
     @Override
     public void onClose() {
         if (!this.accepted) {
-            this.controller.restoreShortcuts(this.initialShortcutIds);
+            this.controller.shortcuts().replaceSelectedIds(this.initialShortcutIds);
         }
         super.onClose();
     }
@@ -144,9 +144,9 @@ public class WheelShortcutScreen extends Screen {
     }
 
     void refreshLists() {
-        this.selectedList.updateEntries(this.controller.getShortcutEmotes());
+        this.selectedList.updateEntries(this.controller.shortcuts().selectedEmotes());
         String query = this.searchBox == null ? "" : this.searchBox.getValue();
-        this.availableList.updateEntries(EmoteQueryService.filterPreservingOrder(this.controller.getAvailableShortcutEmotes(), query));
+        this.availableList.updateEntries(EmoteQueryService.filterPreservingOrder(this.controller.shortcuts().availableEmotes(), query));
     }
 
     private Component fitText(Component text, int maxWidth) {

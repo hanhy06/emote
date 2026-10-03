@@ -9,7 +9,8 @@ public record Config(
     int mineSkinPollIntervalSeconds,
     int mineSkinCacheRetentionDays,
     int mineSkinCacheMaxMiB,
-    int maxActiveDisplayEntities
+    int maxActiveDisplayEntities,
+    String defaultSkin
 ) {
     public static final int CURRENT_SCHEMA_VERSION = 1;
     public static final int DEFAULT_MINESKIN_CACHE_RETENTION_DAYS = 30;
@@ -36,6 +37,10 @@ public record Config(
             throw new IllegalArgumentException("max_active_display_entities must be between 0 and 1048576");
         }
         Objects.requireNonNull(mineSkinApiKey, "mineSkinApiKey");
+        defaultSkin = Objects.requireNonNull(defaultSkin, "defaultSkin").trim();
+        if (!defaultSkin.isEmpty() && !defaultSkin.matches("[A-Za-z0-9_]{1,16}")) {
+            throw new IllegalArgumentException("default_skin must be a Minecraft player name or empty");
+        }
     }
 
     public static Config createDefault() {
@@ -46,7 +51,8 @@ public record Config(
             3,
             DEFAULT_MINESKIN_CACHE_RETENTION_DAYS,
             DEFAULT_MINESKIN_CACHE_MAX_MIB,
-            DEFAULT_MAX_ACTIVE_DISPLAY_ENTITIES
+            DEFAULT_MAX_ACTIVE_DISPLAY_ENTITIES,
+            ""
         );
     }
 }

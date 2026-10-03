@@ -1,12 +1,11 @@
 import {
-  documentNodeSpaces,
   documentPartAssignments,
   documentPartOrders,
   type ConversionDocument,
   type ConversionNode,
 } from "../domain/conversionDocument";
 import type { PreviewAvailability, PreviewNodeTrack, PreviewProjection } from "../domain/previewProjection";
-import type { NodeSpace, PlayerSkinPart } from "../domain/player";
+import type { PlayerSkinPart } from "../domain/player";
 
 type ConversionItemNode = Extract<ConversionNode, { type: "item_display" }>;
 
@@ -30,7 +29,6 @@ export interface PreviewModel {
   parts: PreviewPart[];
   assignments: Record<string, PlayerSkinPart | null>;
   orders: Record<string, number | null>;
-  spaces: Record<string, NodeSpace>;
   hasReviewNodes: boolean;
 }
 
@@ -56,7 +54,6 @@ export function createPreviewModel(
     parts: createPreviewParts(candidates, projection, tick),
     assignments: pickNodeValues(documentPartAssignments(document), scopedNodeIds),
     orders: pickNodeValues(documentPartOrders(document), scopedNodeIds),
-    spaces: pickNodeValues(documentNodeSpaces(document), scopedNodeIds),
     hasReviewNodes: candidates.length > 0,
   };
 }
@@ -102,7 +99,7 @@ function createPreviewParts(
       nodeId: candidate.nodeId,
       partIndex: candidate.partIndex,
       matrix: sourceMatrix,
-      ...(candidate.node.playerHeadConversion ? { conversionMatrix: candidate.node.playerHeadConversion.matrix } : {}),
+      ...(candidate.node.playerHeadConversionMatrix ? { conversionMatrix: candidate.node.playerHeadConversionMatrix } : {}),
     };
   });
 }

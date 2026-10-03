@@ -2,7 +2,6 @@ package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
-import io.github.hanhy06.emote.playback.session.PlaybackSession;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -28,20 +27,12 @@ class PlaybackDisplayLimitTest {
             false
         );
 
-        assertTrue(PlaybackEngine.shouldStopFor(conditions, PlaybackStopReason.JUMPED));
-        assertTrue(PlaybackEngine.shouldStopFor(conditions, PlaybackStopReason.MOUNTED));
-        assertTrue(PlaybackEngine.shouldStopFor(conditions, PlaybackStopReason.ATTACKED));
-        assertFalse(PlaybackEngine.shouldStopFor(conditions, PlaybackStopReason.DAMAGED));
-        assertFalse(PlaybackEngine.shouldStopFor(conditions, PlaybackStopReason.GAME_MODE_CHANGED));
-        assertFalse(PlaybackEngine.shouldStopFor(conditions, PlaybackStopReason.MANUAL));
+        assertTrue(PlayerPlaybackManager.shouldStopFor(conditions, PlaybackStopReason.JUMPED));
+        assertTrue(PlayerPlaybackManager.shouldStopFor(conditions, PlaybackStopReason.MOUNTED));
+        assertTrue(PlayerPlaybackManager.shouldStopFor(conditions, PlaybackStopReason.ATTACKED));
+        assertFalse(PlayerPlaybackManager.shouldStopFor(conditions, PlaybackStopReason.DAMAGED));
+        assertFalse(PlayerPlaybackManager.shouldStopFor(conditions, PlaybackStopReason.GAME_MODE_CHANGED));
+        assertFalse(PlayerPlaybackManager.shouldStopFor(conditions, PlaybackStopReason.MANUAL));
     }
 
-    @Test
-    void followsInitiatorViewWhileOfferingAndWaitingForPartner() {
-        assertTrue(PlaybackEngine.followsInitiatorView(PlaybackSession.State.SOLO));
-        assertTrue(PlaybackEngine.followsInitiatorView(PlaybackSession.State.OFFERING));
-        assertTrue(PlaybackEngine.followsInitiatorView(PlaybackSession.State.WAITING));
-        assertFalse(PlaybackEngine.followsInitiatorView(PlaybackSession.State.MATCHED));
-        assertFalse(PlaybackEngine.followsInitiatorView(PlaybackSession.State.TIMEOUT));
-    }
 }

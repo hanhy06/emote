@@ -1,4 +1,5 @@
-import type { EmoteAnimation } from "./emoteAnimation";
+import { isResourceLocation } from "./resourceLocation";
+import type { EmoteAnimation, EmoteCallback } from "./emoteAnimation";
 import {
   optionalBoolean,
   optionalRecord,
@@ -17,8 +18,6 @@ import {
 const NODE_TYPES = ["anchor", "item_display", "block_display", "text_display"] as const;
 const LOOP_TYPES = ["once", "hold", "loop", "server_sync"] as const;
 const SKIN_PARTS = ["head", "body", "left_arm", "right_arm", "left_leg", "right_leg"] as const;
-const NODE_SPACES = ["scene", "initiator", "partner"] as const;
-const PARTICIPANTS = ["initiator", "partner"] as const;
 
 export function requireEmoteAnimation(value: unknown): EmoteAnimation {
   const root = requireRecord(value, "animation");
@@ -34,7 +33,19 @@ export function requireEmoteAnimation(value: unknown): EmoteAnimation {
   }
   requireSchema4Nodes(root.nodes);
   requireSchema4Timeline(root.timeline);
-  return normalizeSchemaDefaults(root);
+  return normalizeSchemaDefaults({ ...root, ...(root.callbacks === undefined ? {} : { callbacks: parseCallbacks(root.callbacks) }) });
+}
+
+export function parseCallbacks(value: unknown): EmoteCallback[] {
+  if (value === undefined) return [];
+  return requireArray(value, "callbacks").map((value, index) => {
+    const path = `callbacks[${index}]`;
+    const callback = requireRecord(value, path);
+    const name = requireString(callback.name, `${path}.name`);
+    if (!isResourceLocation(name)) throw new Error(`${path}.name must be a Minecraft resource location.`);
+    const payload = callback.payload === undefined ? "" : requireString(callback.payload, `${path}.payload`);
+    return { name, payload };
+  });
 }
 
 function requireMetadata(value: unknown): void {
@@ -62,7 +73,6 @@ function requireSettings(value: unknown): void {
   const playback = requireRecord(settings.playback, "settings.playback");
   requireStringValue(playback.mode, LOOP_TYPES, "settings.playback.mode");
   optionalString(playback.loop_start, "settings.playback.loop_start");
-  optionalString(playback.loop_end, "settings.playback.loop_end");
   optionalString(playback.loop_delay, "settings.playback.loop_delay");
 }
 
@@ -73,7 +83,7 @@ function requireSchema4Nodes(value: unknown): void {
     const node = requireRecord(nodeValue, path);
     const type = requireStringValue(node.type, NODE_TYPES, `${path}.type`);
     optionalString(node.parent, `${path}.parent`);
-    if (node.space !== undefined) requireStringValue(node.space, NODE_SPACES, `${path}.space`);
+    if (node.space !== undefined) throw new Error(`${path}.space is no longer supported.`);
     requireLocalTransform(node.transform, `${path}.transform`);
     if (type === "anchor") {
       optionalAnchorFields(node, path);
@@ -87,9 +97,7 @@ function requireSchema4Nodes(value: unknown): void {
       const skin = optionalRecord(node.skin, `${path}.skin`);
       if (skin) {
         requireStringValue(skin.part, SKIN_PARTS, `${path}.skin.part`);
-        if (skin.participant !== undefined && skin.participant !== null) {
-          requireStringValue(skin.participant, PARTICIPANTS, `${path}.skin.participant`);
-        }
+        if (skin.participant !== undefined) throw new Error(`${path}.skin.participant is no longer supported.`);
         requireNumber(skin.order, `${path}.skin.order`);
       }
     } else if (type === "block_display") {
@@ -101,14 +109,7 @@ function requireSchema4Nodes(value: unknown): void {
 }
 
 function normalizeSchemaDefaults(root: RuntimeRecord): EmoteAnimation {
-  const nodes = root.nodes as RuntimeRecord;
-  const normalizedNodes = Object.fromEntries(Object.entries(nodes).map(([nodeId, nodeValue]) => {
-    const node = nodeValue as RuntimeRecord;
-    const skin = node.skin as RuntimeRecord | undefined;
-    if (!skin || (skin.participant !== undefined && skin.participant !== null)) return [nodeId, node];
-    return [nodeId, { ...node, skin: { ...skin, participant: "initiator" } }];
-  }));
-  return { ...root, nodes: normalizedNodes } as unknown as EmoteAnimation;
+  return root as unknown as EmoteAnimation;
 }
 
 function requireLocalTransform(value: unknown, path: string): void {
@@ -194,18 +195,19 @@ function requireEvents(value: unknown, path: string, timeline: boolean): void {
     const eventPath = `${path}[${index}]`;
     const event = requireRecord(eventValue, eventPath);
     if (timeline) requireString(event.time, `${eventPath}.time`);
-    requireEventSource(event.source, `${eventPath}.source`);
-    requireEventOrigin(event.origin, `${eventPath}.origin`);
-    requireStringArray(event.commands, `${eventPath}.commands`);
-    if (event.callbacks !== undefined) {
-      requireArray(event.callbacks, `${eventPath}.callbacks`).forEach((callbackValue, callbackIndex) => {
-        const callbackPath = `${eventPath}.callbacks[${callbackIndex}]`;
-        const callback = requireRecord(callbackValue, callbackPath);
-        requireString(callback.name, `${callbackPath}.name`);
-        optionalString(callback.payload, `${callbackPath}.payload`);
-      });
-    }
+    requireEventBody(event, eventPath);
+    const origin = event.origin as RuntimeRecord;
+    if (origin.offset !== undefined) requireNumberArray(origin.offset, `${eventPath}.origin.offset`);
   });
+}
+
+export function requireEventBody(value: unknown, path: string): RuntimeRecord {
+  const event = requireRecord(value, path);
+  requireEventSource(event.source, `${path}.source`);
+  requireEventOrigin(event.origin, `${path}.origin`);
+  requireStringArray(event.commands, `${path}.commands`);
+  if ("callbacks" in event) throw new Error(`${path}.callbacks is no longer supported.`);
+  return event;
 }
 
 function requireEventSource(value: unknown, path: string): void {
@@ -218,5 +220,4 @@ function requireEventOrigin(value: unknown, path: string): void {
   const origin = requireRecord(value, path);
   const type = requireStringValue(origin.type, ["root", "node"] as const, `${path}.type`);
   if (type === "node") requireString(origin.node, `${path}.node`);
-  if (origin.offset !== undefined) requireNumberArray(origin.offset, `${path}.offset`);
 }

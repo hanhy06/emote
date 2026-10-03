@@ -41,7 +41,7 @@ export function createBlockbenchNativeRuntime(options: BlockbenchNativeRuntimeOp
     const { animators, blendWeight, durationTicks, startDelayTicks } = source;
     const sceneId = options.runtimeSceneId;
     const nodes: Record<string, RuntimeNode> = {
-      [sceneId]: { type: "anchor", space: "initiator", transform: { ...IDENTITY_TRANSFORM, scale: [PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE] } },
+      [sceneId]: { type: "anchor", transform: { ...IDENTITY_TRANSFORM, scale: [PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE] } },
     };
     const tracks: Record<string, RuntimeNodeTracks> = {};
     const editorNodeByRuntimeNode: Record<string, string> = {};
@@ -81,7 +81,7 @@ export function createBlockbenchNativeRuntime(options: BlockbenchNativeRuntimeOp
     }
     if (scale) tracks[`${bone.id}_x`] = { ...tracks[`${bone.id}_x`], scale };
     }
-    return { nodes, tracks, bindings: { editorNodeByRuntimeNode, editorSpaceGroupByRuntimeRoot: { [sceneId]: sceneId } } };
+    return { nodes, tracks, bindings: editorNodeByRuntimeNode };
   };
 }
 

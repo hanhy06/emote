@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.server;
 
+import io.github.hanhy06.emote.content.LoadedSequence;
+
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.config.ConfigManager;
@@ -120,7 +122,7 @@ public final class ReloadService {
             .filter(Objects::nonNull)
             .toList();
         var animationsById = emotes.stream().collect(Collectors.toMap(
-            PreparedAnimation::id,
+            PreparedEmote::id,
             Function.identity()
         ));
         var sequences = contents.sequences().stream()
@@ -144,9 +146,9 @@ public final class ReloadService {
         return new ReloadStats(prepared.detectedFileCount(), this.emoteCatalog.fileEmotes().size(), ReloadResult.Failure.NONE);
     }
 
-    private PreparedAnimation prepareAnimation(LoadedAnimation animation) {
+    private PreparedEmote prepareAnimation(LoadedAnimation animation) {
         try {
-            return PreparedAnimation.from(animation);
+            return PreparedEmote.from(animation);
         } catch (IllegalArgumentException exception) {
             EmoteMod.LOGGER.warn("Ignoring invalid emote animation {}: {}", animation.sourcePath(), exception.getMessage());
             return null;
@@ -154,8 +156,8 @@ public final class ReloadService {
     }
 
     private PreparedSequence resolveSequence(
-        EmoteSequence sequence,
-        Map<String, PreparedAnimation> animationsById
+        LoadedSequence sequence,
+        Map<String, PreparedEmote> animationsById
     ) {
         try {
             return PreparedSequence.resolve(sequence, animationsById);

@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.skin;
 
+import java.util.Map;
 import io.github.hanhy06.emote.config.ConfigListener;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
@@ -15,11 +16,18 @@ public interface PlayerSkinProvider extends ConfigListener {
 
     void cancelPendingBakes();
 
+    default void setDefaultRegions(Set<PlayerSkinRegion> regions) {}
+
+    default void setDefaultSource(PlayerSkinSource source) {}
+
+    default Map<PlayerSkinRegion, String> defaultSkin() { return null; }
+
     default SkinProcessingStats processingStats() {
         return SkinProcessingStats.unavailable();
     }
 
     interface Listener {
+        default void onDefaultReady() {}
         default void onReady(UUID playerUuid) {
         }
 

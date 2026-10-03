@@ -9,7 +9,7 @@ import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.PlayableEmote;
 import io.github.hanhy06.emote.permission.PermissionService;
-import io.github.hanhy06.emote.playback.PlaybackEngine;
+import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.server.ReloadResult;
 import io.github.hanhy06.emote.server.ReloadService;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
@@ -30,7 +30,7 @@ import java.util.Map;
 
 public final class AdminCommand {
     private final EmoteCatalog emoteCatalog;
-    private final PlaybackEngine playbackEngine;
+    private final PlayerPlaybackManager playerPlaybackManager;
     private final PermissionService permissionService;
     private final ReloadService reloadService;
     private final ConfigManager configManager;
@@ -39,22 +39,22 @@ public final class AdminCommand {
 
     public AdminCommand(
         EmoteCatalog emoteCatalog,
-        PlaybackEngine playbackEngine,
+        PlayerPlaybackManager playerPlaybackManager,
         PermissionService permissionService,
         ReloadService reloadService,
         ConfigManager configManager,
         PlayerSkinManager playerSkinManager
     ) {
         this.emoteCatalog = emoteCatalog;
-        this.playbackEngine = playbackEngine;
+        this.playerPlaybackManager = playerPlaybackManager;
         this.permissionService = permissionService;
         this.reloadService = reloadService;
         this.configManager = configManager;
         this.playerSkinManager = playerSkinManager;
-        this.stressTestCommand = new StressTestCommand(emoteCatalog, playbackEngine, permissionService);
+        this.stressTestCommand = new StressTestCommand(emoteCatalog, playerPlaybackManager, permissionService);
     }
 
-    void attachTo(LiteralArgumentBuilder<CommandSourceStack> root) {
+    public void attachTo(LiteralArgumentBuilder<CommandSourceStack> root) {
         root.then(createInfoCommand())
             .then(createListCommand())
             .then(createReloadCommand())
@@ -73,9 +73,9 @@ public final class AdminCommand {
     private int info(CommandSourceStack source) {
         SkinProcessingStats skinStats = this.playerSkinManager.processingStats();
         AdminInfoSnapshot snapshot = new AdminInfoSnapshot(
-            this.playbackEngine.activeSessionCount(),
-            this.playbackEngine.activeParticipantCount(),
-            this.playbackEngine.activeDisplayEntityCount(),
+            this.playerPlaybackManager.engine().activeSessionCount(),
+            this.playerPlaybackManager.activePlayerCount(),
+            this.playerPlaybackManager.engine().activeDisplayEntityCount(),
             this.configManager.getConfig().maxActiveDisplayEntities(),
             skinStats,
             this.emoteCatalog.size(),
@@ -304,7 +304,7 @@ public final class AdminCommand {
         int stoppedCount = 0;
 
         for (ServerPlayer player : players) {
-            var session = this.playbackEngine.stop(player);
+            var session = this.playerPlaybackManager.stop(player);
             if (session == null) {
                 if (players.size() == 1) {
                     source.sendFailure(Component.literal(player.getName().getString() + " is not playing an emote."));
@@ -312,8 +312,8 @@ public final class AdminCommand {
                 continue;
             }
 
-            PlayableEmote emote = this.emoteCatalog.find(session.id());
-            String displayName = emote == null ? session.id() : emote.name();
+            PlayableEmote emote = this.emoteCatalog.find(session.emoteId());
+            String displayName = emote == null ? session.emoteId() : emote.name();
             source.sendSuccess(
                 () -> Component.literal("Stopped " + displayName + " for " + player.getName().getString() + "."),
                 true
@@ -343,7 +343,7 @@ public final class AdminCommand {
             return 0;
         }
         if (!enabled) {
-            this.playbackEngine.stopById(id);
+            this.playerPlaybackManager.engine().stopById(id);
         }
 
         this.reloadService.reload();

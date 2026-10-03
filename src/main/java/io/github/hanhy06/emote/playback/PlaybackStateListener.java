@@ -1,17 +1,11 @@
 package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.api.PlaybackStopReason;
-import io.github.hanhy06.emote.playback.session.PlaybackParticipant;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
 import net.minecraft.server.level.ServerPlayer;
 
-import java.util.UUID;
-
 public interface PlaybackStateListener {
-    void onStarted(ServerPlayer player, PlaybackSession session, PlaybackParticipant participant);
+    void onStarted(ServerPlayer player, PlaybackSession session, PlayerPlaybackState playerState);
 
-    void onStopped(ServerPlayer player, PlaybackSession session, PlaybackParticipant participant, PlaybackStopReason reason);
-
-    default void onReservationReleased(UUID playerUuid, String emoteId) {
-    }
+    void onStopped(ServerPlayer player, PlaybackSession session, PlayerPlaybackState playerState, PlaybackStopReason reason);
 }

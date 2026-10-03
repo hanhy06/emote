@@ -1,9 +1,10 @@
 package io.github.hanhy06.emote.api.animation;
 
+import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
+import net.minecraft.world.phys.Vec3;
 import com.google.gson.JsonElement;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
-import io.github.hanhy06.emote.api.ParticipantRole;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 
@@ -17,7 +18,8 @@ public record EmoteAnimation(
     Settings settings,
     MolangPrograms molang,
     Map<String, Node> nodes,
-    Timeline timeline
+    Timeline timeline,
+    List<Callback> callbacks
 ) {
     public EmoteAnimation {
         Objects.requireNonNull(id, "id");
@@ -26,6 +28,14 @@ public record EmoteAnimation(
         Objects.requireNonNull(molang, "molang");
         nodes = Map.copyOf(nodes);
         Objects.requireNonNull(timeline, "timeline");
+        callbacks = List.copyOf(callbacks);
+    }
+
+    public record Callback(Identifier name, String payload) {
+        public Callback {
+            Objects.requireNonNull(name, "name");
+            Objects.requireNonNull(payload, "payload");
+        }
     }
 
     public record MolangPrograms(String initialize, String tick) {
@@ -57,26 +67,17 @@ public record EmoteAnimation(
         }
     }
 
-    public record PlaybackSettings(LoopMode mode, int loopStartTicks, int loopEndTicks, int loopDelayTicks) {
+    public record PlaybackSettings(LoopMode mode, int loopStartTicks, int loopDelayTicks) {
         public PlaybackSettings {
             Objects.requireNonNull(mode, "mode");
             if (loopStartTicks < 0) {
                 throw new IllegalArgumentException("loop start must not be negative");
-            }
-            if (loopEndTicks < 0) {
-                throw new IllegalArgumentException("loop end must not be negative");
             }
             if (loopDelayTicks < 0) {
                 throw new IllegalArgumentException("loop delay must not be negative");
             }
             if (mode != LoopMode.LOOP && loopStartTicks != 0) {
                 throw new IllegalArgumentException("loop start must be zero unless playback mode is loop");
-            }
-            if (mode != LoopMode.LOOP && loopEndTicks != 0) {
-                throw new IllegalArgumentException("loop end must be zero unless playback mode is loop");
-            }
-            if (mode == LoopMode.LOOP && loopEndTicks <= loopStartTicks) {
-                throw new IllegalArgumentException("loop end must be after loop start");
             }
             if ((mode == LoopMode.ONCE || mode == LoopMode.HOLD) && loopDelayTicks != 0) {
                 throw new IllegalArgumentException("loop delay must be zero when playback mode is once or hold");
@@ -85,8 +86,6 @@ public record EmoteAnimation(
     }
 
     public sealed interface Node permits ItemNode, BlockNode, TextNode, AnchorNode {
-        NodeSpace space();
-
         String parentId();
 
         LocalTransform transform();
@@ -102,7 +101,6 @@ public record EmoteAnimation(
 
     public record ItemNode(
         boolean visible,
-        NodeSpace space,
         String parentId,
         LocalTransform transform,
         CompoundTag entityNbt,
@@ -111,7 +109,6 @@ public record EmoteAnimation(
         Skin skin
     ) implements Node {
         public ItemNode {
-            Objects.requireNonNull(space, "space");
             Objects.requireNonNull(transform, "transform");
             entityNbt = copy(entityNbt);
             itemStackNbt = copy(itemStackNbt);
@@ -121,14 +118,12 @@ public record EmoteAnimation(
 
     public record BlockNode(
         boolean visible,
-        NodeSpace space,
         String parentId,
         LocalTransform transform,
         CompoundTag entityNbt,
         CompoundTag blockStateNbt
     ) implements Node {
         public BlockNode {
-            Objects.requireNonNull(space, "space");
             Objects.requireNonNull(transform, "transform");
             entityNbt = copy(entityNbt);
             blockStateNbt = copy(blockStateNbt);
@@ -137,14 +132,12 @@ public record EmoteAnimation(
 
     public record TextNode(
         boolean visible,
-        NodeSpace space,
         String parentId,
         LocalTransform transform,
         CompoundTag entityNbt,
         JsonElement text
     ) implements Node {
         public TextNode {
-            Objects.requireNonNull(space, "space");
             Objects.requireNonNull(transform, "transform");
             entityNbt = copy(entityNbt);
             text = Objects.requireNonNull(text, "text").deepCopy();
@@ -157,12 +150,10 @@ public record EmoteAnimation(
     }
 
     public record AnchorNode(
-        NodeSpace space,
         String parentId,
         LocalTransform transform
     ) implements Node {
         public AnchorNode {
-            Objects.requireNonNull(space, "space");
             Objects.requireNonNull(transform, "transform");
         }
     }
@@ -178,36 +169,13 @@ public record EmoteAnimation(
 
     }
 
-    public enum NodeSpace {
-        SCENE,
-        INITIATOR,
-        PARTNER;
-
-        public static NodeSpace forParticipant(ParticipantRole participant) {
-            return switch (participant) {
-                case INITIATOR -> INITIATOR;
-                case PARTNER -> PARTNER;
-            };
-        }
-    }
-
-    public record Skin(ParticipantRole participant, SkinPart part, int order) {
+    public record Skin(PlayerSkinPart part, int order) {
         public Skin {
-            Objects.requireNonNull(participant, "participant");
             Objects.requireNonNull(part, "part");
             if (order < 0) {
                 throw new IllegalArgumentException("skin order must not be negative");
             }
         }
-    }
-
-    public enum SkinPart {
-        HEAD,
-        BODY,
-        LEFT_ARM,
-        RIGHT_ARM,
-        LEFT_LEG,
-        RIGHT_LEG
     }
 
     public record Timeline(
@@ -309,9 +277,10 @@ public record EmoteAnimation(
 
     }
 
-    public record MolangNbtValue(MolangValue expression) implements NbtValue {
+    public record MolangNbtValue(String source, String path) implements NbtValue {
         public MolangNbtValue {
-            Objects.requireNonNull(expression, "expression");
+            Objects.requireNonNull(source, "source");
+            Objects.requireNonNull(path, "path");
         }
     }
 
@@ -392,32 +361,23 @@ public record EmoteAnimation(
         }
     }
 
-    public record Event(CommandSource source, CommandOrigin origin, List<String> commands, List<Callback> callbacks) {
+    public record Event(CommandSource source, CommandOrigin origin, List<String> commands) {
         public Event {
             Objects.requireNonNull(source, "source");
             Objects.requireNonNull(origin, "origin");
             commands = List.copyOf(commands);
-            callbacks = List.copyOf(callbacks);
         }
     }
 
-    public record TimelineEvent(int tick, CommandSource source, CommandOrigin origin, List<String> commands, List<Callback> callbacks) {
+    public record TimelineEvent(int tick, CommandSource source, CommandOrigin origin, List<String> commands) {
         public TimelineEvent {
             Objects.requireNonNull(source, "source");
             Objects.requireNonNull(origin, "origin");
             commands = List.copyOf(commands);
-            callbacks = List.copyOf(callbacks);
         }
 
         public Event event() {
-            return new Event(this.source, this.origin, this.commands, this.callbacks);
-        }
-    }
-
-    public record Callback(Identifier name, String payload) {
-        public Callback {
-            Objects.requireNonNull(name, "name");
-            Objects.requireNonNull(payload, "payload");
+            return new Event(this.source, this.origin, this.commands);
         }
     }
 
@@ -443,10 +403,6 @@ public record EmoteAnimation(
     public enum OriginType {
         ROOT,
         NODE
-    }
-
-    public record Vec3(double x, double y, double z) {
-        public static final Vec3 ZERO = new Vec3(0.0D, 0.0D, 0.0D);
     }
 
     private static CompoundTag copy(CompoundTag tag) {

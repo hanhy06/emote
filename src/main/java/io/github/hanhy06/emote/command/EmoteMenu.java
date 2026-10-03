@@ -7,7 +7,7 @@ import io.github.hanhy06.emote.application.EmoteSummary;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.PlayableEmote;
-import io.github.hanhy06.emote.playback.PlaybackEngine;
+import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
 import net.minecraft.core.Holder;
 import net.minecraft.network.chat.ClickEvent;
@@ -37,18 +37,18 @@ public final class EmoteMenu {
     private final ConfigManager configManager;
     private final EmoteCatalog emoteCatalog;
     private final EmoteQueryService emoteQueryService;
-    private final PlaybackEngine playbackEngine;
+    private final PlayerPlaybackManager playerPlaybackManager;
 
     public EmoteMenu(
         ConfigManager configManager,
         EmoteCatalog emoteCatalog,
         EmoteQueryService emoteQueryService,
-        PlaybackEngine playbackEngine
+        PlayerPlaybackManager playerPlaybackManager
     ) {
         this.configManager = configManager;
         this.emoteCatalog = emoteCatalog;
         this.emoteQueryService = emoteQueryService;
-        this.playbackEngine = playbackEngine;
+        this.playerPlaybackManager = playerPlaybackManager;
     }
 
     public void open(ServerPlayer player, int pageNumber) {
@@ -188,7 +188,7 @@ public final class EmoteMenu {
             return "No emotes.";
         }
 
-        PlaybackSession session = this.playbackEngine.findActive(player.getUUID());
+        PlaybackSession session = this.playerPlaybackManager.findActive(player.getUUID());
         String activeEmoteText = session == null
             ? ""
             : createActivePlaybackText(session);
@@ -215,9 +215,9 @@ public final class EmoteMenu {
     }
 
     private String createActivePlaybackText(PlaybackSession session) {
-        PlayableEmote emote = this.emoteCatalog.find(session.id());
+        PlayableEmote emote = this.emoteCatalog.find(session.emoteId());
         String displayName = emote == null
-            ? session.id()
+            ? session.emoteId()
             : emote.name();
         return " Active: " + displayName;
     }

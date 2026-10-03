@@ -1,12 +1,17 @@
 import type { Matrix16 } from "../domain/matrix";
-import type { NodeSpace, Participant, PlayerSkinPart } from "../domain/player";
+import type { PlayerSkinPart } from "../domain/player";
 
 export type { Matrix16 } from "../domain/matrix";
-export type { NodeSpace, Participant, PlayerSkinPart } from "../domain/player";
+export type { PlayerSkinPart } from "../domain/player";
 
 export type Vec3 = readonly [number, number, number];
 export type MolangScalar = number | string;
 export type MinecraftTime = string;
+
+export interface EmoteCallback {
+  name: string;
+  payload?: string;
+}
 
 export interface EmoteAnimation {
   type: "animation";
@@ -18,6 +23,7 @@ export interface EmoteAnimation {
   molang?: { initialize?: string; tick?: string };
   nodes: Record<string, EmoteNode>;
   timeline: EmoteTimeline;
+  callbacks?: EmoteCallback[];
 }
 
 export interface EmoteMetadata {
@@ -35,7 +41,6 @@ export interface EmoteAnimationSettings {
   playback: {
     mode: "once" | "hold" | "loop" | "server_sync";
     loop_start?: MinecraftTime;
-    loop_end?: MinecraftTime;
     loop_delay?: MinecraftTime;
   };
 }
@@ -76,7 +81,7 @@ export interface LocalTransform {
 
 interface EmoteNodeBase {
   parent?: string;
-  space?: NodeSpace;
+
   transform: LocalTransform;
 }
 
@@ -90,7 +95,7 @@ export type EmoteNode =
     type: "item_display";
     item_stack_snbt: string;
     item_display: string;
-    skin?: { participant: Participant; part: PlayerSkinPart; order: number };
+    skin?: { part: PlayerSkinPart; order: number };
   })
   | (EmoteDisplayNodeBase & { type: "block_display"; block_state_snbt: string })
   | (EmoteDisplayNodeBase & { type: "text_display"; text: unknown })
@@ -159,12 +164,6 @@ export interface EmoteEvent {
   origin: { type: "root"; offset?: readonly [number, number, number] }
     | { type: "node"; node: string; offset?: readonly [number, number, number] };
   commands: string[];
-  callbacks?: EmoteCallback[];
-}
-
-export interface EmoteCallback {
-  name: string;
-  payload?: string;
 }
 
 export interface EmoteTimelineEvent extends EmoteEvent {

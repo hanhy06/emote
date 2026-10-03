@@ -5,8 +5,9 @@ import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.application.PlaybackCooldownService;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.network.WheelSyncService;
-import io.github.hanhy06.emote.playback.PlaybackEngine;
+import io.github.hanhy06.emote.playback.EntityPlaybackManager;
 import io.github.hanhy06.emote.playback.PlaybackHooks;
+import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
@@ -18,8 +19,8 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.Entity;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,7 +30,8 @@ public class ServerLifecycle {
     private final PlayerSkinManager playerSkinManager;
     private final PlaybackCooldownService cooldowns;
     private final EmoteCatalog emoteCatalog;
-    private final PlaybackEngine playbackEngine;
+    private final PlayerPlaybackManager playerPlaybackManager;
+    private final EntityPlaybackManager entityPlayback;
     private final ReloadService reloadService;
     private final WheelSyncService wheelSyncService;
     private final IdlePlaybackService idlePlaybackService;
@@ -39,7 +41,8 @@ public class ServerLifecycle {
         PlayerSkinManager playerSkinManager,
         PlaybackCooldownService cooldowns,
         EmoteCatalog emoteCatalog,
-        PlaybackEngine playbackEngine,
+        PlayerPlaybackManager playerPlaybackManager,
+        EntityPlaybackManager entityPlayback,
         ReloadService reloadService,
         WheelSyncService wheelSyncService,
         IdlePlaybackService idlePlaybackService,
@@ -48,7 +51,8 @@ public class ServerLifecycle {
         this.playerSkinManager = playerSkinManager;
         this.cooldowns = cooldowns;
         this.emoteCatalog = emoteCatalog;
-        this.playbackEngine = playbackEngine;
+        this.playerPlaybackManager = playerPlaybackManager;
+        this.entityPlayback = entityPlayback;
         this.reloadService = reloadService;
         this.wheelSyncService = wheelSyncService;
         this.idlePlaybackService = idlePlaybackService;
@@ -60,18 +64,19 @@ public class ServerLifecycle {
         ServerLifecycleEvents.SERVER_STOPPING.register(this::handleServerStopping);
         ServerLifecycleEvents.SERVER_STOPPED.register(this::handleServerStopped);
         ServerTickEvents.END_SERVER_TICK.register(ignoredServer -> {
-            this.playbackEngine.tick();
+            this.entityPlayback.tick();
+            this.playerPlaybackManager.engine().tick();
             this.idlePlaybackService.tick();
         });
-        PlaybackHooks.INTERRUPTION.register(this.playbackEngine::interrupt);
+        PlaybackHooks.INTERRUPTION.register(this.playerPlaybackManager::interrupt);
         ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, ignoredSource, ignoredBaseDamage, damageTaken, ignoredBlocked) -> {
             if (damageTaken > 0.0F && entity instanceof ServerPlayer player) {
-                this.playbackEngine.interrupt(player, PlaybackStopReason.DAMAGED);
+                this.playerPlaybackManager.interrupt(player, PlaybackStopReason.DAMAGED);
             }
         });
         AttackEntityCallback.EVENT.register((player, ignoredLevel, ignoredHand, ignoredEntity, ignoredHitResult) -> {
             if (player instanceof ServerPlayer serverPlayer) {
-                this.playbackEngine.interrupt(serverPlayer, PlaybackStopReason.ATTACKED);
+                this.playerPlaybackManager.interrupt(serverPlayer, PlaybackStopReason.ATTACKED);
             }
             return InteractionResult.PASS;
         });
@@ -90,12 +95,12 @@ public class ServerLifecycle {
         ServerPlayConnectionEvents.DISCONNECT.register(
             (handler, ignoredServer) -> {
                 if (EmoteMod.SERVER.isSameThread()) {
-                    this.playbackEngine.stop(handler.player, PlaybackStopReason.DISCONNECTED);
+                    this.playerPlaybackManager.stop(handler.player, PlaybackStopReason.DISCONNECTED);
                     this.idlePlaybackService.removePlayer(handler.player);
                     this.playerSkinManager.removePlayer(handler.player.getUUID());
                 } else {
                     EmoteMod.SERVER.execute(() -> {
-                        this.playbackEngine.stop(handler.player, PlaybackStopReason.DISCONNECTED);
+                        this.playerPlaybackManager.stop(handler.player, PlaybackStopReason.DISCONNECTED);
                         this.idlePlaybackService.removePlayer(handler.player);
                         this.playerSkinManager.removePlayer(handler.player.getUUID());
                     });
@@ -126,12 +131,11 @@ public class ServerLifecycle {
     }
 
     private void handleServerStopping(MinecraftServer ignoredServer) {
-        this.playbackEngine.stopAll(PlaybackStopReason.SERVER_STOPPING);
+        this.playerPlaybackManager.engine().stopAll(PlaybackStopReason.SERVER_STOPPING);
         this.cooldowns.clear();
-        int removedApiEmotes = this.emoteCatalog.clearApiRegistrations();
+        this.emoteCatalog.clearApiRegistrations();
         this.idlePlaybackService.clear();
         this.playerSkinManager.cancelPendingBakes();
-        EmoteMod.LOGGER.info("Cleared {} API emotes during server shutdown", removedApiEmotes);
     }
 
     private void handleServerStopped(MinecraftServer ignoredServer) {

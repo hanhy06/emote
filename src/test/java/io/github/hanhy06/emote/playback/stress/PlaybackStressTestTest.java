@@ -90,13 +90,6 @@ class PlaybackStressTestTest {
     }
 
     @Test
-    void completesOnlyAfterTheRequestedTickDuration() {
-        assertFalse(PlaybackStressTest.hasCompletedDuration(199, 200));
-        assertTrue(PlaybackStressTest.hasCompletedDuration(200, 200));
-        assertTrue(PlaybackStressTest.hasCompletedDuration(201, 200));
-    }
-
-    @Test
     void includesEndServerTickProcessingInTheCurrentServerTickSample() {
         long[] tickTimesNanos = new long[100];
         tickTimesNanos[41] = 8_000_000L;

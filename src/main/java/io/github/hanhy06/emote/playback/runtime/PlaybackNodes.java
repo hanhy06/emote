@@ -1,37 +1,29 @@
 package io.github.hanhy06.emote.playback.runtime;
 
+import io.github.hanhy06.emote.content.DisplayData;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.content.PreparedAnimation;
-import net.minecraft.network.chat.Component;
+import io.github.hanhy06.emote.content.PreparedEmote;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4fc;
 
 import java.util.*;
 
 public final class PlaybackNodes {
-    private final EnumMap<EmoteAnimation.NodeSpace, RootTransform> spaces;
+    private RootTransform root;
     private final Map<String, NodeInstance> nodes;
     private final int displayEntityCount;
-    private final EnumSet<EmoteAnimation.NodeSpace> activeSpaces = EnumSet.of(
-        EmoteAnimation.NodeSpace.SCENE,
-        EmoteAnimation.NodeSpace.INITIATOR
-    );
     private final Map<String, Boolean> requestedVisibility = new HashMap<>();
 
     private float viewYaw;
 
-    public PlaybackNodes(Map<EmoteAnimation.NodeSpace, RootTransform> spaces, Map<String, NodeInstance> nodes) {
-        EnumMap<EmoteAnimation.NodeSpace, RootTransform> requiredSpaces = new EnumMap<>(EmoteAnimation.NodeSpace.class);
-        requiredSpaces.putAll(spaces);
-        for (EmoteAnimation.NodeSpace space : EmoteAnimation.NodeSpace.values()) {
-            Objects.requireNonNull(requiredSpaces.get(space), "Missing root for node space " + space);
-        }
-        this.spaces = requiredSpaces;
+    public PlaybackNodes(RootTransform root, Map<String, NodeInstance> nodes) {
+        this.root = Objects.requireNonNull(root, "root");
         this.nodes = Map.copyOf(nodes);
         this.displayEntityCount = (int) nodes.values().stream()
             .filter(node -> !(node.node() instanceof EmoteAnimation.AnchorNode))
@@ -41,22 +33,13 @@ public final class PlaybackNodes {
     }
 
     public RootTransform root() {
-        return root(EmoteAnimation.NodeSpace.SCENE);
-    }
-
-    public RootTransform root(EmoteAnimation.NodeSpace space) {
-        return this.spaces.get(Objects.requireNonNull(space, "space"));
+        return this.root;
     }
 
     public boolean moveSceneTo(Vec3 position) {
-        Vec3 movement = Objects.requireNonNull(position, "position").subtract(root().position());
-        if (movement.equals(Vec3.ZERO)) {
-            return false;
-        }
-        for (Map.Entry<EmoteAnimation.NodeSpace, RootTransform> entry : this.spaces.entrySet()) {
-            RootTransform root = entry.getValue();
-            entry.setValue(RootTransform.create(root.position().add(movement), root.yaw()));
-        }
+        Objects.requireNonNull(position, "position");
+        if (position.equals(this.root.position())) return false;
+        this.root = RootTransform.create(position, this.root.yaw());
         return true;
     }
 
@@ -69,20 +52,18 @@ public final class PlaybackNodes {
     }
 
     public Transformation displayTransformation(
-        EmoteAnimation.NodeSpace space,
-        PreparedAnimation.PreparedTransform transform
+        PreparedEmote.PreparedTransform transform
     ) {
         Objects.requireNonNull(transform, "transform");
-        return root(Objects.requireNonNull(space, "space")).displayTransformation(transform);
+        return root().displayTransformation(transform);
     }
 
     public Transformation displayTransformation(
-        EmoteAnimation.NodeSpace space,
         Matrix4fc matrix,
         boolean preserveMatrix
     ) {
         Objects.requireNonNull(matrix, "matrix");
-        return root(Objects.requireNonNull(space, "space")).displayTransformation(matrix, preserveMatrix);
+        return root().displayTransformation(matrix, preserveMatrix);
     }
 
     public boolean requestVisibility(String nodeId, boolean visible) {
@@ -93,15 +74,11 @@ public final class PlaybackNodes {
 
     boolean effectiveVisibility(String nodeId) {
         NodeInstance node = Objects.requireNonNull(this.nodes.get(nodeId), "Unknown node " + nodeId);
-        return this.requestedVisibility.getOrDefault(nodeId, false) && this.activeSpaces.contains(node.node().space());
+        return this.requestedVisibility.getOrDefault(nodeId, false);
     }
 
-    void activateSpace(EmoteAnimation.NodeSpace space) {
-        this.activeSpaces.add(Objects.requireNonNull(space, "space"));
-    }
-
-    public float orientationYaw(EmoteAnimation.NodeSpace space) {
-        return space == EmoteAnimation.NodeSpace.SCENE ? this.viewYaw : root(space).yaw();
+    public float orientationYaw() {
+        return Mth.wrapDegrees(root().yaw() + root().relativeYaw(this.viewYaw));
     }
 
     public float viewYaw() {
@@ -127,13 +104,15 @@ public final class PlaybackNodes {
         private final EmoteAnimation.Node node;
         private final Display entity;
 
-        private DisplayContent displayContent;
+        private DisplayData displayContent;
+        private CompoundTag initialEntityData = new CompoundTag();
+        private final Set<String> modifiedNbtFields = new HashSet<>();
 
         public NodeInstance(
             String id,
             EmoteAnimation.Node node,
             Display entity,
-            DisplayContent displayContent
+            DisplayData displayContent
         ) {
             this.id = Objects.requireNonNull(id, "id");
             this.node = Objects.requireNonNull(node, "node");
@@ -153,19 +132,50 @@ public final class PlaybackNodes {
             return this.entity;
         }
 
-        public DisplayContent displayContent() {
+        public DisplayData displayContent() {
             return this.displayContent;
         }
 
         public void setItemStack(ItemStack itemStack) {
-            if (!(this.displayContent instanceof ItemContent)) {
+            if (!(this.displayContent instanceof DisplayData.Item item)) {
                 throw new IllegalStateException("Node is not an item display: " + this.id);
             }
-            this.displayContent = new ItemContent(Objects.requireNonNull(itemStack, "itemStack"));
+            this.displayContent = new DisplayData.Item(Objects.requireNonNull(itemStack, "itemStack"), item.itemDisplay());
         }
 
-        void setDisplayContent(DisplayContent displayContent) {
+        void setDisplayContent(DisplayData displayContent) {
             this.displayContent = Objects.requireNonNull(displayContent, "displayContent");
+        }
+
+        void setInitialEntityData(CompoundTag data) {
+            this.initialEntityData = data.copy();
+        }
+
+        CompoundTag initialEntityData() {
+            return this.initialEntityData.copy();
+        }
+
+        void setInitialItem(Tag item) {
+            this.initialEntityData.put("item", item.copy());
+        }
+
+        void recordNbtFields(CompoundTag patch) {
+            this.modifiedNbtFields.addAll(patch.keySet());
+        }
+
+        Set<String> restoreNbtFields(CompoundTag current) {
+            Set<String> restored = Set.copyOf(this.modifiedNbtFields);
+            for (String field : restored) {
+                Tag initial = this.initialEntityData.get(field);
+                if (initial == null) current.remove(field);
+                else current.put(field, initial.copy());
+            }
+            this.modifiedNbtFields.clear();
+            return restored;
+        }
+
+        boolean hasModifiedNbt() {
+            return !this.modifiedNbtFields.isEmpty();
         }
 
         public boolean isAnchor() {
@@ -173,29 +183,4 @@ public final class PlaybackNodes {
         }
     }
 
-    public sealed interface DisplayContent permits ItemContent, BlockContent, TextContent {
-    }
-
-    public record ItemContent(ItemStack itemStack) implements DisplayContent {
-        public ItemContent {
-            itemStack = itemStack.copy();
-        }
-
-        @Override
-        public ItemStack itemStack() {
-            return this.itemStack.copy();
-        }
-    }
-
-    public record BlockContent(BlockState blockState) implements DisplayContent {
-        public BlockContent {
-            Objects.requireNonNull(blockState, "blockState");
-        }
-    }
-
-    public record TextContent(Component text) implements DisplayContent {
-        public TextContent {
-            Objects.requireNonNull(text, "text");
-        }
-    }
 }

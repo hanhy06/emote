@@ -1,7 +1,6 @@
 import { zipSync } from "fflate";
 import type { ConversionDocument } from "../domain/conversionDocument";
 import { generatedResourceFiles } from "./generatedResources";
-import { sanitizeAnimationFileName } from "./projectExporter";
 import type { ExportResult } from "./types";
 
 export function exportDocumentResourceBundle(document: ConversionDocument, resourceReferences?: ReadonlySet<string>): ExportResult {
@@ -20,4 +19,8 @@ export function flatResourcePath(path: string): string {
   const directory = path.includes("/models/") || path.includes("/items/") ? "models" : "textures";
   const fileName = path.slice("assets/".length).replaceAll("/", "]");
   return `${directory}/${fileName}`;
+}
+
+function sanitizeAnimationFileName(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9_-]+/g, "_").replace(/^_+|_+$/g, "") || "emote";
 }

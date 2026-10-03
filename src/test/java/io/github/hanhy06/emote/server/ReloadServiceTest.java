@@ -11,17 +11,17 @@ import io.github.hanhy06.emote.resource.PolymerResourcePackDistributor;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+import static io.github.hanhy06.emote.content.PreparedEmoteFixture.create;
 import static org.junit.jupiter.api.Assertions.*;
-import static io.github.hanhy06.emote.content.PreparedAnimationFixture.create;
 
 class ReloadServiceTest {
     @Test
@@ -98,7 +98,7 @@ class ReloadServiceTest {
                 "player":{"hidden":true,"stop_conditions":{"movement_distance":0.1,"jump":true,"submerge":true,"ride":true,"damage":true,"attack":true,"game_mode_change":true}},
                 "playback":{"mode":"once","loop_delay":"0t"}
               },
-              "nodes":{"root":{"type":"anchor","space":"scene","transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]}}},
+              "nodes":{"root":{"type":"anchor","transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]}}},
               "timeline":{"duration":"1t","tracks":{}}
             }
             """);
@@ -128,8 +128,7 @@ class ReloadServiceTest {
                     List.of()
                 )),
                 EmoteAnimation.Events.empty()
-            )
-        );
+            ), List.of());
         var invalid = new LoadedAnimation(Path.of("invalid.json"), "invalid", invalidAnimation);
         ReloadService service = new ReloadService(
             configManager,

@@ -1,26 +1,26 @@
 package io.github.hanhy06.emote.playback.runtime;
 
+import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.content.PreparedAnimation;
-import io.github.hanhy06.emote.content.PreparedDisplayData;
+import io.github.hanhy06.emote.content.PreparedEmote;
+import io.github.hanhy06.emote.content.DisplayData;
 import io.github.hanhy06.emote.mixin.accessor.BlockDisplayAccessor;
 import io.github.hanhy06.emote.mixin.accessor.DisplayAccessor;
 import io.github.hanhy06.emote.mixin.accessor.ItemDisplayAccessor;
 import io.github.hanhy06.emote.mixin.accessor.TextDisplayAccessor;
 import io.github.hanhy06.emote.skin.PlayerHeadProfileFactory;
 import io.github.hanhy06.emote.skin.SkinBinding;
-import io.github.hanhy06.emote.skin.model.PreparedPlayerSkin;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentUtils;
 import net.minecraft.network.chat.ResolutionContext;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
 import net.minecraft.util.Mth;
+import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
@@ -29,6 +29,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.TypedEntityData;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.storage.TagValueInput;
+import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.Collection;
@@ -38,7 +40,7 @@ import java.util.Map;
 import static io.github.hanhy06.emote.playback.runtime.PlaybackNodes.*;
 
 public final class PlaybackEntityController {
-    public void applySkin(PlaybackNodes nodes, Collection<SkinBinding> bindings, PreparedPlayerSkin skin) {
+    public void applySkin(PlaybackNodes nodes, Collection<SkinBinding> bindings, Map<PlayerSkinRegion, String> skin) {
         if (skin == null || bindings.isEmpty()) {
             return;
         }
@@ -47,15 +49,23 @@ public final class PlaybackEntityController {
             if (node == null) {
                 continue;
             }
-            String textureUrl = skin.findTextureUrl(binding.region());
+            String textureUrl = skin.get(binding.region());
             if (textureUrl == null
                 || !(node.entity() instanceof Display.ItemDisplay itemDisplay)
-                || !(node.displayContent() instanceof ItemContent(ItemStack itemStack))
+                || !(node.displayContent() instanceof DisplayData.Item(ItemStack itemStack, var _))
                 || !itemStack.is(Items.PLAYER_HEAD)) {
                 continue;
             }
             itemStack.set(DataComponents.PROFILE, PlayerHeadProfileFactory.createProfile(textureUrl));
             node.setItemStack(itemStack);
+            TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, itemDisplay.registryAccess());
+            ItemStack initialItem = TagValueInput.create(ProblemReporter.DISCARDING, itemDisplay.registryAccess(), node.initialEntityData())
+                .read("item", ItemStack.CODEC).orElse(ItemStack.EMPTY);
+            if (initialItem.is(Items.PLAYER_HEAD)) {
+                initialItem.set(DataComponents.PROFILE, PlayerHeadProfileFactory.createProfile(textureUrl));
+                output.store("item", ItemStack.CODEC, initialItem);
+                node.setInitialItem(output.buildResult().get("item"));
+            }
             SlotAccess itemSlot = itemDisplay.getSlot(0);
             if (!itemSlot.get().isEmpty()) {
                 itemSlot.set(itemStack);
@@ -67,29 +77,17 @@ public final class PlaybackEntityController {
     private static final int RESPONSIVE_INTERPOLATION_TICKS = 1;
     private static final int VIEW_ROTATION_INTERPOLATION_TICKS = 3;
 
-    public PlaybackNodes create(ServerPlayer player, PreparedAnimation emote) {
-        return create(player.level(), RootTransform.fromPlayer(player), emote);
-    }
-
-    PlaybackNodes create(ServerLevel level, RootTransform root, PreparedAnimation emote) {
-        return create(level, SceneRootResolver.single(root), emote);
-    }
-
-    public PlaybackNodes create(ServerLevel level, Map<EmoteAnimation.NodeSpace, RootTransform> spaces, PreparedAnimation emote) {
+    public PlaybackNodes create(ServerLevel level, RootTransform root, PreparedEmote emote) {
         LinkedHashMap<String, NodeInstance> instances = new LinkedHashMap<>();
-        for (Map.Entry<String, EmoteAnimation.Node> entry : emote.animation().nodes().entrySet()) {
-            PreparedDisplayData preparedData = emote.source().preparedDisplayData().get(entry.getKey());
-            RootTransform nodeRoot = spaces.get(entry.getValue().space());
-            if (nodeRoot == null) {
-                throw new IllegalArgumentException("Missing root for node space " + entry.getValue().space());
-            }
-            NodeInstance instance = createNode(level, nodeRoot, entry.getKey(), entry.getValue(), preparedData, emote.animation().settings().rotationDeadzone());
+        for (Map.Entry<String, EmoteAnimation.Node> entry : emote.model().nodes().entrySet()) {
+            DisplayData preparedData = emote.source().preparedDisplayData().get(entry.getKey());
+            NodeInstance instance = createNode(level, root, entry.getKey(), entry.getValue(), preparedData, emote.model().settings().rotationDeadzone());
             instances.put(entry.getKey(), instance);
         }
-        return new PlaybackNodes(spaces, instances);
+        return new PlaybackNodes(root, instances);
     }
 
-    public PlaybackNodes create(ServerLevel level, Vec3 position, float yaw, PreparedAnimation emote) {
+    public PlaybackNodes create(ServerLevel level, Vec3 position, float yaw, PreparedEmote emote) {
         return create(level, RootTransform.create(position, yaw), emote);
     }
 
@@ -133,7 +131,7 @@ public final class PlaybackEntityController {
         }
         for (NodeInstance node : nodes.nodes().values()) {
             if (!node.isAnchor()) {
-                node.entity().setPos(nodes.root(node.node().space()).position());
+                node.entity().setPos(nodes.root().position());
             }
         }
         return true;
@@ -144,12 +142,12 @@ public final class PlaybackEntityController {
             return;
         }
         switch (node.displayContent()) {
-            case ItemContent(ItemStack itemStack) ->
+            case DisplayData.Item(ItemStack itemStack, var _) ->
                 ((ItemDisplayAccessor) node.entity()).emote$setItemStack(visible ? itemStack : ItemStack.EMPTY);
-            case BlockContent(var blockState) -> ((BlockDisplayAccessor) node.entity()).emote$setBlockState(
+            case DisplayData.Block(var blockState) -> ((BlockDisplayAccessor) node.entity()).emote$setBlockState(
                 visible ? blockState : Blocks.AIR.defaultBlockState()
             );
-            case TextContent(Component text) ->
+            case DisplayData.Text(Component text) ->
                 ((TextDisplayAccessor) node.entity()).emote$setText(visible ? text : Component.empty());
             case null -> {
             }
@@ -158,35 +156,47 @@ public final class PlaybackEntityController {
 
     public void applyNbt(PlaybackNodes nodes, NodeInstance node, CompoundTag nbt) {
         if (node.isAnchor()) return;
+        node.recordNbtFields(nbt);
         TypedEntityData.of(node.entity().getType(), nbt).loadInto(node.entity());
         if (nbt.contains("item")) {
             ItemDisplayAccessor accessor = (ItemDisplayAccessor) node.entity();
             node.setItemStack(accessor.emote$getItemStack());
         } else if (nbt.contains("block_state")) {
             BlockDisplayAccessor accessor = (BlockDisplayAccessor) node.entity();
-            node.setDisplayContent(new BlockContent(accessor.emote$getBlockState()));
+            node.setDisplayContent(new DisplayData.Block(accessor.emote$getBlockState()));
         } else if (nbt.contains("text")) {
             TextDisplayAccessor accessor = (TextDisplayAccessor) node.entity();
             Component text = resolveText((Display.TextDisplay) node.entity(), accessor.emote$getText());
             accessor.emote$setText(text);
-            node.setDisplayContent(new TextContent(text));
+            node.setDisplayContent(new DisplayData.Text(text));
         }
         setVisible(node, nodes.effectiveVisibility(node.id()));
     }
 
-    public void activateSpace(PlaybackNodes nodes, EmoteAnimation.NodeSpace space) {
-        nodes.activateSpace(space);
-        nodes.nodes().forEach((nodeId, node) -> {
-            if (node.node().space() == space) {
-                setVisible(node, nodes.effectiveVisibility(nodeId));
-            }
-        });
+    public void resetNbt(PlaybackNodes nodes, NodeInstance node) {
+        if (node.isAnchor() || !node.hasModifiedNbt()) return;
+        TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, node.entity().registryAccess());
+        node.entity().saveWithoutId(output);
+        CompoundTag current = output.buildResult();
+        var restored = node.restoreNbtFields(current);
+        node.entity().load(TagValueInput.create(ProblemReporter.DISCARDING, node.entity().registryAccess(), current));
+        if (restored.contains("item")) {
+            node.setItemStack(((ItemDisplayAccessor) node.entity()).emote$getItemStack());
+        } else if (restored.contains("block_state")) {
+            node.setDisplayContent(new DisplayData.Block(((BlockDisplayAccessor) node.entity()).emote$getBlockState()));
+        } else if (restored.contains("text")) {
+            TextDisplayAccessor accessor = (TextDisplayAccessor) node.entity();
+            Component text = resolveText((Display.TextDisplay) node.entity(), accessor.emote$getText());
+            accessor.emote$setText(text);
+            node.setDisplayContent(new DisplayData.Text(text));
+        }
+        setVisible(node, nodes.effectiveVisibility(node.id()));
     }
 
     public void applyTransformation(
         PlaybackNodes playbackNodes,
         NodeInstance node,
-        PreparedAnimation.PreparedTransform transform,
+        PreparedEmote.PreparedTransform transform,
         int interpolationDurationTicks
     ) {
         if (node.isAnchor()) {
@@ -194,7 +204,7 @@ public final class PlaybackEntityController {
         }
         applyTransformation(
             node,
-            playbackNodes.displayTransformation(node.node().space(), transform),
+            playbackNodes.displayTransformation(transform),
             interpolationDurationTicks
         );
     }
@@ -215,7 +225,7 @@ public final class PlaybackEntityController {
         RootTransform root,
         String nodeId,
         EmoteAnimation.Node node,
-        PreparedDisplayData preparedData,
+        DisplayData preparedData,
         float rotationDeadzone
     ) {
         if (node instanceof EmoteAnimation.AnchorNode) {
@@ -231,8 +241,12 @@ public final class PlaybackEntityController {
         entity.setXRot(0.0F);
         entity.addTag(RUNTIME_TAG);
 
-        DisplayContent content = applyRuntimeData(entity, requirePreparedData(nodeId, preparedData));
-        return new NodeInstance(nodeId, node, entity, content);
+        DisplayData content = applyRuntimeData(entity, requirePreparedData(nodeId, preparedData));
+        NodeInstance instance = new NodeInstance(nodeId, node, entity, content);
+        TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, entity.registryAccess());
+        entity.saveWithoutId(output);
+        instance.setInitialEntityData(output.buildResult());
+        return instance;
     }
 
     private Display createDisplay(ServerLevel level, EmoteAnimation.Node node) {
@@ -253,25 +267,25 @@ public final class PlaybackEntityController {
         return rotationDeadzone == 0.0F ? RESPONSIVE_INTERPOLATION_TICKS : VIEW_ROTATION_INTERPOLATION_TICKS;
     }
 
-    private DisplayContent applyRuntimeData(
+    private DisplayData applyRuntimeData(
         Display entity,
-        PreparedDisplayData preparedData
+        DisplayData preparedData
     ) {
         return switch (preparedData) {
-            case PreparedDisplayData.Item(ItemStack itemStack, var itemDisplay) -> {
+            case DisplayData.Item(ItemStack itemStack, var itemDisplay) -> {
                 ItemDisplayAccessor accessor = (ItemDisplayAccessor) entity;
                 accessor.emote$setItemStack(itemStack);
                 accessor.emote$setItemTransform(itemDisplay);
-                yield new ItemContent(itemStack);
+                yield preparedData;
             }
-            case PreparedDisplayData.Block(var blockState) -> {
+            case DisplayData.Block(var blockState) -> {
                 ((BlockDisplayAccessor) entity).emote$setBlockState(blockState);
-                yield new BlockContent(blockState);
+                yield preparedData;
             }
-            case PreparedDisplayData.Text(Component unresolvedText) -> {
+            case DisplayData.Text(Component unresolvedText) -> {
                 Component text = resolveText((Display.TextDisplay) entity, unresolvedText);
                 ((TextDisplayAccessor) entity).emote$setText(text);
-                yield new TextContent(text);
+                yield new DisplayData.Text(text);
             }
         };
     }
@@ -283,9 +297,9 @@ public final class PlaybackEntityController {
         accessor.emote$setTransformationInterpolationDelay(0);
     }
 
-    private PreparedDisplayData requirePreparedData(
+    private DisplayData requirePreparedData(
         String nodeId,
-        PreparedDisplayData preparedData
+        DisplayData preparedData
     ) {
         if (preparedData == null) {
             throw new IllegalStateException("Display node was not prepared during reload: " + nodeId);

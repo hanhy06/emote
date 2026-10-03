@@ -10,7 +10,7 @@ public record LoadedAnimation(
     Path sourcePath,
     String sha256,
     EmoteAnimation animation,
-    Map<String, PreparedDisplayData> preparedDisplayData
+    Map<String, DisplayData> preparedDisplayData
 ) {
     public LoadedAnimation(Path sourcePath, String sha256, EmoteAnimation animation) {
         this(sourcePath, sha256, animation, Map.of());

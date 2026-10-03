@@ -7,7 +7,7 @@ import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import java.nio.file.Path;
 import java.util.List;
 
-public sealed interface PlayableEmote permits PreparedAnimation, PreparedSequence {
+public sealed interface PlayableEmote permits PreparedEmote, PreparedSequence {
     String id();
 
     EmoteMetadata metadata();

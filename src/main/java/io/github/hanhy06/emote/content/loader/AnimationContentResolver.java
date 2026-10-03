@@ -6,7 +6,7 @@ import com.mojang.serialization.JsonOps;
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.content.LoadedAnimation;
-import io.github.hanhy06.emote.content.PreparedDisplayData;
+import io.github.hanhy06.emote.content.DisplayData;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.nbt.NbtOps;
@@ -37,7 +37,7 @@ public final class AnimationContentResolver {
 
         var nbtOps = server.registryAccess().createSerializationContext(NbtOps.INSTANCE);
         var jsonOps = server.registryAccess().createSerializationContext(JsonOps.INSTANCE);
-        Map<String, PreparedDisplayData> preparedDisplayData = new LinkedHashMap<>();
+        Map<String, DisplayData> preparedDisplayData = new LinkedHashMap<>();
         for (Map.Entry<String, Node> entry : loaded.animation().nodes().entrySet()) {
             String path = "$.nodes." + entry.getKey();
             try {
@@ -48,13 +48,13 @@ public final class AnimationContentResolver {
                         JsonOps.INSTANCE,
                         new JsonPrimitive(itemNode.itemDisplay())
                     ).getOrThrow();
-                    preparedDisplayData.put(entry.getKey(), new PreparedDisplayData.Item(itemStack, itemDisplay));
+                    preparedDisplayData.put(entry.getKey(), new DisplayData.Item(itemStack, itemDisplay));
                 } else if (entry.getValue() instanceof BlockNode blockNode) {
                     BlockState blockState = BlockState.CODEC.parse(nbtOps, blockNode.blockStateNbt()).getOrThrow();
-                    preparedDisplayData.put(entry.getKey(), new PreparedDisplayData.Block(blockState));
+                    preparedDisplayData.put(entry.getKey(), new DisplayData.Block(blockState));
                 } else if (entry.getValue() instanceof TextNode textNode) {
                     var text = ComponentSerialization.CODEC.parse(jsonOps, textNode.text()).getOrThrow();
-                    preparedDisplayData.put(entry.getKey(), new PreparedDisplayData.Text(text));
+                    preparedDisplayData.put(entry.getKey(), new DisplayData.Text(text));
                 }
             } catch (RuntimeException exception) {
                 String field = entry.getValue() instanceof ItemNode ? "item_stack_snbt"

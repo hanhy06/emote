@@ -6,7 +6,8 @@ import { affineMolang, isolateMolangAxis, negateMolang, type MolangVector } from
 import type { BedrockAnimation, BedrockChannel, BedrockExpression, BedrockKeyframe, BedrockKeyframeValue, BedrockVector } from "./bedrockAnimationSchema";
 import { BEDROCK_PLAYER_BONES, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_SLICES, BEDROCK_RUNTIME_SCENE_ID, resolveBedrockPlayerBone } from "./bedrockPlayerRig";
 import { rewriteMolangIdentifiers } from "../../format/molang/sourceTransformer";
-import { bedrockChannelHasExpressions, evaluateBedrockChannel, type BedrockSamplePlan } from "./bedrockAnimationBaker";
+import { bedrockChannelHasExpressions, evaluateBedrockChannel } from "./bedrockAnimationBaker";
+import type { AnimationSamplePlan } from "../common/animationSampling";
 
 const ZERO: readonly [number, number, number] = [0, 0, 0];
 const ONE: readonly [number, number, number] = [1, 1, 1];
@@ -16,11 +17,11 @@ export function createBedrockRuntime(
   playbackRate: number | null,
   startDelayTicks: number,
   durationTicks: number,
-  samplePlan?: BedrockSamplePlan,
+  samplePlan?: AnimationSamplePlan,
 ): Omit<Extract<AnimationRuntimeData, { kind: "native" }>, "kind"> {
   const timelineRate = playbackRate ?? 1;
   const nodes: Record<string, RuntimeNode> = {
-    [BEDROCK_RUNTIME_SCENE_ID]: { type: "anchor", space: "initiator", transform: { position: ZERO, rotation: ZERO, scale: [BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE] } },
+    [BEDROCK_RUNTIME_SCENE_ID]: { type: "anchor", transform: { position: ZERO, rotation: ZERO, scale: [BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE] } },
   };
   const tracks: Record<string, RuntimeNodeTracks> = {};
   const editorNodeByRuntimeNode: Record<string, string> = {};
@@ -70,10 +71,7 @@ export function createBedrockRuntime(
     ...(molang ? { molang } : {}),
     nodes,
     tracks,
-    bindings: {
-      editorNodeByRuntimeNode,
-      editorSpaceGroupByRuntimeRoot: { [BEDROCK_RUNTIME_SCENE_ID]: BEDROCK_RUNTIME_SCENE_ID },
-    },
+    bindings: editorNodeByRuntimeNode,
   };
 }
 
@@ -85,7 +83,7 @@ function convertChannel(
   expressionRate: number | null,
   startDelayTicks: number,
   durationTicks: number,
-  samplePlan: BedrockSamplePlan | undefined,
+  samplePlan: AnimationSamplePlan | undefined,
   transform: (values: MolangVector) => MolangVector,
 ): RuntimeVectorKeyframe[] | undefined {
   if (channel === undefined) return undefined;

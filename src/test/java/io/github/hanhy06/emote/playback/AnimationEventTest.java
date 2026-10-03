@@ -1,11 +1,12 @@
 package io.github.hanhy06.emote.playback;
 
+import net.minecraft.world.phys.Vec3;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.LoadedAnimation;
-import io.github.hanhy06.emote.content.PreparedAnimation;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import net.minecraft.resources.Identifier;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -59,69 +60,10 @@ class AnimationEventTest {
         fixture.player().start();
         fixture.player().startEvents();
 
-        AnimationPlayer.AdvanceResult result = fixture.player().advance(false);
+        PlaybackPlayer.AdvanceResult result = fixture.player().advance(false);
 
-        assertEquals(AnimationPlayer.AdvanceResult.LOOP_BOUNDARY, result);
+        assertEquals(PlaybackPlayer.AdvanceResult.LOOP_BOUNDARY, result);
         assertEquals(List.of("start", "tick-0", "loop"), fixture.executed());
-    }
-
-    @Test
-    void loopCallbackCanStartOutroWithoutRepeatingBoundaryEvents() {
-        EmoteAnimation original = animation(4, EmoteAnimation.LoopMode.LOOP, 0);
-        EmoteAnimation.Settings settings = new EmoteAnimation.Settings(
-            original.settings().standalone(),
-            original.settings().cooldownTicks(),
-            original.settings().rotationDeadzone(),
-            original.settings().displayInterpolationTicks(),
-            original.settings().player(),
-            new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.LOOP, 0, 2, 0)
-        );
-        EmoteAnimation.TimelineEvent outroStart = new EmoteAnimation.TimelineEvent(
-            2,
-            tickZeroEvent().source(),
-            tickZeroEvent().origin(),
-            List.of("outro-start"),
-            List.of()
-        );
-        EmoteAnimation animation = new EmoteAnimation(
-            original.id(),
-            original.metadata(),
-            settings,
-            original.molang(),
-            original.nodes(),
-            new EmoteAnimation.Timeline(
-                4,
-                original.timeline().tracks(),
-                new EmoteAnimation.Events(
-                    original.timeline().events().start(),
-                    List.of(tickZeroEvent(), outroStart),
-                    original.timeline().events().loop(),
-                    original.timeline().events().stop()
-                )
-            )
-        );
-        AnimationPlayer player = new AnimationPlayer(
-            PreparedAnimation.from(new LoadedAnimation(Path.of("outro-event-test.json"), "test", animation)),
-            new EmptyTimelineTarget()
-        );
-        List<String> executed = new ArrayList<>();
-        List<AnimationPlayer.OutroRequestResult> requests = new ArrayList<>();
-        player.bindEvents(event -> {
-            executed.addAll(event.event().commands());
-            if (event.event().commands().contains("loop")) requests.add(player.requestOutro());
-        });
-
-        player.start();
-        player.startEvents();
-        assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.advance());
-        assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.advance());
-
-        assertEquals(List.of(AnimationPlayer.OutroRequestResult.STARTED), requests);
-        assertEquals(List.of("start", "tick-0", "outro-start", "loop"), executed);
-        assertEquals(AnimationPlayer.OutroRequestResult.ALREADY_RUNNING, player.requestOutro());
-        assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.advance());
-        assertEquals(AnimationPlayer.AdvanceResult.FINISHED, player.advance());
-        assertEquals(List.of("start", "tick-0", "outro-start", "loop"), executed);
     }
 
     @Test
@@ -136,42 +78,11 @@ class AnimationEventTest {
         assertEquals(List.of("start", "tick-0", "stop"), fixture.executed());
     }
 
-    @Test
-    void repeatsNamedTimelineCallbacksAfterLoopRestart() {
-        EmoteAnimation.Callback callback = new EmoteAnimation.Callback(Identifier.parse("test:swing"), "right_hand");
-        EmoteAnimation.TimelineEvent event = new EmoteAnimation.TimelineEvent(
-            0,
-            new EmoteAnimation.CommandSource(EmoteAnimation.SourceType.SERVER, null),
-            new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, EmoteAnimation.Vec3.ZERO),
-            List.of(),
-            List.of(callback)
-        );
-        EmoteAnimation animation = animation(1, EmoteAnimation.LoopMode.LOOP, 0);
-        animation = new EmoteAnimation(
-            animation.id(),
-            animation.metadata(),
-            animation.settings(),
-            animation.molang(),
-            animation.nodes(),
-            new EmoteAnimation.Timeline(1, Map.of(), new EmoteAnimation.Events(List.of(), List.of(event), List.of(), List.of()))
-        );
-        PreparedAnimation emote = PreparedAnimation.from(new LoadedAnimation(Path.of("callback-test.json"), "test", animation));
-        AnimationPlayer player = new AnimationPlayer(emote, new EmptyTimelineTarget());
-        List<EmoteAnimation.Callback> executed = new ArrayList<>();
-        player.bindEvents(dispatched -> executed.addAll(dispatched.event().callbacks()));
-
-        player.start();
-        player.startEvents();
-        player.advance();
-
-        assertEquals(List.of(callback, callback), executed);
-    }
-
     private AnimationFixture fixture(int durationTicks, EmoteAnimation.LoopMode loopMode, int loopDelayTicks) {
         List<String> executed = new ArrayList<>();
         EmoteAnimation animation = animation(durationTicks, loopMode, loopDelayTicks);
-        PreparedAnimation emote = PreparedAnimation.from(new LoadedAnimation(Path.of("event-test.json"), "test", animation));
-        AnimationPlayer player = new AnimationPlayer(emote, new EmptyTimelineTarget());
+        PreparedEmote emote = PreparedEmote.from(new LoadedAnimation(Path.of("event-test.json"), "test", animation));
+        PlaybackPlayer player = new PlaybackPlayer(emote, new EmptyTimelineTarget());
         player.bindEvents(event -> executed.addAll(event.event().commands()));
         return new AnimationFixture(player, executed);
     }
@@ -189,42 +100,39 @@ class AnimationEventTest {
             new EmoteAnimation.Settings(true, 0, 50.0F, 1, EmotePlayerBehavior.createDefault(), new EmoteAnimation.PlaybackSettings(
                 loopMode,
                 0,
-                loopMode == EmoteAnimation.LoopMode.LOOP ? durationTicks : 0,
                 loopDelayTicks
             )),
             EmoteAnimation.MolangPrograms.empty(),
             Map.of(),
-            new EmoteAnimation.Timeline(durationTicks, Map.of(), events)
-        );
+            new EmoteAnimation.Timeline(durationTicks, Map.of(), events), List.of());
     }
 
     private EmoteAnimation.Event event(String command) {
         return new EmoteAnimation.Event(
             new EmoteAnimation.CommandSource(EmoteAnimation.SourceType.SERVER, null),
-            new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, EmoteAnimation.Vec3.ZERO),
-            List.of(command),
-            List.of()
+            new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, Vec3.ZERO),
+            List.of(command)
         );
     }
 
     private EmoteAnimation.TimelineEvent tickZeroEvent() {
         EmoteAnimation.Event event = event("tick-0");
-        return new EmoteAnimation.TimelineEvent(0, event.source(), event.origin(), event.commands(), event.callbacks());
+        return new EmoteAnimation.TimelineEvent(0, event.source(), event.origin(), event.commands());
     }
 
-    private record AnimationFixture(AnimationPlayer player, List<String> executed) {
+    private record AnimationFixture(PlaybackPlayer player, List<String> executed) {
     }
 
-    private static final class EmptyTimelineTarget implements AnimationPlayer.TimelineTarget {
+    private static final class EmptyTimelineTarget implements PlaybackPlayer.TimelineTarget {
         @Override
-        public Transformation createTransformation(String nodeId, PreparedAnimation.PreparedTransform transform) {
+        public Transformation createTransformation(String nodeId, PreparedEmote.PreparedTransform transform) {
             throw new UnsupportedOperationException();
         }
 
         @Override
         public void applyTransform(
             String nodeId,
-            PreparedAnimation.PreparedTransform transform,
+            PreparedEmote.PreparedTransform transform,
             int interpolationDurationTicks
         ) {
             throw new UnsupportedOperationException();

@@ -1,8 +1,10 @@
 import { useState } from "preact/hooks";
-import type { EmoteEvent } from "../format/emoteAnimation";
+import { parseCallbacks, requireEventBody } from "../format/emoteAnimationRuntime";
+import type { EmoteCallback, EmoteEvent } from "../format/emoteAnimation";
 import type { ConversionAnimationEvents } from "../domain/conversionDocument";
 
 interface LifecycleEvents {
+  callbacks: EmoteCallback[];
   start: EmoteEvent[];
   loop: EmoteEvent[];
   stop: EmoteEvent[];
@@ -10,6 +12,7 @@ interface LifecycleEvents {
 
 interface EventPanelProps {
   events: ConversionAnimationEvents;
+  callbacks?: EmoteCallback[];
   tick: number | null;
   disabled: boolean;
   onLifecycleChange: (events: LifecycleEvents) => void;
@@ -17,10 +20,11 @@ interface EventPanelProps {
   onValidityChange: (valid: boolean) => void;
 }
 
-export function EventPanel({ events, tick, disabled, onLifecycleChange, onTimelineChange, onValidityChange }: EventPanelProps) {
+export function EventPanel({ events, callbacks, tick, disabled, onLifecycleChange, onTimelineChange, onValidityChange }: EventPanelProps) {
   const [error, setError] = useState("");
   const initialValue = tick === null
     ? JSON.stringify({
+      callbacks: callbacks ?? [],
       start: events.start,
       loop: events.loop,
       stop: events.stop,
@@ -50,7 +54,7 @@ export function EventPanel({ events, tick, disabled, onLifecycleChange, onTimeli
         <div>
           <h3 id="event-editor-heading">Events</h3>
           <p>{tick === null
-            ? "Edit start, loop, and stop events as raw JSON. Changes are saved as soon as the JSON is valid."
+            ? "Edit callbacks and start, loop, and stop command events as raw JSON. Changes are saved as soon as the JSON is valid."
             : "Edit the events at this tick as a JSON array. The selected tick supplies the event time automatically."}</p>
         </div>
         <span className="event-scope">{tick === null ? "Create pose · Lifecycle" : `Tick ${tick} · Timeline`}</span>
@@ -74,6 +78,7 @@ export function EventPanel({ events, tick, disabled, onLifecycleChange, onTimeli
 function parseLifecycleEvents(value: unknown): LifecycleEvents {
   if (!isRecord(value)) throw new Error("Lifecycle events must be a JSON object.");
   return {
+    callbacks: parseCallbacks(value.callbacks),
     start: value.start === undefined ? [] : parseEventArray(value.start, "start"),
     loop: value.loop === undefined ? [] : parseEventArray(value.loop, "loop"),
     stop: value.stop === undefined ? [] : parseEventArray(value.stop, "stop"),
@@ -88,39 +93,12 @@ function parseEventArray(value: unknown, path: string, timeline = false): EmoteE
 function parseEvent(value: unknown, path: string, timeline: boolean): EmoteEvent {
   if (!isRecord(value)) throw new Error(`${path} must be a JSON object.`);
   if (timeline && ("time" in value || "tick" in value)) throw new Error(`${path} must not contain time or tick; the selected preview tick supplies it.`);
-  requireSource(value.source, `${path}.source`);
-  requireOrigin(value.origin, `${path}.origin`);
-  if (!Array.isArray(value.commands) || value.commands.some((command) => typeof command !== "string")) {
-    throw new Error(`${path}.commands must be an array of strings.`);
+  const event = requireEventBody(value, path);
+  const origin = event.origin as Record<string, unknown>;
+  if (origin.offset !== undefined && (!Array.isArray(origin.offset) || origin.offset.length !== 3 || origin.offset.some((item) => typeof item !== "number"))) {
+    throw new Error(`${path}.origin.offset must be an array of three numbers.`);
   }
-  if (value.callbacks !== undefined) requireCallbacks(value.callbacks, `${path}.callbacks`);
-  return value as unknown as EmoteEvent;
-}
-
-function requireSource(value: unknown, path: string): void {
-  if (!isRecord(value) || (value.type !== "player" && value.type !== "server" && value.type !== "node")) {
-    throw new Error(`${path} must contain a player, server, or node source.`);
-  }
-  if (value.type === "node" && typeof value.node !== "string") throw new Error(`${path}.node must be a string.`);
-}
-
-function requireOrigin(value: unknown, path: string): void {
-  if (!isRecord(value) || (value.type !== "root" && value.type !== "node")) {
-    throw new Error(`${path} must contain a root or node origin.`);
-  }
-  if (value.type === "node" && typeof value.node !== "string") throw new Error(`${path}.node must be a string.`);
-  if (value.offset !== undefined && (!Array.isArray(value.offset) || value.offset.length !== 3 || value.offset.some((item) => typeof item !== "number"))) {
-    throw new Error(`${path}.offset must be an array of three numbers.`);
-  }
-}
-
-function requireCallbacks(value: unknown, path: string): void {
-  if (!Array.isArray(value)) throw new Error(`${path} must be a JSON array.`);
-  value.forEach((callback, index) => {
-    const callbackPath = `${path}[${index}]`;
-    if (!isRecord(callback) || typeof callback.name !== "string") throw new Error(`${callbackPath}.name must be a string.`);
-    if (callback.payload !== undefined && typeof callback.payload !== "string") throw new Error(`${callbackPath}.payload must be a string.`);
-  });
+  return event as unknown as EmoteEvent;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

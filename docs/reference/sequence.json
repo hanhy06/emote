@@ -1,10 +1,11 @@
 {
     "type": "sequence",
     "schema_version": 4,
+    "target_minecraft_version": "26.3",
     "id": "sit:idle.sit",
     "metadata": {
         "name": "Sit",
-        "description": "Sit down and relax.",
+        "description": "Sequence format reference. Install the referenced sit Animations and register example:sequence before playback.",
         "author": "@soji2318"
     },
     "settings": {
@@ -22,9 +23,24 @@
             }
         }
     },
+    "callbacks": [
+        {"name": "example:sequence", "payload": "format_reference"}
+    ],
     "steps": [
         {
             "emote": "sit:sit_down"
+        },
+        {
+            "wait": "10t"
+        },
+        {
+            "emote": [
+                "sit:idle_sky",
+                "sit:idle_butterfly",
+                "sit:idle_flower"
+            ],
+            "transition": "2t",
+            "repeat": 2
         },
         {
             "emote": [
@@ -34,6 +50,16 @@
             ],
             "transition": "2t",
             "repeat": 2
+        },
+        {
+            "emote": [
+                "sit:idle_sky", 50,
+                "sit:idle_butterfly", 30,
+                "emote:continue", 15,
+                "emote:break", 5
+            ],
+            "transition": "2t",
+            "repeat": 10
         },
         {
             "emote": [

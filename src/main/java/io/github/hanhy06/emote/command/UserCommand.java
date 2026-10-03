@@ -11,7 +11,7 @@ import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaySource;
 import io.github.hanhy06.emote.application.EmotePlayService;
 import io.github.hanhy06.emote.application.EmoteQueryService;
-import io.github.hanhy06.emote.playback.PlaybackEngine;
+import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
@@ -24,24 +24,24 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public final class UserCommand {
-    private final PlaybackEngine playbackEngine;
+    private final PlayerPlaybackManager playerPlaybackManager;
     private final EmoteMenu menu;
     private final EmoteQueryService emoteQueryService;
     private final EmotePlayService playService;
 
     public UserCommand(
-        PlaybackEngine playbackEngine,
+        PlayerPlaybackManager playerPlaybackManager,
         EmoteMenu menu,
         EmoteQueryService emoteQueryService,
         EmotePlayService playService
     ) {
-        this.playbackEngine = playbackEngine;
+        this.playerPlaybackManager = playerPlaybackManager;
         this.menu = menu;
         this.emoteQueryService = emoteQueryService;
         this.playService = playService;
     }
 
-    LiteralArgumentBuilder<CommandSourceStack> createRoot() {
+    public LiteralArgumentBuilder<CommandSourceStack> createRoot() {
         return Commands.literal("emote")
             .executes(context -> openMenu(context.getSource()))
             .then(Commands.argument("page", IntegerArgumentType.integer(1))
@@ -146,7 +146,7 @@ public final class UserCommand {
 
     private int stop(CommandSourceStack source) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        return this.playbackEngine.stop(player) == null ? 0 : 1;
+        return this.playerPlaybackManager.stop(player) == null ? 0 : 1;
     }
 
     private static ServerPlayer findPlayer(CommandSourceStack source) {

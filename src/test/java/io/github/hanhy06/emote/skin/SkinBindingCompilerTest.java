@@ -1,8 +1,9 @@
 package io.github.hanhy06.emote.skin;
 
+import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
+import net.minecraft.world.phys.Vec3;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
-import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSegment;
 import net.minecraft.nbt.CompoundTag;
@@ -19,23 +20,22 @@ class SkinBindingCompilerTest {
     @Test
     void usesExplicitOrderAndLocalYScaleForLimbSegments() {
         LinkedHashMap<String, EmoteAnimation.Node> nodes = new LinkedHashMap<>();
-        nodes.put("outer", itemNode(3.0D, EmoteAnimation.SkinPart.LEFT_ARM, 1));
-        nodes.put("inner", itemNode(1.0D, EmoteAnimation.SkinPart.LEFT_ARM, 0));
-        nodes.put("head", itemNode(1.0D, EmoteAnimation.SkinPart.HEAD, 0));
+        nodes.put("outer", itemNode(3.0D, PlayerSkinPart.LEFT_ARM, 1));
+        nodes.put("inner", itemNode(1.0D, PlayerSkinPart.LEFT_ARM, 0));
+        nodes.put("head", itemNode(1.0D, PlayerSkinPart.HEAD, 0));
 
         List<SkinBinding> bindings = new SkinBindingCompiler().compile(animation(nodes));
 
         assertEquals(new PlayerSkinSegment(0, 3), find(bindings, "inner").region().skinSegment());
         assertEquals(new PlayerSkinSegment(3, 12), find(bindings, "outer").region().skinSegment());
         assertEquals(PlayerSkinSegment.FULL, find(bindings, "head").region().skinSegment());
-        assertEquals(ParticipantRole.INITIATOR, find(bindings, "head").participant());
     }
 
     @Test
     void preservesFourAndEightPixelRigidSlices() {
         LinkedHashMap<String, EmoteAnimation.Node> nodes = new LinkedHashMap<>();
-        nodes.put("upper", itemNode(0.5D, EmoteAnimation.SkinPart.RIGHT_ARM, 0));
-        nodes.put("lower", itemNode(1.0D, EmoteAnimation.SkinPart.RIGHT_ARM, 1));
+        nodes.put("upper", itemNode(0.5D, PlayerSkinPart.RIGHT_ARM, 0));
+        nodes.put("lower", itemNode(1.0D, PlayerSkinPart.RIGHT_ARM, 1));
 
         List<SkinBinding> bindings = new SkinBindingCompiler().compile(animation(nodes));
 
@@ -46,10 +46,10 @@ class SkinBindingCompilerTest {
     @Test
     void preservesFourTwoTwoFourPixelJointSlices() {
         LinkedHashMap<String, EmoteAnimation.Node> nodes = new LinkedHashMap<>();
-        nodes.put("upper", itemNode(0.5D, EmoteAnimation.SkinPart.LEFT_LEG, 0));
-        nodes.put("upper_joint", itemNode(0.25D, EmoteAnimation.SkinPart.LEFT_LEG, 1));
-        nodes.put("lower_joint", itemNode(0.25D, EmoteAnimation.SkinPart.LEFT_LEG, 2));
-        nodes.put("lower", itemNode(0.5D, EmoteAnimation.SkinPart.LEFT_LEG, 3));
+        nodes.put("upper", itemNode(0.5D, PlayerSkinPart.LEFT_LEG, 0));
+        nodes.put("upper_joint", itemNode(0.25D, PlayerSkinPart.LEFT_LEG, 1));
+        nodes.put("lower_joint", itemNode(0.25D, PlayerSkinPart.LEFT_LEG, 2));
+        nodes.put("lower", itemNode(0.5D, PlayerSkinPart.LEFT_LEG, 3));
 
         List<SkinBinding> bindings = new SkinBindingCompiler().compile(animation(nodes));
 
@@ -62,12 +62,12 @@ class SkinBindingCompilerTest {
     @Test
     void sharesJointSegmentsWithDuplicateFillerNodes() {
         LinkedHashMap<String, EmoteAnimation.Node> nodes = new LinkedHashMap<>();
-        nodes.put("upper", itemNode(0.5D, EmoteAnimation.SkinPart.RIGHT_ARM, 0));
-        nodes.put("upper_joint", itemNode(0.25D, EmoteAnimation.SkinPart.RIGHT_ARM, 1));
-        nodes.put("upper_joint_fill", itemNode(0.2625D, EmoteAnimation.SkinPart.RIGHT_ARM, 1));
-        nodes.put("lower_joint_fill", itemNode(0.26875D, EmoteAnimation.SkinPart.RIGHT_ARM, 2));
-        nodes.put("lower_joint", itemNode(0.25D, EmoteAnimation.SkinPart.RIGHT_ARM, 2));
-        nodes.put("lower", itemNode(0.5D, EmoteAnimation.SkinPart.RIGHT_ARM, 3));
+        nodes.put("upper", itemNode(0.5D, PlayerSkinPart.RIGHT_ARM, 0));
+        nodes.put("upper_joint", itemNode(0.25D, PlayerSkinPart.RIGHT_ARM, 1));
+        nodes.put("upper_joint_fill", itemNode(0.2625D, PlayerSkinPart.RIGHT_ARM, 1));
+        nodes.put("lower_joint_fill", itemNode(0.26875D, PlayerSkinPart.RIGHT_ARM, 2));
+        nodes.put("lower_joint", itemNode(0.25D, PlayerSkinPart.RIGHT_ARM, 2));
+        nodes.put("lower", itemNode(0.5D, PlayerSkinPart.RIGHT_ARM, 3));
 
         List<SkinBinding> bindings = new SkinBindingCompiler().compile(animation(nodes));
 
@@ -83,20 +83,19 @@ class SkinBindingCompilerTest {
         return bindings.stream().filter(binding -> binding.nodeId().equals(nodeId)).findFirst().orElseThrow();
     }
 
-    private EmoteAnimation.ItemNode itemNode(double yScale, EmoteAnimation.SkinPart part, int order) {
+    private EmoteAnimation.ItemNode itemNode(double yScale, PlayerSkinPart part, int order) {
         return new EmoteAnimation.ItemNode(
             true,
-            EmoteAnimation.NodeSpace.INITIATOR,
             null,
             new EmoteAnimation.LocalTransform(
-                EmoteAnimation.Vec3.ZERO,
-                EmoteAnimation.Vec3.ZERO,
-                new EmoteAnimation.Vec3(1.0D, yScale, 1.0D)
+                Vec3.ZERO,
+                Vec3.ZERO,
+                new Vec3(1.0D, yScale, 1.0D)
             ),
             new CompoundTag(),
             new CompoundTag(),
             "none",
-            new EmoteAnimation.Skin(ParticipantRole.INITIATOR, part, order)
+            new EmoteAnimation.Skin(part, order)
         );
     }
 
@@ -104,10 +103,9 @@ class SkinBindingCompilerTest {
         return new EmoteAnimation(
             Identifier.parse("test:skin"),
             new EmoteMetadata("Skin", "Skin"),
-            new EmoteAnimation.Settings(true, 0, 50.0F, 1, EmotePlayerBehavior.createDefault(), new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.ONCE, 0, 0, 0)),
+            new EmoteAnimation.Settings(true, 0, 50.0F, 1, EmotePlayerBehavior.createDefault(), new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.ONCE, 0, 0)),
             EmoteAnimation.MolangPrograms.empty(),
             nodes,
-            new EmoteAnimation.Timeline(1, Map.of(), EmoteAnimation.Events.empty())
-        );
+            new EmoteAnimation.Timeline(1, Map.of(), EmoteAnimation.Events.empty()), List.of());
     }
 }

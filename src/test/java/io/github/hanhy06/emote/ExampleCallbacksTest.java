@@ -2,24 +2,21 @@ package io.github.hanhy06.emote;
 
 import io.github.hanhy06.emote.api.*;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.api.sequence.EmoteSequence;
 import io.github.hanhy06.emote.content.loader.AnimationJsonParser;
 import net.minecraft.SharedConstants;
-import net.minecraft.server.Bootstrap;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket;
 import net.minecraft.network.protocol.game.ClientboundSoundPacket;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.Bootstrap;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -33,21 +30,21 @@ class ExampleCallbacksTest {
         assertFalse(melody.advance(127, played::add));
         assertTrue(played.isEmpty());
         assertFalse(melody.advance(128, played::add));
-        assertEquals(List.of(new ExampleCallbacks.HornNote(55, 6, 0.65F)), played);
+        assertEquals(List.of(new ExampleCallbacks.HornNote(28, 55, 6, 0.65F)), played);
         melody.advance(128, played::add);
         assertEquals(1, played.size());
         melody.advance(133, played::add);
         assertEquals(1, played.size());
         melody.advance(134, played::add);
-        assertEquals(List.of(new ExampleCallbacks.HornNote(55, 6, 0.65F), new ExampleCallbacks.HornNote(55, 6, 0.65F)), played);
+        assertEquals(List.of(new ExampleCallbacks.HornNote(28, 55, 6, 0.65F), new ExampleCallbacks.HornNote(34, 55, 6, 0.65F)), played);
         melody.advance(140, played::add);
-        assertEquals(new ExampleCallbacks.HornNote(57, 3, 0.65F), played.getLast());
+        assertEquals(new ExampleCallbacks.HornNote(40, 57, 3, 0.65F), played.getLast());
 
         assertTrue(melody.advance(500, played::add));
         assertEquals(99, played.size());
         assertTrue(melody.advance(506, played::add));
         assertEquals(99, played.size());
-        assertEquals(new ExampleCallbacks.HornNote(55, 6, 0.65F), played.getLast());
+        assertEquals(new ExampleCallbacks.HornNote(400, 55, 6, 0.65F), played.getLast());
         assertTrue(melody.advance(535, played::add));
         assertEquals(99, played.size());
     }
@@ -81,7 +78,7 @@ class ExampleCallbacksTest {
 
         assertEquals("music:trumpet_can_can", animation.id().toString());
         assertEquals(435, animation.timeline().durationTicks());
-        assertEquals(ExampleCallbacks.TRUMPET_CAN_CAN_CALLBACK_ID, animation.timeline().events().start().getFirst().callbacks().getFirst().name());
+        assertTrue(animation.timeline().events().start().isEmpty());
         for (int tick = 0; tick <= animation.timeline().durationTicks(); tick++) {
             int at = tick;
             melody.advance(tick, note -> {
@@ -91,7 +88,7 @@ class ExampleCallbacksTest {
                 assertTrue(pitch >= 0.5 && pitch <= 2.0, "Can-Can note must fit the vanilla sound pitch range");
                 assertTrue(note.durationTicks() <= 7, "Every breath must fit the user's 7-tick cap");
                 if (retriggerTicks.contains(at)) {
-                    assertEquals(new ExampleCallbacks.HornNote(55, 6, 0.65F), note);
+                    assertEquals(new ExampleCallbacks.HornNote(at, 55, 6, 0.65F), note);
                     assertEquals(at - 6, noteTicks.get(noteTicks.size() - 2));
                 }
                 assertTrue(at + note.durationTicks() < 419, "Notes must finish before the trumpet disappears");
@@ -106,67 +103,76 @@ class ExampleCallbacksTest {
     }
 
     @Test
-    void newBatAndIdleButterflySamplesKeepTheirExampleCallbacks() throws Exception {
+    void samplesLoadWithoutJsonCallbacksAndKeepTheirNodes() throws Exception {
         var parser = new AnimationJsonParser();
         var bat = parser.parse(Path.of("docs/sample/emote.bat.json")).animation();
         var butterfly = parser.parse(Path.of("docs/sample/sit/sit.idle_butterfly.json")).animation();
-
-        var batCallbacks = bat.timeline().events().timeline().stream()
-            .flatMap(event -> event.callbacks().stream().map(callback -> Map.entry(event, callback)))
-            .toList();
-        assertFalse(batCallbacks.isEmpty());
-        assertEquals(ExampleCallbacks.IDLE_BAT_CALLBACK_ID, batCallbacks.getFirst().getValue().name());
-        assertEquals("spawn", batCallbacks.getFirst().getValue().payload());
-        assertEquals("bat", batCallbacks.getFirst().getKey().origin().node());
-        assertEquals("remove", batCallbacks.getLast().getValue().payload());
-        assertEquals(ExampleCallbacks.IDLE_BAT_CALLBACK_ID, bat.timeline().events().stop().getFirst().callbacks().getFirst().name());
-
-        assertEquals(ExampleCallbacks.IDLE_BUTTERFLY_CALLBACK_ID, butterfly.timeline().events().start().getFirst().callbacks().getFirst().name());
-        assertEquals("butterfly", butterfly.timeline().events().start().getFirst().origin().node());
-        var butterflyAnchor = assertInstanceOf(EmoteAnimation.AnchorNode.class, butterfly.nodes().get("butterfly"));
-        assertEquals("butterfly_x", butterflyAnchor.parentId());
-        assertFalse(butterfly.timeline().events().timeline().isEmpty());
-        assertTrue(butterfly.timeline().events().timeline().stream()
-            .allMatch(event -> event.callbacks().getFirst().name().equals(ExampleCallbacks.IDLE_BUTTERFLY_CALLBACK_ID)));
-        assertTrue(butterfly.timeline().events().loop().isEmpty());
-        assertEquals(ExampleCallbacks.IDLE_BUTTERFLY_CALLBACK_ID, butterfly.timeline().events().stop().getFirst().callbacks().getFirst().name());
+        assertEquals(Identifier.parse("emote:bat"), bat.id());
+        assertTrue(bat.nodes().containsKey("bat"));
+        assertEquals(List.of(new EmoteAnimation.Callback(ExampleCallbacks.BAT_CALLBACK_ID, "bat")), bat.callbacks());
+        assertTrue(bat.timeline().events().timeline().stream().allMatch(event -> !event.commands().isEmpty()));
+        assertEquals(Identifier.parse("sit:idle_butterfly"), butterfly.id());
+        var anchor = assertInstanceOf(EmoteAnimation.AnchorNode.class, butterfly.nodes().get("butterfly"));
+        assertEquals("butterfly_x", anchor.parentId());
+        assertEquals(List.of(new EmoteAnimation.Callback(ExampleCallbacks.IDLE_BUTTERFLY_CALLBACK_ID, "butterfly")), butterfly.callbacks());
+        assertTrue(butterfly.timeline().events().timeline().isEmpty());
     }
 
     @Test
     @SuppressWarnings("unchecked")
-    void outOfRangePitchesDoNotThrowAndStoppingCancelsCanCan() throws Exception {
+    void packetNotesKeepTimingAndCloseStopsOnlyItsSession() throws Exception {
         SharedConstants.tryDetectVersion();
         Bootstrap.bootStrap();
         EmoteApi previous = EmoteApi.INSTANCE;
         EmoteApi.INSTANCE = null;
         EmoteApi api;
+        Map<Identifier, EmoteCallbacks> registeredCallbacks = new java.util.HashMap<>();
         try {
             api = new EmoteApi() {
                 public PlayResult play(ServerPlayer player, Identifier id) { throw new UnsupportedOperationException(); }
+                public PlayResult play(ServerPlayer player, Identifier id, PlaybackPlacement placement) { throw new UnsupportedOperationException(); }
                 public boolean stop(ServerPlayer player) { throw new UnsupportedOperationException(); }
-                public EmoteRegistration register(EmoteAnimation animation) { throw new UnsupportedOperationException(); }
-                public Optional<EmoteInfo> find(Identifier id) { return Optional.empty(); }
+                public boolean stop(UUID sessionId) { throw new UnsupportedOperationException(); }
+                public boolean setTick(UUID sessionId, int tick) { throw new UnsupportedOperationException(); }
+                public boolean setAnimationTick(UUID sessionId, int tick) { throw new UnsupportedOperationException(); }
+                public boolean setStep(UUID sessionId, int stepIndex, int repeatIndex, int tick) { throw new UnsupportedOperationException(); }
+                public boolean setPlacement(UUID sessionId, PlaybackPlacement placement) { throw new UnsupportedOperationException(); }
+                public Optional<Vec3> getNodeWorldPosition(UUID sessionId, String nodeId) { return Optional.empty(); }
+                public Registration register(EmoteAnimation animation) { throw new UnsupportedOperationException(); }
+                public Registration register(EmoteSequence sequence) { throw new UnsupportedOperationException(); }
+                public Optional<EmoteInfo> get(Identifier id) { return Optional.empty(); }
                 public List<EmoteInfo> getAll() { return List.of(); }
                 public Optional<PlaybackInfo> getPlayback(ServerPlayer player) { return Optional.empty(); }
+                public Optional<PlaybackInfo> getPlayback(UUID sessionId) { return Optional.empty(); }
+                public Optional<PlaybackTimeline> getTimeline(UUID sessionId) { return Optional.empty(); }
+                public Registration registerCallbacks(Identifier id, EmoteCallbacks callbacks) {
+                    registeredCallbacks.put(id, callbacks);
+                    return new Registration() {
+                        private boolean registered = true;
+                        public Identifier getId() { return id; }
+                        public boolean isRegistered() { return registered; }
+                        public boolean unregister() { boolean previous = registered; registered = false; return previous; }
+                    };
+                }
                 public ListenerRegistration addPlayListener(EmotePlayListener listener) { return () -> true; }
                 public ListenerRegistration addPlaybackListener(EmotePlaybackListener listener) { return () -> true; }
-                public ListenerRegistration addCallbackListener(Identifier name, EmoteCallbackListener listener) { return () -> true; }
             };
         } finally {
             EmoteApi.INSTANCE = previous;
         }
         ExampleCallbacks callbacks = ExampleCallbacks.registerAll(api);
-        var field = ExampleCallbacks.class.getDeclaredField("trumpetCanCans");
+        var field = ExampleCallbacks.class.getDeclaredField("activeMelodies");
         field.setAccessible(true);
-        var melodies = (Map<UUID, ExampleCallbacks.TrumpetCanCan>) field.get(callbacks);
-        UUID performer = UUID.randomUUID();
-        var playHorn = ExampleCallbacks.class.getDeclaredMethod("playHorn", UUID.class, Vec3.class, ExampleCallbacks.HornNote.class, List.class);
+        var melodies = (java.util.Set<ExampleCallbacks.TrumpetCanCan>) field.get(callbacks);
+        var playHorn = ExampleCallbacks.class.getDeclaredMethod("playHorn", ExampleCallbacks.TrumpetCanCan.class, ExampleCallbacks.HornNote.class, long.class);
         playHorn.setAccessible(true);
         var listenerConstructor = Class.forName("io.github.hanhy06.emote.ExampleCallbacks$HornListener").getDeclaredConstructor(UUID.class, Consumer.class);
         listenerConstructor.setAccessible(true);
         var packets = new ArrayList<Packet<?>>();
         Object listener = listenerConstructor.newInstance(UUID.randomUUID(), (Consumer<Packet<?>>) packets::add);
         var packetMelody = new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, List.of());
+        var soundingMelody = new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, (List) List.of(listener));
+        melodies.add(soundingMelody);
         int sounds = 0;
         var particlePositions = new java.util.HashSet<Vec3>();
         for (int tick = 0; tick <= 435; tick++) {
@@ -174,7 +180,7 @@ class ExampleCallbacksTest {
             packetMelody.advance(tick, notes::add);
             for (var note : notes) {
                 packets.clear();
-                playHorn.invoke(callbacks, performer, Vec3.ZERO, note, List.of(listener));
+                playHorn.invoke(callbacks, soundingMelody, note, (long) tick);
                 assertInstanceOf(ClientboundSoundPacket.class, packets.get(packets.size() - 2));
                 var particle = assertInstanceOf(ClientboundLevelParticlesPacket.class, packets.getLast());
                 assertEquals(ParticleTypes.NOTE, particle.getParticle());
@@ -190,18 +196,48 @@ class ExampleCallbacksTest {
         assertEquals(99, sounds, "Every actual note, including retriggers, sends exactly one particle immediately after its sound");
         assertTrue(particlePositions.size() > 1, "Particle positions must vary between notes");
         packets.clear();
-        playHorn.invoke(callbacks, UUID.randomUUID(), Vec3.ZERO, new ExampleCallbacks.HornNote(55, 6, 0.65F), List.of(listener));
+        playHorn.invoke(callbacks, new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, (List) List.of(listener)), new ExampleCallbacks.HornNote(0, 55, 6, 0.65F), 400L);
         assertTrue(packets.isEmpty(), "A suppressed sound must not produce a particle");
-        assertDoesNotThrow(() -> playHorn.invoke(callbacks, performer, Vec3.ZERO, new ExampleCallbacks.HornNote(127, 12, 0.65F), List.of()));
-        assertDoesNotThrow(() -> playHorn.invoke(callbacks, performer, Vec3.ZERO, new ExampleCallbacks.HornNote(0, 12, 0.65F), List.of()));
-        melodies.put(performer, new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, List.of()));
-        var stop = ExampleCallbacks.class.getDeclaredMethod("stopTrumpetCanCan", UUID.class);
-        stop.setAccessible(true);
-
-        stop.invoke(callbacks, performer);
-        assertTrue(melodies.isEmpty());
-        melodies.put(performer, new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, List.of()));
+        assertDoesNotThrow(() -> playHorn.invoke(callbacks, new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, List.of()), new ExampleCallbacks.HornNote(0, 127, 12, 0.65F), 400L));
+        assertDoesNotThrow(() -> playHorn.invoke(callbacks, new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, List.of()), new ExampleCallbacks.HornNote(0, 0, 12, 0.65F), 400L));
+        assertEquals(java.util.Set.of(ExampleCallbacks.BAT_CALLBACK_ID, ExampleCallbacks.IDLE_BUTTERFLY_CALLBACK_ID, ExampleCallbacks.TRUMPET_CAN_CAN_CALLBACK_ID), registeredCallbacks.keySet());
         assertTrue(callbacks.unregister());
-        assertTrue(melodies.isEmpty());
+        assertFalse(callbacks.unregister());
+        assertTrue(melodies.contains(soundingMelody), "Unregistration preserves existing playback until onClose");
+        var otherMelody = new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, List.of());
+        melodies.add(otherMelody);
+        var context = new TestContext();
+        context.setUserState(soundingMelody);
+        registeredCallbacks.get(ExampleCallbacks.TRUMPET_CAN_CAN_CALLBACK_ID).onClose(context);
+        assertFalse(melodies.contains(soundingMelody));
+        assertTrue(melodies.contains(otherMelody));
+        assertInstanceOf(net.minecraft.network.protocol.game.ClientboundStopSoundPacket.class, packets.getLast());
+        int count = packets.size();
+        registeredCallbacks.get(ExampleCallbacks.TRUMPET_CAN_CAN_CALLBACK_ID).onClose(context);
+        assertEquals(count, packets.size(), "A closed note must not send a second stop packet");
+        context.setUserState(null);
+        registeredCallbacks.get(ExampleCallbacks.TRUMPET_CAN_CAN_CALLBACK_ID).onClose(context);
+        registeredCallbacks.get(ExampleCallbacks.BAT_CALLBACK_ID).onTick(context);
+    }
+
+    private static final class TestContext implements PlaybackContext {
+        private Object state;
+        public UUID getSessionId() { return UUID.randomUUID(); }
+        public String getPayload() { return ""; }
+        public net.minecraft.server.MinecraftServer getServer() { throw new UnsupportedOperationException(); }
+        public net.minecraft.server.level.ServerLevel getWorld() { throw new UnsupportedOperationException(); }
+        public long getElapsedTicks() { return 0; }
+        public int getTick() { return 0; }
+        public Integer getAnimationTick() { return 24; }
+        public boolean setTick(int tick) { throw new UnsupportedOperationException(); }
+        public boolean setAnimationTick(int tick) { throw new UnsupportedOperationException(); }
+        public boolean setStep(int stepIndex, int repeatIndex, int tick) { throw new UnsupportedOperationException(); }
+        public Optional<net.minecraft.world.entity.Entity> getActor(String name) { throw new UnsupportedOperationException(); }
+        public Optional<net.minecraft.world.entity.Entity> getNodeEntity(String node) { throw new UnsupportedOperationException(); }
+        public Optional<Vec3> getNodeWorldPosition(String node) { throw new UnsupportedOperationException(); }
+        public Vec3 getRootPosition() { return Vec3.ZERO; }
+        public Optional<PlaybackStopReason> getStopReason() { return Optional.of(PlaybackStopReason.MANUAL); }
+        public Object getUserState() { return state; }
+        public void setUserState(Object state) { this.state = state; }
     }
 }

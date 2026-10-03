@@ -1,6 +1,10 @@
 # Sequence
 
-Sequence files use schema version `4` and combine existing Animations into one emote.
+A Sequence connects multiple Animations into one emote. It can combine repeats, transitions, waits, and random choices.
+
+## Basic example
+
+This example plays sit down → idle action three times → stand up. Each referenced Animation must be installed on the server.
 
 ```json
 {
@@ -9,8 +13,7 @@ Sequence files use schema version `4` and combine existing Animations into one e
   "id": "sit:idle.sit",
   "metadata": {
     "name": "Sit",
-    "description": "Sit down and relax.",
-    "author": "@soji2318"
+    "description": "Sit down and relax."
   },
   "settings": {
     "cooldown": "0t",
@@ -29,123 +32,112 @@ Sequence files use schema version `4` and combine existing Animations into one e
   },
   "steps": [
     {"emote": "sit:sit_down"},
-    {
-      "emote": [
-        "sit:idle_sky", 40,
-        "sit:idle_butterfly", 35,
-        "sit:idle_flower", 25
-      ],
-      "transition": "2t",
-      "repeat": 2
-    },
-    {"emote": ["sit:stand_up1", 60, "sit:stand_up2", 40]}
+    {"emote": "sit:idle_sky", "repeat": 3, "transition": "2t"},
+    {"emote": "sit:stand_up1"}
   ]
 }
 ```
 
-Complete examples: [linear Sequence](https://github.com/hanhy06/emote/blob/dev/docs/reference/sequence.json) and [two-player Sequence](https://github.com/hanhy06/emote/blob/dev/docs/reference/two-player-sequence.json).
+See the [Sequence example JSON](https://github.com/hanhy06/emote/blob/dev/docs/reference/sequence.json) for the complete format. Sequence files use schema version `4` and are limited to 8 MiB.
 
-## Root fields
+!!! tip "Time units"
+    Time settings use Minecraft time format. `1s` equals `20t`.
 
-| Field | Description |
+    - `s`: seconds
+    - `t` or omitted: ticks
+    - `d`: Minecraft days
+
+## Order and repeats
+
+Steps play in the order listed in `steps`. Set `emote` to the Animation ID for each Animation step.
+
+```json
+{"emote": "sit:idle_sky", "repeat": 3}
+```
+
+`repeat` sets the number of repetitions for that step and defaults to `1`. Each repetition runs one playback cycle of the Animation. A repeating Animation's `loop_delay` applies between cycles.
+
+Steps cannot reference another Sequence or an Animation using `hold` or `server_sync` mode. Animations with `standalone: false` are allowed.
+
+## Transitions
+
+`transition` is the time spent moving from the previous Animation's final pose to the next Animation's initial pose. Position, rotation, and scale of shared display nodes are interpolated linearly.
+
+```json
+{"emote": "sit:idle_sky", "transition": "2t"}
+```
+
+| Condition | Behavior |
 |---|---|
-| `type` | Must be `sequence`. |
-| `schema_version` | Must be `4`. |
-| `target_minecraft_version` | Optional converter output target, such as `26.3`. Reference information only; it does not constrain the server version or guarantee compatibility of referenced animations. |
-| `id` | A lowercase Minecraft identifier in `namespace:path` form. |
-| `metadata` | Display name, description, and custom metadata. |
-| `participants` | Participant placement required by two-player Sequences; omitted for single-player Sequences. |
-| `settings` | Cooldown and player behavior for the entire Sequence. |
-| `steps` | Animation steps, wait steps, or one `await_partner` step. |
+| `transition` omitted | Uses `0t`. |
+| First Animation | Skips the transition because there is no previous pose. |
+| Repeated step | Applies the transition before each repetition's Animation begins. |
+| Preceding wait or `loop_delay` | Holds the previous pose while waiting, then applies the transition. |
 
-Sequence JSON files are limited to 8 MiB.
+Visibility, display data, timeline events, and Molang time change when the transition ends and the next Animation begins.
 
-!!! tip inline end "Time units"
-    Emote uses Minecraft time format.<br>
-    `1s` equals `20t`.
+## Waits
 
-    `s`: seconds<br>
-    `t` or omitted: ticks<br>
-    `d`: Minecraft days
-
-## Metadata and settings
-
-- `metadata.name`: Name shown in commands and the emote UI.
-- `metadata.description`: Description shown to players.
-- Additional metadata is preserved and exposed to the API and web converter.
-- `settings.cooldown`: Cooldown applied after a successful Sequence ends.
-- `settings.player`: Player visibility and stop conditions for the entire Sequence. These replace the referenced Animations' player settings.
-
-Each stop-condition field matches the player-behavior setting in the [Animation format](animation.md).
-
-Sequences do not define `standalone`, `rotation_deadzone`, or `playback`. They are directly playable entries. Each active Animation step supplies its own `rotation_deadzone`; the Sequence controls the cooldown and player behavior.
-
-## Animation steps
-
-Specify one Animation with `emote` and optionally add `repeat` or `transition`.
+A `wait` step holds the previous pose for the specified duration.
 
 ```json
-{"emote": "emote:idle_sky", "repeat": 3}
+"steps": [
+  {"emote": "sit:sit_down"},
+  {"wait": "10t"},
+  {"emote": "sit:stand_up1"}
+]
 ```
 
-`repeat` defaults to `1`. Each repetition runs one complete playback cycle of the Animation. Repeating Animations include their `loop_delay` between cycles.
-
-`transition` linearly moves the shared display nodes from the previous Animation's final pose to the next Animation's initial pose before its timeline begins:
-
-```json
-{"emote": "emote:stand_up1", "transition": "4t"}
-```
-
-It defaults to `0t` and applies before every real Animation selected by the step, including repetitions. The first Animation of a normal Sequence has no previous pose, so its transition is skipped. The first Animation of a cooperative `matched` or `timeout` branch transitions from the offer pose. Waits and loop delays hold the previous pose before the transition. Visibility, display data, timeline events, and Molang time change only when the next Animation begins.
-
-The referenced Animation must be loaded and valid. Animations with `standalone: false` may be used, but other Sequences and Animations using `hold` or `server_sync` playback may not be referenced.
-
-Referenced Animations retain all four event groups. `start` runs when the Animation segment begins, timeline events use the segment-local tick, `loop` runs when a loop segment completes, and `stop` runs when the segment completes or when the Sequence is interrupted while that segment is active. At a shared boundary, the outgoing Animation stops before the incoming Animation starts.
+Waits cannot be the first or last step, cannot be consecutive, and cannot use `repeat`.
 
 ## Random selection
 
-An array of IDs selects one with equal probability on each repetition.
+### Equal probabilities
+
+List multiple IDs in the `emote` array to select one with equal probability.
 
 ```json
 {
   "emote": [
-    "emote:idle_sky",
-    "emote:idle_butterfly",
-    "emote:idle_flower"
+    "sit:idle_sky",
+    "sit:idle_butterfly",
+    "sit:idle_flower"
   ],
   "repeat": 3
 }
 ```
 
-For explicit probabilities, alternate IDs and integer weights. The weights must total `100`.
+### Weights
+
+Alternate IDs and integer weights to set selection probabilities. The weights must total `100`.
 
 ```json
 {
   "emote": [
-    "emote:idle_sky", 40,
-    "emote:idle_butterfly", 35,
-    "emote:idle_flower", 25
+    "sit:idle_sky", 40,
+    "sit:idle_butterfly", 35,
+    "sit:idle_flower", 25
   ],
   "repeat": 3
 }
 ```
 
-A candidate is selected again on every repetition. When multiple Animation candidates exist, the most recently selected Animation is excluded and the remaining probabilities are normalized automatically. Sequence control IDs do not count toward the number of Animation candidates.
+A new choice is made for each repetition. When there are multiple Animation candidates, the most recently selected Animation is excluded and the remaining probabilities are recalculated. Repeat-control IDs in the next section do not count as Animation candidates.
 
 ## Repeat control
 
-Two reserved IDs control repetition of the current Animation step.
+Include these IDs in random selection to skip a repetition or end the current step's repeat loop.
 
 | ID | Behavior |
 |---|---|
-| `emote:continue` | Consumes the current repetition and selects the next one without adding an Animation or `loop_delay`. |
-| `emote:break` | Ends the current repeat loop and advances to the next Sequence step. |
+| `emote:continue` | Consumes one repetition and selects the next without adding an Animation or `loop_delay`. |
+| `emote:break` | Ends the current step's repeat loop and advances to the next step. Does not end the entire Sequence. |
 
 ```json
 {
   "emote": [
-    "emote:idle_sky", 50,
-    "emote:idle_butterfly", 30,
+    "sit:idle_sky", 50,
+    "sit:idle_butterfly", 30,
     "emote:continue", 15,
     "emote:break", 5
   ],
@@ -153,112 +145,61 @@ Two reserved IDs control repetition of the current Animation step.
 }
 ```
 
-`emote:continue` may be selected consecutively. `emote:break` ends only the current Animation step, not the entire Sequence or cooperative branch. A Sequence must contain at least one real Animation candidate, and control IDs cannot be used in cooperative offer Animations.
+`emote:continue` may be selected consecutively. A Sequence must have at least one real Animation candidate.
 
-## Wait steps
-
-```json
-{"wait": "10t"}
-```
-
-A wait step cannot be the first or last step, cannot be adjacent to another wait step, and cannot use `repeat`.
-
-## Animation compatibility
-
-Animations in one Sequence may use different node IDs. The compiled Sequence creates the union of their nodes once, reuses those display entities throughout playback, and hides nodes that are absent from the active Animation step.
-
-All referenced Animations must use the same compiled player-skin layout: node IDs, participants, and body regions derived from `part`, `order`, and local Y scale.
-
-When two Animations reuse the same node ID, that node must have the same inherited space and compatible display content:
-
-- Node types must match.
-- Item stacks, display contexts, block states, text, and entity NBT must match.
-- Player skin binding and participant-hand source must match.
-
-Local transforms, initial visibility, and timeline tracks may differ. Each Animation step evaluates its own node transforms, visibility, and Molang session. Control IDs are excluded from compatibility checks.
-
-Timeline command events and the `start`, `loop`, and `stop` event groups are preserved as described above.
-
-## Playback behavior
-
-Referenced Animations are resolved and checked for compatibility when emotes are reloaded. Before playback, random choices and repeat controls are resolved and the selected steps are compiled into one playback. Display entities are created once and reused until the Sequence ends.
-
-The Sequence's player settings replace those of referenced Animations. Stopping or interrupting the Sequence cancels all remaining steps.
-
-## Two-player Sequences
-
-A two-player Sequence adds `participants` at the root and contains one `await_partner` step.
-
-```json
-{
-  "participants": {
-    "initiator": {
-      "position": "~ ~ ~",
-      "rotation": "~ 0"
-    },
-    "partner": {
-      "position": "^ ^ ^1.2",
-      "rotation": "~180 0"
-    }
-  },
-  "steps": [
-    {
-      "await_partner": {
-        "emote": "emote:handshake_offer",
-        "timeout": "10s"
-      },
-      "matched": [
-        {"emote": "emote:handshake", "repeat": 2},
-        {"wait": "1s"},
-        {"emote": "emote:handshake_close"}
-      ],
-      "timeout": [
-        {"emote": "emote:handshake_close"}
-      ]
-    }
-  ]
-}
-```
-
-`participants` must define both `initiator` and `partner`. Positions use Minecraft relative coordinates. All three components must use either `~` or `^`; absolute coordinates are not allowed. `~` is relative to the scene origin, while `^` is relative to the initiating player's horizontal facing direction. Rotations use Minecraft rotation syntax.
-
-The Sequence must contain exactly one top-level step, and it must be `await_partner`.
-
-The server supports cooperative Sequences. The current web converter imports and exports only linear Sequence steps using `emote` and `wait`; it does not accept `participants` or `await_partner`.
+## Common settings
 
 | Field | Description |
 |---|---|
-| `await_partner.emote` | Offer Animation played by the initiator while waiting |
-| `await_partner.timeout` | Positive time before entering the timeout branch |
-| `matched` | Nonempty branch played after a partner joins |
-| `timeout` | Nonempty branch played if no partner joins |
+| `id` | The Sequence's identifier, in lowercase `namespace:path` form. |
+| `metadata.name` | Name shown in commands and the emote menu. |
+| `metadata.description` | Description shown to players. |
+| Additional metadata | Information such as the creator or license. |
+| `settings.cooldown` | Cooldown applied after the Sequence ends successfully. Individual Animation cooldowns are not added. |
+| `settings.player` | Player visibility and stop conditions for the entire Sequence. Replaces each Animation's player settings. |
+| `target_minecraft_version` | The converter's output target version. Does not constrain the server version or guarantee compatibility of referenced Animations. |
 
-The `await_partner` step cannot use `repeat`. `matched` and `timeout` follow the normal Animation and wait-step rules but cannot contain another `await_partner`.
+See the [Animation documentation](animation.md) for individual player settings.
 
-### Partner matching conditions
+Sequences are directly playable and do not define `standalone`, `rotation_deadzone`, or `playback`. Rotation tracking and display interpolation use the currently playing Animation's settings.
 
-The offer Animation plays for the initiator, and partner-space content remains hidden until a match. Another player joins by starting the same Sequence while all of these conditions are true:
+## Animation compatibility
 
-- Both players are alive and in the same dimension
-- Horizontal distance is at most 2 blocks and vertical distance at most 1 block
-- Each player faces the other within 45 degrees
-- The initiator has line of sight to the partner
+All referenced Animations must be loaded successfully on the server. Compatibility is checked when emotes are reloaded.
 
-If several compatible offers exist, the nearest initiator is selected. Joining reserves the partner, and the matching conditions are checked again when the offer Animation ends. If the reservation becomes invalid, the initiator keeps waiting until another partner joins or the timeout expires.
+Regular node IDs may differ between Animations. The Sequence creates the required nodes once and reuses them until playback ends. Nodes absent from the current Animation are hidden.
 
-### Symmetric and asymmetric Animations
+### Shared node IDs
 
-If a compatible Animation has no `partner` nodes, every `initiator` node, skin binding, transformation track, and visibility track is duplicated automatically for the partner. The copies use the partner root, allowing a rotation such as `~180 0` to make the same local Animation face the initiator.
-
-If any `partner` node exists, the Animation is treated as explicitly asymmetric and partner nodes are not generated automatically.
-
-## Migrating from schema 1
-
-The web converter can import published schema 1 Sequences and export them as schema 4. The server only loads schema 4 directly.
-
-| Schema 1 | Schema 4 |
+| Must match | May differ |
 |---|---|
-| `schema_version: 1` | `schema_version: 4` |
-| Root `player` | `settings.player` |
-| No cooldown | `settings.cooldown`; use `"0t"` when migrating |
-| References to schema 1 Animations | Convert each Animation to schema 4 |
+| Node type | Position, rotation, and scale |
+| Item, item display context, block state, text, and entity NBT | Initial visibility |
+| Player skin binding | Timeline tracks |
+
+### Player skins
+
+All Animations must have the same compiled player-skin layout. Skin node IDs and body regions derived from `part`, `order`, and local Y scale must match.
+
+Repeat-control IDs are excluded from compatibility checks.
+
+## Events and callbacks
+
+Command events defined in each Animation also run within a Sequence.
+
+| Event | Execution time within the Sequence |
+|---|---|
+| `start` | Animation segment start |
+| `timeline` | Specified time within that Animation |
+| `loop` | Loop segment completion |
+| `stop` | Animation segment completion, or interruption of the Sequence while that segment is playing |
+
+At a shared boundary, the previous Animation's stop events run before the next Animation's start events.
+
+Sequence `callbacks` use the same format as [Animation callbacks](animation.md#callbacks). The Sequence and each Animation segment have separate callback contexts and state. Each Animation segment also has its own Molang session.
+
+## Playback behavior
+
+Random choices and repeat controls are resolved before playback starts, and the selected steps are compiled into one playback.
+
+Stopping the Sequence cancels all remaining steps.

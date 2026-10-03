@@ -1,4 +1,4 @@
-import type { EmoteEvent, EmoteMetadata, EmotePlayerBehavior, Matrix16, NodeSpace, Participant, PlayerSkinPart } from "../format/emoteAnimation";
+import type { EmoteCallback, EmoteEvent, EmoteMetadata, EmotePlayerBehavior, Matrix16, PlayerSkinPart } from "../format/emoteAnimation";
 import type { BlockStateData, ItemStackData } from "./minecraftData";
 import type { GeneratedResource } from "./generatedResource";
 import type { ConversionIssue } from "../foundation/diagnostics";
@@ -34,7 +34,7 @@ export interface ImportedNodeBase {
   defaultMatrix: Matrix16;
   visible: boolean;
   entityNbt?: string;
-  space?: NodeSpace;
+
 }
 
 export type ImportedNode =
@@ -44,19 +44,19 @@ export type ImportedNode =
     itemDisplay: string;
     skin?: ImportedSkinPart;
     suggestedSkin?: ImportedSkinPart;
-    playerHeadConversion?: { matrix: Matrix16 };
+    playerHeadConversionMatrix?: Matrix16;
   })
   | (ImportedNodeBase & { type: "block_display"; blockState: BlockStateData })
   | (ImportedNodeBase & { type: "text_display"; text: unknown })
   | (Omit<ImportedNodeBase, "visible" | "entityNbt"> & { type: "anchor" });
 
 export interface ImportedSkinPart {
-  participant?: Participant;
   part: PlayerSkinPart;
   order: number;
 }
 
 export interface ImportedAnimation {
+  callbacks?: EmoteCallback[];
   id: string;
   sourceReferenceId?: string;
   name: string;
@@ -64,7 +64,6 @@ export interface ImportedAnimation {
   durationTicks: number;
   playbackMode: "once" | "hold" | "loop" | "server_sync";
   loopStartTicks?: number;
-  loopEndTicks?: number;
   loopDelayTicks: number;
   events: {
     start: EmoteEvent[];

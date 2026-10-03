@@ -1,9 +1,5 @@
 import type { ExportResult } from "./types";
 
-export function downloadExport(result: ExportResult): void {
-  downloadExports([result]);
-}
-
 export function downloadExports(results: readonly ExportResult[]): void {
   const urls: string[] = [];
   for (const result of results) {

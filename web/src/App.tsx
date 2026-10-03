@@ -7,7 +7,7 @@ import { ExportPanel } from "./components/ExportPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { downloadExports } from "./export/download";
 import type { ExportResult } from "./export/types";
-import type { EmoteEvent, NodeSpace, PlayerSkinPart } from "./format/emoteAnimation";
+import type { EmoteCallback, EmoteEvent, PlayerSkinPart } from "./format/emoteAnimation";
 import { IMPORT_ADAPTERS } from "./import/adapters";
 import { importFileBatch } from "./import/importBatch";
 import { conversionErrorMessage, groupConversionWarnings } from "./foundation/diagnostics";
@@ -65,10 +65,9 @@ export function App() {
   }, [session]);
   const assignments = preview?.assignments ?? {};
   const orders = preview?.orders ?? {};
-  const spaces = preview?.spaces ?? {};
   const selectedNodeIds = session?.selectedNodeIds ?? EMPTY_SELECTION;
   const selectedAnimation = project?.animations[animationIndex];
-  const animation = selectedAnimation?.source;
+  const animation = selectedAnimation?.runtime;
   const availability = preview?.availability ?? null;
   const exportAvailability = selectedAnimation?.runtime.availability ?? null;
   const previewDurationTicks = preview?.durationTicks ?? 0;
@@ -146,16 +145,11 @@ export function App() {
     dispatch({ type: "skin_part_assigned", part });
   }
 
-  function assignSelectedSpace(space: NodeSpace) {
-    if (selectedNodeIds.size === 0) return;
-    dispatch({ type: "node_space_assigned", space });
-  }
-
   function assignOrder(order: number) {
     dispatch({ type: "skin_order_assigned", order });
   }
 
-  function changeLifecycleEvents(events: { start: EmoteEvent[]; loop: EmoteEvent[]; stop: EmoteEvent[] }) {
+  function changeLifecycleEvents(events: { callbacks: EmoteCallback[]; start: EmoteEvent[]; loop: EmoteEvent[]; stop: EmoteEvent[] }) {
     dispatch({ type: "lifecycle_events_changed", events });
   }
 
@@ -236,7 +230,7 @@ export function App() {
                 const nextIndex = Number(event.currentTarget.value);
                 dispatch({ type: "animation_selected", index: nextIndex });
               }}>
-                {project.animations.map((item, index) => <option value={index} key={`${item.source.id}:${index}`}>{item.source.name}</option>)}
+                {project.animations.map((item, index) => <option value={index} key={`${item.runtime.id}:${index}`}>{item.runtime.sourceName}</option>)}
               </select>
             </label>
             <dl>
@@ -318,13 +312,11 @@ export function App() {
                   parts={previewParts}
                   assignments={assignments}
                   orders={orders}
-                  spaces={spaces}
-                  selectedNodeIds={selectedNodeIds}
+                          selectedNodeIds={selectedNodeIds}
                   hasSelectedAssignment={hasSelectedAssignment}
                   onAssignPart={assignSelected}
                   onAssignOrder={assignOrder}
-                  onAssignSpace={assignSelectedSpace}
-                  onSelectNode={handleNodeSelect}
+                          onSelectNode={handleNodeSelect}
                 />
               </div>
             ) : (
@@ -333,6 +325,7 @@ export function App() {
             {exportAvailability?.exportable && <EventPanel
               key={`${eventEditorRevision}:${animationIndex}:${previewTick === null ? "lifecycle" : previewTick}`}
               events={selectedAnimation.events}
+              callbacks={selectedAnimation.callbacks}
               tick={previewTick}
               disabled={busy}
               onLifecycleChange={changeLifecycleEvents}
@@ -353,7 +346,7 @@ export function App() {
             assignmentSummary={assignmentSummary(project)}
             animations={project.animations.map((item) => {
               const itemAvailability = item.runtime.availability;
-              return { label: item.output.displayName, detail: item.source.id, exportable: itemAvailability.exportable, reason: itemAvailability.reason };
+              return { label: item.output.displayName, detail: item.runtime.id, exportable: itemAvailability.exportable, reason: itemAvailability.reason };
             })}
             error={exportError}
             disabled={busy}

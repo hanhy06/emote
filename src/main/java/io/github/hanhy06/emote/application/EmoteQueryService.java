@@ -5,11 +5,7 @@ import io.github.hanhy06.emote.content.PlayableEmote;
 import io.github.hanhy06.emote.util.EmoteTags;
 import net.minecraft.server.level.ServerPlayer;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
 import java.util.function.Predicate;
 
 public class EmoteQueryService {
@@ -27,7 +23,7 @@ public class EmoteQueryService {
 
     public List<EmoteSummary> getAll(ServerPlayer player) {
         return this.emoteCatalog.emotes().stream()
-            .filter(emote -> isVisible(player, emote))
+            .filter(emote -> this.visibilityChecker.isVisible(player, emote))
             .sorted(Comparator.comparing(PlayableEmote::name).thenComparing(PlayableEmote::id))
             .map(emote -> new EmoteSummary(emote.id(), emote.name(), emote.description(), emote.tags()))
             .toList();
@@ -67,7 +63,7 @@ public class EmoteQueryService {
     }
 
     public List<String> getPlayableIds(ServerPlayer player) {
-        return collectPlayIds(emote -> isVisible(player, emote));
+        return collectPlayIds(emote -> this.visibilityChecker.isVisible(player, emote));
     }
 
     private List<String> collectPlayIds(Predicate<PlayableEmote> filter) {
@@ -78,10 +74,6 @@ public class EmoteQueryService {
             }
         }
         return List.copyOf(ids);
-    }
-
-    private boolean isVisible(ServerPlayer player, PlayableEmote emote) {
-        return this.visibilityChecker.isVisible(player, emote);
     }
 
     private static int searchRank(EmoteSummary emote, SearchQuery query) {

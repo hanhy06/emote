@@ -1,25 +1,23 @@
 package io.github.hanhy06.emote.content.loader;
 
+import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
+import net.minecraft.world.phys.Vec3;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
-import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.content.LoadedAnimation;
-import io.github.hanhy06.emote.molang.MolangEngine;
 import io.github.hanhy06.emote.util.Sha256;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.resources.Identifier;
 
 import java.nio.file.Path;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
 
@@ -71,8 +69,22 @@ public final class AnimationJsonParser {
         return new LoadedAnimation(
             document.sourcePath(),
             Sha256.hashHex(document.bytes()),
-            new EmoteAnimation(id, metadata, settings, molang, nodes, timeline)
+            new EmoteAnimation(id, metadata, settings, molang, nodes, timeline, parseCallbacks(root, document))
         );
+    }
+
+    static List<Callback> parseCallbacks(JsonObject root, EmoteJsonDocument document) throws EmoteAnimationLoadException {
+        JsonArray array = document.optionalArray(root, "callbacks", "$");
+        if (array == null) return List.of();
+        List<Callback> callbacks = new ArrayList<>();
+        for (int index = 0; index < array.size(); index++) {
+            String path = "$.callbacks[" + index + "]";
+            JsonObject callback = document.requireObject(array.get(index), path);
+            Identifier name = document.requireIdentifier(document.requireString(callback, "name", path), path + ".name");
+            String payload = callback.has("payload") ? document.requireString(callback, "payload", path) : "";
+            callbacks.add(new Callback(name, payload));
+        }
+        return List.copyOf(callbacks);
     }
 
     private MolangPrograms parseMolang(JsonObject object, Settings settings, EmoteJsonDocument document)
@@ -101,7 +113,7 @@ public final class AnimationJsonParser {
         if (source.isBlank()) {
             throw document.error(path + "." + key, "must not be blank");
         }
-        compileMolang(source, path + "." + key, document);
+        document.requireMolang(source, path + "." + key);
         return source;
     }
 
@@ -149,23 +161,12 @@ public final class AnimationJsonParser {
             default -> throw document.error("$.settings.playback.mode", "unsupported playback mode: " + modeText);
         };
         int loopStartTicks = optionalTime(playbackObject, "loop_start", "$.settings.playback", document);
-        int configuredLoopEndTicks = optionalTime(playbackObject, "loop_end", "$.settings.playback", document);
-        int loopEndTicks = mode == LoopMode.LOOP && configuredLoopEndTicks == 0 ? durationTicks : configuredLoopEndTicks;
         int loopDelayTicks = optionalTime(playbackObject, "loop_delay", "$.settings.playback", document);
         if (loopStartTicks != 0 && mode != LoopMode.LOOP) {
             throw document.error("$.settings.playback.loop_start", "must be zero unless playback mode is loop");
         }
-        if (loopEndTicks != 0 && mode != LoopMode.LOOP) {
-            throw document.error("$.settings.playback.loop_end", "must be zero unless playback mode is loop");
-        }
         if (mode == LoopMode.LOOP && loopStartTicks >= durationTicks) {
             throw document.error("$.settings.playback.loop_start", "must be less than the timeline duration");
-        }
-        if (mode == LoopMode.LOOP && loopEndTicks <= loopStartTicks) {
-            throw document.error("$.settings.playback.loop_end", "must be greater than loop_start");
-        }
-        if (mode == LoopMode.LOOP && loopEndTicks > durationTicks) {
-            throw document.error("$.settings.playback.loop_end", "must not exceed the timeline duration");
         }
         if (loopDelayTicks != 0 && (mode == LoopMode.ONCE || mode == LoopMode.HOLD)) {
             throw document.error("$.settings.playback.loop_delay", "must be zero when playback mode is once or hold");
@@ -176,7 +177,7 @@ public final class AnimationJsonParser {
             (float) rotationDeadzone,
             displayInterpolationTicks,
             player,
-            new PlaybackSettings(mode, loopStartTicks, loopEndTicks, loopDelayTicks)
+            new PlaybackSettings(mode, loopStartTicks, loopDelayTicks)
         );
     }
 
@@ -254,19 +255,14 @@ public final class AnimationJsonParser {
         }
         JsonObject object = definitions.get(nodeId);
         String parentId = optionalParent(object, path, document);
-        NodeSpace space;
-        if (parentId == null) {
-            space = requireNodeSpace(object, path, document);
-        } else {
-            if (object.has("space")) {
-                throw document.error(path + ".space", "is not allowed on child nodes");
-            }
-            if (!definitions.containsKey(parentId)) {
-                throw document.error(path + ".parent", "references unknown node: " + parentId);
-            }
-            space = resolveNode(parentId, definitions, nodes, visiting, document).space();
+        if (object.has("space")) {
+            throw document.error(path + ".space", "node coordinate spaces are no longer supported");
         }
-        Node node = parseNode(object, path, parentId, space, document);
+        if (parentId != null) {
+            if (!definitions.containsKey(parentId)) throw document.error(path + ".parent", "references unknown node: " + parentId);
+            resolveNode(parentId, definitions, nodes, visiting, document);
+        }
+        Node node = parseNode(object, path, parentId, document);
         visiting.remove(nodeId);
         nodes.put(nodeId, node);
         return node;
@@ -285,7 +281,7 @@ public final class AnimationJsonParser {
         return parent;
     }
 
-    private Node parseNode(JsonObject object, String path, String parentId, NodeSpace space, EmoteJsonDocument document)
+    private Node parseNode(JsonObject object, String path, String parentId, EmoteJsonDocument document)
         throws EmoteAnimationLoadException {
         String type = document.requireString(object, "type", path);
         LocalTransform transform = parseTransform(document.requireObject(object, "transform", path), path + ".transform", document);
@@ -296,7 +292,7 @@ public final class AnimationJsonParser {
             if (object.has("entity_nbt")) {
                 throw document.error(path + ".entity_nbt", "is not supported by anchor nodes");
             }
-            return new AnchorNode(space, parentId, transform);
+            return new AnchorNode(parentId, transform);
         }
 
         boolean visible = optionalVisible(object, path, document);
@@ -304,17 +300,15 @@ public final class AnimationJsonParser {
         return switch (type) {
             case "item_display" -> new ItemNode(
                 visible,
-                space,
                 parentId,
                 transform,
                 entityNbt,
                 requireCompoundSnbt(object, "item_stack_snbt", path, document),
                 parseItemDisplay(object, path, document),
-                parseSkin(object, space, path, document)
+                parseSkin(object, path, document)
             );
             case "block_display" -> new BlockNode(
                 visible,
-                space,
                 parentId,
                 transform,
                 entityNbt,
@@ -322,7 +316,6 @@ public final class AnimationJsonParser {
             );
             case "text_display" -> new TextNode(
                 visible,
-                space,
                 parentId,
                 transform,
                 entityNbt,
@@ -355,17 +348,6 @@ public final class AnimationJsonParser {
         );
     }
 
-    private NodeSpace requireNodeSpace(JsonObject object, String path, EmoteJsonDocument document)
-        throws EmoteAnimationLoadException {
-        String value = document.requireString(object, "space", path);
-        return switch (value) {
-            case "scene" -> NodeSpace.SCENE;
-            case "initiator" -> NodeSpace.INITIATOR;
-            case "partner" -> NodeSpace.PARTNER;
-            default -> throw document.error(path + ".space", "unsupported node space: " + value);
-        };
-    }
-
     private String parseItemDisplay(JsonObject object, String path, EmoteJsonDocument document)
         throws EmoteAnimationLoadException {
         String value = document.requireString(object, "item_display", path);
@@ -375,7 +357,7 @@ public final class AnimationJsonParser {
         return value;
     }
 
-    private Skin parseSkin(JsonObject object, NodeSpace nodeSpace, String path, EmoteJsonDocument document)
+    private Skin parseSkin(JsonObject object, String path, EmoteJsonDocument document)
         throws EmoteAnimationLoadException {
         JsonElement element = object.get("skin");
         if (element == null || element.isJsonNull()) {
@@ -385,33 +367,24 @@ public final class AnimationJsonParser {
             throw document.error(path + ".skin", "must be an object");
         }
         JsonObject skin = element.getAsJsonObject();
-        JsonElement participantElement = skin.get("participant");
-        String participantText = participantElement == null || participantElement.isJsonNull()
-            ? "initiator"
-            : document.requireString(skin, "participant", path + ".skin");
-        ParticipantRole participant = switch (participantText) {
-            case "initiator" -> ParticipantRole.INITIATOR;
-            case "partner" -> ParticipantRole.PARTNER;
-            default -> throw document.error(path + ".skin.participant", "unsupported participant: " + participantText);
-        };
-        if (nodeSpace != NodeSpace.forParticipant(participant)) {
-            throw document.error(path + ".skin.participant", "must match the node space");
+        if (skin.has("participant")) {
+            throw document.error(path + ".skin.participant", "participant roles are no longer supported");
         }
         String partText = document.requireString(skin, "part", path + ".skin");
-        SkinPart part = switch (partText) {
-            case "head" -> SkinPart.HEAD;
-            case "body" -> SkinPart.BODY;
-            case "left_arm" -> SkinPart.LEFT_ARM;
-            case "right_arm" -> SkinPart.RIGHT_ARM;
-            case "left_leg" -> SkinPart.LEFT_LEG;
-            case "right_leg" -> SkinPart.RIGHT_LEG;
+        PlayerSkinPart part = switch (partText) {
+            case "head" -> PlayerSkinPart.HEAD;
+            case "body" -> PlayerSkinPart.BODY;
+            case "left_arm" -> PlayerSkinPart.LEFT_ARM;
+            case "right_arm" -> PlayerSkinPart.RIGHT_ARM;
+            case "left_leg" -> PlayerSkinPart.LEFT_LEG;
+            case "right_leg" -> PlayerSkinPart.RIGHT_LEG;
             default -> throw document.error(path + ".skin.part", "unsupported skin part: " + partText);
         };
         int order = document.requireInt(skin, "order", path + ".skin");
         if (order < 0) {
             throw document.error(path + ".skin.order", "must not be negative");
         }
-        return new Skin(participant, part, order);
+        return new Skin(part, order);
     }
 
     private CompoundTag optionalEntityNbt(JsonObject object, String path, EmoteJsonDocument document)
@@ -427,14 +400,6 @@ public final class AnimationJsonParser {
             }
         }
         return tag;
-    }
-
-    static void compileMolang(String source, String path, EmoteJsonDocument document) throws EmoteAnimationLoadException {
-        try {
-            MolangEngine.INSTANCE.compile(source);
-        } catch (MolangEngine.MolangCompileException exception) {
-            throw document.error(path, "invalid Molang program", exception);
-        }
     }
 
     private CompoundTag requireCompoundSnbt(

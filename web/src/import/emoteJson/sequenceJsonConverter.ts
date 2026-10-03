@@ -1,3 +1,5 @@
+import type { EmoteCallback } from "../../format/emoteAnimation";
+import { parseCallbacks } from "../../format/emoteAnimationRuntime";
 import { parseMinecraftTime } from "../../format/time";
 import { isResourceLocation } from "../../format/resourceLocation";
 import {
@@ -14,6 +16,7 @@ import { ConversionError } from "../../foundation/diagnostics";
 import { parseInputJson } from "../common/inputCache";
 
 export interface EmoteSequence {
+  callbacks?: EmoteCallback[];
   type: "sequence";
   schema_version: 4;
   target_minecraft_version?: string;
@@ -34,26 +37,15 @@ export function convertSequenceInput(input: ImportInput): EmoteSequence | null {
     return null;
   }
   if (!isRecord(value) || value.type !== "sequence") return null;
-  if (value.schema_version === 1) return migrateSchema1Sequence(value);
   if (value.schema_version === 4) return requireSequence(value);
   throw new ConversionError("unsupported_sequence_schema", `Unsupported sequence schema: ${String(value.schema_version)}.`, "schema_version");
-}
-
-function migrateSchema1Sequence(root: RuntimeRecord): EmoteSequence {
-  return requireSequence({
-    type: "sequence",
-    schema_version: 4,
-    id: root.id,
-    metadata: root.metadata,
-    settings: { cooldown: "0t", player: root.player },
-    steps: root.steps,
-  });
 }
 
 function requireSequence(value: unknown): EmoteSequence {
   const root = requireRecord(value, "sequence");
   if (root.type !== "sequence") throw invalid("type", "must be sequence");
   if (root.schema_version !== 4) throw invalid("schema_version", "must be 4");
+  if (root.participants !== undefined && root.participants !== null) throw invalid("participants", "two-player matching is no longer supported");
   const id = requireString(root.id, "id");
   if (!isResourceLocation(id)) throw invalid("id", "must be a Minecraft resource location");
   const metadata = requireRecord(root.metadata, "metadata");
@@ -75,6 +67,7 @@ function requireSequence(value: unknown): EmoteSequence {
     type: "sequence", schema_version: 4,
     ...(typeof root.target_minecraft_version === "string" ? { target_minecraft_version: root.target_minecraft_version } : {}),
     id, metadata, settings: { cooldown, player }, steps,
+    ...(root.callbacks === undefined ? {} : { callbacks: parseCallbacks(root.callbacks) }),
   };
 }
 
@@ -91,6 +84,7 @@ function requirePlayer(player: RuntimeRecord): void {
 function requireStep(value: unknown, index: number): RuntimeRecord {
   const path = `steps[${index}]`;
   const step = requireRecord(value, path);
+  if (step.await_partner !== undefined) throw invalid(path + ".await_partner", "two-player matching is no longer supported");
   const hasEmote = step.emote !== undefined && step.emote !== null;
   const hasWait = step.wait !== undefined && step.wait !== null;
   if (hasEmote === hasWait) throw invalid(path, "must contain exactly one of emote or wait");

@@ -1,108 +1,100 @@
 package io.github.hanhy06.emote.content;
 
+import io.github.hanhy06.emote.api.sequence.EmoteSequence;
+
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.api.PlaybackTimeline;
 import io.github.hanhy06.emote.util.Sha256;
 
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.*;
 
 final class SequenceCompiler {
     private SequenceCompiler() {
     }
 
-    static PreparedAnimation compile(
+    static PreparedEmote compile(
         EmoteSequence sequence,
+        Path sourcePath,
         List<PreparedSequence.SelectedStep> steps,
-        PreparedAnimation layoutAnchor,
-        boolean initialPoseAvailable
+        PreparedEmote layoutAnchor
     ) {
-        List<EmoteAnimation.TimelineEvent> timelineEvents = new ArrayList<>();
-        List<PreparedAnimation.PlaybackSegment> playbackSegments = new ArrayList<>();
+        List<PreparedEmote.PlaybackSegment> playbackSegments = new ArrayList<>();
+        List<PlaybackTimeline.Segment> timelineSegments = new ArrayList<>();
         Map<Integer, Set<String>> hiddenNodes = new HashMap<>();
-        if (steps.isEmpty() || !(steps.getFirst() instanceof PreparedSequence.SelectedEmoteStep)) {
-            hiddenNodes.put(0, nodesToHide(layoutAnchor.animation(), null));
+        if (steps.isEmpty() || !(steps.getFirst() instanceof PreparedSequence.SelectedAnimationStep)) {
+            hiddenNodes.put(0, nodesToHide(layoutAnchor.model(), null));
         }
         long offset = 0L;
-        boolean hasPreviousPose = initialPoseAvailable;
+        boolean hasPreviousPose = false;
         for (PreparedSequence.SelectedStep selectedStep : steps) {
-            if (selectedStep instanceof PreparedSequence.SelectedWaitStep(int ticks)) {
+            if (selectedStep instanceof PreparedSequence.SelectedWaitStep(int ticks, int stepIndex)) {
+                timelineSegments.add(new PlaybackTimeline.Segment(timelineSegments.size(), stepIndex, null,
+                    PlaybackTimeline.Phase.WAIT, requireTick(offset, sequence), (long) requireTick(offset + ticks, sequence), null));
                 offset += ticks;
                 continue;
             }
-            PreparedSequence.SelectedEmoteStep step = (PreparedSequence.SelectedEmoteStep) selectedStep;
-            EmoteAnimation animation = step.animation().animation();
+            PreparedSequence.SelectedAnimationStep step = (PreparedSequence.SelectedAnimationStep) selectedStep;
+            EmoteAnimation animation = step.animation().model();
             int transitionStartTick = requireTick(offset, sequence);
             int transitionTicks = hasPreviousPose ? step.transitionTicks() : 0;
             int segmentOffset = requireTick(offset + transitionTicks, sequence);
-            playbackSegments.add(new PreparedAnimation.PlaybackSegment(
+            int segmentEndTick = requireTick(offset + transitionTicks + animation.timeline().durationTicks(), sequence);
+            if (transitionTicks > 0) {
+                timelineSegments.add(new PlaybackTimeline.Segment(timelineSegments.size(), step.stepIndex(), step.repeatIndex(),
+                    PlaybackTimeline.Phase.TRANSITION, transitionStartTick, (long) segmentOffset, animation.id()));
+            }
+            timelineSegments.add(new PlaybackTimeline.Segment(timelineSegments.size(), step.stepIndex(), step.repeatIndex(),
+                PlaybackTimeline.Phase.ANIMATION, segmentOffset,
+                (long) segmentEndTick, animation.id()));
+            playbackSegments.add(new PreparedEmote.PlaybackSegment(
                 transitionStartTick,
                 segmentOffset,
-                requireTick(offset + transitionTicks + animation.timeline().durationTicks(), sequence),
+                segmentEndTick,
                 step.animation(),
-                Map.of()
+                timelineSegments.size() - 1
             ));
-            hiddenNodes.put(segmentOffset, nodesToHide(layoutAnchor.animation(), animation));
-            for (EmoteAnimation.TimelineEvent event : animation.timeline().events().timeline()) {
-                timelineEvents.add(new EmoteAnimation.TimelineEvent(
-                    requireTick((long) segmentOffset + event.tick(), sequence),
-                    event.source(),
-                    event.origin(),
-                    event.commands(),
-                    event.callbacks()
-                ));
-            }
+            hiddenNodes.put(segmentOffset, nodesToHide(layoutAnchor.model(), animation));
 
             offset += transitionTicks + animation.timeline().durationTicks();
             if (step.loopDelayAfter() && animation.settings().playback().mode() == EmoteAnimation.LoopMode.LOOP) {
-                offset += animation.settings().playback().loopDelayTicks();
+                int delay = animation.settings().playback().loopDelayTicks();
+                if (delay > 0) {
+                    timelineSegments.add(new PlaybackTimeline.Segment(timelineSegments.size(), step.stepIndex(), step.repeatIndex(),
+                        PlaybackTimeline.Phase.LOOP_DELAY, requireTick(offset, sequence),
+                        (long) requireTick(offset + delay, sequence), null));
+                    offset += delay;
+                }
             }
             hasPreviousPose = true;
         }
 
-        EmoteAnimation compiledAnimation = new EmoteAnimation(
+        EmoteAnimation compiledModel = new EmoteAnimation(
             sequence.id(),
             sequence.metadata(),
             new EmoteAnimation.Settings(
                 true,
                 sequence.settings().cooldownTicks(),
-                layoutAnchor.animation().settings().rotationDeadzone(),
-                layoutAnchor.animation().settings().displayInterpolationTicks(),
+                layoutAnchor.model().settings().rotationDeadzone(),
+                layoutAnchor.model().settings().displayInterpolationTicks(),
                 sequence.settings().player(),
-                new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.ONCE, 0, 0, 0)
+                new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.ONCE, 0, 0)
             ),
             EmoteAnimation.MolangPrograms.empty(),
-            layoutAnchor.animation().nodes(),
+            layoutAnchor.model().nodes(),
             new EmoteAnimation.Timeline(
                 Math.max(requireTick(offset, sequence), 1),
                 Map.of(),
-                new EmoteAnimation.Events(List.of(), timelineEvents, List.of(), List.of())
-            )
-        );
-        SequenceNodeLayout.Expansion layout = SequenceNodeLayout.expandPartnerLayout(
-            sequence.participants() != null,
-            compiledAnimation,
-            layoutAnchor.source().preparedDisplayData()
-        );
-        compiledAnimation = layout.animation();
-        LoadedAnimation loaded = new LoadedAnimation(
-            sequence.sourcePath(),
-            fingerprint(sequence, steps, initialPoseAvailable),
-            compiledAnimation,
-            layout.preparedDisplayData()
-        );
-        List<PreparedAnimation.PlaybackSegment> expandedSegments = playbackSegments.stream()
-            .map(segment -> new PreparedAnimation.PlaybackSegment(
-                segment.transitionStartTick(),
-                segment.startTick(),
-                segment.endTick(),
-                segment.animation(),
-                layout.partnerNodeIds()
-            ))
-            .toList();
-        PreparedAnimation preparedLayout = layout.generatedPartner()
-            ? PreparedAnimation.from(loaded)
-            : PreparedAnimation.from(loaded, layoutAnchor.skinBindings());
-        return PreparedAnimation.sequence(preparedLayout, expandedSegments, expandHiddenNodes(hiddenNodes, layout.partnerNodeIds()));
+                EmoteAnimation.Events.empty()
+            ), sequence.callbacks());
+        LoadedAnimation loaded = new LoadedAnimation(sourcePath, fingerprint(sequence, steps),
+            compiledModel, layoutAnchor.source().preparedDisplayData());
+        PreparedEmote preparedLayout = PreparedEmote.from(loaded, layoutAnchor.skinBindings());
+        if (timelineSegments.isEmpty()) {
+            timelineSegments.add(new PlaybackTimeline.Segment(0, null, null, PlaybackTimeline.Phase.WAIT, 0, 1L, null));
+        }
+        return PreparedEmote.sequence(preparedLayout, playbackSegments, hiddenNodes, timelineSegments);
     }
 
     private static Set<String> nodesToHide(EmoteAnimation layout, EmoteAnimation active) {
@@ -111,23 +103,6 @@ final class SequenceCompiler {
             hiddenNodes.removeAll(active.nodes().keySet());
         }
         return Set.copyOf(hiddenNodes);
-    }
-
-    private static Map<Integer, Set<String>> expandHiddenNodes(
-        Map<Integer, Set<String>> source,
-        Map<String, String> partnerNodeIds
-    ) {
-        Map<Integer, Set<String>> expanded = new HashMap<>();
-        source.forEach((tick, nodeIds) -> {
-            Set<String> tickNodeIds = new LinkedHashSet<>(nodeIds);
-            partnerNodeIds.forEach((sourceId, partnerId) -> {
-                if (nodeIds.contains(sourceId)) {
-                    tickNodeIds.add(partnerId);
-                }
-            });
-            expanded.put(tick, Set.copyOf(tickNodeIds));
-        });
-        return Map.copyOf(expanded);
     }
 
     private static int requireTick(long tick, EmoteSequence sequence) {
@@ -139,19 +114,20 @@ final class SequenceCompiler {
 
     private static String fingerprint(
         EmoteSequence sequence,
-        List<PreparedSequence.SelectedStep> steps,
-        boolean initialPoseAvailable
+        List<PreparedSequence.SelectedStep> steps
     ) {
-        StringBuilder input = new StringBuilder(sequence.id().toString()).append('|').append(initialPoseAvailable);
+        StringBuilder input = new StringBuilder(sequence.id().toString());
         for (PreparedSequence.SelectedStep step : steps) {
-            if (step instanceof PreparedSequence.SelectedWaitStep(int ticks)) {
-                input.append("|wait:").append(ticks);
+            if (step instanceof PreparedSequence.SelectedWaitStep(int ticks, int stepIndex)) {
+                input.append("|wait:").append(ticks).append(':').append(stepIndex);
             } else {
-                PreparedSequence.SelectedEmoteStep emoteStep = (PreparedSequence.SelectedEmoteStep) step;
+                PreparedSequence.SelectedAnimationStep emoteStep = (PreparedSequence.SelectedAnimationStep) step;
                 input.append('|')
                     .append(emoteStep.animation().source().sha256())
                     .append(':').append(emoteStep.loopDelayAfter())
-                    .append(':').append(emoteStep.transitionTicks());
+                    .append(':').append(emoteStep.transitionTicks())
+                    .append(':').append(emoteStep.stepIndex())
+                    .append(':').append(emoteStep.repeatIndex());
             }
         }
         return Sha256.hashHex(input.toString().getBytes(StandardCharsets.UTF_8));
