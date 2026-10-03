@@ -36,6 +36,9 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
     private boolean callbacksStarted;
     private boolean invokingCallback;
     private boolean callbacksClosed;
+    private boolean processingFrame;
+    private boolean applyingTick;
+    private @Nullable Integer pendingTick;
     private @Nullable Runnable deferredCleanup;
     private final ResourceKey<Level> levelKey;
     private final String emoteId;
@@ -107,17 +110,73 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
     }
 
     public void startPlayback() {
-        if (this.callbacksStarted) throw new IllegalStateException("Callbacks already started.");
-        this.playback.restoreDeferredVisibility();
-        this.playback.startEvents();
-        if (this.playbackState != PlaybackState.RUNNING) return;
-        this.callbacksStarted = true;
-        for (Context context : this.callbackContexts) {
-            context.started = true;
-            invokeCallback(context, context.binding.callbacks()::onStart);
-            if (this.playbackState != PlaybackState.RUNNING) break;
+        beginFrame();
+        try {
+            if (this.callbacksStarted) throw new IllegalStateException("Callbacks already started.");
+            this.playback.restoreDeferredVisibility();
+            this.playback.startEvents();
+            if (this.playbackState != PlaybackState.RUNNING) return;
+            this.callbacksStarted = true;
+            for (Context context : this.callbackContexts) {
+                context.started = true;
+                invokeCallback(context, context.binding.callbacks()::onStart);
+                if (this.playbackState != PlaybackState.RUNNING) break;
+            }
+            startAnimationCallbacks();
+        } finally {
+            endFrame();
         }
-        startAnimationCallbacks();
+    }
+
+    public boolean setTick(int tick) {
+        if (!this.playback.canSetTick(tick) || this.playbackState != PlaybackState.RUNNING) return false;
+        this.pendingTick = tick;
+        if (!this.processingFrame && !this.invokingCallback && !this.applyingTick) applyPendingTick();
+        return true;
+    }
+
+    public boolean setAnimationTick(int tick) {
+        if (tick < 0) throw new IllegalArgumentException("Tick must not be negative");
+        if (this.playbackState != PlaybackState.RUNNING) return false;
+        int target = this.playback.animationTickTarget(tick);
+        return target >= 0 && setTick(target);
+    }
+
+    public boolean setStep(int stepIndex, int repeatIndex, int tick) {
+        if (stepIndex < 0 || repeatIndex < 0 || tick < 0) throw new IllegalArgumentException("Step, repeat and tick must not be negative");
+        if (this.playbackState != PlaybackState.RUNNING) return false;
+        return setTick(this.playback.stepTickTarget(stepIndex, repeatIndex, tick));
+    }
+
+    public void beginFrame() {
+        this.processingFrame = true;
+    }
+
+    public void endFrame() {
+        this.processingFrame = false;
+        applyPendingTick();
+    }
+
+    private void applyPendingTick() {
+        Integer tick = this.pendingTick;
+        this.pendingTick = null;
+        if (tick == null || this.playbackState != PlaybackState.RUNNING) return;
+        this.applyingTick = true;
+        try {
+            this.playback.setTick(tick);
+        } finally {
+            this.applyingTick = false;
+        }
+    }
+
+    @Override
+    public boolean hasPendingTick() {
+        return this.pendingTick != null;
+    }
+
+    @Override
+    public void onPositionChanged(int animationTick) {
+        for (Context context : this.animationCallbackContexts) context.localTick = animationTick;
     }
 
     private void startAnimationCallbacks() {
@@ -132,12 +191,14 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
     public void onStart(PreparedEmote animation) {
         this.animationCallbackContexts = this.animationBindings.getOrDefault(animation, List.of()).stream()
             .map(binding -> new Context(binding, true)).toList();
+        Integer tick = this.playback.position().animationTick();
+        onPositionChanged(tick == null ? 0 : tick);
         if (this.callbacksStarted) startAnimationCallbacks();
     }
 
     @Override
     public void onTick(int animationTick) {
-        for (Context context : this.animationCallbackContexts) context.localTick = animationTick;
+        onPositionChanged(animationTick);
         for (Context context : this.animationCallbackContexts) {
             if (this.playbackState != PlaybackState.RUNNING) break;
             invokeCallback(context, context.binding.callbacks()::onTick);
@@ -208,6 +269,7 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
     public boolean beginClose(PlaybackStopReason reason) {
         if (this.playbackState != PlaybackState.RUNNING) return false;
         this.playbackState = PlaybackState.CLOSING;
+        this.pendingTick = null;
         this.stopReason = Objects.requireNonNull(reason, "reason");
         return true;
     }
@@ -249,30 +311,34 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
             this.animationScoped = animationScoped;
             this.startTick = PlaybackSession.this.elapsedTicks;
         }
-        public String payload() { return this.binding.payload(); }
+        public String getPayload() { return this.binding.payload(); }
 
-        public UUID sessionId() { return PlaybackSession.this.sessionId; }
-        public MinecraftServer server() { return EmoteMod.SERVER; }
-        public ServerLevel level() { return Objects.requireNonNull(server().getLevel(PlaybackSession.this.levelKey), "Playback level unavailable."); }
-        public long elapsedTicks() { return PlaybackSession.this.elapsedTicks - this.startTick; }
-        public @Nullable Integer animationTick() { return this.animationScoped ? Integer.valueOf(this.localTick) : PlaybackSession.this.playback.position().animationTick(); }
-        public Vec3 rootPosition() { return PlaybackSession.this.nodes.root().position(); }
-        public Optional<PlaybackStopReason> stopReason() { return Optional.ofNullable(this.closeReason != null ? this.closeReason : PlaybackSession.this.stopReason); }
-        public @Nullable Object userState() { return this.userState; }
+        public UUID getSessionId() { return PlaybackSession.this.sessionId; }
+        public MinecraftServer getServer() { return EmoteMod.SERVER; }
+        public ServerLevel getWorld() { return Objects.requireNonNull(getServer().getLevel(PlaybackSession.this.levelKey), "Playback level unavailable."); }
+        public long getElapsedTicks() { return PlaybackSession.this.elapsedTicks - this.startTick; }
+        public int getTick() { return PlaybackSession.this.playback.currentTick(); }
+        public @Nullable Integer getAnimationTick() { return this.animationScoped ? Integer.valueOf(this.localTick) : PlaybackSession.this.playback.position().animationTick(); }
+        public boolean setTick(int tick) { return PlaybackSession.this.setTick(tick); }
+        public boolean setAnimationTick(int tick) { return PlaybackSession.this.setAnimationTick(tick); }
+        public boolean setStep(int stepIndex, int repeatIndex, int tick) { return PlaybackSession.this.setStep(stepIndex, repeatIndex, tick); }
+        public Vec3 getRootPosition() { return PlaybackSession.this.nodes.root().position(); }
+        public Optional<PlaybackStopReason> getStopReason() { return Optional.ofNullable(this.closeReason != null ? this.closeReason : PlaybackSession.this.stopReason); }
+        public @Nullable Object getUserState() { return this.userState; }
         public void setUserState(@Nullable Object state) { this.userState = state; }
 
-        public Optional<Entity> actor(String name) {
+        public Optional<Entity> getActor(String name) {
             Objects.requireNonNull(name, "name");
             return Optional.ofNullable(PlaybackSession.this.actors.get(name)).filter(entity -> !entity.isRemoved());
         }
 
-        public Optional<Entity> nodeEntity(String nodeId) {
+        public Optional<Entity> getNodeEntity(String nodeId) {
             Objects.requireNonNull(nodeId, "nodeId");
             return Optional.ofNullable(PlaybackSession.this.nodes.nodes().get(nodeId))
                 .flatMap(node -> Optional.<Entity>ofNullable(node.entity())).filter(entity -> !entity.isRemoved());
         }
 
-        public Optional<Vec3> nodeWorldPosition(String nodeId) {
+        public Optional<Vec3> getNodeWorldPosition(String nodeId) {
             return PlaybackSession.this.nodeWorldPosition(nodeId);
         }
     }

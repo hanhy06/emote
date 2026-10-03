@@ -39,6 +39,12 @@ public abstract class EmoteApi {
 
     public abstract boolean stop(UUID sessionId);
 
+    public abstract boolean setTick(UUID sessionId, int tick);
+
+    public abstract boolean setAnimationTick(UUID sessionId, int tick);
+
+    public abstract boolean setStep(UUID sessionId, int stepIndex, int repeatIndex, int tick);
+
     public abstract boolean setPlacement(UUID sessionId, PlaybackPlacement placement);
 
     public abstract Optional<Vec3> getNodeWorldPosition(UUID sessionId, String nodeId);
@@ -47,7 +53,7 @@ public abstract class EmoteApi {
 
     public abstract Registration register(EmoteSequence sequence);
 
-    public abstract Optional<EmoteInfo> find(Identifier emoteId);
+    public abstract Optional<EmoteInfo> get(Identifier emoteId);
 
     public abstract List<EmoteInfo> getAll();
 

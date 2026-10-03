@@ -187,14 +187,19 @@ public final class PlaybackEngine implements ConfigListener {
                 reason = playback.lifecycle().beforeTick(session);
                 if (!contains(session)) continue;
                 if (reason == null && session.tick(EmoteMod.SERVER.getTickCount())) {
-                    playback.lifecycle().prepareFrame(session);
-                    if (!contains(session)) continue;
-                    session.playback().restoreDeferredVisibility();
-                    var result = session.playback().advance();
-                    if (!contains(session)) continue;
-                    session.tickCallbacks();
-                    if (!contains(session)) continue;
-                    if (result == PlaybackPlayer.AdvanceResult.FINISHED) reason = PlaybackStopReason.FINISHED;
+                    session.beginFrame();
+                    try {
+                        playback.lifecycle().prepareFrame(session);
+                        if (!contains(session)) continue;
+                        session.playback().restoreDeferredVisibility();
+                        session.playback().advance();
+                        if (!contains(session)) continue;
+                        session.tickCallbacks();
+                        if (!contains(session)) continue;
+                    } finally {
+                        session.endFrame();
+                    }
+                    if (contains(session) && session.playback().isFinished()) reason = PlaybackStopReason.FINISHED;
                 }
             } catch (RuntimeException exception) {
                 EmoteMod.LOGGER.warn("Failed to play emote {}", session.emoteId(), exception);

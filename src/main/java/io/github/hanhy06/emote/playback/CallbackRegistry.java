@@ -47,7 +47,7 @@ public final class CallbackRegistry {
             this.callbacks = callbacks;
         }
 
-        public Identifier id() { return this.id; }
+        public Identifier getId() { return this.id; }
         public boolean isRegistered() { return CallbackRegistry.this.registrations.get(this.id) == this; }
         public boolean unregister() { return CallbackRegistry.this.registrations.remove(this.id, this); }
     }

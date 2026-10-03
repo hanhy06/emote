@@ -133,11 +133,14 @@ class ExampleCallbacksTest {
                 public PlayResult play(ServerPlayer player, Identifier id, PlayOptions options) { throw new UnsupportedOperationException(); }
                 public boolean stop(ServerPlayer player) { throw new UnsupportedOperationException(); }
                 public boolean stop(UUID sessionId) { throw new UnsupportedOperationException(); }
+                public boolean setTick(UUID sessionId, int tick) { throw new UnsupportedOperationException(); }
+                public boolean setAnimationTick(UUID sessionId, int tick) { throw new UnsupportedOperationException(); }
+                public boolean setStep(UUID sessionId, int stepIndex, int repeatIndex, int tick) { throw new UnsupportedOperationException(); }
                 public boolean setPlacement(UUID sessionId, PlaybackPlacement placement) { throw new UnsupportedOperationException(); }
                 public Optional<Vec3> getNodeWorldPosition(UUID sessionId, String nodeId) { return Optional.empty(); }
                 public Registration register(EmoteAnimation animation) { throw new UnsupportedOperationException(); }
                 public Registration register(EmoteSequence sequence) { throw new UnsupportedOperationException(); }
-                public Optional<EmoteInfo> find(Identifier id) { return Optional.empty(); }
+                public Optional<EmoteInfo> get(Identifier id) { return Optional.empty(); }
                 public List<EmoteInfo> getAll() { return List.of(); }
                 public Optional<PlaybackInfo> getPlayback(ServerPlayer player) { return Optional.empty(); }
                 public Optional<PlaybackInfo> getPlayback(UUID sessionId) { return Optional.empty(); }
@@ -146,7 +149,7 @@ class ExampleCallbacksTest {
                     registeredCallbacks.put(id, callbacks);
                     return new Registration() {
                         private boolean registered = true;
-                        public Identifier id() { return id; }
+                        public Identifier getId() { return id; }
                         public boolean isRegistered() { return registered; }
                         public boolean unregister() { boolean previous = registered; registered = false; return previous; }
                     };
@@ -219,18 +222,22 @@ class ExampleCallbacksTest {
 
     private static final class TestContext implements PlaybackContext {
         private Object state;
-        public UUID sessionId() { return UUID.randomUUID(); }
-        public String payload() { return ""; }
-        public net.minecraft.server.MinecraftServer server() { throw new UnsupportedOperationException(); }
-        public net.minecraft.server.level.ServerLevel level() { throw new UnsupportedOperationException(); }
-        public long elapsedTicks() { return 0; }
-        public Integer animationTick() { return 24; }
-        public Optional<net.minecraft.world.entity.Entity> actor(String name) { throw new UnsupportedOperationException(); }
-        public Optional<net.minecraft.world.entity.Entity> nodeEntity(String node) { throw new UnsupportedOperationException(); }
-        public Optional<Vec3> nodeWorldPosition(String node) { throw new UnsupportedOperationException(); }
-        public Vec3 rootPosition() { return Vec3.ZERO; }
-        public Optional<PlaybackStopReason> stopReason() { return Optional.of(PlaybackStopReason.MANUAL); }
-        public Object userState() { return state; }
+        public UUID getSessionId() { return UUID.randomUUID(); }
+        public String getPayload() { return ""; }
+        public net.minecraft.server.MinecraftServer getServer() { throw new UnsupportedOperationException(); }
+        public net.minecraft.server.level.ServerLevel getWorld() { throw new UnsupportedOperationException(); }
+        public long getElapsedTicks() { return 0; }
+        public int getTick() { return 0; }
+        public Integer getAnimationTick() { return 24; }
+        public boolean setTick(int tick) { throw new UnsupportedOperationException(); }
+        public boolean setAnimationTick(int tick) { throw new UnsupportedOperationException(); }
+        public boolean setStep(int stepIndex, int repeatIndex, int tick) { throw new UnsupportedOperationException(); }
+        public Optional<net.minecraft.world.entity.Entity> getActor(String name) { throw new UnsupportedOperationException(); }
+        public Optional<net.minecraft.world.entity.Entity> getNodeEntity(String node) { throw new UnsupportedOperationException(); }
+        public Optional<Vec3> getNodeWorldPosition(String node) { throw new UnsupportedOperationException(); }
+        public Vec3 getRootPosition() { return Vec3.ZERO; }
+        public Optional<PlaybackStopReason> getStopReason() { return Optional.of(PlaybackStopReason.MANUAL); }
+        public Object getUserState() { return state; }
         public void setUserState(Object state) { this.state = state; }
     }
 }

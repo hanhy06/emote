@@ -86,6 +86,33 @@ public final class EmoteApiImpl extends EmoteApi {
     }
 
     @Override
+    public boolean setTick(UUID sessionId, int tick) {
+        Objects.requireNonNull(sessionId, "sessionId");
+        requireServerThread();
+        if (tick < 0) throw new IllegalArgumentException("Tick must not be negative");
+        PlaybackSession session = this.playerPlaybackManager.engine().findSession(sessionId);
+        return session != null && session.setTick(tick);
+    }
+
+    @Override
+    public boolean setAnimationTick(UUID sessionId, int tick) {
+        Objects.requireNonNull(sessionId, "sessionId");
+        requireServerThread();
+        if (tick < 0) throw new IllegalArgumentException("Tick must not be negative");
+        PlaybackSession session = this.playerPlaybackManager.engine().findSession(sessionId);
+        return session != null && session.setAnimationTick(tick);
+    }
+
+    @Override
+    public boolean setStep(UUID sessionId, int stepIndex, int repeatIndex, int tick) {
+        Objects.requireNonNull(sessionId, "sessionId");
+        requireServerThread();
+        if (stepIndex < 0 || repeatIndex < 0 || tick < 0) throw new IllegalArgumentException("Step, repeat and tick must not be negative");
+        PlaybackSession session = this.playerPlaybackManager.engine().findSession(sessionId);
+        return session != null && session.setStep(stepIndex, repeatIndex, tick);
+    }
+
+    @Override
     public Optional<Vec3> getNodeWorldPosition(UUID sessionId, String nodeId) {
         Objects.requireNonNull(sessionId, "sessionId");
         Objects.requireNonNull(nodeId, "nodeId");
@@ -122,7 +149,7 @@ public final class EmoteApiImpl extends EmoteApi {
     }
 
     @Override
-    public Optional<EmoteInfo> find(Identifier emoteId) {
+    public Optional<EmoteInfo> get(Identifier emoteId) {
         Objects.requireNonNull(emoteId, "emoteId");
         return Optional.ofNullable(this.emoteCatalog.find(emoteId.toString()))
             .map(ApiEventDispatcher::toInfo);
@@ -197,7 +224,7 @@ public final class EmoteApiImpl extends EmoteApi {
         }
 
         @Override
-        public Identifier id() {
+        public Identifier getId() {
             return this.id;
         }
 

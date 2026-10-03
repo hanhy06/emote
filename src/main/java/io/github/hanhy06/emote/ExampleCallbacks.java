@@ -149,12 +149,12 @@ public final class ExampleCallbacks {
 
             api.registerCallbacks(BAT_CALLBACK_ID, new EmoteCallbacks() {
                 public void onTick(PlaybackContext context) {
-                    Integer tick = context.animationTick();
+                    Integer tick = context.getAnimationTick();
                     if (tick == null) return;
                     if (tick >= 25 && tick < 210) {
-                        if (context.userState() == null) spawnBat(context);
+                        if (context.getUserState() == null) spawnBat(context);
                         moveEntity(context, 0.6F);
-                    } else if (tick >= 210 && context.userState() != null) {
+                    } else if (tick >= 210 && context.getUserState() != null) {
                         moveEntity(context, 0.6F);
                         removeEntity(context, true);
                     }
@@ -165,8 +165,8 @@ public final class ExampleCallbacks {
 
             api.registerCallbacks(TRUMPET_CAN_CAN_CALLBACK_ID, new EmoteCallbacks() {
                 public void onStart(PlaybackContext context) {
-                    Vec3 origin = context.rootPosition();
-                    List<HornListener> listeners = context.level().players().stream()
+                    Vec3 origin = context.getRootPosition();
+                    List<HornListener> listeners = context.getWorld().players().stream()
                         .filter(player -> player.position().distanceToSqr(origin) <= TrumpetPlayer.RANGE * TrumpetPlayer.RANGE)
                         .map(player -> new HornListener(player.getUUID(), player.connection::send))
                         .toList();
@@ -175,13 +175,13 @@ public final class ExampleCallbacks {
                     activeMelodies.add(melody);
                 }
                 public void onTick(PlaybackContext context) {
-                    TrumpetCanCan melody = (TrumpetCanCan) context.userState();
-                    long tick = context.server().getTickCount();
+                    TrumpetCanCan melody = (TrumpetCanCan) context.getUserState();
+                    long tick = context.getServer().getTickCount();
                     if (melody.activeNote != null && melody.activeNote.endTick() <= tick) melody.stopNote();
-                    melody.advance(context.elapsedTicks(), note -> playHorn(melody, note, tick));
+                    melody.advance(context.getElapsedTicks(), note -> playHorn(melody, note, tick));
                 }
                 public void onClose(PlaybackContext context) {
-                    if (context.userState() instanceof TrumpetCanCan melody) {
+                    if (context.getUserState() instanceof TrumpetCanCan melody) {
                         activeMelodies.remove(melody);
                         melody.stopNote();
                     }
@@ -203,15 +203,15 @@ public final class ExampleCallbacks {
     private void spawnAllay(PlaybackContext context) {
         removeEntity(context, false);
 
-        ServerLevel level = context.level();
+        ServerLevel level = context.getWorld();
         Allay allay = EntityTypes.ALLAY.create(level, EntitySpawnReason.COMMAND);
         if (allay == null) {
             throw new IllegalStateException("Failed to create the idle butterfly Allay");
         }
 
         context.setUserState(allay);
-        Vec3 origin = context.nodeWorldPosition(context.payload()).orElseThrow();
-        allay.snapTo(origin.x, origin.y, origin.z, context.actor("actor").orElseThrow().getYRot(), 0.0F);
+        Vec3 origin = context.getNodeWorldPosition(context.getPayload()).orElseThrow();
+        allay.snapTo(origin.x, origin.y, origin.z, context.getActor("actor").orElseThrow().getYRot(), 0.0F);
         allay.setNoAi(true);
         allay.setPermanentlyInvulnerable(true);
         allay.setSilent(true);
@@ -229,13 +229,13 @@ public final class ExampleCallbacks {
     private void spawnBat(PlaybackContext context) {
         removeEntity(context, false);
 
-        ServerLevel level = context.level();
+        ServerLevel level = context.getWorld();
         Bat bat = EntityTypes.BAT.create(level, EntitySpawnReason.COMMAND);
         if (bat == null) throw new IllegalStateException("Failed to create the idle Bat");
 
         context.setUserState(bat);
-        Vec3 origin = context.nodeWorldPosition(context.payload()).orElseThrow();
-        bat.snapTo(origin.x, origin.y, origin.z, context.actor("actor").orElseThrow().getYRot(), 0.0F);
+        Vec3 origin = context.getNodeWorldPosition(context.getPayload()).orElseThrow();
+        bat.snapTo(origin.x, origin.y, origin.z, context.getActor("actor").orElseThrow().getYRot(), 0.0F);
         bat.setNoAi(true);
         bat.setNoGravity(true);
         bat.setPermanentlyInvulnerable(true);
@@ -251,9 +251,9 @@ public final class ExampleCallbacks {
     }
 
     private void moveEntity(PlaybackContext context, float interpolationSpeed) {
-        if (!(context.userState() instanceof LivingEntity entity) || entity.isRemoved()) return;
+        if (!(context.getUserState() instanceof LivingEntity entity) || entity.isRemoved()) return;
 
-        Vec3 destination = context.nodeWorldPosition(context.payload()).orElseThrow();
+        Vec3 destination = context.getNodeWorldPosition(context.getPayload()).orElseThrow();
         Vec3 movement = destination.subtract(entity.position());
         double horizontalDistance = movement.horizontalDistance();
         if (horizontalDistance > 1.0E-6D) {
@@ -268,7 +268,7 @@ public final class ExampleCallbacks {
     }
 
     private void removeEntity(PlaybackContext context, boolean particles) {
-        if (!(context.userState() instanceof Entity entity)) return;
+        if (!(context.getUserState() instanceof Entity entity)) return;
         context.setUserState(null);
         if (particles && !entity.isRemoved() && entity.level() instanceof ServerLevel level) {
             if (entity instanceof Allay) {

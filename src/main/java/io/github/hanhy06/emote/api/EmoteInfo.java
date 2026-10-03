@@ -26,11 +26,11 @@ public record EmoteInfo(
         Objects.requireNonNull(loopMode, "loopMode");
     }
 
-    public String name() {
+    public String getName() {
         return this.metadata.name();
     }
 
-    public String description() {
+    public String getDescription() {
         return this.metadata.description();
     }
 }

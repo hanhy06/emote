@@ -17,9 +17,57 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 class SequencePlaybackTest {
+    @Test
+    void movesBetweenSelectedStepsWithoutReplayingSkippedExecutions() throws Exception {
+        PreparedEmote first = animation("example:first", 1);
+        PreparedEmote second = animation("example:second", 10);
+        EmoteSequence sequence = new EmoteSequence(Identifier.parse("example:sequence"),
+            new EmoteMetadata("Sequence", "test"), new EmoteSequence.Settings(0, playerBehavior()),
+            List.of(new EmoteSequence.AnimationStep(first.model().id(), 2), new EmoteSequence.WaitStep(2),
+                new EmoteSequence.AnimationStep(second.model().id(), 1, 4)));
+        PreparedEmote prepared = PreparedSequence.resolve(sequence, Map.of(first.id(), first, second.id(), second)).compile(new Random(1));
+        FakeTarget target = new FakeTarget();
+        PlaybackPlayer player = new PlaybackPlayer(prepared, target);
+        List<String> calls = new java.util.ArrayList<>();
+        player.bindLifecycleListener(new PlaybackPlayer.LifecycleListener() {
+            public void onStart(PreparedEmote animation) { calls.add("start:" + animation.id() + ":" + player.position().animationTick()); }
+            public void onClose(io.github.hanhy06.emote.api.PlaybackStopReason reason) { calls.add("close:" + reason); }
+        });
+        player.start();
+        player.startEvents();
+        player.setTick(player.stepTickTarget(2, 0, 1));
+        assertEquals(second.model().id(), player.position().animationId());
+        assertEquals(1, player.position().animationTick());
+        assertEquals(11.0F, target.x("display"));
+        assertEquals(List.of("start:example:first:0", "close:REPLACED", "start:example:second:1"), calls);
+        player.setTick(player.animationTickTarget(0));
+        assertEquals(11.0F, target.x("display"));
+        assertEquals(3, calls.size());
+        player.setTick(player.stepTickTarget(0, 1, 0));
+        assertEquals(1, player.position().repeatIndex());
+        assertEquals(5, calls.size());
+        int before = player.currentTick();
+        assertThrows(IllegalArgumentException.class, () -> player.stepTickTarget(1, 0, 0));
+        assertThrows(IllegalArgumentException.class, () -> player.stepTickTarget(0, 3, 0));
+        assertThrows(IllegalArgumentException.class, () -> player.canSetTick(prepared.durationTicks()));
+        assertEquals(before, player.currentTick());
+        player.setTick(5);
+        assertEquals(io.github.hanhy06.emote.api.PlaybackTimeline.Phase.WAIT, player.position().phase());
+        assertEquals(-1, player.animationTickTarget(0));
+        assertEquals(0, target.lastInterpolationDuration);
+        player.setTick(8);
+        assertEquals(io.github.hanhy06.emote.api.PlaybackTimeline.Phase.TRANSITION, player.position().phase());
+        assertEquals(0, target.lastInterpolationDuration);
+        assertEquals(6.5F, target.x("display"));
+        player.advance();
+        assertEquals(8.75F, target.x("display"));
+        player.advance();
+        assertEquals(0, player.position().animationTick());
+    }
+
     @Test
     void startsIndependentMolangSessionForEachAnimationSegment() throws Exception {
         PreparedEmote first = animation("example:first", 1);

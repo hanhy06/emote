@@ -23,6 +23,49 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class PlaybackPlayerTest {
     @Test
+    void settingTickRestoresTracksAndRunsOnlyDestinationCommands() throws Exception {
+        JsonObject root = base();
+        var tracks = root.getAsJsonObject("timeline").getAsJsonObject("tracks").getAsJsonObject("display");
+        tracks.add("nbt", JsonParser.parseString("""
+            [{"time":"0t","value":"{item:{id:'minecraft:stone',count:1}}"},
+             {"time":"4t","value":"{item:{id:'minecraft:diamond',count:1}}"}]
+            """));
+        tracks.add("visible", JsonParser.parseString("""
+            [{"time":"0t","value":true},{"time":"4t","value":false}]
+            """));
+        root.getAsJsonObject("timeline").add("events", JsonParser.parseString("""
+            {"timeline":[
+              {"time":"2t","source":{"type":"server"},"origin":{"type":"root"},"commands":["skipped"]},
+              {"time":"4t","source":{"type":"server"},"origin":{"type":"root"},"commands":["destination"]}
+            ]}
+            """));
+        FakeTarget target = new FakeTarget();
+        PlaybackPlayer player = player(root, target);
+        List<String> calls = new ArrayList<>();
+        player.bindEvents(event -> calls.addAll(event.event().commands()));
+        player.start();
+        player.startEvents();
+        player.setTick(4);
+        assertEquals(List.of("destination"), calls);
+        assertTrue(target.nbt.get("display").toString().contains("minecraft:diamond"));
+        assertFalse(target.visibility.get("display"));
+        player.setTick(4);
+        assertEquals(List.of("destination"), calls);
+        player.setTick(0);
+        assertTrue(target.nbt.get("display").toString().contains("minecraft:stone"));
+        assertTrue(target.visibility.get("display"));
+        assertEquals(0, player.currentTick());
+        player.advance();
+        assertEquals(1, player.currentTick());
+        root.getAsJsonObject("settings").getAsJsonObject("playback").addProperty("mode", "server_sync");
+        PlaybackPlayer synchronizedPlayer = player(root, new FakeTarget());
+        synchronizedPlayer.startSynchronized(0);
+        assertFalse(synchronizedPlayer.canSetTick(4));
+        synchronizedPlayer.setTick(4);
+        assertEquals(0, synchronizedPlayer.currentTick());
+    }
+
+    @Test
     void evaluatesMolangBeforeTracksAndComposesParentTransform() throws Exception {
         JsonObject root = base();
         root.add("molang", JsonParser.parseString("""
