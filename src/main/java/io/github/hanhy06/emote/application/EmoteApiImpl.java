@@ -54,16 +54,16 @@ public final class EmoteApiImpl extends EmoteApi {
 
     @Override
     public PlayResult play(ServerPlayer player, Identifier emoteId) {
-        return play(player, emoteId, PlayOptions.createDefault());
+        return play(player, emoteId, PlaybackPlacement.actor());
     }
 
     @Override
-    public PlayResult play(ServerPlayer player, Identifier emoteId, PlayOptions options) {
+    public PlayResult play(ServerPlayer player, Identifier emoteId, PlaybackPlacement placement) {
         Objects.requireNonNull(player, "player");
         Objects.requireNonNull(emoteId, "emoteId");
-        Objects.requireNonNull(options, "options");
+        Objects.requireNonNull(placement, "placement");
         requireServerThread();
-        return this.playService.play(player, emoteId.toString(), PlaySource.API, options);
+        return this.playService.play(player, emoteId.toString(), PlaySource.API, placement);
     }
 
     @Override

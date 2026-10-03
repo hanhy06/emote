@@ -2,7 +2,7 @@ package io.github.hanhy06.emote.application;
 
 import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaySource;
-import io.github.hanhy06.emote.api.PlayOptions;
+import io.github.hanhy06.emote.api.PlaybackPlacement;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.PlayableEmote;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
@@ -46,10 +46,10 @@ public class EmotePlayService {
     }
 
     public PlayResult play(ServerPlayer player, String id, PlaySource source) {
-        return play(player, id, source, PlayOptions.createDefault());
+        return play(player, id, source, PlaybackPlacement.actor());
     }
 
-    public PlayResult play(ServerPlayer player, String id, PlaySource source, PlayOptions options) {
+    public PlayResult play(ServerPlayer player, String id, PlaySource source, PlaybackPlacement placement) {
         PlayableEmote emote = this.emoteCatalog.find(id);
         if (emote == null) {
             return PlayResult.failure("That emote does not exist.");
@@ -65,7 +65,7 @@ public class EmotePlayService {
         this.playbackPolicy.claimCooldown(decision);
         PlayResult result;
         try {
-            result = this.emoteStarter.start(player, emote, options);
+            result = this.emoteStarter.start(player, emote, placement);
         } catch (RuntimeException | Error exception) {
             this.playbackPolicy.releaseCooldown(decision);
             throw exception;
@@ -78,7 +78,7 @@ public class EmotePlayService {
 
     @FunctionalInterface
     interface PlaybackStarter {
-        PlayResult start(ServerPlayer player, PlayableEmote emote, PlayOptions options);
+        PlayResult start(ServerPlayer player, PlayableEmote emote, PlaybackPlacement placement);
     }
 
     @FunctionalInterface

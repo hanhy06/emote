@@ -109,8 +109,8 @@ class PlaybackPlacementTest {
     void rejectsNonFinitePlacementInputs() {
         assertThrows(IllegalArgumentException.class, () -> PlaybackPlacement.external(new Vec3(Double.NaN, 0, 0), 0));
         assertThrows(IllegalArgumentException.class, () -> PlaybackPlacement.external(Vec3.ZERO, Float.POSITIVE_INFINITY));
-        assertThrows(NullPointerException.class, () -> new PlayOptions(null));
-        assertEquals(PlaybackPlacement.Mode.ACTOR, PlayOptions.createDefault().placement().mode());
+        assertThrows(NullPointerException.class, () -> PlaybackPlacement.external(null, 0));
+        assertEquals(PlaybackPlacement.Mode.ACTOR, PlaybackPlacement.actor().mode());
     }
 
     private static EmotePlayerBehavior followsPlayer() {

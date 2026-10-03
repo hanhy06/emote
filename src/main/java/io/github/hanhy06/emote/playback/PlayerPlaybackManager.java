@@ -4,7 +4,6 @@ import com.mojang.datafixers.util.Pair;
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.PlayResult;
-import io.github.hanhy06.emote.api.PlayOptions;
 import io.github.hanhy06.emote.api.PlaybackPlacement;
 import io.github.hanhy06.emote.api.PlaybackInfo;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
@@ -81,10 +80,10 @@ public final class PlayerPlaybackManager {
     public int activePlayerCount() { return this.playerSessions.size(); }
 
     public PlayResult start(ServerPlayer player, PlayableEmote definition) {
-        return start(player, definition, PlayOptions.createDefault());
+        return start(player, definition, PlaybackPlacement.actor());
     }
 
-    public PlayResult start(ServerPlayer player, PlayableEmote definition, PlayOptions options) {
+    public PlayResult start(ServerPlayer player, PlayableEmote definition, PlaybackPlacement placement) {
         if (this.closingPlayers.contains(player.getUUID())) return PlayResult.failure("Your previous emote is still closing.");
         PreparedEmote emote = switch (definition) {
             case PreparedEmote prepared -> prepared;
@@ -92,7 +91,6 @@ public final class PlayerPlaybackManager {
         };
         PlayerSkinPreparation preparation = this.skins.preparePlayerSkin(player, emote.skinBindings());
         if (preparation.preparing()) return PlayResult.failure("Preparing your skin… " + preparation.progressPercent() + "%");
-        PlaybackPlacement placement = options.placement();
         RootTransform root = placement.mode() == PlaybackPlacement.Mode.EXTERNAL
             ? RootTransform.create(placement.position(), placement.yaw())
             : RootTransform.create(player.position(), player.getYRot());

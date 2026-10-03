@@ -3,7 +3,6 @@ package io.github.hanhy06.emote.application;
 import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlayResultFixture;
 import io.github.hanhy06.emote.api.PlaySource;
-import io.github.hanhy06.emote.api.PlayOptions;
 import io.github.hanhy06.emote.api.PlaybackPlacement;
 import io.github.hanhy06.emote.config.AccessConfig;
 import io.github.hanhy06.emote.content.EmoteCatalog;
@@ -22,13 +21,25 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class EmotePlayServiceTest {
     @Test
+    void defaultsPlaybackToActorPlacement() {
+        EmoteCatalog catalog = catalogWithWave(0);
+        EmotePlayService service = new EmotePlayService(catalog, allowedPolicy(new AtomicLong(), catalog),
+            (player, definition, placement) -> {
+                assertEquals(PlaybackPlacement.actor(), placement);
+                return PlayResultFixture.SUCCESS;
+            },
+            (player, definition, source) -> null);
+        assertTrue(service.play(null, "demo:wave").isSuccess());
+    }
+
+    @Test
     void forwardsExternalPlacementThroughTheNormalPlaybackPolicyAndEvents() {
         EmoteCatalog catalog = catalogWithWave(0);
-        PlayOptions options = new PlayOptions(PlaybackPlacement.external(new Vec3(12, 64, -4), 90));
+        PlaybackPlacement placement = PlaybackPlacement.external(new Vec3(12, 64, -4), 90);
         AtomicInteger events = new AtomicInteger();
         EmotePlayService service = new EmotePlayService(catalog, allowedPolicy(new AtomicLong(), catalog),
             (player, definition, received) -> {
-                assertSame(options, received);
+                assertSame(placement, received);
                 assertEquals("demo:wave", definition.id());
                 assertEquals(1, events.get());
                 return PlayResultFixture.SUCCESS;
@@ -38,7 +49,7 @@ class EmotePlayServiceTest {
                 events.incrementAndGet();
                 return null;
             });
-        assertTrue(service.play(null, "demo:wave", PlaySource.API, options).isSuccess());
+        assertTrue(service.play(null, "demo:wave", PlaySource.API, placement).isSuccess());
     }
 
     @Test
@@ -48,7 +59,7 @@ class EmotePlayServiceTest {
             policy((ignoredPlayer, ignoredPermission, ignoredDefault) -> {
                 throw new AssertionError("Unknown IDs must not reach playback policy");
             }, new AtomicLong()),
-            (ignoredPlayer, ignoredDefinition, ignoredOptions) -> PlayResultFixture.SUCCESS,
+            (ignoredPlayer, ignoredDefinition, ignoredPlacement) -> PlayResultFixture.SUCCESS,
             (ignoredPlayer, ignoredEmote, ignoredSource) -> null
         );
 
@@ -66,7 +77,7 @@ class EmotePlayServiceTest {
         EmotePlayService service = new EmotePlayService(
             catalog,
             policy,
-            (ignoredPlayer, ignoredDefinition, ignoredOptions) -> {
+            (ignoredPlayer, ignoredDefinition, ignoredPlacement) -> {
                 throw new AssertionError("Rejected playback must not start");
             },
             (ignoredPlayer, ignoredEmote, ignoredSource) -> {
@@ -86,7 +97,7 @@ class EmotePlayServiceTest {
         EmotePlayService service = new EmotePlayService(
             catalog,
             policy,
-            (ignoredPlayer, ignoredDefinition, ignoredOptions) -> {
+            (ignoredPlayer, ignoredDefinition, ignoredPlacement) -> {
                 starts.incrementAndGet();
                 return PlayResultFixture.SUCCESS;
             },
@@ -107,7 +118,7 @@ class EmotePlayServiceTest {
         EmotePlayService service = new EmotePlayService(
             catalog,
             policy,
-            (ignoredPlayer, ignoredDefinition, ignoredOptions) -> {
+            (ignoredPlayer, ignoredDefinition, ignoredPlacement) -> {
                 starts.incrementAndGet();
                 return PlayResult.failure("Unavailable");
             },
@@ -128,7 +139,7 @@ class EmotePlayServiceTest {
         EmotePlayService service = new EmotePlayService(
             catalog,
             policy,
-            (ignoredPlayer, ignoredDefinition, ignoredOptions) -> {
+            (ignoredPlayer, ignoredDefinition, ignoredPlacement) -> {
                 if (starts.getAndIncrement() == 0) {
                     throw new IllegalStateException("Failed to start");
                 }
@@ -151,7 +162,7 @@ class EmotePlayServiceTest {
         EmotePlayService service = new EmotePlayService(
             catalog,
             policy,
-            (ignoredPlayer, ignoredDefinition, ignoredOptions) -> {
+            (ignoredPlayer, ignoredDefinition, ignoredPlacement) -> {
                 starts.incrementAndGet();
                 return PlayResultFixture.SUCCESS;
             },
@@ -180,7 +191,7 @@ class EmotePlayServiceTest {
         EmotePlayService service = new EmotePlayService(
             catalog,
             policy,
-            (ignoredPlayer, ignoredDefinition, ignoredOptions) -> PlayResultFixture.SUCCESS,
+            (ignoredPlayer, ignoredDefinition, ignoredPlacement) -> PlayResultFixture.SUCCESS,
             (ignoredPlayer, ignoredEmote, source) -> {
                 assertEquals(PlaySource.API, source);
                 return null;

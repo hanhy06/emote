@@ -33,7 +33,7 @@ public abstract class EmoteApi {
 
     public abstract PlayResult play(ServerPlayer player, Identifier emoteId);
 
-    public abstract PlayResult play(ServerPlayer player, Identifier emoteId, PlayOptions options);
+    public abstract PlayResult play(ServerPlayer player, Identifier emoteId, PlaybackPlacement placement);
 
     public abstract boolean stop(ServerPlayer player);
 

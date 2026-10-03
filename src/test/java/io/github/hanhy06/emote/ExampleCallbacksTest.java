@@ -130,7 +130,7 @@ class ExampleCallbacksTest {
         try {
             api = new EmoteApi() {
                 public PlayResult play(ServerPlayer player, Identifier id) { throw new UnsupportedOperationException(); }
-                public PlayResult play(ServerPlayer player, Identifier id, PlayOptions options) { throw new UnsupportedOperationException(); }
+                public PlayResult play(ServerPlayer player, Identifier id, PlaybackPlacement placement) { throw new UnsupportedOperationException(); }
                 public boolean stop(ServerPlayer player) { throw new UnsupportedOperationException(); }
                 public boolean stop(UUID sessionId) { throw new UnsupportedOperationException(); }
                 public boolean setTick(UUID sessionId, int tick) { throw new UnsupportedOperationException(); }
