@@ -47,12 +47,11 @@ public class EmoteMod implements ModInitializer {
         ConfigManager configManager = new ConfigManager(FabricLoader.getInstance().getConfigDir());
         EmoteCatalog catalog = new EmoteCatalog();
         PermissionService permissions = new PermissionService();
-        PlaybackCooldownService cooldowns = new PlaybackCooldownService();
+
         MinecraftAccountManager accounts = new MinecraftAccountManager(
             new AccountCredentialStore(FabricLoader.getInstance().getConfigDir().resolve("emote/accounts.bin")),
             new MinecraftAccountClient()
         );
-        PlaybackPolicyService playbackPolicy = new PlaybackPolicyService(permissions, catalog, cooldowns);
         PlayerSkinBaker skinBaker = new PlayerSkinBaker();
         SkinCache skinCache = new SkinCache();
         MineSkinProvider mineSkin = new MineSkinProvider(skinCache, new MineSkinClient());
@@ -65,15 +64,37 @@ public class EmoteMod implements ModInitializer {
             case PreparedEmote animation -> animation.skinBindings().stream();
             case PreparedSequence sequence -> sequence.layoutAnchor().skinBindings().stream();
         }).toList()));
+
         PlaybackEngine engine = new PlaybackEngine();
         PlayerPlaybackManager playback = new PlayerPlaybackManager(engine, skins);
         EntityPlaybackManager entityPlayback = new EntityPlaybackManager(engine, catalog, skins);
-        PlaybackStateSyncService playbackStateSync = new PlaybackStateSyncService();
-        ApiEventDispatcher apiEvents = new ApiEventDispatcher();
+        PlaybackCooldownService cooldowns = new PlaybackCooldownService();
+        PlaybackPolicyService playbackPolicy = new PlaybackPolicyService(permissions, catalog, cooldowns);
         EmoteQueryService queries = new EmoteQueryService(catalog, playbackPolicy);
-        EmotePlayService play = new EmotePlayService(catalog, playbackPolicy, playback, apiEvents);
-        IdlePlaybackService idlePlayback = new IdlePlaybackService(playbackPolicy, play, playback, catalog);
+        PlaybackStateSyncService playbackStateSync = new PlaybackStateSyncService();
         WheelSyncService wheelSync = new WheelSyncService(queries);
+        playback.addStateListener(cooldowns);
+        playback.addStateListener(playbackStateSync);
+
+        ApiEventDispatcher apiEvents = new ApiEventDispatcher();
+        EmotePlayService play = new EmotePlayService(catalog, playbackPolicy, playback, apiEvents);
+        EmoteApiImpl api = new EmoteApiImpl(
+            catalog,
+            play,
+            playback,
+            engine,
+            apiEvents,
+            wheelSync::syncAll,
+            new AnimationContentResolver()
+        );
+        engine.setStateListener(apiEvents);
+        ExampleCallbacks.registerAll(api);
+
+        IdlePlaybackService idlePlayback = new IdlePlaybackService(playbackPolicy, play, playback, catalog);
+        configManager.addAccessConfigListener(playbackPolicy);
+        configManager.addAccessConfigListener(idlePlayback);
+        configManager.addListener(skins);
+        configManager.addListener(engine);
         PolymerResourcePackDistributor resourcePackDistributor = new PolymerResourcePackDistributor(configManager);
         ReloadService reload = new ReloadService(
             configManager,
@@ -85,37 +106,9 @@ public class EmoteMod implements ModInitializer {
             resourcePackDistributor::pushToOnlinePlayers
         );
 
-        EmoteApiImpl api = new EmoteApiImpl(
-            catalog,
-            play,
-            playback,
-            engine,
-            apiEvents,
-            wheelSync::syncAll,
-            new AnimationContentResolver()
-        );
-        ExampleCallbacks.registerAll(api);
         UserCommand userCommand = new UserCommand(playback, new EmoteMenu(configManager, catalog, queries, playback), queries, play);
         AdminCommand adminCommand = new AdminCommand(catalog, playback, permissions, reload, configManager, skins);
         AccountCommand accountCommand = new AccountCommand(accounts);
-        ServerLifecycle lifecycle = new ServerLifecycle(
-            skins, cooldowns, catalog, playback, entityPlayback, reload, wheelSync, idlePlayback,
-            () -> !accounts.hasAccounts() && !mineSkin.available()
-        );
-
-        configManager.addAccessConfigListener(playbackPolicy);
-        configManager.addAccessConfigListener(idlePlayback);
-        configManager.addListener(skins);
-        configManager.addListener(engine);
-        playback.addStateListener(cooldowns);
-        playback.addStateListener(playbackStateSync);
-        engine.setStateListener(apiEvents);
-        playback.register();
-        entityPlayback.register();
-        registerPayloads();
-        ServerLifecycleEvents.SERVER_STARTED.register(server -> accounts.initialize());
-        lifecycle.register();
-        ServerLifecycleEvents.SERVER_STOPPING.register(server -> accounts.close());
         CommandRegistrationCallback.EVENT.register((dispatcher, ignoredRegistryAccess, ignoredEnvironment) -> {
             var root = userCommand.createRoot();
             adminCommand.attachTo(root);
@@ -123,6 +116,16 @@ public class EmoteMod implements ModInitializer {
             dispatcher.register(root);
         });
 
+        ServerLifecycle lifecycle = new ServerLifecycle(
+            skins, cooldowns, catalog, playback, entityPlayback, reload, wheelSync, idlePlayback,
+            () -> !accounts.hasAccounts() && !mineSkin.available()
+        );
+        playback.register();
+        entityPlayback.register();
+        registerPayloads();
+        ServerLifecycleEvents.SERVER_STARTED.register(server -> accounts.initialize());
+        lifecycle.register();
+        ServerLifecycleEvents.SERVER_STOPPING.register(server -> accounts.close());
     }
 
     private static void registerPayloads() {
