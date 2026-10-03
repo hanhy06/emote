@@ -1,320 +1,149 @@
 # Animation
 
-Animation files use schema version `4`. An Animation defines a hierarchy of display and anchor nodes, their local transforms, independently timed animation tracks, and optional command events.
+An Animation file contains the model, movement, playback settings, and command events for one action. This page explains the settings available in the converter and how they affect playback.
 
-```json
-{
-  "type": "animation",
-  "schema_version": 4,
-  "id": "example:wave",
-  "metadata": {
-    "name": "Wave",
-    "description": "A short wave."
-  },
-  "settings": {
-    "standalone": true,
-    "cooldown": "2s",
-    "rotation_deadzone": 50,
-    "display_interpolation": "1t",
-    "player": {
-      "hidden": true,
-      "stop_conditions": {
-        "movement_distance": 0.1,
-        "jump": true,
-        "submerge": true,
-        "ride": true,
-        "damage": true,
-        "attack": true,
-        "game_mode_change": true
-      }
-    },
-    "playback": {
-      "mode": "once"
-    }
-  },
-  "nodes": {
-    "body": {
-      "type": "anchor",
-      "transform": {
-        "position": [0, 0, 0],
-        "rotation": [0, 0, 0],
-        "scale": [1, 1, 1]
-      }
-    },
-    "hand": {
-      "type": "item_display",
-      "parent": "body",
-      "item_stack_snbt": "{id:\"minecraft:stick\",count:1}",
-      "item_display": "fixed",
-      "transform": {
-        "position": [0.3, 1.2, 0],
-        "rotation": [0, 0, 0],
-        "scale": [1, 1, 1]
-      }
-    }
-  },
-  "timeline": {
-    "duration": "20t",
-    "tracks": {
-      "hand": {
-        "rotation": [
-          {
-            "time": "0t",
-            "value": [0, 0, -20],
-            "interpolation": "linear",
-            "easing": "ease_in_out_sine"
-          },
-          {"time": "20t", "value": [0, 0, 20]}
-        ]
-      }
-    },
-    "events": {}
-  }
-}
-```
+For file creation and installation, see [Adding Custom Emotes](../server/custom-emote.md). For direct JSON editing, see the [complete format example](https://github.com/hanhy06/emote/blob/dev/docs/reference/animation.json).
 
-A complete [Animation reference JSON](https://github.com/hanhy06/emote/blob/dev/docs/reference/animation.json) contains every node and event type.
+## Basic information
 
-## Root fields
+| Field | Description |
+|---|---|
+| `id` | The emote's identifier, in lowercase `namespace:path` form. |
+| `metadata.name` | Name shown in commands and the emote menu. Cannot be empty. |
+| `metadata.description` | Description shown to players. |
+| Additional metadata | Information such as the creator or license. |
+| `target_minecraft_version` | The converter's output target version. The server does not use it to accept, reject, or migrate the file. |
 
-| Field                 | Description                                                          |
-|-----------------------|----------------------------------------------------------------------|
-| `type`                | Must be `animation`.                                                 |
-| `schema_version`      | Must be `4`.                                                         |
-| `target_minecraft_version` | Optional converter output target, such as `26.3`. Reference information only; the server does not use it to accept, reject, or migrate the animation. |
-| `id`                  | A lowercase Minecraft identifier in `namespace:path` form.           |
-| `metadata`            | Display name, description, and custom metadata.                      |
-| `settings`            | Selection visibility, player behavior, and playback settings.        |
-| [`molang`](molang.md) | Optional initialization and per-tick Molang programs.                |
-| `nodes`               | A nonempty map of display and anchor nodes keyed by stable node IDs. |
-| `timeline`            | Duration, node tracks, and command events.                           |
-| `callbacks`           | Optional named lifecycle callbacks registered by server-side mods. |
+Animation files are limited to 8 MiB, and timelines are limited to 10 minutes.
 
-Animation JSON files are limited to 8 MiB and timelines are limited to 10 minutes.
+!!! tip "Time units"
+    Time settings use Minecraft time format. `1s` equals `20t`.
 
-!!! tip inline end "Time units"
-    Emote uses Minecraft time format.<br>
-    `1s` equals `20t`.
+    - `s`: seconds
+    - `t` or omitted: ticks
+    - `d`: Minecraft days
 
-    `s`: seconds<br>
-    `t` or omitted: ticks<br>
-    `d`: Minecraft days
+## Playback settings
 
-## Metadata
+### Direct selection and cooldown
 
-- `name`: Nonempty name shown in commands and the emote UI.
-- `description`: Description shown to players.
-- Additional fields can include whatever you want, such as licenses or creators.
+| Setting | Behavior |
+|---|---|
+| `standalone` | Determines whether normal players can select and play this Animation directly. When `false`, it is excluded from menus, the wheel, searches, and command suggestions. Use `false` for actions intended only for Sequences. |
+| `cooldown` | Cooldown applied after playback ends successfully. Must be `0t` or greater. |
 
-## Settings
+### Rotation tracking
 
-### Selection visibility
+`rotation_deadzone` sets how many degrees the player's direction must differ from the emote's before the emote turns to follow. Values range from `0` to `180` degrees.
 
-`standalone` determines whether an Animation appears in menus, the wheel, searches, and command suggestions and can be played directly by normal players. Set it to `false` for Animations used only inside Sequences.
-
-### Cooldown and rotation
-
-- `cooldown`: Nonnegative playback cooldown. It starts after a successful playback ends.
-- `rotation_deadzone`: Finite angle from `0` to `180` degrees. During standalone playback, the display root follows the player's yaw only when the difference exceeds this angle. `0` follows every yaw change without display rotation interpolation; positive values use three ticks of rotation interpolation, and `180` keeps the initial orientation. The interpolation setting updates with the active Animation step in a Sequence.
+| Value | Behavior |
+|---|---|
+| `0` | Follows every change in the player's direction without rotation interpolation. |
+| Greater than `0`, less than `180` | Turns when the direction difference exceeds the specified angle. Rotation is interpolated over 3 ticks. |
+| `180` | Keeps the direction from the start of playback. |
 
 ### Display interpolation
 
-`settings.display_interpolation` is an optional nonnegative Minecraft time that controls client interpolation of display-node transformations. It defaults to `1t`; `0t` applies each transformation immediately. For example, `"display_interpolation": "2t"` interpolates transformations over two ticks.
+`display_interpolation` sets how many ticks the client uses to display changes in a display part's position, rotation, or scale.
 
-This setting controls how clients display transform updates; timeline evaluation and command events still run on server ticks. It is separate from the root position and yaw interpolation controlled by `rotation_deadzone`. In a Sequence, each active Animation step supplies its own display interpolation duration.
+| Value | Behavior |
+|---|---|
+| `0t` | Applies changes immediately. |
+| `1t` | Interpolates over 1 tick. Used when the setting is omitted. |
+| `2t`, etc. | Interpolates over the specified duration. Negative values are not allowed. |
 
-### Player behavior
+Timeline evaluation and command events still run on server ticks. This setting is separate from interpolation of the emote's overall position and direction.
 
-- `hidden`: Hides the original player during playback.
-- `movement_distance`: Stops playback after the player moves the specified horizontal distance. `0` disables it.
-- `jump`, `submerge`, `ride`, `damage`, `attack`, `game_mode_change`: Stop playback when the corresponding action occurs.
+### Player visibility and stop conditions
+
+Set `settings.player.hidden` to `true` to hide the original player during playback.
+
+`settings.player.stop_conditions` determines which actions stop playback.
+
+| Setting | Stop condition |
+|---|---|
+| `movement_distance` | Moving the specified horizontal distance. `0` disables stopping on movement. |
+| `jump` | Jumping |
+| `submerge` | Submerging in water |
+| `ride` | Riding |
+| `damage` | Taking damage |
+| `attack` | Attacking |
+| `game_mode_change` | Changing game mode |
+
+For conditions other than distance, `true` stops playback when the action occurs.
 
 ### Playback mode
 
-| Mode | Description |
-|---|---|
-| `once` | Plays the timeline once. |
-| `hold` | Plays once, then holds the last frame until stopped; unavailable in Sequences. |
-| `loop` | Plays from tick `0` to the timeline end, then repeats from `loop_start` to the timeline end after each `loop_delay`. |
-| `server_sync` | Selects the current timeline position from server time so independently started playbacks remain synchronized; unavailable in Sequences. |
+Select the playback behavior with `settings.playback.mode`.
 
-`loop_start` and `loop_delay` are optional Minecraft times that default to `0t`. In `loop` mode, `loop_start` must be earlier than the timeline duration. Outside `loop` mode, `loop_start` must be `0t`. `loop_delay` may be nonzero in `loop` and `server_sync` modes.
-
-## Nodes
-
-Each property name in `nodes` is a stable node ID. Every node requires `type` and `transform`.
-
-```json
-"transform": {
-  "position": [0, 1.5, 0],
-  "rotation": [0, 0, 0],
-  "scale": [1, 1, 1]
-}
-```
-
-`position`, `rotation`, and `scale` each contain three finite numbers. Position and scale use the node's local coordinate system. Rotation is expressed as XYZ Euler angles in degrees.
-
-### Hierarchy
-
-A root node has no `parent` and uses the playback root. A child node declares `parent`, and its local transform is composed after the parent's transform. A parent must exist in the same file, and parent relationships cannot form a cycle.
-
-```json
-"child": {
-  "type": "anchor",
-  "parent": "root",
-  "transform": {
-    "position": [0, 1, 0],
-    "rotation": [0, 0, 0],
-    "scale": [1, 1, 1]
-  }
-}
-```
-
-### Node types
-
-| Type | Required fields | Purpose |
+| Mode | Behavior | Available in Sequences |
 |---|---|---|
-| `item_display` | `item_stack_snbt`, `item_display` | Displays an item stack. |
-| `block_display` | `block_state_snbt` | Displays a block state. |
-| `text_display` | `text` | Displays a Minecraft text component. |
-| `anchor` | None beyond the common hierarchy and transform fields | Groups child nodes or provides a command origin without creating an entity. |
+| `once` | Plays the timeline once. | Yes |
+| `hold` | Plays once, then holds the last pose until stopped. | No |
+| `loop` | Plays the complete timeline first, then repeats the loop section. | Yes |
+| `server_sync` | Plays from the position determined by server time. Playbacks started at different times remain at the same timeline position. | No |
 
-Display nodes also support:
+Loop settings belong in the same `playback` object.
 
-- `visible`: Initial visibility; defaults to `true`.
-- `entity_nbt`: Additional display-entity compound SNBT. Runtime-owned identity, position, transformation, interpolation, and display-content fields cannot be overridden.
-- `skin`: Player-skin binding for an item display.
+| Setting | Behavior |
+|---|---|
+| `loop_start` | Starting position for the second and subsequent cycles in `loop` mode. Defaults to `0t` and must be earlier than the timeline end. Other modes allow only `0t`. |
+| `loop_delay` | Wait between cycles. Defaults to `0t`. Values greater than zero are allowed only in `loop` and `server_sync` modes. |
 
-`item_display` accepts Minecraft item display contexts such as `none`, `fixed`, `head`, `ground`, `gui`, and the first- or third-person hand contexts.
+## Tracks
 
-`item_stack_snbt` contains the displayed item stack.
+A track changes a model part's state over time. Each part is called a node, and a node can have several types of tracks.
 
-Anchor nodes do not support `visible` or `entity_nbt`. They can have transform tracks, but not visibility tracks, and cannot be used as a command source because they have no entity.
+For example, raising and turning a hand uses position and rotation tracks. Each track contains keyframes that record values at specific times.
 
-### Player skin binding
+| Track | State | Purpose |
+|---|---|---|
+| `position` | Position | Move a part |
+| `rotation` | Rotation | Change a part's orientation |
+| `scale` | Scale | Enlarge or shrink a part |
+| `visible` | Visibility | Hide or show a part at a specific time |
+| `nbt` | Display entity data | Change display content or entity properties |
 
-`skin` requires a player-body `part` and a nonnegative `order`.
+Position, rotation, and scale can be interpolated between keyframes. `linear` interpolates between two values; `step` holds the current value until the next keyframe. `easing` controls how the speed changes within an interpolated segment.
 
-Supported parts are `head`, `body`, `left_arm`, `right_arm`, `left_leg`, and `right_leg`. Nodes bound to the same part receive skin data in `order` order.
+Visibility and NBT change immediately at the specified time. A property without a track uses the node's initial value.
 
-## Timeline tracks
+[Molang](molang.md) can calculate position, rotation, scale, and visibility during playback, or calculate values for NBT keyframes. NBT can change only permitted display data. Fields managed by the playback engine, such as position, transformation, and interpolation, cannot be changed.
 
-`timeline.duration` is the positive total playback time. `timeline.tracks` maps node IDs to any combination of `position`, `rotation`, `scale`, `visible`, and `nbt` tracks. A node may omit tracks entirely; an omitted channel uses the node's initial value.
+## Command events
 
-Position, rotation, and scale are independent vector tracks. Each is an array of keyframes:
-
-```json
-"position": [
-  {
-    "time": "0t",
-    "value": [0, 0, 0],
-    "interpolation": "linear"
-  },
-  {"time": "10t", "value": [0, 1, 0]}
-]
-```
-
-Within each track:
-
-- The first keyframe must be at `0t`.
-- Times must be strictly increasing and cannot exceed the timeline duration.
-- Every vector value contains three finite numbers or [Molang](molang.md) strings.
-- `interpolation` belongs to the segment from the current keyframe to the next and defaults to `linear`.
-- The final keyframe cannot declare `interpolation` or `easing` because no segment follows it.
-
-`step` holds the current value until the next keyframe. `linear` interpolates position and scale component by component and interpolates rotation with quaternion spherical interpolation.
-
-### Easing
-
-Linear segments may add `easing`. It defaults to `linear` and cannot be combined with `step`.
-
-Supported families are `sine`, `quad`, `cubic`, `quart`, `quint`, `expo`, `circ`, `back`, `elastic`, and `bounce`. Each family supports `ease_in_*`, `ease_out_*`, and `ease_in_out_*`; for example, `ease_in_sine`, `ease_out_cubic`, and `ease_in_out_bounce`.
-
-### Discontinuous vector keyframes
-
-A vector keyframe normally uses one `value` for both its incoming and outgoing value. To create a discontinuity at the keyframe, replace `value` with both `pre` and `post`:
-
-```json
-{
-  "time": "10t",
-  "pre": [0, 1, 0],
-  "post": [0, 2, 0],
-  "interpolation": "linear"
-}
-```
-
-The preceding segment ends at `pre`; the following segment begins at `post`. A keyframe must define either `value`, or both `pre` and `post`.
-
-### Visibility tracks
-
-Visibility tracks are stepped boolean states and do not support `interpolation`, `easing`, `pre`, or `post`.
-
-```json
-"visible": [
-  {"time": "0t", "value": false},
-  {"time": "10t", "value": true}
-]
-```
-
-The value may also be a [Molang](molang.md) string; zero is hidden and any other finite result is visible.
-
-### NBT tracks
-
-NBT tracks apply stepped display-entity data changes. A `value` may be a compound SNBT string or an object containing a `molang` expression that returns a compound SNBT string. The resulting compound is merged with the state produced by the preceding keyframes.
-
-```json
-"nbt": [
-  {
-    "time": "0t",
-    "value": {
-      "molang": "q.is_sneaking ? '{item:{id:\"minecraft:poppy\",count:1},Glowing:false}' : '{item:{id:\"minecraft:dandelion\",count:1},Glowing:false}'"
-    }
-  },
-  {"time": "10t", "value": "{Glowing:true}"}
-]
-```
-
-- The first keyframe must be at `0t`; times must be strictly increasing and cannot exceed the timeline duration.
-- Keyframes support only `time` and `value`; NBT changes are stepped and cannot declare interpolation.
-- A dynamic value contains only one nonblank `molang` expression. The expression must evaluate to a string containing valid compound SNBT; a numeric result, invalid SNBT, or non-compound SNBT stops playback as a runtime failure.
-- A dynamic value is evaluated once when its keyframe is first applied. Starting from a later synchronized tick evaluates each preceding keyframe once in order, and a new loop or Sequence segment evaluates it again.
-- Fields added after the `0t` keyframe are rejected. Declare every field the track may modify in the first keyframe.
-- A dynamic `0t` value must return the same set of top-level fields on every playback cycle so later keyframes have one stable state shape.
-- Runtime-owned fields such as identity, position, transformation, interpolation, and passengers cannot be modified.
-- Anchor nodes do not support NBT tracks.
-
-## Events
-
-Optional `timeline.events` supports four event groups.
+`timeline.events` runs commands at specific points during playback.
 
 | Event | Execution time |
 |---|---|
-| `start` | When playback starts. |
-| `timeline` | At the specified `time`. |
-| `loop` | After each repetition completes. |
-| `stop` | When playback stops. |
+| `start` | Playback start |
+| `timeline` | Specified timeline time |
+| `loop` | Cycle completion |
+| `stop` | Playback stop |
 
-Each event contains object-shaped `source` and `origin` fields and a `commands` array. Commands do not start with `/`.
+`timeline` events are ordered by time and may occur anywhere from the timeline start through its end, including the end itself. Commands do not begin with `/`.
 
-```json
-{
-  "source": {"type": "server"},
-  "origin": {
-    "type": "node",
-    "node": "effect_anchor",
-    "offset": [0, 0.5, 0]
-  },
-  "commands": ["particle minecraft:flame ~ ~ ~ 0 0 0 0 1 normal"]
-}
-```
+### Command source and origin
 
-`source.type` may be `player`, `server`, or `node`. A node source also requires `node` and must reference a display node. `origin.type` may be `root` or `node`; a node origin requires `node`. Every origin may include an optional three-number `offset`, which defaults to zero.
+Set the command source (`source`) and execution position (`origin`) separately.
 
-Timeline events must be ordered by time and occur within `0t` through `timeline.duration`, inclusive. Events at the end of the timeline are allowed.
+| Field | Values | Meaning |
+|---|---|---|
+| `source` | `player`, `server`, `node` | Who runs the command. A `node` source must be a display node. |
+| `origin` | `root`, `node` | Runs at the emote's root position or a specific node's position. |
+| `origin.offset` | Three-number position offset | Adjusts the execution position. Defaults to `[0, 0, 0]`. |
 
-## Callbacks
+When `source` or `origin` is `node`, also specify the node ID. Anchor nodes create no entity and can be used as origins, but not as command sources.
 
-Select named lifecycle callbacks in the Animation's root `callbacks` array:
+## Extensions
+
+### Molang
+
+See the [Molang documentation](molang.md) for initialization and tick programs and dynamic track values.
+
+### Callbacks {#callbacks}
+
+Select callbacks registered by another server mod in `callbacks` to run code at playback start, ticks, loops, and close.
 
 ```json
 "callbacks": [
@@ -322,4 +151,4 @@ Select named lifecycle callbacks in the Animation's root `callbacks` array:
 ]
 ```
 
-`name` is the registered callback identifier. `payload` is an optional string, defaults to empty, and is passed through unchanged. For registration, see the [Mod API](api.md#lifecycle-callbacks).
+`name` is the registered callback ID. `payload` is a string passed to the callback unchanged and defaults to an empty string. For registration, see the [Mod API](api.md#lifecycle-callbacks).
