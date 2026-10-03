@@ -70,7 +70,8 @@ class AnimationJsonSchemaTest {
         EmoteAnimation.NbtValue value = parse(root).animation().timeline().tracks().get("display").nbt().getFirst().value();
         EmoteAnimation.MolangNbtValue molang = assertInstanceOf(EmoteAnimation.MolangNbtValue.class, value);
 
-        assertEquals("q.is_sneaking ? '{Glowing:1b}' : '{Glowing:0b}'", molang.expression().source());
+        assertEquals("q.is_sneaking ? '{Glowing:1b}' : '{Glowing:0b}'", molang.source());
+        assertEquals("$.timeline.tracks.display.nbt[0].value.molang", molang.path());
     }
 
     @Test

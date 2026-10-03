@@ -120,7 +120,7 @@ final class TimelineJsonParser {
         if (object.size() != 1) {
             throw document.error(path, "Molang NBT only supports molang");
         }
-        return new MolangNbtValue(new MolangValue(expression, path + ".molang"));
+        return new MolangNbtValue(expression, path + ".molang");
     }
 
     private CompoundTag parseNbt(String source, String path, EmoteJsonDocument document) throws EmoteAnimationLoadException {

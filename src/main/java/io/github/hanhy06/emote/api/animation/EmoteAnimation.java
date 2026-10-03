@@ -284,9 +284,10 @@ public record EmoteAnimation(
 
     }
 
-    public record MolangNbtValue(MolangValue expression) implements NbtValue {
+    public record MolangNbtValue(String source, String path) implements NbtValue {
         public MolangNbtValue {
-            Objects.requireNonNull(expression, "expression");
+            Objects.requireNonNull(source, "source");
+            Objects.requireNonNull(path, "path");
         }
     }
 

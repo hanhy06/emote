@@ -82,8 +82,8 @@ public final class PreparedAnimationTimeline {
             case MolangNbtValue molang -> new CompiledNbtKeyframe(
                 frame.tick(),
                 null,
-                compileReadOnlyValueProgram(molang.expression().source(), molang.expression().path()),
-                molang.expression().path()
+                compileReadOnlyValueProgram(molang.source(), molang.path()),
+                molang.path()
             );
         }).toList();
     }
