@@ -129,7 +129,7 @@ class PlaybackSessionTest {
         session.startPlayback();
         assertEquals(List.of("start", "returned", "close"), calls);
         assertFalse(session.isInvokingCallback());
-        assertEquals(PlaybackState.CLOSED, session.playbackInfo(UUID.randomUUID()).state());
+        assertEquals(PlaybackState.CLOSED, session.playbackInfo().state());
     }
 
     @Test
@@ -149,7 +149,7 @@ class PlaybackSessionTest {
             session.completeClose();
             assertFalse(session.beginClose(reason));
             assertEquals(List.of(reason), closed);
-            assertEquals(PlaybackState.CLOSED, session.playbackInfo(UUID.randomUUID()).state());
+            assertEquals(PlaybackState.CLOSED, session.playbackInfo().state());
         }
     }
 

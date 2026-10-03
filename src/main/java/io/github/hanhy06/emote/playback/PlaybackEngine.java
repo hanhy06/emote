@@ -2,6 +2,7 @@ package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
+import io.github.hanhy06.emote.api.PlaybackPlacement;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.config.ConfigListener;
@@ -36,6 +37,7 @@ public final class PlaybackEngine implements ConfigListener {
     private final PlaybackStressTest stressTest = new PlaybackStressTest(this.entityController);
     private final CallbackRegistry callbackRegistry = new CallbackRegistry();
     private int maxActiveDisplayEntities = Config.DEFAULT_MAX_ACTIVE_DISPLAY_ENTITIES;
+    private Lifecycle stateListener = Lifecycle.NONE;
 
     public interface Lifecycle {
         Lifecycle NONE = new Lifecycle() {};
@@ -58,8 +60,8 @@ public final class PlaybackEngine implements ConfigListener {
             Objects.requireNonNull(queries, "queries");
             Objects.requireNonNull(lifecycle, "lifecycle");
         }
-        public Request(ServerLevel level, RootTransform root, PreparedEmote animation) {
-            this(level, root, animation, animation.id(), Map.of(), MolangQuerySource.EMPTY, null, null, Lifecycle.NONE);
+        public Request(ServerLevel level, RootTransform root, PreparedEmote emote) {
+            this(level, root, emote, emote.id(), Map.of(), MolangQuerySource.EMPTY, null, null, Lifecycle.NONE);
         }
     }
 
@@ -72,6 +74,7 @@ public final class PlaybackEngine implements ConfigListener {
 
     public CallbackRegistry callbackRegistry() { return this.callbackRegistry; }
     public PlaybackEntityController entities() { return this.entityController; }
+    public void setStateListener(Lifecycle listener) { this.stateListener = Objects.requireNonNull(listener, "listener"); }
     @Override public void onConfigReload(Config config) { this.maxActiveDisplayEntities = config.maxActiveDisplayEntities(); }
 
     public StartResult start(Request request, @Nullable PlaybackSession replacedSession) {
@@ -117,6 +120,7 @@ public final class PlaybackEngine implements ConfigListener {
             session.bindCallbacks(bindings, segmentBindings, EmoteMod.SERVER.getTickCount());
             register(session, request.lifecycle());
             request.lifecycle().onStarted(session);
+            if (contains(session)) notifyStarted(session);
             if (contains(session)) session.startPlayback();
             return new StartResult.Success(session);
         } catch (RuntimeException exception) {
@@ -130,13 +134,19 @@ public final class PlaybackEngine implements ConfigListener {
         }
     }
 
-    record ActivePlayback(PlaybackSession session, Lifecycle lifecycle) {}
+    record ActivePlayback(PlaybackSession session, Lifecycle lifecycle, Lifecycle stateListener) {}
 
     void register(PlaybackSession session, Lifecycle lifecycle) {
-        if (this.activePlaybacks.putIfAbsent(session.sessionId(), new ActivePlayback(session, lifecycle)) != null) {
+        if (this.activePlaybacks.putIfAbsent(session.sessionId(), new ActivePlayback(session, lifecycle, Lifecycle.NONE)) != null) {
             throw new IllegalStateException("Playback session is already registered: " + session.sessionId());
         }
         this.activeDisplayEntities += session.nodes().displayEntityCount();
+    }
+
+    void notifyStarted(PlaybackSession session) {
+        ActivePlayback playback = this.activePlaybacks.get(session.sessionId());
+        this.activePlaybacks.put(session.sessionId(), new ActivePlayback(session, playback.lifecycle(), this.stateListener));
+        this.stateListener.onStarted(session);
     }
 
     @Nullable ActivePlayback remove(PlaybackSession session) {
@@ -151,6 +161,21 @@ public final class PlaybackEngine implements ConfigListener {
         return playback == null ? null : playback.session();
     }
     public boolean contains(PlaybackSession session) { return findSession(session.sessionId()) == session; }
+
+    public @Nullable PlaybackSession stop(UUID sessionId, PlaybackStopReason reason) {
+        PlaybackSession session = findSession(sessionId);
+        return session == null ? null : stop(session, reason);
+    }
+
+    public boolean setPlacement(UUID sessionId, PlaybackPlacement placement) {
+        PlaybackSession session = findSession(sessionId);
+        if (session == null) return false;
+        if (placement.mode() != PlaybackPlacement.Mode.EXTERNAL) throw new IllegalArgumentException("Player placement requires a player playback");
+        this.entityController.moveSceneTo(session.nodes(), placement.position());
+        this.entityController.updateViewRotation(session.nodes(), placement.yaw(), 0);
+        session.setPlacementMode(placement.mode());
+        return true;
+    }
 
     public void tick() {
         this.stressTest.tick();
@@ -185,12 +210,12 @@ public final class PlaybackEngine implements ConfigListener {
         Lifecycle lifecycle = playback.lifecycle();
         try { lifecycle.onClosing(session); }
         catch (RuntimeException exception) { EmoteMod.LOGGER.warn("Failed to notify emote {} closing", session.emoteId(), exception); }
-        Runnable cleanup = () -> finishCleanup(session, lifecycle, reason);
+        Runnable cleanup = () -> finishCleanup(session, lifecycle, playback.stateListener(), reason);
         if (!session.deferCleanup(cleanup)) cleanup.run();
         return session;
     }
 
-    private void finishCleanup(PlaybackSession session, Lifecycle lifecycle, PlaybackStopReason reason) {
+    private void finishCleanup(PlaybackSession session, Lifecycle lifecycle, Lifecycle stateListener, PlaybackStopReason reason) {
         try {
             try { session.playback().stop(reason); }
             catch (RuntimeException exception) { EmoteMod.LOGGER.warn("Failed to run stop events for emote {}", session.emoteId(), exception); }
@@ -200,6 +225,8 @@ public final class PlaybackEngine implements ConfigListener {
             catch (RuntimeException exception) { EmoteMod.LOGGER.warn("Failed to notify emote {} stopped", session.emoteId(), exception); }
             finally {
                 try {
+                    try { stateListener.onStopped(session, reason); }
+                    catch (RuntimeException exception) { EmoteMod.LOGGER.warn("Failed to notify emote {} API stop", session.emoteId(), exception); }
                     ServerLevel level = EmoteMod.SERVER.getLevel(session.levelKey());
                     if (level != null) this.entityController.remove(level, session.nodes());
                 } finally { session.completeClose(); }

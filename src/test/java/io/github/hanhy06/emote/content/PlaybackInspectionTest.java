@@ -169,7 +169,7 @@ class PlaybackInspectionTest {
         session.startPlayback();
         session.tick(101);
         player.advance();
-        PlaybackInfo info = session.playbackInfo(actorId);
+        PlaybackInfo info = session.playbackInfo();
         assertEquals(Identifier.parse("test:sequence"), info.emoteId());
         assertEquals(animation.model().id(), info.position().animationId());
         assertEquals(1, info.elapsedTicks());

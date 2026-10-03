@@ -224,10 +224,10 @@ class ExampleCallbacksTest {
         public net.minecraft.server.MinecraftServer server() { throw new UnsupportedOperationException(); }
         public net.minecraft.server.level.ServerLevel level() { throw new UnsupportedOperationException(); }
         public long elapsedTicks() { return 0; }
-        public int animationTick() { return 24; }
+        public Integer animationTick() { return 24; }
         public Optional<net.minecraft.world.entity.Entity> actor(String name) { throw new UnsupportedOperationException(); }
         public Optional<net.minecraft.world.entity.Entity> nodeEntity(String node) { throw new UnsupportedOperationException(); }
-        public Vec3 nodeWorldPosition(String node) { throw new UnsupportedOperationException(); }
+        public Optional<Vec3> nodeWorldPosition(String node) { throw new UnsupportedOperationException(); }
         public Vec3 rootPosition() { return Vec3.ZERO; }
         public Optional<PlaybackStopReason> stopReason() { return Optional.of(PlaybackStopReason.MANUAL); }
         public Object userState() { return state; }

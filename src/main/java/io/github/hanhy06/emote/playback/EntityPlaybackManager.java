@@ -123,6 +123,7 @@ public final class EntityPlaybackManager {
                     ? PlaybackStopReason.ENTITY_UNAVAILABLE : null;
             }
             @Override public void prepareFrame(PlaybackSession session) {
+                if (session.hasFixedPlacement()) return;
                 engine.entities().moveSceneTo(session.nodes(), entry.marker.position());
                 engine.entities().updateViewRotation(session.nodes(), entry.marker.getYRot(), 0);
             }

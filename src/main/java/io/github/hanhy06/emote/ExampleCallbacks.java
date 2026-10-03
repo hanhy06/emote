@@ -149,7 +149,8 @@ public final class ExampleCallbacks {
 
             api.registerCallbacks(BAT_CALLBACK_ID, new EmoteCallbacks() {
                 public void onTick(PlaybackContext context) {
-                    int tick = context.animationTick();
+                    Integer tick = context.animationTick();
+                    if (tick == null) return;
                     if (tick >= 25 && tick < 210) {
                         if (context.userState() == null) spawnBat(context);
                         moveEntity(context, 0.6F);
@@ -209,7 +210,7 @@ public final class ExampleCallbacks {
         }
 
         context.setUserState(allay);
-        Vec3 origin = context.nodeWorldPosition(context.payload());
+        Vec3 origin = context.nodeWorldPosition(context.payload()).orElseThrow();
         allay.snapTo(origin.x, origin.y, origin.z, context.actor("actor").orElseThrow().getYRot(), 0.0F);
         allay.setNoAi(true);
         allay.setPermanentlyInvulnerable(true);
@@ -233,7 +234,7 @@ public final class ExampleCallbacks {
         if (bat == null) throw new IllegalStateException("Failed to create the idle Bat");
 
         context.setUserState(bat);
-        Vec3 origin = context.nodeWorldPosition(context.payload());
+        Vec3 origin = context.nodeWorldPosition(context.payload()).orElseThrow();
         bat.snapTo(origin.x, origin.y, origin.z, context.actor("actor").orElseThrow().getYRot(), 0.0F);
         bat.setNoAi(true);
         bat.setNoGravity(true);
@@ -252,7 +253,7 @@ public final class ExampleCallbacks {
     private void moveEntity(PlaybackContext context, float interpolationSpeed) {
         if (!(context.userState() instanceof LivingEntity entity) || entity.isRemoved()) return;
 
-        Vec3 destination = context.nodeWorldPosition(context.payload());
+        Vec3 destination = context.nodeWorldPosition(context.payload()).orElseThrow();
         Vec3 movement = destination.subtract(entity.position());
         double horizontalDistance = movement.horizontalDistance();
         if (horizontalDistance > 1.0E-6D) {

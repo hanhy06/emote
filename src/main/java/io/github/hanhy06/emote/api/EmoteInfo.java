@@ -9,6 +9,7 @@ import java.util.Objects;
 public record EmoteInfo(
     Identifier id,
     Kind kind,
+    boolean standalone,
     EmoteMetadata metadata,
     EmotePlayerBehavior player,
     @Nullable Integer durationTicks,

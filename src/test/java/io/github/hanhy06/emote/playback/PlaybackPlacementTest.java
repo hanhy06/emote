@@ -40,7 +40,7 @@ class PlaybackPlacementTest {
     void externalPlacementRotatesNestedAnchorPositionsWithoutModelYawOffsets(float yaw, double x, double y, double z) throws Exception {
         Fixture fixture = fixture();
         Vec3 origin = new Vec3(10, 20, 30);
-        var snapshot = fixture.session().playbackInfo(fixture.actorId());
+        var snapshot = fixture.session().playbackInfo();
         PlaybackPlacement placement = PlaybackPlacement.external(origin, yaw);
         assertTrue(fixture.manager().setPlacement(fixture.session().sessionId(), placement));
         assertPosition(new Vec3(x, y, z), fixture.session().nodeWorldPosition("child").orElseThrow());
@@ -142,6 +142,7 @@ class PlaybackPlacementTest {
         PlaybackPlayer animation = new PlaybackPlayer(prepared, new EntityTimelineTarget(prepared, nodes, engine.entities()));
         animation.start();
         PlaybackSession session = new PlaybackSession(UUID.randomUUID(), Level.OVERWORLD, prepared.id(), nodes, animation, Map.of());
+        session.setPlacementMode(PlaybackPlacement.Mode.PLAYER);
         PlayerPlaybackManager manager = new PlayerPlaybackManager(engine, new PlayerSkinManager(new PlayerSkinProvider() {
             public PlayerSkinPreparation prepare(PlayerSkinSource source, Set<PlayerSkinRegion> regions) { throw new UnsupportedOperationException(); }
             public void setListener(Listener listener) {}

@@ -73,7 +73,7 @@ public final class EmoteApiImpl extends EmoteApi {
     public boolean stop(UUID sessionId) {
         Objects.requireNonNull(sessionId, "sessionId");
         requireServerThread();
-        return this.playerPlaybackManager.stop(sessionId, PlaybackStopReason.MANUAL) != null;
+        return this.playerPlaybackManager.engine().stop(sessionId, PlaybackStopReason.MANUAL) != null;
     }
 
     @Override
@@ -81,7 +81,8 @@ public final class EmoteApiImpl extends EmoteApi {
         Objects.requireNonNull(sessionId, "sessionId");
         Objects.requireNonNull(placement, "placement");
         requireServerThread();
-        return this.playerPlaybackManager.setPlacement(sessionId, placement);
+        return this.playerPlaybackManager.setPlacement(sessionId, placement)
+            || this.playerPlaybackManager.engine().setPlacement(sessionId, placement);
     }
 
     @Override
@@ -89,7 +90,7 @@ public final class EmoteApiImpl extends EmoteApi {
         Objects.requireNonNull(sessionId, "sessionId");
         Objects.requireNonNull(nodeId, "nodeId");
         requireServerThread();
-        return Optional.ofNullable(this.playerPlaybackManager.findSession(sessionId))
+        return Optional.ofNullable(this.playerPlaybackManager.engine().findSession(sessionId))
             .flatMap(session -> session.nodeWorldPosition(nodeId));
     }
 
@@ -142,7 +143,7 @@ public final class EmoteApiImpl extends EmoteApi {
         if (session == null) {
             return Optional.empty();
         }
-        return Optional.of(session.playbackInfo(player.getUUID()));
+        return Optional.of(session.playbackInfo());
     }
 
     @Override
@@ -154,14 +155,14 @@ public final class EmoteApiImpl extends EmoteApi {
     public Optional<PlaybackInfo> getPlayback(UUID sessionId) {
         Objects.requireNonNull(sessionId, "sessionId");
         requireServerThread();
-        return this.playerPlaybackManager.playbackInfo(sessionId);
+        return Optional.ofNullable(this.playerPlaybackManager.engine().findSession(sessionId)).map(PlaybackSession::playbackInfo);
     }
 
     @Override
     public Optional<PlaybackTimeline> getTimeline(UUID sessionId) {
         Objects.requireNonNull(sessionId, "sessionId");
         requireServerThread();
-        return Optional.ofNullable(this.playerPlaybackManager.findSession(sessionId))
+        return Optional.ofNullable(this.playerPlaybackManager.engine().findSession(sessionId))
             .map(session -> session.playback().timeline());
     }
 

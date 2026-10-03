@@ -1,6 +1,12 @@
 package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.api.PlaybackPlacement;
+import io.github.hanhy06.emote.api.PlaybackStopReason;
+import io.github.hanhy06.emote.api.PlaybackState;
+import io.github.hanhy06.emote.application.ApiEventDispatcher;
+import io.github.hanhy06.emote.api.EmotePlaybackListener;
+import io.github.hanhy06.emote.api.PlaybackInfo;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.content.PreparedEmoteFixture;
 import io.github.hanhy06.emote.playback.runtime.EntityTimelineTarget;
@@ -22,6 +28,42 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 class PlaybackEngineTest {
+    @Test
+    void actorFreeSessionsUseTheSameIndexForPlacementEventsAndStopping() throws Exception {
+        PreparedEmote emote = PreparedEmoteFixture.create("test:actor-free", "Actor free");
+        var nodes = new PlaybackNodes(RootTransform.create(Vec3.ZERO, 0), Map.of());
+        PlaybackEngine engine = new PlaybackEngine();
+        var player = new PlaybackPlayer(emote, new EntityTimelineTarget(emote, nodes, engine.entities()));
+        PlaybackSession session = new PlaybackSession(UUID.randomUUID(), Level.OVERWORLD, emote.id(), nodes, player, Map.of());
+        ApiEventDispatcher dispatcher = new ApiEventDispatcher();
+        java.util.List<PlaybackInfo> started = new java.util.ArrayList<>();
+        dispatcher.addPlaybackListener(new EmotePlaybackListener() {
+            public void onStarted(PlaybackInfo playback) { started.add(playback); }
+        });
+        engine.setStateListener(dispatcher);
+        engine.register(session, PlaybackEngine.Lifecycle.NONE);
+        engine.notifyStarted(session);
+
+        assertEquals(1, started.size());
+        assertNull(started.getFirst().playerUuid());
+        assertEquals(session.sessionId(), started.getFirst().sessionId());
+        assertFalse(session.hasFixedPlacement());
+        assertThrows(IllegalArgumentException.class, () -> engine.setPlacement(session.sessionId(), PlaybackPlacement.player()));
+        PlaybackPlacement placement = PlaybackPlacement.external(new Vec3(10, 20, 30), 90);
+        assertTrue(engine.setPlacement(session.sessionId(), placement));
+        assertEquals(placement, engine.findSession(session.sessionId()).playbackInfo().placement());
+        assertTrue(session.hasFixedPlacement());
+        assertFalse(engine.setPlacement(UUID.randomUUID(), placement));
+
+        var invoking = PlaybackSession.class.getDeclaredField("invokingCallback");
+        invoking.setAccessible(true);
+        invoking.setBoolean(session, true);
+        assertSame(session, engine.stop(session.sessionId(), PlaybackStopReason.MANUAL));
+        assertNull(engine.findSession(session.sessionId()));
+        assertEquals(PlaybackState.CLOSING, session.playbackState());
+        assertNull(engine.stop(session.sessionId(), PlaybackStopReason.MANUAL));
+    }
+
     @BeforeAll
     static void bootstrapMinecraftRegistries() {
         SharedConstants.tryDetectVersion();

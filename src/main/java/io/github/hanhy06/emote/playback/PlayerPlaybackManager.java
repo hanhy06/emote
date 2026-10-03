@@ -68,7 +68,7 @@ public final class PlayerPlaybackManager {
     }
     public Optional<PlaybackInfo> playbackInfo(UUID sessionId) {
         return Optional.ofNullable(findPlayback(sessionId))
-            .map(playback -> playback.session().playbackInfo(playback.playerState().playerUuid()));
+            .map(playback -> playback.session().playbackInfo());
     }
     public @Nullable PlaybackSession findSession(UUID sessionId) {
         PlayerPlayback playback = findPlayback(sessionId);
@@ -141,7 +141,7 @@ public final class PlayerPlaybackManager {
             Map.of("actor", player), PlayerMolangQueries.forPlayer(player), player.createCommandSourceStack(),
             preparation.preparedPlayerSkin(), lifecycle), findActive(player.getUUID()));
         return switch (result) {
-            case PlaybackEngine.StartResult.Success success -> new PlayResult.Success(success.session().playbackInfo(player.getUUID()));
+            case PlaybackEngine.StartResult.Success success -> new PlayResult.Success(success.session().playbackInfo());
             case PlaybackEngine.StartResult.Failure failure -> PlayResult.failure(failure.message());
         };
     }

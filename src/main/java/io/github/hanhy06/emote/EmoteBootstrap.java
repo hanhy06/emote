@@ -102,7 +102,7 @@ final class EmoteBootstrap {
         configManager.addListener(engine);
         playback.addStateListener(cooldowns);
         playback.addStateListener(playbackStateSync);
-        playback.addStateListener(apiEvents);
+        engine.setStateListener(apiEvents);
         playback.register();
         entityPlayback.register();
         registerPayloads();

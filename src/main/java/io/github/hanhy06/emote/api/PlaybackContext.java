@@ -15,10 +15,10 @@ public interface PlaybackContext {
     MinecraftServer server();
     ServerLevel level();
     long elapsedTicks();
-    int animationTick();
+    @Nullable Integer animationTick();
     Optional<Entity> actor(String name);
     Optional<Entity> nodeEntity(String nodeId);
-    Vec3 nodeWorldPosition(String nodeId);
+    Optional<Vec3> nodeWorldPosition(String nodeId);
     Vec3 rootPosition();
     Optional<PlaybackStopReason> stopReason();
     @Nullable Object userState();

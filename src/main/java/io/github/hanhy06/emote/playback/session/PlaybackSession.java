@@ -14,6 +14,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
@@ -41,7 +42,8 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
     private final PlaybackNodes nodes;
     private final PlaybackPlayer playback;
     private final Map<String, Entity> actors;
-    private PlaybackPlacement.Mode placementMode = PlaybackPlacement.Mode.PLAYER;
+    private PlaybackPlacement.Mode placementMode;
+    private boolean fixedPlacement;
 
     public PlaybackSession(
         UUID sessionId,
@@ -57,6 +59,7 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
         this.nodes = Objects.requireNonNull(nodes, "nodes");
         this.playback = Objects.requireNonNull(playback, "playback");
         this.actors = Map.copyOf(actors);
+        this.placementMode = this.actors.get("actor") instanceof ServerPlayer ? PlaybackPlacement.Mode.PLAYER : PlaybackPlacement.Mode.EXTERNAL;
     }
 
     public UUID sessionId() {
@@ -67,7 +70,8 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
         return this.playbackState;
     }
 
-    public PlaybackInfo playbackInfo(UUID playerUuid) {
+    public PlaybackInfo playbackInfo() {
+        UUID playerUuid = this.actors.get("actor") instanceof ServerPlayer player ? player.getUUID() : null;
         return new PlaybackInfo(this.sessionId, playerUuid, Identifier.parse(this.emoteId), this.playbackState,
             this.elapsedTicks, this.playback.currentTick(), this.playback.position(), placement());
     }
@@ -78,7 +82,10 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
 
     public void setPlacementMode(PlaybackPlacement.Mode mode) {
         this.placementMode = Objects.requireNonNull(mode, "mode");
+        this.fixedPlacement = mode == PlaybackPlacement.Mode.EXTERNAL;
     }
+
+    public boolean hasFixedPlacement() { return this.fixedPlacement; }
 
     public Optional<Vec3> nodeWorldPosition(String nodeId) {
         Objects.requireNonNull(nodeId, "nodeId");
@@ -248,7 +255,7 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
         public MinecraftServer server() { return EmoteMod.SERVER; }
         public ServerLevel level() { return Objects.requireNonNull(server().getLevel(PlaybackSession.this.levelKey), "Playback level unavailable."); }
         public long elapsedTicks() { return PlaybackSession.this.elapsedTicks - this.startTick; }
-        public int animationTick() { return this.animationScoped ? this.localTick : PlaybackSession.this.playback.currentTick(); }
+        public @Nullable Integer animationTick() { return this.animationScoped ? Integer.valueOf(this.localTick) : PlaybackSession.this.playback.position().animationTick(); }
         public Vec3 rootPosition() { return PlaybackSession.this.nodes.root().position(); }
         public Optional<PlaybackStopReason> stopReason() { return Optional.ofNullable(this.closeReason != null ? this.closeReason : PlaybackSession.this.stopReason); }
         public @Nullable Object userState() { return this.userState; }
@@ -260,17 +267,13 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
         }
 
         public Optional<Entity> nodeEntity(String nodeId) {
-            var node = Objects.requireNonNull(PlaybackSession.this.nodes.nodes().get(nodeId), "Unknown node " + nodeId);
-            return Optional.<Entity>ofNullable(node.entity()).filter(entity -> !entity.isRemoved());
+            Objects.requireNonNull(nodeId, "nodeId");
+            return Optional.ofNullable(PlaybackSession.this.nodes.nodes().get(nodeId))
+                .flatMap(node -> Optional.<Entity>ofNullable(node.entity())).filter(entity -> !entity.isRemoved());
         }
 
-        public Vec3 nodeWorldPosition(String nodeId) {
-            var nodes = PlaybackSession.this.nodes;
-            var node = Objects.requireNonNull(nodes.nodes().get(nodeId), "Unknown node " + nodeId);
-            var root = nodes.root();
-            var transform = PlaybackSession.this.playback.currentTransformation(nodeId).getMatrix();
-            Vector3f point = root.worldMatrix(nodes.orientationYaw(), transform).transformPosition(new Vector3f());
-            return root.position().add(point.x, point.y, point.z);
+        public Optional<Vec3> nodeWorldPosition(String nodeId) {
+            return PlaybackSession.this.nodeWorldPosition(nodeId);
         }
     }
 
@@ -282,7 +285,7 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
         return this.emoteId;
     }
 
-public PlaybackNodes nodes() {
+    public PlaybackNodes nodes() {
         return this.nodes;
     }
 

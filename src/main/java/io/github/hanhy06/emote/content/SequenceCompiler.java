@@ -69,7 +69,7 @@ final class SequenceCompiler {
             hasPreviousPose = true;
         }
 
-        EmoteAnimation compiledEmote = new EmoteAnimation(
+        EmoteAnimation compiledModel = new EmoteAnimation(
             sequence.id(),
             sequence.metadata(),
             new EmoteAnimation.Settings(
@@ -88,7 +88,7 @@ final class SequenceCompiler {
                 EmoteAnimation.Events.empty()
             ), sequence.callbacks());
         LoadedAnimation loaded = new LoadedAnimation(sourcePath, fingerprint(sequence, steps),
-            compiledEmote, layoutAnchor.source().preparedDisplayData());
+            compiledModel, layoutAnchor.source().preparedDisplayData());
         PreparedEmote preparedLayout = PreparedEmote.from(loaded, layoutAnchor.skinBindings());
         if (timelineSegments.isEmpty()) {
             timelineSegments.add(new PlaybackTimeline.Segment(0, null, null, PlaybackTimeline.Phase.WAIT, 0, 1L, null));

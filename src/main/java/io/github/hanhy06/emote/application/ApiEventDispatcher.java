@@ -4,8 +4,7 @@ import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.*;
 import io.github.hanhy06.emote.content.PlayableEmote;
 import io.github.hanhy06.emote.content.PreparedSequence;
-import io.github.hanhy06.emote.playback.PlaybackStateListener;
-import io.github.hanhy06.emote.playback.PlayerPlaybackState;
+import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -15,10 +14,10 @@ import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public final class ApiEventDispatcher implements PlaybackStateListener {
+public final class ApiEventDispatcher implements PlaybackEngine.Lifecycle {
     private final CopyOnWriteArrayList<EmotePlayListener> playListeners = new CopyOnWriteArrayList<>();
     private final CopyOnWriteArrayList<EmotePlaybackListener> playbackListeners = new CopyOnWriteArrayList<>();
-    private final Map<StartKey, StartDispatch> startingPlaybacks = new HashMap<>();
+    private final Map<UUID, StartDispatch> startingPlaybacks = new HashMap<>();
 
     public ListenerRegistration addPlayListener(EmotePlayListener listener) {
         return register(this.playListeners, Objects.requireNonNull(listener, "listener"));
@@ -45,9 +44,9 @@ public final class ApiEventDispatcher implements PlaybackStateListener {
     }
 
     @Override
-    public void onStarted(ServerPlayer player, PlaybackSession session, PlayerPlaybackState playerState) {
-        PlaybackInfo playback = toPlaybackInfo(session, playerState);
-        StartKey key = new StartKey(session.sessionId(), playerState.playerUuid());
+    public void onStarted(PlaybackSession session) {
+        PlaybackInfo playback = session.playbackInfo();
+        UUID key = session.sessionId();
         StartDispatch dispatch = new StartDispatch(List.copyOf(this.playbackListeners));
         if (this.startingPlaybacks.putIfAbsent(key, dispatch) != null) {
             throw new IllegalStateException("Playback start is already being dispatched: " + session.sessionId());
@@ -71,13 +70,11 @@ public final class ApiEventDispatcher implements PlaybackStateListener {
 
     @Override
     public void onStopped(
-        ServerPlayer player,
         PlaybackSession session,
-        PlayerPlaybackState playerState,
         PlaybackStopReason reason
     ) {
-        PlaybackInfo playback = toPlaybackInfo(session, playerState);
-        StartDispatch startDispatch = this.startingPlaybacks.get(new StartKey(session.sessionId(), playerState.playerUuid()));
+        PlaybackInfo playback = session.playbackInfo();
+        StartDispatch startDispatch = this.startingPlaybacks.get(session.sessionId());
         List<EmotePlaybackListener> listeners;
         if (startDispatch == null) {
             listeners = List.copyOf(this.playbackListeners);
@@ -98,6 +95,7 @@ public final class ApiEventDispatcher implements PlaybackStateListener {
         return new EmoteInfo(
             Identifier.parse(emote.id()),
             emote instanceof PreparedSequence ? EmoteInfo.Kind.SEQUENCE : EmoteInfo.Kind.ANIMATION,
+            emote.standalone(),
             emote.metadata(),
             emote.playerBehavior(),
             emote instanceof PreparedSequence sequence ? sequence.fixedDurationTicks() : Integer.valueOf(emote.durationTicks()),
@@ -106,17 +104,10 @@ public final class ApiEventDispatcher implements PlaybackStateListener {
         );
     }
 
-    public static PlaybackInfo toPlaybackInfo(PlaybackSession session, PlayerPlaybackState playerState) {
-        return session.playbackInfo(playerState.playerUuid());
-    }
-
     private static <T> ListenerRegistration register(CopyOnWriteArrayList<T> listeners, T listener) {
         listeners.add(listener);
         AtomicBoolean registered = new AtomicBoolean(true);
         return () -> registered.compareAndSet(true, false) && listeners.remove(listener);
-    }
-
-    private record StartKey(UUID sessionId, UUID playerUuid) {
     }
 
     private static final class StartDispatch {

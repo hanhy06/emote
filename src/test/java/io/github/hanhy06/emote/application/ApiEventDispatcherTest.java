@@ -7,6 +7,9 @@ import io.github.hanhy06.emote.api.PlaybackInfo;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.content.PreparedEmoteFixture;
+import io.github.hanhy06.emote.content.PreparedSequence;
+import io.github.hanhy06.emote.api.sequence.EmoteSequence;
+import net.minecraft.resources.Identifier;
 import io.github.hanhy06.emote.playback.PlaybackPlayer;
 import io.github.hanhy06.emote.playback.PlayerPlaybackState;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
@@ -24,9 +27,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 class ApiEventDispatcherTest {
+    @Test
+    void exposesStandalonePolicyForAnimationsAndSequences() {
+        PreparedEmote animation = PreparedEmoteFixture.create("test:component", "Component", false);
+        assertFalse(ApiEventDispatcher.toInfo(animation).standalone());
+        EmoteSequence source = new EmoteSequence(Identifier.parse("test:sequence"), animation.metadata(),
+            new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()),
+            List.of(new EmoteSequence.AnimationStep(animation.model().id(), 1)));
+        assertTrue(ApiEventDispatcher.toInfo(PreparedSequence.resolve(source, Map.of(animation.id(), animation))).standalone());
+    }
+
     @BeforeAll
     static void bootstrapMinecraftRegistries() {
         SharedConstants.tryDetectVersion();
@@ -43,7 +56,7 @@ class ApiEventDispatcherTest {
             @Override
             public void onStarted(PlaybackInfo playback) {
                 events.add("first-started");
-                dispatcher.onStopped(null, session, participant, PlaybackStopReason.MANUAL);
+                dispatcher.onStopped(session, PlaybackStopReason.MANUAL);
             }
 
             @Override
@@ -63,7 +76,7 @@ class ApiEventDispatcherTest {
             }
         });
 
-        dispatcher.onStarted(null, session, participant);
+        dispatcher.onStarted(session);
 
         assertEquals(List.of("first-started", "first-stopped"), events);
     }
@@ -77,7 +90,7 @@ class ApiEventDispatcherTest {
         dispatcher.addPlaybackListener(new StopRecordingListener("first", events));
         dispatcher.addPlaybackListener(new StopRecordingListener("second", events));
 
-        dispatcher.onStopped(null, session, participant, PlaybackStopReason.MANUAL);
+        dispatcher.onStopped(session, PlaybackStopReason.MANUAL);
 
         assertEquals(List.of("first-stopped", "second-stopped"), events);
     }
