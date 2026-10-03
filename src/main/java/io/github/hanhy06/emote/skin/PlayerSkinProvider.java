@@ -18,6 +18,8 @@ public interface PlayerSkinProvider extends ConfigListener {
 
     default void setDefaultRegions(Set<PlayerSkinRegion> regions) {}
 
+    default void setDefaultSource(PlayerSkinSource source) {}
+
     default PreparedPlayerSkin defaultSkin() { return null; }
 
     default SkinProcessingStats processingStats() {

@@ -48,10 +48,11 @@ class SkinBakeCoordinatorTest {
             }
         };
         SkinBakeCoordinator coordinator = new SkinBakeCoordinator(accounts, new PlayerSkinBaker(), skinClient, cache,
-            new AccountBakeQueue(accounts, skinClient), uploader, name -> source(UUID.randomUUID(), "shared"));
+            new AccountBakeQueue(accounts, skinClient), uploader);
         try {
             coordinator.setDefaultRegions(Set.of(HEAD, body));
             coordinator.onConfigReload(defaultConfig("Player"));
+            coordinator.setDefaultSource(source(UUID.randomUUID(), "shared"));
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
             while (coordinator.processingStats().retryingJobs() == 0 && System.nanoTime() < deadline) Thread.sleep(10);
             assertEquals(1, coordinator.processingStats().retryingJobs());
@@ -60,6 +61,7 @@ class SkinBakeCoordinatorTest {
             assertEquals(1, coordinator.defaultSkin().textureUrlMap().size());
             fail.set(false);
             coordinator.onConfigReload(defaultConfig("Player"));
+            coordinator.setDefaultSource(source(UUID.randomUUID(), "shared"));
             deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
             while (coordinator.defaultSkin().textureUrlMap().size() != 2 && System.nanoTime() < deadline) Thread.sleep(10);
             assertEquals(2, coordinator.defaultSkin().textureUrlMap().size());
@@ -80,13 +82,14 @@ class SkinBakeCoordinatorTest {
         };
         RecordingFallback fallback = new RecordingFallback();
         SkinBakeCoordinator coordinator = new SkinBakeCoordinator(accounts, new PlayerSkinBaker(), skinClient, cache,
-            new AccountBakeQueue(accounts, skinClient), fallback, name -> source(UUID.randomUUID(), "fresh"));
+            new AccountBakeQueue(accounts, skinClient), fallback);
         CountDownLatch ready = new CountDownLatch(1);
         coordinator.setListener(new PlayerSkinProvider.Listener() {
             @Override public void onDefaultReady() { ready.countDown(); }
         });
         try {
             coordinator.onConfigReload(defaultConfig("Player"));
+            coordinator.setDefaultSource(source(UUID.randomUUID(), "fresh"));
             coordinator.setDefaultRegions(Set.of(HEAD));
             assertTrue(ready.await(5, TimeUnit.SECONDS));
             assertEquals("fallback-texture", coordinator.defaultSkin().findTextureUrl(HEAD));
@@ -104,13 +107,12 @@ class SkinBakeCoordinatorTest {
         SkinCache cache = new SkinCache(tempDir.resolve("skin"));
         cache.saveDefault(new SkinCache.DefaultSkin("Player", "saved", "https://textures.example/saved", false,
             java.util.Map.of(HEAD, "saved-head")));
-        CountDownLatch lookup = new CountDownLatch(1);
         MinecraftSkinClient skinClient = new MinecraftSkinClient() {
             @Override public BufferedImage downloadSkin(String textureUrl) { return opaqueSkin(); }
         };
         RecordingFallback fallback = new RecordingFallback();
         SkinBakeCoordinator coordinator = new SkinBakeCoordinator(accounts, new PlayerSkinBaker(), skinClient, cache,
-            new AccountBakeQueue(accounts, skinClient), fallback, name -> { lookup.countDown(); return null; });
+            new AccountBakeQueue(accounts, skinClient), fallback);
         CountDownLatch ready = new CountDownLatch(1);
         coordinator.setListener(new PlayerSkinProvider.Listener() {
             @Override public void onDefaultReady() { ready.countDown(); }
@@ -119,7 +121,6 @@ class SkinBakeCoordinatorTest {
             coordinator.setDefaultRegions(Set.of(HEAD));
             coordinator.onConfigReload(defaultConfig("Player"));
             assertEquals("saved-head", coordinator.defaultSkin().findTextureUrl(HEAD));
-            assertTrue(lookup.await(5, TimeUnit.SECONDS));
             assertEquals(0, fallback.uploads.get());
             PlayerSkinRegion upper = new PlayerSkinRegion(PlayerSkinPart.LEFT_ARM, new PlayerSkinSegment(0, 4));
             coordinator.setDefaultRegions(Set.of(HEAD, upper));
@@ -150,51 +151,17 @@ class SkinBakeCoordinatorTest {
             }
         };
         SkinBakeCoordinator coordinator = new SkinBakeCoordinator(accounts, new PlayerSkinBaker(), skinClient, cache,
-            new AccountBakeQueue(accounts, skinClient), new RecordingFallback(), name -> source(UUID.randomUUID(), "changed"));
+            new AccountBakeQueue(accounts, skinClient), new RecordingFallback());
         try {
             coordinator.setDefaultRegions(Set.of(HEAD));
             coordinator.onConfigReload(defaultConfig("Player"));
+            coordinator.setDefaultSource(source(UUID.randomUUID(), "changed"));
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
             while (coordinator.processingStats().retryingJobs() == 0 && System.nanoTime() < deadline) Thread.sleep(10);
             assertEquals(1, coordinator.processingStats().retryingJobs());
             assertEquals("saved-head", coordinator.defaultSkin().findTextureUrl(HEAD));
             assertEquals("saved", cache.loadDefault("Player").textureHash());
         } finally {
-            coordinator.cancelPendingBakes();
-            accounts.close();
-        }
-    }
-
-    @Test
-    void lateDefaultLookupCannotReplaceNewConfiguration(@TempDir Path tempDir) throws Exception {
-        MinecraftAccountManager accounts = accountManager(tempDir);
-        SkinCache cache = new SkinCache(tempDir.resolve("skin"));
-        CountDownLatch started = new CountDownLatch(1);
-        CountDownLatch release = new CountDownLatch(1);
-        CountDownLatch finished = new CountDownLatch(1);
-        MinecraftSkinClient skinClient = new MinecraftSkinClient();
-        RecordingFallback fallback = new RecordingFallback();
-        SkinBakeCoordinator coordinator = new SkinBakeCoordinator(accounts, new PlayerSkinBaker(), skinClient, cache,
-            new AccountBakeQueue(accounts, skinClient), fallback, name -> {
-                started.countDown();
-                try { release.await(); } catch (InterruptedException exception) { Thread.currentThread().interrupt(); }
-                finished.countDown();
-                return source(UUID.randomUUID(), "late");
-            });
-        try {
-            coordinator.setDefaultRegions(Set.of(HEAD));
-            coordinator.onConfigReload(defaultConfig("Player"));
-            assertTrue(started.await(5, TimeUnit.SECONDS));
-            coordinator.onConfigReload(defaultConfig(""));
-            release.countDown();
-            assertTrue(finished.await(5, TimeUnit.SECONDS));
-            // Synchronize with the callback's generation check without sleeping for network work.
-            coordinator.cancelPendingBakes();
-            assertNull(coordinator.defaultSkin());
-            assertEquals(0, fallback.uploads.get());
-            assertNull(cache.loadDefault("Player"));
-        } finally {
-            release.countDown();
             coordinator.cancelPendingBakes();
             accounts.close();
         }

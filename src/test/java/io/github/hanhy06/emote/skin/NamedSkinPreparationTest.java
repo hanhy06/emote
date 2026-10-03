@@ -18,6 +18,75 @@ class NamedSkinPreparationTest {
     private static final List<SkinBinding> BINDINGS = List.of(new SkinBinding("head", HEAD));
 
     @Test
+    void defaultAndMarkerSkinsShareOneNameLookupAndDeliverTheDefaultOnTheServerThread() {
+        Provider provider = new Provider();
+        CompletableFuture<PlayerSkinSource> lookup = new CompletableFuture<>();
+        AtomicInteger requests = new AtomicInteger();
+        List<Runnable> serverTasks = new java.util.ArrayList<>();
+        PlayerSkinManager manager = new PlayerSkinManager(provider, ignored -> null,
+            name -> { requests.incrementAndGet(); return lookup; }, serverTasks::add);
+        manager.onConfigReload(defaultConfig("TestPlayer"));
+        assertTrue(manager.prepareNamedSkin(" testplayer ", BINDINGS).preparing());
+        assertEquals(1, requests.get());
+        PlayerSkinSource source = new PlayerSkinSource(UUID.randomUUID(), "TestPlayer", "texture", "https://textures.example/skin", true);
+        lookup.complete(source);
+        assertNull(provider.defaultSource);
+        assertEquals(1, serverTasks.size());
+        serverTasks.removeFirst().run();
+        assertSame(source, provider.defaultSource);
+        assertEquals(PlayerSkinPreparation.State.READY, manager.prepareNamedSkin("TESTPLAYER", BINDINGS).state());
+        assertSame(source, provider.source);
+        assertEquals(1, requests.get());
+    }
+
+    @Test
+    void lateDefaultResponsesAreIgnoredAfterReloadAndShutdown() {
+        Provider provider = new Provider();
+        Map<String, CompletableFuture<PlayerSkinSource>> lookups = new java.util.HashMap<>();
+        List<Runnable> serverTasks = new java.util.ArrayList<>();
+        PlayerSkinManager manager = new PlayerSkinManager(provider, ignored -> null,
+            name -> { var lookup = new CompletableFuture<PlayerSkinSource>(); lookups.put(name, lookup); return lookup; }, serverTasks::add);
+        PlayerSkinSource old = new PlayerSkinSource(UUID.randomUUID(), "Old", "old", "https://textures.example/old", false);
+        PlayerSkinSource current = new PlayerSkinSource(UUID.randomUUID(), "Current", "current", "https://textures.example/current", false);
+        manager.onConfigReload(defaultConfig("Old"));
+        lookups.get("Old").complete(old);
+        manager.onConfigReload(defaultConfig("Current"));
+        serverTasks.removeFirst().run();
+        assertNull(provider.defaultSource);
+        lookups.get("Current").complete(current);
+        serverTasks.removeFirst().run();
+        assertSame(current, provider.defaultSource);
+
+        manager.onConfigReload(defaultConfig("Old"));
+        manager.onConfigReload(defaultConfig(""));
+        lookups.get("Old").complete(old);
+        serverTasks.removeFirst().run();
+        assertNull(provider.defaultSource);
+        manager.onConfigReload(defaultConfig("Old"));
+        lookups.get("Old").complete(old);
+        manager.cancelPendingBakes();
+        serverTasks.removeFirst().run();
+        assertNull(provider.defaultSource);
+    }
+
+    @Test
+    void failedDefaultNameLookupKeepsThePreparedFallback() {
+        Provider provider = new Provider();
+        PlayerSkinManager manager = new PlayerSkinManager(provider, ignored -> null,
+            name -> CompletableFuture.failedFuture(new IllegalStateException("Lookup unavailable")), Runnable::run);
+        manager.onConfigReload(defaultConfig("Failed"));
+        assertNull(provider.defaultSource);
+        assertEquals("default", manager.prepareNamedSkin("failed", BINDINGS).preparedPlayerSkin().findTextureUrl(HEAD));
+    }
+
+    private static Config defaultConfig(String name) {
+        Config defaults = Config.createDefault();
+        return new Config(defaults.schemaVersion(), defaults.menuPageSize(), defaults.mineSkinApiKey(),
+            defaults.mineSkinPollIntervalSeconds(), defaults.mineSkinCacheRetentionDays(), defaults.mineSkinCacheMaxMiB(),
+            defaults.maxActiveDisplayEntities(), name);
+    }
+
+    @Test
     void waitsForNameResolutionAndSharesItAcrossMarkersWithoutAnOnlinePlayer() {
         Provider provider = new Provider();
         CompletableFuture<PlayerSkinSource> lookup = new CompletableFuture<>();
@@ -66,6 +135,7 @@ class NamedSkinPreparationTest {
 
     private static final class Provider implements PlayerSkinProvider {
         private PlayerSkinSource source;
+        private PlayerSkinSource defaultSource;
         private Set<PlayerSkinRegion> regions;
         public PlayerSkinPreparation prepare(PlayerSkinSource source, Set<PlayerSkinRegion> regions) {
             this.source = source;
@@ -73,8 +143,9 @@ class NamedSkinPreparationTest {
             return new PlayerSkinPreparation(new PreparedPlayerSkin(Map.of(HEAD, "personal")), PlayerSkinPreparation.State.READY, 100);
         }
         public PreparedPlayerSkin defaultSkin() { return new PreparedPlayerSkin(Map.of(HEAD, "default")); }
+        public void setDefaultSource(PlayerSkinSource source) { this.defaultSource = source; }
         public void setListener(Listener listener) {}
-        public void cancelPendingBakes() {}
-        public void onConfigReload(Config config) {}
+        public void cancelPendingBakes() { this.defaultSource = null; }
+        public void onConfigReload(Config config) { this.defaultSource = null; }
     }
 }
