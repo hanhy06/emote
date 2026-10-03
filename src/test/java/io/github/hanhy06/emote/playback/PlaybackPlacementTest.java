@@ -12,7 +12,6 @@ import io.github.hanhy06.emote.skin.PlayerSkinProvider;
 import io.github.hanhy06.emote.skin.model.*;
 import net.minecraft.SharedConstants;
 import net.minecraft.server.Bootstrap;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.BeforeAll;
@@ -141,7 +140,6 @@ class PlaybackPlacementTest {
         PlaybackPlayer animation = new PlaybackPlayer(prepared, new EntityTimelineTarget(prepared, nodes, engine.entities()));
         animation.start();
         PlaybackSession session = new PlaybackSession(UUID.randomUUID(), Level.OVERWORLD, prepared.id(), nodes, animation, Map.of(), PlaybackPlacement.Mode.ACTOR);
-        session.setPlacementMode(PlaybackPlacement.Mode.ACTOR);
         PlayerPlaybackManager manager = new PlayerPlaybackManager(engine, new PlayerSkinManager(new PlayerSkinProvider() {
             public PlayerSkinPreparation prepare(PlayerSkinSource source, Set<PlayerSkinRegion> regions) { throw new UnsupportedOperationException(); }
             public void setListener(Listener listener) {}
@@ -151,11 +149,11 @@ class PlaybackPlacementTest {
         UUID actorId = UUID.randomUUID();
         PlayerPlaybackState state = new PlayerPlaybackState(actorId, Vec3.ZERO, List.of(), false, EmotePlayerBehavior.createDefault());
         Class<?> playbackClass = Class.forName(PlayerPlaybackManager.class.getName() + "$PlayerPlayback");
-        var constructor = playbackClass.getDeclaredConstructor(PlaybackSession.class, PlayerPlaybackState.class, ServerPlayer.class);
+        var constructor = playbackClass.getDeclaredConstructor(PlaybackSession.class, PlayerPlaybackState.class);
         constructor.setAccessible(true);
         var sessions = PlayerPlaybackManager.class.getDeclaredField("playerSessions");
         sessions.setAccessible(true);
-        ((Map<UUID, Object>) sessions.get(manager)).put(actorId, constructor.newInstance(session, state, null));
+        ((Map<UUID, Object>) sessions.get(manager)).put(actorId, constructor.newInstance(session, state));
         engine.register(session, new PlaybackEngine.Lifecycle() {
             @Override public RootTransform resolveActorPlacement(PlaybackSession playback) {
                 return RootTransform.create(state.startPosition(), 0);

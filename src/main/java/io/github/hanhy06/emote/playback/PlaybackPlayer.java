@@ -553,17 +553,13 @@ public final class PlaybackPlayer {
 
     private void applyTick(int tick) {
         if (!this.emote.playbackSegments().isEmpty()) {
-            applyPlaybackSegment(tick);
+            int selected = locateSequence(tick).poseSegment();
+            if (selected >= 0) applySegment(selected, tick);
             applyHiddenNodes(tick);
             return;
         }
         this.evaluator.evaluate(tick, this.loopCount);
         applyEvaluator(tick == 0 ? 0 : this.evaluator.displayInterpolationTicks());
-    }
-
-    private void applyPlaybackSegment(int tick) {
-        int selected = locateSequence(tick).poseSegment();
-        if (selected >= 0) applySegment(selected, tick);
     }
 
     private SequenceLocation locateSequence(int tick) {

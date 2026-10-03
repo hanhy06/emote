@@ -103,7 +103,7 @@ public final class PlayerPlaybackManager {
         PlaybackEngine.Lifecycle lifecycle = new PlaybackEngine.Lifecycle() {
             private int notifiedListeners;
             @Override public void onStarted(PlaybackSession session) {
-                playerSessions.put(player.getUUID(), new PlayerPlayback(session, playerState, player));
+                playerSessions.put(player.getUUID(), new PlayerPlayback(session, playerState));
                 hidePlayer(player, playerState);
                 for (PlaybackStateListener listener : playbackListeners) {
                     this.notifiedListeners++;
@@ -255,6 +255,6 @@ public final class PlayerPlaybackManager {
         return this.skins.preparePlayerSkin(player, bindings);
     }
 
-    private record PlayerPlayback(PlaybackSession session, PlayerPlaybackState playerState, ServerPlayer player) {}
+    private record PlayerPlayback(PlaybackSession session, PlayerPlaybackState playerState) {}
 
 }
