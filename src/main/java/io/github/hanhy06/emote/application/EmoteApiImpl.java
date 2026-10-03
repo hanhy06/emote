@@ -31,7 +31,7 @@ public final class EmoteApiImpl extends EmoteApi {
     private final PlayerPlaybackManager playerPlaybackManager;
     private final PlaybackEngine engine;
     private final ApiEventDispatcher events;
-    private final ChangeNotifier changeNotifier;
+    private final Runnable changeNotifier;
     private final AnimationContentResolver contentResolver;
 
     public EmoteApiImpl(
@@ -40,7 +40,7 @@ public final class EmoteApiImpl extends EmoteApi {
         PlayerPlaybackManager playerPlaybackManager,
         PlaybackEngine engine,
         ApiEventDispatcher events,
-        ChangeNotifier changeNotifier,
+        Runnable changeNotifier,
         AnimationContentResolver contentResolver
     ) {
         this.emoteCatalog = Objects.requireNonNull(emoteCatalog, "emoteCatalog");
@@ -136,7 +136,7 @@ public final class EmoteApiImpl extends EmoteApi {
         );
         PreparedEmote emote = PreparedEmote.from(this.contentResolver.resolve(loaded));
         UUID registrationId = this.emoteCatalog.register(emote);
-        this.changeNotifier.notifyChanged();
+        this.changeNotifier.run();
         return new ApiRegistration(animation.id(), registrationId);
     }
 
@@ -147,7 +147,7 @@ public final class EmoteApiImpl extends EmoteApi {
         var animations = this.emoteCatalog.animations().stream().collect(Collectors.toMap(PreparedEmote::id, Function.identity()));
         PreparedSequence prepared = PreparedSequence.resolve(sequence, animations);
         UUID registrationId = this.emoteCatalog.register(prepared);
-        this.changeNotifier.notifyChanged();
+        this.changeNotifier.run();
         return new ApiRegistration(sequence.id(), registrationId);
     }
 
@@ -212,11 +212,6 @@ public final class EmoteApiImpl extends EmoteApi {
         }
     }
 
-    @FunctionalInterface
-    public interface ChangeNotifier {
-        void notifyChanged();
-    }
-
     private final class ApiRegistration implements Registration {
         private final Identifier id;
         private final UUID registrationId;
@@ -252,7 +247,7 @@ public final class EmoteApiImpl extends EmoteApi {
                     EmoteApiImpl.this.engine.stopById(previousId, PlaybackStopReason.EMOTE_REMOVED);
                 }
             }
-            EmoteApiImpl.this.changeNotifier.notifyChanged();
+            EmoteApiImpl.this.changeNotifier.run();
             return true;
         }
     }
