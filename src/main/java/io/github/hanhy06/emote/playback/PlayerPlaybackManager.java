@@ -103,7 +103,6 @@ public final class PlayerPlaybackManager {
         PlaybackEngine.Lifecycle lifecycle = new PlaybackEngine.Lifecycle() {
             private int notifiedListeners;
             @Override public void onStarted(PlaybackSession session) {
-                session.setPlacementMode(placement.mode());
                 playerSessions.put(player.getUUID(), new PlayerPlayback(session, playerState, player));
                 hidePlayer(player, playerState);
                 for (PlaybackStateListener listener : playbackListeners) {
@@ -126,6 +125,11 @@ public final class PlayerPlaybackManager {
                     syncPlayerVisibility(player);
                 }
             }
+            @Override public RootTransform resolveActorPlacement(PlaybackSession session) {
+                Vec3 position = playerState.behavior().stopConditions().movementDistance() == 0
+                    ? player.position() : playerState.startPosition();
+                return RootTransform.create(position, player.getYRot());
+            }
             @Override public void onClosing(PlaybackSession session) {
                 playerSessions.remove(player.getUUID());
                 closingPlayers.add(player.getUUID());
@@ -139,7 +143,7 @@ public final class PlayerPlaybackManager {
         };
         var result = this.engine.start(new PlaybackEngine.Request(player.level(), root, emote, definition.id(),
             Map.of("actor", player), PlayerMolangQueries.forPlayer(player), player.createCommandSourceStack(),
-            preparation.preparedPlayerSkin(), lifecycle), findActive(player.getUUID()));
+            preparation.preparedPlayerSkin(), lifecycle, placement.mode()), findActive(player.getUUID()));
         return switch (result) {
             case PlaybackEngine.StartResult.Success success -> new PlayResult.Success(success.session().playbackInfo());
             case PlaybackEngine.StartResult.Failure failure -> PlayResult.failure(failure.message());
@@ -156,25 +160,8 @@ public final class PlayerPlaybackManager {
         return session == null ? null : this.engine.stop(session, reason);
     }
 
-    public boolean setPlacement(UUID sessionId, PlaybackPlacement placement) {
-        PlayerPlayback playback = findPlayback(sessionId);
-        if (playback == null) return false;
-        PlaybackSession session = playback.session();
-        Vec3 position = placement.position();
-        float yaw = placement.yaw();
-        if (placement.mode() == PlaybackPlacement.Mode.PLAYER) {
-            position = playback.playerState().behavior().stopConditions().movementDistance() == 0
-                ? playback.player().position() : playback.playerState().startPosition();
-            yaw = playback.player().getYRot();
-        }
-        this.engine.entities().moveSceneTo(session.nodes(), position);
-        this.engine.entities().updateViewRotation(session.nodes(), yaw, 0);
-        session.setPlacementMode(placement.mode());
-        return true;
-    }
-
     void updatePlayerPlacement(PlaybackSession session, Vec3 playerPosition, float playerYaw, EmotePlayerBehavior behavior) {
-        if (session.placement().mode() != PlaybackPlacement.Mode.PLAYER) return;
+        if (session.placement().mode() != PlaybackPlacement.Mode.ACTOR) return;
         if (behavior.stopConditions().movementDistance() == 0) this.engine.entities().moveSceneTo(session.nodes(), playerPosition);
         this.engine.entities().updateViewRotation(session.nodes(), playerYaw, session.playback().rotationDeadzone());
     }

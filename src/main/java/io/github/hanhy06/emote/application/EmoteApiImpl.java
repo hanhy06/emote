@@ -85,8 +85,7 @@ public final class EmoteApiImpl extends EmoteApi {
         Objects.requireNonNull(sessionId, "sessionId");
         Objects.requireNonNull(placement, "placement");
         requireServerThread();
-        return this.playerPlaybackManager.setPlacement(sessionId, placement)
-            || this.engine.setPlacement(sessionId, placement);
+        return this.engine.setPlacement(sessionId, placement);
     }
 
     @Override

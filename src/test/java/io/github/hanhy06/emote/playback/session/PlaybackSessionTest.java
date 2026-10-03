@@ -42,7 +42,7 @@ class PlaybackSessionTest {
         player.start();
         var node = new PlaybackNodes.NodeInstance("root", compiled.model().nodes().get("root"), null, null);
         var nodes = new PlaybackNodes(RootTransform.create(Vec3.ZERO, 0), Map.of("root", node));
-        PlaybackSession session = new PlaybackSession(UUID.randomUUID(), Level.OVERWORLD, compiled.id(), nodes, player, Map.of());
+        PlaybackSession session = new PlaybackSession(UUID.randomUUID(), Level.OVERWORLD, compiled.id(), nodes, player, Map.of(), PlaybackPlacement.Mode.EXTERNAL);
         List<PlaybackContext> contexts = new ArrayList<>();
         session.bindCallbacks(List.of(new CallbackRegistry.Binding(new EmoteCallbacks() {
             public void onStart(PlaybackContext context) { contexts.add(context); }
@@ -114,7 +114,7 @@ class PlaybackSessionTest {
         PlaybackPlayer player = timeline(compiled);
         player.start();
         PlaybackSession session = new PlaybackSession(UUID.randomUUID(), Level.OVERWORLD, compiled.id(),
-            new PlaybackNodes(RootTransform.create(Vec3.ZERO, 0), Map.of()), player, Map.of());
+            new PlaybackNodes(RootTransform.create(Vec3.ZERO, 0), Map.of()), player, Map.of(), PlaybackPlacement.Mode.EXTERNAL);
         List<PlaybackContext> contexts = new ArrayList<>();
         session.bindCallbacks(List.of(), Map.of(animation, List.of(new CallbackRegistry.Binding(new EmoteCallbacks() {
             public void onStart(PlaybackContext context) {
@@ -371,7 +371,7 @@ class PlaybackSessionTest {
         player.bindEvents(command -> calls.addAll(command.event().commands()));
         player.start();
         PlaybackSession session = new PlaybackSession(UUID.randomUUID(), Level.OVERWORLD, compiled.id(),
-            new PlaybackNodes(RootTransform.create(Vec3.ZERO, 0), Map.of()), player, Map.of());
+            new PlaybackNodes(RootTransform.create(Vec3.ZERO, 0), Map.of()), player, Map.of(), PlaybackPlacement.Mode.EXTERNAL);
         var callbacks = new EmoteCallbacks() {
             public void onStart(PlaybackContext context) {
                 contexts.add(context);
@@ -426,7 +426,7 @@ class PlaybackSessionTest {
         player.start();
         player.deferInitialVisibility();
         PlaybackSession session = new PlaybackSession(UUID.randomUUID(), Level.OVERWORLD, prepared.id(),
-            new PlaybackNodes(RootTransform.create(Vec3.ZERO, 0), Map.of()), player, Map.of());
+            new PlaybackNodes(RootTransform.create(Vec3.ZERO, 0), Map.of()), player, Map.of(), PlaybackPlacement.Mode.EXTERNAL);
         session.bindCallbacks(List.of(new CallbackRegistry.Binding(new EmoteCallbacks() {
             public void onStart(PlaybackContext context) {
                 assertTrue(target.visibility.get("root"));
@@ -454,7 +454,7 @@ class PlaybackSessionTest {
             Level.OVERWORLD,
             offer.id(),
             new PlaybackNodes(RootTransform.create(Vec3.ZERO, 0.0F), Map.of()),
-            timeline(offer), Map.of()
+            timeline(offer), Map.of(), PlaybackPlacement.Mode.EXTERNAL
         );
         session.playback().start();
         return new SessionFixture(session, offer);

@@ -2,6 +2,7 @@ package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
+import io.github.hanhy06.emote.api.PlaybackPlacement;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.PlayableEmote;
 import io.github.hanhy06.emote.content.PreparedEmote;
@@ -123,9 +124,12 @@ public final class EntityPlaybackManager {
                     ? PlaybackStopReason.ENTITY_UNAVAILABLE : null;
             }
             @Override public void prepareFrame(PlaybackSession session) {
-                if (session.hasFixedPlacement()) return;
+                if (session.placement().mode() != PlaybackPlacement.Mode.ACTOR) return;
                 engine.entities().moveSceneTo(session.nodes(), entry.marker.position());
                 engine.entities().updateViewRotation(session.nodes(), entry.marker.getYRot(), 0);
+            }
+            @Override public RootTransform resolveActorPlacement(PlaybackSession session) {
+                return RootTransform.create(entry.marker.position(), entry.marker.getYRot());
             }
             @Override public void onStopped(PlaybackSession session, PlaybackStopReason reason) {
                 if (entry.session != session) return;
@@ -144,7 +148,7 @@ public final class EntityPlaybackManager {
             emote, definition.id(), Map.of("actor", marker), EntityMolangQueries.forEntity(marker),
             EmoteMod.SERVER.createCommandSourceStack().withEntity(marker).withLevel(level)
                 .withPosition(marker.position()).withRotation(marker.getRotationVector()),
-            preparation.preparedPlayerSkin(), lifecycle), entry.session);
+            preparation.preparedPlayerSkin(), lifecycle, PlaybackPlacement.Mode.ACTOR), entry.session);
         if (result instanceof PlaybackEngine.StartResult.Failure failure) {
             if (failure.reason() == PlaybackEngine.FailureReason.DISPLAY_LIMIT) {
                 entry.needsStart = true;

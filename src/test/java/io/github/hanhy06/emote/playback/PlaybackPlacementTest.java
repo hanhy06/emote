@@ -42,13 +42,13 @@ class PlaybackPlacementTest {
         Vec3 origin = new Vec3(10, 20, 30);
         var snapshot = fixture.session().playbackInfo();
         PlaybackPlacement placement = PlaybackPlacement.external(origin, yaw);
-        assertTrue(fixture.manager().setPlacement(fixture.session().sessionId(), placement));
+        assertTrue(fixture.engine().setPlacement(fixture.session().sessionId(), placement));
         assertPosition(new Vec3(x, y, z), fixture.session().nodeWorldPosition("child").orElseThrow());
         assertEquals(origin, fixture.session().placement().position());
         assertEquals(placement.yaw(), fixture.session().placement().yaw(), 0.0001F);
         assertEquals(PlaybackPlacement.Mode.EXTERNAL, fixture.session().placement().mode());
         assertEquals(Vec3.ZERO, snapshot.placement().position());
-        assertEquals(PlaybackPlacement.Mode.PLAYER, snapshot.placement().mode());
+        assertEquals(PlaybackPlacement.Mode.ACTOR, snapshot.placement().mode());
         assertTrue(fixture.session().nodeWorldPosition("unknown").isEmpty());
         assertEquals(Vec3.ZERO, fixture.state().startPosition());
     }
@@ -57,7 +57,7 @@ class PlaybackPlacementTest {
     void externalPlacementSurvivesNormalPlayerFrameUpdates() throws Exception {
         Fixture fixture = fixture();
         PlaybackPlacement external = PlaybackPlacement.external(new Vec3(100, 64, -30), 170);
-        fixture.manager().setPlacement(fixture.session().sessionId(), external);
+        fixture.engine().setPlacement(fixture.session().sessionId(), external);
         fixture.manager().updatePlayerPlacement(fixture.session(), new Vec3(-10, 70, 2), -90, followsPlayer());
         assertEquals(external, fixture.session().placement());
         assertTrue(PlayerPlaybackManager.shouldStopForMovement(1, 0.1));
@@ -71,8 +71,8 @@ class PlaybackPlacementTest {
         fixture.manager().updatePlayerPlacement(fixture.session(), new Vec3(5, 6, 7), 90, followsPlayer());
         assertEquals(new Vec3(5, 6, 7), fixture.session().placement().position());
         assertEquals(40, fixture.session().placement().yaw(), 0.0001F);
-        fixture.manager().setPlacement(fixture.session().sessionId(), PlaybackPlacement.external(new Vec3(1, 2, 3), -90));
-        fixture.session().setPlacementMode(PlaybackPlacement.Mode.PLAYER);
+        fixture.engine().setPlacement(fixture.session().sessionId(), PlaybackPlacement.external(new Vec3(1, 2, 3), -90));
+        fixture.session().setPlacementMode(PlaybackPlacement.Mode.ACTOR);
         fixture.manager().updatePlayerPlacement(fixture.session(), new Vec3(8, 9, 10), 0, followsPlayer());
         assertEquals(new Vec3(8, 9, 10), fixture.session().placement().position());
         assertEquals(-50, fixture.session().placement().yaw(), 0.0001F);
@@ -84,7 +84,7 @@ class PlaybackPlacementTest {
         UUID retired = UUID.randomUUID();
         assertNull(fixture.manager().findSession(retired));
         assertNull(fixture.manager().stop(retired, PlaybackStopReason.MANUAL));
-        assertFalse(fixture.manager().setPlacement(retired, PlaybackPlacement.external(new Vec3(9, 9, 9), 90)));
+        assertFalse(fixture.engine().setPlacement(retired, PlaybackPlacement.external(new Vec3(9, 9, 9), 90)));
         assertSame(fixture.session(), fixture.manager().findSession(fixture.session().sessionId()));
         assertEquals(PlaybackState.RUNNING, fixture.session().playbackState());
         assertEquals(Vec3.ZERO, fixture.session().placement().position());
@@ -97,7 +97,6 @@ class PlaybackPlacementTest {
         var invoking = PlaybackSession.class.getDeclaredField("invokingCallback");
         invoking.setAccessible(true);
         invoking.setBoolean(fixture.session(), true);
-        fixture.engine().register(fixture.session(), PlaybackEngine.Lifecycle.NONE);
         fixture.engine().register(unrelated.session(), PlaybackEngine.Lifecycle.NONE);
         assertSame(fixture.session(), fixture.manager().stop(fixture.session().sessionId(), PlaybackStopReason.MANUAL));
         assertNull(fixture.engine().findSession(fixture.session().sessionId()));
@@ -112,7 +111,7 @@ class PlaybackPlacementTest {
         assertThrows(IllegalArgumentException.class, () -> PlaybackPlacement.external(new Vec3(Double.NaN, 0, 0), 0));
         assertThrows(IllegalArgumentException.class, () -> PlaybackPlacement.external(Vec3.ZERO, Float.POSITIVE_INFINITY));
         assertThrows(NullPointerException.class, () -> new PlayOptions(null));
-        assertEquals(PlaybackPlacement.Mode.PLAYER, PlayOptions.createDefault().placement().mode());
+        assertEquals(PlaybackPlacement.Mode.ACTOR, PlayOptions.createDefault().placement().mode());
     }
 
     private static EmotePlayerBehavior followsPlayer() {
@@ -141,8 +140,8 @@ class PlaybackPlacementTest {
         PlaybackEngine engine = new PlaybackEngine();
         PlaybackPlayer animation = new PlaybackPlayer(prepared, new EntityTimelineTarget(prepared, nodes, engine.entities()));
         animation.start();
-        PlaybackSession session = new PlaybackSession(UUID.randomUUID(), Level.OVERWORLD, prepared.id(), nodes, animation, Map.of());
-        session.setPlacementMode(PlaybackPlacement.Mode.PLAYER);
+        PlaybackSession session = new PlaybackSession(UUID.randomUUID(), Level.OVERWORLD, prepared.id(), nodes, animation, Map.of(), PlaybackPlacement.Mode.ACTOR);
+        session.setPlacementMode(PlaybackPlacement.Mode.ACTOR);
         PlayerPlaybackManager manager = new PlayerPlaybackManager(engine, new PlayerSkinManager(new PlayerSkinProvider() {
             public PlayerSkinPreparation prepare(PlayerSkinSource source, Set<PlayerSkinRegion> regions) { throw new UnsupportedOperationException(); }
             public void setListener(Listener listener) {}
@@ -157,6 +156,11 @@ class PlaybackPlacementTest {
         var sessions = PlayerPlaybackManager.class.getDeclaredField("playerSessions");
         sessions.setAccessible(true);
         ((Map<UUID, Object>) sessions.get(manager)).put(actorId, constructor.newInstance(session, state, null));
+        engine.register(session, new PlaybackEngine.Lifecycle() {
+            @Override public RootTransform resolveActorPlacement(PlaybackSession playback) {
+                return RootTransform.create(state.startPosition(), 0);
+            }
+        });
         return new Fixture(manager, engine, session, state, actorId);
     }
 

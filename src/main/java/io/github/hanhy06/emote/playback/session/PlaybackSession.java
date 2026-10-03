@@ -46,7 +46,6 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
     private final PlaybackPlayer playback;
     private final Map<String, Entity> actors;
     private PlaybackPlacement.Mode placementMode;
-    private boolean fixedPlacement;
 
     public PlaybackSession(
         UUID sessionId,
@@ -54,7 +53,8 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
         String emoteId,
         PlaybackNodes nodes,
         PlaybackPlayer playback,
-        Map<String, Entity> actors
+        Map<String, Entity> actors,
+        PlaybackPlacement.Mode placementMode
     ) {
         this.sessionId = Objects.requireNonNull(sessionId, "sessionId");
         this.levelKey = Objects.requireNonNull(levelKey, "levelKey");
@@ -62,7 +62,7 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
         this.nodes = Objects.requireNonNull(nodes, "nodes");
         this.playback = Objects.requireNonNull(playback, "playback");
         this.actors = Map.copyOf(actors);
-        this.placementMode = this.actors.get("actor") instanceof ServerPlayer ? PlaybackPlacement.Mode.PLAYER : PlaybackPlacement.Mode.EXTERNAL;
+        this.placementMode = Objects.requireNonNull(placementMode, "placementMode");
     }
 
     public UUID sessionId() {
@@ -85,10 +85,7 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
 
     public void setPlacementMode(PlaybackPlacement.Mode mode) {
         this.placementMode = Objects.requireNonNull(mode, "mode");
-        this.fixedPlacement = mode == PlaybackPlacement.Mode.EXTERNAL;
     }
-
-    public boolean hasFixedPlacement() { return this.fixedPlacement; }
 
     public Optional<Vec3> nodeWorldPosition(String nodeId) {
         Objects.requireNonNull(nodeId, "nodeId");

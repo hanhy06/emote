@@ -4,6 +4,7 @@ import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.EmotePlaybackListener;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.PlaybackInfo;
+import io.github.hanhy06.emote.api.PlaybackPlacement;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.content.PreparedEmoteFixture;
@@ -108,7 +109,7 @@ class ApiEventDispatcherTest {
             emote.id(),
             nodes,
             animation,
-            Map.of()
+            Map.of(), PlaybackPlacement.Mode.EXTERNAL
         );
     }
 

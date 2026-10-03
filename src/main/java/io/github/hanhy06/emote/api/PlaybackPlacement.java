@@ -6,7 +6,7 @@ import net.minecraft.util.Mth;
 import java.util.Objects;
 
 public record PlaybackPlacement(Mode mode, Vec3 position, float yaw) {
-    public enum Mode { PLAYER, EXTERNAL }
+    public enum Mode { ACTOR, EXTERNAL }
 
     public PlaybackPlacement {
         Objects.requireNonNull(mode, "mode");
@@ -17,8 +17,8 @@ public record PlaybackPlacement(Mode mode, Vec3 position, float yaw) {
         yaw = Mth.wrapDegrees(yaw);
     }
 
-    public static PlaybackPlacement player() {
-        return new PlaybackPlacement(Mode.PLAYER, Vec3.ZERO, 0);
+    public static PlaybackPlacement actor() {
+        return new PlaybackPlacement(Mode.ACTOR, Vec3.ZERO, 0);
     }
 
     public static PlaybackPlacement external(Vec3 position, float yaw) {

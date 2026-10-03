@@ -164,7 +164,7 @@ class PlaybackInspectionTest {
         player.start();
         UUID actorId = UUID.randomUUID();
         PlaybackSession session = new PlaybackSession(UUID.randomUUID(), Level.OVERWORLD, "test:sequence",
-            new PlaybackNodes(RootTransform.create(Vec3.ZERO, 0), Map.of()), player, Map.of());
+            new PlaybackNodes(RootTransform.create(Vec3.ZERO, 0), Map.of()), player, Map.of(), PlaybackPlacement.Mode.EXTERNAL);
         session.bindCallbacks(List.of(), Map.of(), 100);
         session.startPlayback();
         session.tick(101);

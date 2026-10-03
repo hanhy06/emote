@@ -8,6 +8,6 @@ public record PlayOptions(PlaybackPlacement placement) {
     }
 
     public static PlayOptions createDefault() {
-        return new PlayOptions(PlaybackPlacement.player());
+        return new PlayOptions(PlaybackPlacement.actor());
     }
 }

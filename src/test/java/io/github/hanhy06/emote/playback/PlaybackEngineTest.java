@@ -29,12 +29,34 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class PlaybackEngineTest {
     @Test
+    void actorPlacementRestoresTheCurrentOwnerPositionAfterExternalControl() {
+        PreparedEmote emote = PreparedEmoteFixture.create("test:actor-placement", "Actor placement");
+        var nodes = new PlaybackNodes(RootTransform.create(Vec3.ZERO, 0), Map.of());
+        PlaybackEngine engine = new PlaybackEngine();
+        var player = new PlaybackPlayer(emote, new EntityTimelineTarget(emote, nodes, engine.entities()));
+        var session = new PlaybackSession(UUID.randomUUID(), Level.OVERWORLD, emote.id(), nodes, player, Map.of(), PlaybackPlacement.Mode.ACTOR);
+        var actorRoot = new java.util.concurrent.atomic.AtomicReference<>(RootTransform.create(Vec3.ZERO, 0));
+        engine.register(session, new PlaybackEngine.Lifecycle() {
+            @Override public RootTransform resolveActorPlacement(PlaybackSession playback) { return actorRoot.get(); }
+        });
+
+        var external = PlaybackPlacement.external(new Vec3(100, 64, -30), 170);
+        assertTrue(engine.setPlacement(session.sessionId(), external));
+        actorRoot.set(RootTransform.create(new Vec3(7, 8, 9), -90));
+        assertEquals(external, session.placement());
+        assertTrue(engine.setPlacement(session.sessionId(), PlaybackPlacement.actor()));
+        assertEquals(new PlaybackPlacement(PlaybackPlacement.Mode.ACTOR, new Vec3(7, 8, 9), -90), session.placement());
+        assertTrue(engine.setPlacement(session.sessionId(), external));
+        assertEquals(external, session.placement());
+    }
+
+    @Test
     void actorFreeSessionsUseTheSameIndexForPlacementEventsAndStopping() throws Exception {
         PreparedEmote emote = PreparedEmoteFixture.create("test:actor-free", "Actor free");
         var nodes = new PlaybackNodes(RootTransform.create(Vec3.ZERO, 0), Map.of());
         PlaybackEngine engine = new PlaybackEngine();
         var player = new PlaybackPlayer(emote, new EntityTimelineTarget(emote, nodes, engine.entities()));
-        PlaybackSession session = new PlaybackSession(UUID.randomUUID(), Level.OVERWORLD, emote.id(), nodes, player, Map.of());
+        PlaybackSession session = new PlaybackSession(UUID.randomUUID(), Level.OVERWORLD, emote.id(), nodes, player, Map.of(), PlaybackPlacement.Mode.EXTERNAL);
         ApiEventDispatcher dispatcher = new ApiEventDispatcher();
         java.util.List<PlaybackInfo> started = new java.util.ArrayList<>();
         dispatcher.addPlaybackListener(new EmotePlaybackListener() {
@@ -47,12 +69,14 @@ class PlaybackEngineTest {
         assertEquals(1, started.size());
         assertNull(started.getFirst().playerUuid());
         assertEquals(session.sessionId(), started.getFirst().sessionId());
-        assertFalse(session.hasFixedPlacement());
-        assertThrows(IllegalArgumentException.class, () -> engine.setPlacement(session.sessionId(), PlaybackPlacement.player()));
+        assertEquals(PlaybackPlacement.Mode.EXTERNAL, session.placement().mode());
+        assertThrows(IllegalArgumentException.class, () -> engine.setPlacement(session.sessionId(), PlaybackPlacement.actor()));
         PlaybackPlacement placement = PlaybackPlacement.external(new Vec3(10, 20, 30), 90);
         assertTrue(engine.setPlacement(session.sessionId(), placement));
         assertEquals(placement, engine.findSession(session.sessionId()).playbackInfo().placement());
-        assertTrue(session.hasFixedPlacement());
+        assertEquals(PlaybackPlacement.Mode.EXTERNAL, session.placement().mode());
+        assertThrows(IllegalArgumentException.class, () -> engine.setPlacement(session.sessionId(), PlaybackPlacement.actor()));
+        assertEquals(placement, session.placement());
         assertFalse(engine.setPlacement(UUID.randomUUID(), placement));
 
         var invoking = PlaybackSession.class.getDeclaredField("invokingCallback");
@@ -99,7 +123,7 @@ class PlaybackEngineTest {
             emote.id(),
             playbackNodes(),
             timeline(emote),
-            Map.of()
+            Map.of(), PlaybackPlacement.Mode.EXTERNAL
         );
     }
 

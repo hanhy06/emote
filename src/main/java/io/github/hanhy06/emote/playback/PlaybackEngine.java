@@ -43,6 +43,7 @@ public final class PlaybackEngine implements ConfigListener {
         Lifecycle NONE = new Lifecycle() {};
         default void onStarted(PlaybackSession session) {}
         default @Nullable PlaybackStopReason beforeTick(PlaybackSession session) { return null; }
+        default @Nullable RootTransform resolveActorPlacement(PlaybackSession session) { return null; }
         default void prepareFrame(PlaybackSession session) {}
         default void onClosing(PlaybackSession session) {}
         default void onStopped(PlaybackSession session, PlaybackStopReason reason) {}
@@ -50,7 +51,7 @@ public final class PlaybackEngine implements ConfigListener {
 
     public record Request(ServerLevel level, RootTransform root, PreparedEmote emote, String emoteId,
                           Map<String, Entity> actors, MolangQuerySource queries, @Nullable CommandSourceStack commandSource,
-                          @Nullable PreparedPlayerSkin skin, Lifecycle lifecycle) {
+                          @Nullable PreparedPlayerSkin skin, Lifecycle lifecycle, PlaybackPlacement.Mode placementMode) {
         public Request {
             Objects.requireNonNull(level, "level");
             Objects.requireNonNull(root, "root");
@@ -59,9 +60,10 @@ public final class PlaybackEngine implements ConfigListener {
             actors = Map.copyOf(actors);
             Objects.requireNonNull(queries, "queries");
             Objects.requireNonNull(lifecycle, "lifecycle");
+            Objects.requireNonNull(placementMode, "placementMode");
         }
         public Request(ServerLevel level, RootTransform root, PreparedEmote emote) {
-            this(level, root, emote, emote.id(), Map.of(), MolangQuerySource.EMPTY, null, null, Lifecycle.NONE);
+            this(level, root, emote, emote.id(), Map.of(), MolangQuerySource.EMPTY, null, null, Lifecycle.NONE, PlaybackPlacement.Mode.EXTERNAL);
         }
     }
 
@@ -116,7 +118,7 @@ public final class PlaybackEngine implements ConfigListener {
             timeline.deferInitialVisibility();
             this.entityController.add(request.level(), nodes);
             session = new PlaybackSession(UUID.randomUUID(), request.level().dimension(), request.emoteId(),
-                nodes, timeline, request.actors());
+                nodes, timeline, request.actors(), request.placementMode());
             session.bindCallbacks(bindings, segmentBindings, EmoteMod.SERVER.getTickCount());
             register(session, request.lifecycle());
             request.lifecycle().onStarted(session);
@@ -168,11 +170,14 @@ public final class PlaybackEngine implements ConfigListener {
     }
 
     public boolean setPlacement(UUID sessionId, PlaybackPlacement placement) {
-        PlaybackSession session = findSession(sessionId);
-        if (session == null) return false;
-        if (placement.mode() != PlaybackPlacement.Mode.EXTERNAL) throw new IllegalArgumentException("Player placement requires a player playback");
-        this.entityController.moveSceneTo(session.nodes(), placement.position());
-        this.entityController.updateViewRotation(session.nodes(), placement.yaw(), 0);
+        ActivePlayback playback = this.activePlaybacks.get(sessionId);
+        if (playback == null) return false;
+        PlaybackSession session = playback.session();
+        RootTransform root = placement.mode() == PlaybackPlacement.Mode.ACTOR
+            ? playback.lifecycle().resolveActorPlacement(session) : RootTransform.create(placement.position(), placement.yaw());
+        if (root == null) throw new IllegalArgumentException("Playback has no actor placement");
+        this.entityController.moveSceneTo(session.nodes(), root.position());
+        this.entityController.updateViewRotation(session.nodes(), root.yaw(), 0);
         session.setPlacementMode(placement.mode());
         return true;
     }
