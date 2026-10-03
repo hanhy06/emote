@@ -69,10 +69,17 @@ class MineSkinClientTest {
     @Test
     void jobFailureRecognizesRateLimitMessages() {
         assertTrue(new MineSkinClient.JobFailedException(
+            "[skin_change_failed] Failed to change skin due to Mojang rate-limiting"
+        ).isRateLimited());
+        assertTrue(new MineSkinClient.JobFailedException("Mojang rate_limiting").isRateLimited());
+        assertTrue(new MineSkinClient.JobFailedException("Mojang RATE LIMITING").isRateLimited());
+        assertTrue(new MineSkinClient.JobFailedException(
             "[proxy_rate_limited] All proxies have rate-limit queue backlog"
         ).isRateLimited());
         assertTrue(new MineSkinClient.JobFailedException("Too many requests").isRateLimited());
         assertFalse(new MineSkinClient.JobFailedException("Invalid skin image").isRateLimited());
+        assertFalse(new MineSkinClient.JobFailedException("[skin_change_failed] Failed to change skin").isRateLimited());
+        assertFalse(new MineSkinClient.JobFailedException(null).isRateLimited());
     }
 
     private boolean contains(byte[] body, byte[] expected) {
