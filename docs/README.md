@@ -18,7 +18,7 @@ Join the Discord server to share emotes you have made.
 
 Emote is a server-side emote mod that plays animations with Minecraft display entities. All server features work when the mod is installed only on the server. Installing it on the client is optional and adds an emote wheel and automatic third-person view during playback.
 
-The web converter supports BD Engine, GeckoLib, and Animated Java. Configure skin parts, metadata, playback settings, and commands without editing Animation JSON.
+The web converter supports BD Engine, GeckoLib, and Animated Java. Configure skin parts, metadata, playback settings, and events without editing Animation JSON.
 
 On the server, LuckPerms permissions can assign emotes and idle emotes per player. Sequences can connect multiple animations, with the player's skin applied to compatible animations. A server API is also available for other mods to register emotes, control playback, and receive events.
 
@@ -114,7 +114,7 @@ Set `mineskin_api_key` to generate player skin textures when no bake accounts ar
 
 For a step-by-step guide to converting and installing your own emotes, see [Adding Custom Emotes](https://hanhy06.github.io/emote/server/custom-emote/).
 
-Use the 3D preview to assign skin parts, then configure metadata, playback behavior, stop conditions, and frame commands.
+Use the 3D preview to assign skin parts, then configure metadata, playback behavior, stop conditions, and events.
 
 ![Open a project](https://cdn.modrinth.com/data/qUF0jygw/images/69f77ef2095909af8e7dd5830e452c3b9c4d61b2.png)
 
@@ -126,7 +126,7 @@ Use the 3D preview to assign skin parts, then configure metadata, playback behav
 
 The web converter recalculates the source animation's easing and interpolation curves for Minecraft ticks. It preserves important points in Bézier, Catmull-Rom, bounce, and elastic motion, then selects the keyframe placement with the lowest position, rotation, and scale error to keep the result as close to the original movement as possible.
 
-Each animation can define a cooldown, player visibility, stop conditions such as movement, jumping, attacking, and taking damage, and frame commands.
+Each animation can define a cooldown, player visibility, stop conditions such as movement, jumping, attacking, and taking damage, and events.
 
 - [Animation format](https://hanhy06.github.io/emote/developers/animation/)
 
