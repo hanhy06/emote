@@ -237,10 +237,11 @@ public final class PreparedEmote implements PlayableEmote {
         int transitionStartTick,
         int startTick,
         int endTick,
-        PreparedEmote animation
+        PreparedEmote animation,
+        int timelineSegmentIndex
     ) {
         public PlaybackSegment {
-            if (transitionStartTick < 0 || startTick < transitionStartTick || endTick < startTick) {
+            if (transitionStartTick < 0 || startTick < transitionStartTick || endTick < startTick || timelineSegmentIndex < 0) {
                 throw new IllegalArgumentException("invalid playback segment range");
             }
             Objects.requireNonNull(animation, "animation");

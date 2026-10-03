@@ -235,18 +235,16 @@ public final class PlaybackPlayer {
 
     private void startSegmentEvents() {
         if (this.lifecycleSegment >= 0 || this.eventsStopped) return;
-        for (int index = 0; index < this.emote.playbackSegments().size(); index++) {
-            PreparedEmote.PlaybackSegment segment = this.emote.playbackSegments().get(index);
-            if (this.currentTick < segment.startTick() || this.currentTick >= segment.endTick()) continue;
-            this.lifecycleSegment = index;
-            EmoteAnimation source = segment.animation().model();
-            int localTick = this.currentTick - segment.startTick();
-            execute(source.timeline().events().start(), source.id(), localTick, AnimationEventPhase.START);
-            if (this.eventsStopped) return;
-            execute(segment.animation().timelineEvents(localTick));
-            if (!this.eventsStopped) this.lifecycleListener.onStart(segment.animation());
-            return;
-        }
+        int index = locateSequence(this.currentTick).animationSegment();
+        if (index < 0) return;
+        PreparedEmote.PlaybackSegment segment = this.emote.playbackSegments().get(index);
+        this.lifecycleSegment = index;
+        EmoteAnimation source = segment.animation().model();
+        int localTick = this.currentTick - segment.startTick();
+        execute(source.timeline().events().start(), source.id(), localTick, AnimationEventPhase.START);
+        if (this.eventsStopped) return;
+        execute(segment.animation().timelineEvents(localTick));
+        if (!this.eventsStopped) this.lifecycleListener.onStart(segment.animation());
     }
 
     private void closeSegment(PlaybackStopReason reason) {
@@ -374,14 +372,8 @@ public final class PlaybackPlayer {
             if (this.eventsStarted) execute(this.emote.timelineEvents(tick));
             return;
         }
-        int destination = -1;
-        for (int index = 0; index < this.emote.playbackSegments().size(); index++) {
-            var segment = this.emote.playbackSegments().get(index);
-            if (tick >= segment.startTick() && tick < segment.endTick()) {
-                destination = index;
-                break;
-            }
-        }
+        SequenceLocation location = locateSequence(tick);
+        int destination = location.animationSegment();
         boolean sameExecution = destination >= 0 && destination == this.lifecycleSegment;
         AnimationEvaluator previousEvaluator = sameExecution ? this.evaluator : null;
         if (!sameExecution) closeSegment(PlaybackStopReason.REPLACED);
@@ -412,19 +404,14 @@ public final class PlaybackPlayer {
                 }
             }
         } else {
-            restoreSequenceGap(tick);
+            restoreSequenceGap(tick, location);
         }
     }
 
-    private void restoreSequenceGap(int tick) {
+    private void restoreSequenceGap(int tick, SequenceLocation location) {
         List<PreparedEmote.PlaybackSegment> segments = this.emote.playbackSegments();
-        int previous = -1;
-        int next = -1;
-        for (int index = 0; index < segments.size(); index++) {
-            var segment = segments.get(index);
-            if (segment.endTick() <= tick) previous = index;
-            if (segment.transitionStartTick() <= tick && tick < segment.startTick()) next = index;
-        }
+        int previous = location.previousSegment();
+        int next = location.transitionSegment();
         this.activePlaybackSegment = previous;
         if (previous >= 0) {
             var segment = segments.get(previous);
@@ -472,19 +459,8 @@ public final class PlaybackPlayer {
                 phaseTick = this.currentTick;
             }
         } else {
-            PreparedEmote.PlaybackSegment active = this.lifecycleSegment < 0 ? null
-                : this.emote.playbackSegments().get(this.lifecycleSegment);
-            for (PlaybackTimeline.Segment segment : segments) {
-                if (active != null && segment.phase() == PlaybackTimeline.Phase.ANIMATION
-                    && segment.startTick() == active.startTick()) {
-                    selected = segment;
-                    break;
-                }
-                if (this.currentTick >= segment.startTick() && this.currentTick < segment.endTick()) {
-                    selected = segment;
-                    if (active == null) break;
-                }
-            }
+            selected = this.lifecycleSegment < 0 ? locateSequence(this.currentTick).timelineSegment()
+                : segments.get(this.emote.playbackSegments().get(this.lifecycleSegment).timelineSegmentIndex());
             phaseTick = this.currentTick - selected.startTick();
         }
         return new PlaybackPosition(selected.segmentIndex(), selected.stepIndex(), selected.repeatIndex(),
@@ -586,21 +562,35 @@ public final class PlaybackPlayer {
     }
 
     private void applyPlaybackSegment(int tick) {
-        List<PreparedEmote.PlaybackSegment> segments = this.emote.playbackSegments();
-        int selected = this.activePlaybackSegment;
-        if (selected >= 0 && tick > segments.get(selected).endTick()) {
-            selected = -1;
-        }
-        for (int index = this.activePlaybackSegment + 1; index < segments.size(); index++) {
-            PreparedEmote.PlaybackSegment next = segments.get(index);
-            if (next.transitionStartTick() > tick) break;
-            if (tick <= next.endTick()) selected = index;
-        }
-        if (selected < 0) {
-            return;
-        }
-        applySegment(selected, tick);
+        int selected = locateSequence(tick).poseSegment();
+        if (selected >= 0) applySegment(selected, tick);
     }
+
+    private SequenceLocation locateSequence(int tick) {
+        PlaybackTimeline.Segment selected = timeline().segments().getLast();
+        for (PlaybackTimeline.Segment segment : timeline().segments()) {
+            if (tick >= segment.startTick() && (segment.endTick() == null || tick < segment.endTick())) {
+                selected = segment;
+                break;
+            }
+        }
+        int animation = -1;
+        int previous = -1;
+        int transition = -1;
+        int pose = -1;
+        List<PreparedEmote.PlaybackSegment> segments = this.emote.playbackSegments();
+        for (int index = 0; index < segments.size(); index++) {
+            PreparedEmote.PlaybackSegment segment = segments.get(index);
+            if (segment.endTick() <= tick) previous = index;
+            if (tick >= segment.startTick() && tick < segment.endTick()) animation = index;
+            if (tick >= segment.transitionStartTick() && tick < segment.startTick()) transition = index;
+            if (tick >= segment.transitionStartTick() && tick <= segment.endTick()) pose = index;
+        }
+        return new SequenceLocation(selected, animation, previous, transition, pose);
+    }
+
+    private record SequenceLocation(PlaybackTimeline.Segment timelineSegment, int animationSegment,
+                                    int previousSegment, int transitionSegment, int poseSegment) {}
 
     private void applySegment(int selected, int tick) {
         PreparedEmote.PlaybackSegment segment = this.emote.playbackSegments().get(selected);

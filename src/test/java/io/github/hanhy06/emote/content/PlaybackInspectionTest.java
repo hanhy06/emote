@@ -29,6 +29,31 @@ import static io.github.hanhy06.emote.api.PlaybackTimeline.Phase.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class PlaybackInspectionTest {
+    @Test
+    void seekingAndNormalPlaybackReportTheSameWaitTransitionAndAnimationBoundaries() {
+        PreparedEmote animation = animation(EmoteAnimation.LoopMode.LOOP, 2);
+        PreparedEmote compiled = sequence(animation, skip(animation), new EmoteSequence.WaitStep(2),
+            new EmoteSequence.AnimationStep(animation.model().id(), 2, 2),
+            new EmoteSequence.WaitStep(3), skip(animation)).compile(firstChoice());
+        PlaybackPlayer advancing = player(compiled);
+        PlaybackPlayer seeking = player(compiled);
+        advancing.start();
+        advancing.startEvents();
+        seeking.start();
+        seeking.startEvents();
+        List<PlaybackPosition> positions = new java.util.ArrayList<>();
+        for (int tick = 0; tick < compiled.durationTicks(); tick++) {
+            positions.add(advancing.position());
+            seeking.setTick(tick);
+            assertEquals(positions.get(tick), seeking.position(), "Forward seek at " + tick);
+            if (tick + 1 < compiled.durationTicks()) advancing.advance();
+        }
+        for (int tick = compiled.durationTicks() - 1; tick >= 0; tick--) {
+            seeking.setTick(tick);
+            assertEquals(positions.get(tick), seeking.position(), "Backward seek at " + tick);
+        }
+    }
+
     @BeforeAll
     static void bootstrapMinecraftRegistries() {
         SharedConstants.tryDetectVersion();

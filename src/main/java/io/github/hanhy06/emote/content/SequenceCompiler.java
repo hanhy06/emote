@@ -52,7 +52,8 @@ final class SequenceCompiler {
                 transitionStartTick,
                 segmentOffset,
                 segmentEndTick,
-                step.animation()
+                step.animation(),
+                timelineSegments.size() - 1
             ));
             hiddenNodes.put(segmentOffset, nodesToHide(layoutAnchor.model(), animation));
 
