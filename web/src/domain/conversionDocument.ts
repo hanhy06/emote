@@ -57,18 +57,11 @@ export interface AnimationOutputSettings {
 
 export interface ConversionAnimation {
   callbacks?: EmoteCallback[];
-  source: ConversionAnimationSource;
   preview: PreviewProjection;
   runtime: AnimationRuntimeProjection;
   events: ConversionAnimationEvents;
   output: AnimationOutputSettings;
   nodeIds: string[];
-}
-
-export interface ConversionAnimationSource {
-  id: string;
-  name: string;
-  sourceReferenceId?: string;
 }
 
 export function animationOutputId(animation: ConversionAnimation, output: AnimationOutputSettings = animation.output): string {
@@ -153,14 +146,17 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
         ? Object.fromEntries(Object.entries(metadata).filter(([key]) => key !== "name" && key !== "description"))
         : additionalMetadata;
       return {
-        source: {
-          id: animation.id,
-          name: animation.name,
-          ...(animation.sourceReferenceId ? { sourceReferenceId: animation.sourceReferenceId } : {}),
-        },
         callbacks: animation.callbacks?.map((callback) => ({ ...callback })),
         preview: animation.preview,
-        runtime: createAnimationRuntimeProjection(animation),
+        runtime: {
+          id: animation.id,
+          sourceName: animation.name,
+          ...(animation.sourceReferenceId ? { sourceReferenceId: animation.sourceReferenceId } : {}),
+          durationTicks: animation.durationTicks,
+          sourcePlaybackMode: animation.playbackMode,
+          availability: animation.exportAvailability,
+          data: animation.runtime,
+        },
         events: {
           start: [...animation.events.start],
           timeline: [...animation.events.timeline],
@@ -194,17 +190,6 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
     },
     diagnostics: project.diagnostics,
     resources: project.resources,
-  };
-}
-
-export function createAnimationRuntimeProjection(animation: ImportedAnimation): AnimationRuntimeProjection {
-  return {
-    id: animation.id,
-    sourceName: animation.name,
-    durationTicks: animation.durationTicks,
-    sourcePlaybackMode: animation.playbackMode,
-    availability: animation.exportAvailability,
-    data: animation.runtime,
   };
 }
 
@@ -328,7 +313,7 @@ export function updateDocumentAnimationOutput(
 }
 
 function isSkinCandidate(node: ImportedItemNode): boolean {
-  return Boolean(node.skin || node.suggestedSkin || node.playerHeadConversion || normalizeResourceLocation(node.itemStack.id) === "minecraft:player_head");
+  return Boolean(node.skin || node.suggestedSkin || node.playerHeadConversionMatrix || normalizeResourceLocation(node.itemStack.id) === "minecraft:player_head");
 }
 
 function selectedSkinGroupIds(document: ConversionDocument, selectedNodeIds: ReadonlySet<string>): Set<string> {

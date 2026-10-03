@@ -67,7 +67,7 @@ export function App() {
   const orders = preview?.orders ?? {};
   const selectedNodeIds = session?.selectedNodeIds ?? EMPTY_SELECTION;
   const selectedAnimation = project?.animations[animationIndex];
-  const animation = selectedAnimation?.source;
+  const animation = selectedAnimation?.runtime;
   const availability = preview?.availability ?? null;
   const exportAvailability = selectedAnimation?.runtime.availability ?? null;
   const previewDurationTicks = preview?.durationTicks ?? 0;
@@ -230,7 +230,7 @@ export function App() {
                 const nextIndex = Number(event.currentTarget.value);
                 dispatch({ type: "animation_selected", index: nextIndex });
               }}>
-                {project.animations.map((item, index) => <option value={index} key={`${item.source.id}:${index}`}>{item.source.name}</option>)}
+                {project.animations.map((item, index) => <option value={index} key={`${item.runtime.id}:${index}`}>{item.runtime.sourceName}</option>)}
               </select>
             </label>
             <dl>
@@ -346,7 +346,7 @@ export function App() {
             assignmentSummary={assignmentSummary(project)}
             animations={project.animations.map((item) => {
               const itemAvailability = item.runtime.availability;
-              return { label: item.output.displayName, detail: item.source.id, exportable: itemAvailability.exportable, reason: itemAvailability.reason };
+              return { label: item.output.displayName, detail: item.runtime.id, exportable: itemAvailability.exportable, reason: itemAvailability.reason };
             })}
             error={exportError}
             disabled={busy}

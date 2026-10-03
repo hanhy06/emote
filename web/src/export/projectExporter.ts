@@ -8,14 +8,6 @@ import type { ExportResult } from "./types";
 import { isSequenceControlId, type SequenceAnimationStep, type SequenceStep } from "../domain/emoteDefinition";
 import { ConversionError } from "../foundation/diagnostics";
 
-export function exportDocumentAnimation(document: ConversionDocument, animationIndex: number): ExportResult {
-  return compileAnimationFile(document, animationIndex).file;
-}
-
-export function exportDocumentAnimationFiles(document: ConversionDocument, includeSequence: boolean): ExportResult[] {
-  return compileAnimationFiles(document, includeSequence).files;
-}
-
 export async function createDocumentAnimationDownload(document: ConversionDocument, animationIndex: number): Promise<ExportResult[]> {
   const compiled = compileAnimationFile(document, animationIndex);
   const files = [compiled.file];
@@ -73,8 +65,8 @@ function compileAnimationFiles(document: ConversionDocument, includeSequence: bo
   });
   if (includeSequence) {
     const sequenceOutput = document.sequence;
-    const outputIdBySourceId = new Map(document.animations.flatMap((entry, index) => entry.source.sourceReferenceId
-      ? [[entry.source.sourceReferenceId, animations[index].id] as const] : []));
+    const outputIdBySourceId = new Map(document.animations.flatMap((entry, index) => entry.runtime.sourceReferenceId
+      ? [[entry.runtime.sourceReferenceId, animations[index].id] as const] : []));
     const baseSequenceId = `${sanitizeNamespace(sequenceOutput.namespace)}:${sanitizeResourcePath(sequenceOutput.idPath ?? sequenceOutput.displayName)}`;
     let sequenceId = baseSequenceId;
     let suffix = 1;

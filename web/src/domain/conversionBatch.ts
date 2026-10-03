@@ -34,11 +34,10 @@ export function combineConversionDocuments(documents: readonly ConversionDocumen
     }
     animations.push(...document.animations.map((animation) => {
       const ids = { editorNodeId: nodeId, runtimeNodeId: nodeId, editorGroupId: groupId };
-      const id = uniqueAnimationId(animation.output.namespace, animation.source.id, animationIds);
+      const id = uniqueAnimationId(animation.output.namespace, animation.runtime.id, animationIds);
       return {
         ...animation,
         nodeIds: animation.nodeIds.map(nodeId),
-        source: { ...animation.source, id },
         preview: remapPreviewProjection(animation.preview, ids),
         runtime: { ...animation.runtime, id, data: remapAnimationRuntimeData(animation.runtime.data, ids) },
         events: remapImportedAnimationEvents(animation.events, nodeId),
@@ -68,7 +67,7 @@ function applyImportedSequence(document: ConversionDocument, sequence: ImportedS
   if (!sequence) return document;
   const animationIds = new Set<string>();
   for (const animation of document.animations) {
-    const id = animation.source.sourceReferenceId;
+    const id = animation.runtime.sourceReferenceId;
     if (!id) continue;
     if (animationIds.has(id)) throw new ConversionError("duplicate_source_animation_id", `Multiple imported animations use the same id: ${id}`, id);
     animationIds.add(id);

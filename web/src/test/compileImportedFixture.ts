@@ -1,4 +1,4 @@
-import { compileConversionAnimation } from "../compiler/animationCompiler";
+import { compileConversionAnimationArtifact } from "../compiler/animationCompiler";
 import { createConversionDocument, type ConversionDocument } from "../domain/conversionDocument";
 import type { EmoteAnimation, EmoteMetadata, EmotePlayerBehavior } from "../format/emoteAnimation";
 import type { ImportedProject } from "../domain/conversionSeed";
@@ -18,11 +18,11 @@ interface FixtureCompileOptions {
 
 export function compileImportedProject(project: ImportedProject, options: FixtureCompileOptions): EmoteAnimation[] {
   const document = fixtureDocument(project, options);
-  return document.animations.map((_, index) => compileConversionAnimation(document, index));
+  return document.animations.map((_, index) => compileConversionAnimationArtifact(document, index).animation);
 }
 
 export function compileImportedAnimation(project: ImportedProject, options: FixtureCompileOptions, animationIndex: number): EmoteAnimation {
-  return compileConversionAnimation(fixtureDocument(project, options), animationIndex);
+  return compileConversionAnimationArtifact(fixtureDocument(project, options), animationIndex).animation;
 }
 
 function fixtureDocument(project: ImportedProject, options: FixtureCompileOptions): ConversionDocument {
@@ -45,7 +45,7 @@ function fixtureDocument(project: ImportedProject, options: FixtureCompileOption
         cooldown: options.cooldown ?? "0t",
         loopStart: options.loopStart ?? animation.output.loopStart,
         loopDelay: options.loopDelay ?? animation.output.loopDelay,
-        rotationDeadzone: options.rotationDeadzoneByAnimation?.[animation.source.name] ?? animation.output.rotationDeadzone,
+        rotationDeadzone: options.rotationDeadzoneByAnimation?.[animation.runtime.sourceName] ?? animation.output.rotationDeadzone,
       },
     })),
   };

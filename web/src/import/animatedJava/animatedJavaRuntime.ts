@@ -29,7 +29,7 @@ export function createAnimatedJavaRuntime(
   if (cubeRuntime && cubeRuntime.kind !== "native") throw new Error("Animated Java cube runtime must use native animation output.");
   const nodes: Record<string, RuntimeNode> = { ...(cubeRuntime?.nodes ?? {}) };
   const tracks: Record<string, RuntimeNodeTracks> = { ...(cubeRuntime?.tracks ?? {}) };
-  const editorNodeByRuntimeNode: Record<string, string> = { ...(cubeRuntime?.bindings.editorNodeByRuntimeNode ?? {}) };
+  const editorNodeByRuntimeNode: Record<string, string> = { ...(cubeRuntime?.bindings ?? {}) };
 
   const addNode = (id: string, node: RuntimeNode) => {
     if (nodes[id]) throw new Error(`Animated Java runtime produces more than one node named ${id}.`);
@@ -79,7 +79,7 @@ export function createAnimatedJavaRuntime(
     ...(cubeRuntime?.molang ? { molang: cubeRuntime.molang } : {}),
     nodes,
     tracks,
-    bindings: { editorNodeByRuntimeNode },
+    bindings: editorNodeByRuntimeNode,
   };
 }
 

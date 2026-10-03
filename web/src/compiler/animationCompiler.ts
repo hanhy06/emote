@@ -25,19 +25,11 @@ import { formatMinecraftTime, parseMinecraftTime, requireTick } from "../format/
 import type { BakedRuntimeNodeTracks, DisplayNbtPatch, DisplayNbtValue, ItemStackData, RuntimeNode, RuntimeNodeTracks } from "../domain/minecraftData";
 import { readDisplayNbt, writeBlockState, writeDisplayNbt, writeItemStack } from "../format/minecraftData";
 import { minecraftVersionProfile, type MinecraftVersionProfile } from "../format/minecraftVersionProfiles";
-import type { NativeRuntimeBindings } from "../domain/nodeBindings";
+import type { RuntimeNodeBindings } from "../domain/nodeBindings";
 import type { AnimationRuntimeProjection } from "../domain/runtimeProjection";
 import { rewriteMolangStringLiterals } from "../format/molang/sourceTransformer";
 
 const PLAYER_HEAD: ItemStackData = { id: "minecraft:player_head", count: 1 };
-
-export function compileConversionAnimation(
-  document: ConversionDocument,
-  animationIndex: number,
-  outputOverride?: Partial<AnimationOutputSettings>,
-): EmoteAnimation {
-  return compileConversionAnimationArtifact(document, animationIndex, outputOverride).animation;
-}
 
 export interface CompiledConversionAnimation {
   animation: EmoteAnimation;
@@ -100,13 +92,13 @@ export function compileConversionAnimationArtifact(
 function compileRuntimeNodes(
   document: ConversionDocument,
   sourceNodes: Record<string, RuntimeNode>,
-  bindings: NativeRuntimeBindings,
+  bindings: RuntimeNodeBindings,
   profile: MinecraftVersionProfile,
   generatedResourceReferences: Set<string>,
 ): Record<string, EmoteNode> {
   const assignments = documentSkinAssignments(document);
   return Object.fromEntries(Object.entries(sourceNodes).map(([id, sourceNode]): [string, EmoteNode] => {
-    const editorNodeId = bindings.editorNodeByRuntimeNode[id];
+    const editorNodeId = bindings[id];
     const editorNode = editorNodeId ? document.nodes[editorNodeId] : undefined;
     if (sourceNode.type !== "anchor" && !editorNode) {
       throw new ConversionError("missing_runtime_node_binding", `Runtime display ${id} is not bound to an editor node.`, id);
@@ -128,9 +120,9 @@ function compileRuntimeNodes(
     const assignment = editorNodeId ? assignments[editorNodeId] : undefined;
     const outputItem = assignment ? PLAYER_HEAD : sourceNode.itemStack;
     includeGeneratedResourceReferences(generatedResourceReferences, outputItem.generatedResourceReferences);
-    const transform = assignment && editorNode?.type === "item_display" && editorNode.playerHeadConversion
+    const transform = assignment && editorNode?.type === "item_display" && editorNode.playerHeadConversionMatrix
       ? matrixToLocalTransform(
-          multiplyMatrix16(localTransformToMatrix(sourceNode.transform, `Runtime node ${id}`), editorNode.playerHeadConversion.matrix, `Runtime player head node ${id}`),
+          multiplyMatrix16(localTransformToMatrix(sourceNode.transform, `Runtime node ${id}`), editorNode.playerHeadConversionMatrix, `Runtime player head node ${id}`),
           `Runtime player head node ${id}`,
         )
       : sourceNode.transform;
@@ -167,7 +159,7 @@ function compileNodes(document: ConversionDocument, animation: AnimationRuntimeP
     };
     if (node.type === "item_display") {
       const assignment = node.binding.skinGroupId ? document.skinGroups[node.binding.skinGroupId]?.assignment : null;
-      const outputItem = assignment && node.playerHeadConversion ? PLAYER_HEAD : node.itemStack;
+      const outputItem = assignment && node.playerHeadConversionMatrix ? PLAYER_HEAD : node.itemStack;
       includeGeneratedResourceReferences(generatedResourceReferences, outputItem.generatedResourceReferences);
       return [id, {
         ...common,
@@ -193,9 +185,9 @@ function compileNodeMatrix(
   node: ConversionNode,
   matrix: Matrix16,
 ): Matrix16 {
-  if (node.type !== "item_display" || !node.binding.skinGroupId || !node.playerHeadConversion) return matrix;
+  if (node.type !== "item_display" || !node.binding.skinGroupId || !node.playerHeadConversionMatrix) return matrix;
   if (!document.skinGroups[node.binding.skinGroupId]?.assignment) return matrix;
-  return multiplyMatrix16(matrix, node.playerHeadConversion.matrix, `Player head node ${nodeId}`);
+  return multiplyMatrix16(matrix, node.playerHeadConversionMatrix, `Player head node ${nodeId}`);
 }
 
 function compileTimeline(document: ConversionDocument, animation: AnimationRuntimeProjection, events: ConversionAnimationEvents, sourceTracks: Record<string, BakedRuntimeNodeTracks>, profile: MinecraftVersionProfile, generatedResourceReferences: Set<string>): EmoteAnimation["timeline"] {
@@ -248,7 +240,7 @@ function compileRuntimeTimeline(
   animation: AnimationRuntimeProjection,
   events: ConversionAnimationEvents,
   sourceTracks: Record<string, RuntimeNodeTracks>,
-  bindings: NativeRuntimeBindings,
+  bindings: RuntimeNodeBindings,
   profile: MinecraftVersionProfile,
   generatedResourceReferences: Set<string>,
 ): EmoteAnimation["timeline"] {
@@ -268,7 +260,7 @@ function compileRuntimeTimeline(
     };
     if (!track.nbt) return [nodeId, output];
     const nbt = track.nbt.flatMap((frame) => {
-      const editorNodeId = bindings.editorNodeByRuntimeNode[nodeId];
+      const editorNodeId = bindings[nodeId];
       if (!editorNodeId) {
         throw new ConversionError("missing_runtime_node_binding", `Runtime NBT track ${nodeId} is not bound to an editor node.`, nodeId);
       }
@@ -333,7 +325,7 @@ function compileMolangNbtLiterals(
 
 function compileNodeNbt(document: ConversionDocument, nodeId: string, value: DisplayNbtPatch, profile: MinecraftVersionProfile, generatedResourceReferences: Set<string>): string | undefined {
   const node = document.nodes[nodeId];
-  if (node?.type !== "item_display" || !node.playerHeadConversion || !node.binding.skinGroupId
+  if (node?.type !== "item_display" || !node.playerHeadConversionMatrix || !node.binding.skinGroupId
     || !document.skinGroups[node.binding.skinGroupId]?.assignment) {
     includeGeneratedResourceReferences(generatedResourceReferences, value.itemStack?.generatedResourceReferences);
     return writeDisplayNbt(value, profile);

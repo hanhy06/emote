@@ -1,4 +1,4 @@
-import type { Matrix16 } from "./matrix";
+import type { PreviewTransformKeyframe, PreviewVisibilityKeyframe } from "./previewProjection";
 
 export interface RawNbtField {
   name: string;
@@ -25,25 +25,14 @@ export interface DisplayNbtPatch {
   rawFields: RawNbtField[];
 }
 
-export interface BakedRuntimeTransformKeyframe {
-  tick: number;
-  matrix: Matrix16;
-  interpolation: { type: "step" } | { type: "linear"; durationTicks?: number };
-}
-
-export interface BakedRuntimeVisibilityKeyframe {
-  tick: number;
-  visible: boolean;
-}
-
 export interface BakedRuntimeNbtKeyframe {
   tick: number;
   value: DisplayNbtPatch;
 }
 
 export interface BakedRuntimeNodeTracks {
-  transforms: BakedRuntimeTransformKeyframe[];
-  visibility: BakedRuntimeVisibilityKeyframe[];
+  transforms: PreviewTransformKeyframe[];
+  visibility: PreviewVisibilityKeyframe[];
   nbt: BakedRuntimeNbtKeyframe[];
 }
 

@@ -99,7 +99,7 @@ function createPreviewParts(
       nodeId: candidate.nodeId,
       partIndex: candidate.partIndex,
       matrix: sourceMatrix,
-      ...(candidate.node.playerHeadConversion ? { conversionMatrix: candidate.node.playerHeadConversion.matrix } : {}),
+      ...(candidate.node.playerHeadConversionMatrix ? { conversionMatrix: candidate.node.playerHeadConversionMatrix } : {}),
     };
   });
 }

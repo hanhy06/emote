@@ -13,8 +13,8 @@ import { bakeSchema4Preview } from "../import/emoteJson/schema4PreviewBaker";
 import { emoteJsonAdapter } from "../import/emoteJson/emoteJsonAdapter";
 import { sequenceJsonAdapter } from "../import/emoteJson/sequenceJsonAdapter";
 import { createConversionDocument } from "../domain/conversionDocument";
-import { compileConversionAnimation } from "../compiler/animationCompiler";
-import { emoteFileName, exportDocumentAnimation, exportDocumentAnimationFiles } from "../export/projectExporter";
+import { compileConversionAnimationArtifact } from "../compiler/animationCompiler";
+import { emoteFileName, createDocumentAnimationDownload, createDocumentAnimationBundleDownload } from "../export/projectExporter";
 import { compileImportedProject } from "./compileImportedFixture";
 
 const REPOSITORY_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
@@ -86,18 +86,18 @@ describe("sample export identity", () => {
       output: { ...original.output, namespace: "emote" },
     }));
     document.sequence = { ...document.sequence, namespace: "emote", idPath: "music/song" };
-    const bundle = exportDocumentAnimationFiles(document, true);
+    const bundle = await createDocumentAnimationBundleDownload(document, true);
     expect(bundle.map((file) => file.fileName)).toEqual([
       "emote.music.song.json", "emote.music.song.2.json", "emote.music.song.1.json", "emote.music.song.1.1.json",
     ]);
     for (let index = 0; index < document.animations.length; index++) {
-      const single = exportDocumentAnimation(document, index);
+      const [single] = await createDocumentAnimationDownload(document, index);
       expect(single.fileName).toBe(bundle[index].fileName);
       const actual = JSON.parse(await single.blob.text()) as EmoteAnimation;
       expect(actual.id).toBe(`emote:${document.animations[index].runtime.id}`);
       expectMatchingMatrices(actual, await readJson("docs/sample/emote.indicate.json") as EmoteAnimation);
     }
-    const overridden = compileConversionAnimation(document, 0, { namespace: "Custom Namespace" });
+    const overridden = compileConversionAnimationArtifact(document, 0, { namespace: "Custom Namespace" }).animation;
     expect(overridden.id).toBe("custom_namespace:music/song");
     const sequence = JSON.parse(await bundle[3].blob.text());
     expect(sequence.id).toBe("emote:music/song.1");

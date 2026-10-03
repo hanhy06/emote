@@ -10,7 +10,7 @@ import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import { ConversionError, PreviewUnavailableError } from "../../foundation/diagnostics";
 import { parseInputJson, probeParsedInput } from "../common/inputCache";
 import type { ImportedAnimation, ImportedNode, ImportedNodeBase, ImportedProject } from "../../domain/conversionSeed";
-import type { NativeRuntimeBindings } from "../../domain/nodeBindings";
+import type { RuntimeNodeBindings } from "../../domain/nodeBindings";
 import type { BakedRuntimeNodeTracks, RuntimeNode, RuntimeNodeTracks, RuntimeVectorKeyframe } from "../../domain/minecraftData";
 import type { PreviewNodeTrack, PreviewProjection, PreviewTransformKeyframe } from "../../domain/previewProjection";
 import { bakeSchema4Preview } from "./schema4PreviewBaker";
@@ -223,13 +223,10 @@ function importRuntimeTimeline(
   };
 }
 
-function runtimeBindings(animation: EmoteAnimation): NativeRuntimeBindings {
-  return {
-    editorNodeByRuntimeNode: Object.fromEntries(Object.entries(animation.nodes)
-      .filter(([, node]) => node.type !== "anchor")
-      .map(([nodeId]) => [nodeId, nodeId])),
-
-  };
+function runtimeBindings(animation: EmoteAnimation): RuntimeNodeBindings {
+  return Object.fromEntries(Object.entries(animation.nodes)
+    .filter(([, node]) => node.type !== "anchor")
+    .map(([nodeId]) => [nodeId, nodeId]));
 }
 
 function readRuntimeNodes(animation: EmoteAnimation): Record<string, RuntimeNode> {

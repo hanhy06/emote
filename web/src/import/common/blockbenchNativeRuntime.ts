@@ -81,7 +81,7 @@ export function createBlockbenchNativeRuntime(options: BlockbenchNativeRuntimeOp
     }
     if (scale) tracks[`${bone.id}_x`] = { ...tracks[`${bone.id}_x`], scale };
     }
-    return { nodes, tracks, bindings: { editorNodeByRuntimeNode } };
+    return { nodes, tracks, bindings: editorNodeByRuntimeNode };
   };
 }
 

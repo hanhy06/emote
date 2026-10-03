@@ -7,8 +7,8 @@ import { serializeSnbtString } from "../../format/snbt";
 import { formatMinecraftTime, requireAnimationDurationTicks, TICKS_PER_SECOND } from "../../format/time";
 import { ConversionError, PreviewUnavailableError, skippedAnimationIssue } from "../../foundation/diagnostics";
 import type { ImportedAnimation, ImportedNode, ImportedTimelineEvent, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
-import type { BakedRuntimeNodeTracks, BakedRuntimeTransformKeyframe } from "../../domain/minecraftData";
-import type { PreviewNodeTrack, PreviewProjection } from "../../domain/previewProjection";
+import type { BakedRuntimeNodeTracks } from "../../domain/minecraftData";
+import type { PreviewNodeTrack, PreviewProjection, PreviewTransformKeyframe } from "../../domain/previewProjection";
 import type { AnimationRuntimeData } from "../../domain/runtimeProjection";
 import {
   type BbAnimation,
@@ -128,7 +128,7 @@ export function importBlockbenchCubeContent(
           components: [{ name: "minecraft:item_model", value: serializeSnbtString(`${namespace}:${modelPath}`) }],
           generatedResourceReferences: [itemModelResourcePath(namespace, modelPath)],
         },
-        ...(conversionMatrix ? { playerHeadConversion: { matrix: conversionMatrix } } : {}),
+        ...(conversionMatrix ? { playerHeadConversionMatrix: conversionMatrix } : {}),
         ...(skin ? { suggestedSkin: skin } : {}),
       };
       bindEditorNode(bone.uuid, nodeId);
@@ -407,7 +407,7 @@ function projectBlockbenchRuntime(
     validateBoneAnimator(source.animation, source.animationIndex, bone, source.animators.get(bone.uuid), formatLabel, diagnosticPrefix);
     const boneSampling = Object.values(source.channelSampling.get(bone.uuid) ?? {}).filter((sampling) => sampling !== undefined);
     const sourceTimes = boneSampling[0]?.sourceTimes;
-    const transforms: BakedRuntimeTransformKeyframe[] = [];
+    const transforms: PreviewTransformKeyframe[] = [];
     for (let tick = 0; tick <= source.durationTicks; tick++) {
       const cache = new Map<string, Matrix4>();
       const sourceTime = source.startDelaySeconds > 0

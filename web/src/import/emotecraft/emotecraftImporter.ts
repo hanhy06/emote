@@ -1,9 +1,8 @@
+import type { BakedRuntimeNodeTracks } from "../../domain/minecraftData";
 import type { ImportedAnimation, ImportedProject, ImportDiagnostic } from "../../domain/conversionSeed";
 import { createDefaultPlayerBehavior } from "../../format/emoteAnimation";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { requireAnimationDurationTicks } from "../../format/time";
-import { projectEmotecraftPreview } from "./emotecraftAnimationPreview";
-import { projectEmotecraftRuntime } from "./emotecraftAnimationRuntime";
 import { sampleEmotecraftAnimation } from "./emotecraftAnimationSampling";
 import type { EmotecraftFile, PalAnimation } from "./emotecraftBinary";
 import { convertEmotecraftSong } from "./emotecraftNbs";
@@ -18,6 +17,15 @@ export function importEmotecraftFile(file: EmotecraftFile, sourceName: string): 
   const song = file.song ? convertEmotecraftSong(file.song, durationTicks) : { events: [], diagnostics: [] };
   const diagnostics = [...collectDiagnostics(file), ...song.diagnostics];
   const samples = sampleEmotecraftAnimation(animation, displayName, durationTicks);
+  const tracks: Record<string, BakedRuntimeNodeTracks> = Object.fromEntries(Object.entries(samples.transforms).map(([nodeId, frames]) => [nodeId, {
+    transforms: frames.map((frame) => ({
+      tick: frame.tick,
+      matrix: frame.matrix,
+      interpolation: frame.step ? { type: "step" } : { type: "linear", durationTicks: 1 },
+    })),
+    visibility: [],
+    nbt: [],
+  }]));
   const metadata = {
     name: displayName,
     description: file.metadata.description?.trim() || `${displayName} emote.`,
@@ -33,9 +41,13 @@ export function importEmotecraftFile(file: EmotecraftFile, sourceName: string): 
     loopStartTicks,
     loopDelayTicks: 0,
     events: { start: [], timeline: song.events, loop: [], stop: [] },
-    preview: projectEmotecraftPreview(samples),
+    preview: {
+      durationTicks: samples.durationTicks,
+      availability: { status: "full" },
+      tracks: Object.fromEntries(Object.entries(tracks).map(([nodeId, track]) => [nodeId, { transforms: track.transforms, visibility: track.visibility }])),
+    },
     exportAvailability: { exportable: true },
-    runtime: projectEmotecraftRuntime(samples),
+    runtime: { kind: "baked", tracks },
   };
   return {
     source: "emotecraft_binary",

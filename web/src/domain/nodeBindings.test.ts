@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { remapEditorNodeBinding, remapNativeRuntimeBindings } from "./nodeBindings";
+import { remapEditorNodeBinding, remapRuntimeNodeBindings } from "./nodeBindings";
 
 describe("node binding remapping", () => {
   it("keeps the source identity while remapping editor identities", () => {
@@ -13,18 +13,13 @@ describe("node binding remapping", () => {
     });
   });
 
-  it("remaps runtime, editor, and group identities through their own paths", () => {
-    expect(remapNativeRuntimeBindings(
-      {
-        editorNodeByRuntimeNode: { runtime_head: "editor_head" },
-      },
+  it("remaps runtime and editor identities through their own paths", () => {
+    expect(remapRuntimeNodeBindings(
+      { runtime_head: "editor_head" },
       {
         runtimeNodeId: (id) => `runtime/${id}`,
         editorNodeId: (id) => `editor/${id}`,
-        editorGroupId: (id) => `group/${id}`,
       },
-    )).toEqual({
-      editorNodeByRuntimeNode: { "runtime/runtime_head": "editor/editor_head" },
-    });
+    )).toEqual({ "runtime/runtime_head": "editor/editor_head" });
   });
 });

@@ -8,8 +8,8 @@ export interface AnimationAnchor {
 }
 
 export interface AnimationSamplePlan {
-  sourceTimes: Map<number, number>;
-  stepTicks: Set<number>;
+  sourceTimes: ReadonlyMap<number, number>;
+  stepTicks: ReadonlySet<number>;
 }
 
 interface PlannedAnchor {

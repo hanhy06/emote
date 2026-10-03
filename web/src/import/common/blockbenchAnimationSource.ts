@@ -1,12 +1,8 @@
+import type { AnimationSamplePlan } from "./animationSampling";
 import type { ImportedTimelineEvent } from "../../domain/conversionSeed";
 import type { BbAnimation, BbAnimator } from "./blockbenchCubeSchema";
 
 export type BlockbenchTransformChannel = "position" | "rotation" | "scale";
-
-export interface BlockbenchChannelSampling {
-  sourceTimes: ReadonlyMap<number, number>;
-  stepTicks: ReadonlySet<number>;
-}
 
 export interface BlockbenchAnimationSource {
   animation: BbAnimation;
@@ -20,13 +16,13 @@ export interface BlockbenchAnimationSource {
   loopDelayTicks: number;
   events: ImportedTimelineEvent[];
   requiresNativeRuntime: boolean;
-  channelSampling: ReadonlyMap<string, Readonly<Partial<Record<BlockbenchTransformChannel, BlockbenchChannelSampling>>>>;
+  channelSampling: ReadonlyMap<string, Readonly<Partial<Record<BlockbenchTransformChannel, AnimationSamplePlan>>>>;
 }
 
 export function blockbenchChannelSampling(
   source: BlockbenchAnimationSource,
   animatorId: string,
   channel: BlockbenchTransformChannel,
-): BlockbenchChannelSampling | undefined {
+): AnimationSamplePlan | undefined {
   return source.channelSampling.get(animatorId)?.[channel];
 }

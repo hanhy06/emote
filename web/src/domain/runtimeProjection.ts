@@ -1,5 +1,5 @@
 import type { BakedRuntimeNodeTracks, RuntimeMolangPrograms, RuntimeNode, RuntimeNodeTracks } from "./minecraftData";
-import type { NativeRuntimeBindings } from "./nodeBindings";
+import type { RuntimeNodeBindings } from "./nodeBindings";
 
 export type AnimationRuntimeData =
   | {
@@ -11,7 +11,7 @@ export type AnimationRuntimeData =
     molang?: RuntimeMolangPrograms;
     nodes: Record<string, RuntimeNode>;
     tracks: Record<string, RuntimeNodeTracks>;
-    bindings: NativeRuntimeBindings;
+    bindings: RuntimeNodeBindings;
   };
 
 export interface RuntimeExportAvailability {
@@ -22,6 +22,7 @@ export interface RuntimeExportAvailability {
 export interface AnimationRuntimeProjection {
   id: string;
   sourceName: string;
+  sourceReferenceId?: string;
   durationTicks: number;
   sourcePlaybackMode: "once" | "hold" | "loop" | "server_sync";
   availability: RuntimeExportAvailability;
