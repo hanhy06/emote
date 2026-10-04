@@ -35,6 +35,16 @@ __pycache__/
 
 run/
 
+# secrets and runtime credentials
+
+.env
+.env.*
+!.env.example
+!.env.*.example
+/config/emote/
+accounts.bin
+accounts-*.tmp
+
 # java
 
 hs_err_*.log
