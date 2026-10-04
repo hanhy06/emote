@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.client;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import io.github.hanhy06.emote.application.EmoteSummary;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -155,6 +156,10 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
 
         @Override
         public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+            if (event.button() != InputConstants.MOUSE_BUTTON_LEFT) {
+                return false;
+            }
+
             int relX = (int) event.x() - getContentX();
             int relY = (int) event.y() - (getContentY() + CONTROL_Y_OFFSET);
             if (!isInside(relX, relY, 0, 0, CONTROL_SIZE, CONTROL_SIZE)) {
@@ -173,7 +178,7 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
 
         @Override
         public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
-            if (selectedList && event.button() == 0) {
+            if (selectedList && event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
                 EmoteShortcutList.this.dragEntry(this, event.y());
                 return true;
             }
