@@ -35,15 +35,12 @@ __pycache__/
 
 run/
 
-# secrets and runtime credentials
+# environment variables
 
 .env
 .env.*
 !.env.example
 !.env.*.example
-/config/emote/
-accounts.bin
-accounts-*.tmp
 
 # java
 
