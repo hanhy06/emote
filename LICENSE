@@ -220,10 +220,15 @@ License: MIT
 Source: https://github.com/MineSkin/api.mineskin.org/blob/main/LICENSE
 Notes: Portions of the MineSkin API request and variant handling implementation were referenced from this project.
 
+Name: Mocha
+License: MIT
+Source: https://github.com/unnamed/mocha/blob/main/license.txt
+Notes: The unmodified Mocha JAR is bundled with this project. Portions of the Molang runtime implementation are derived from Mocha's ExpressionInterpreter.
+
 Name: Polymer
 License: LGPL-3.0
-Source: https://github.com/Patbox/polymer/tree/dev/26.2
-Notes: The unmodified polymer-common, polymer-resource-pack, and polymer-autohost 0.17.3+26.2 JARs are bundled with this project.
+Source: https://github.com/Patbox/polymer
+Notes: The unmodified polymer-common, polymer-resource-pack, and polymer-autohost JARs are bundled with this project.
 
 ---
 
@@ -233,6 +238,7 @@ Copyright (c) lucko (Luck) <luck@lucko.me>
 Copyright (c) contributors
 Copyright (c) 2018 Haylee Schäfer
 Copyright (c) 2017 Haylee Schäfer
+Copyright (c) 2021-2025 Unnamed Team
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
