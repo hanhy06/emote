@@ -1,10 +1,13 @@
-Name: MineRender
+Name: MineSkin
 License: MIT
-Source: https://github.com/InventivetalentDev/MineRender/blob/master/LICENSE
-Notes: Portions of the skin baking and texture layout implementation were referenced from this project.
+Sources:
+  https://github.com/MineSkin/api.mineskin.org/blob/main/LICENSE
+  https://github.com/InventivetalentDev/MineRender/blob/master/LICENSE
+Notes: Acknowledgment of the projects consulted when implementing skin baking, texture layout, and MineSkin API request handling. Their libraries are not bundled with this project.
 
 MIT License
 
+Copyright (c) 2017 Haylee Schäfer
 Copyright (c) 2018 Haylee Schäfer
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
