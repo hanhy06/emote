@@ -108,7 +108,7 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
         display = importProjectAnimation(animation, sourceIndex, displayElements, nodes, transformGraph, sceneScale, runtimeHierarchy, cubeAnimation);
       } catch (reason) {
         if (!(reason instanceof PreviewUnavailableError)) throw reason;
-        const durationTicks = Number.isFinite(animation.length) && animation.length > 0 ? Math.max(1, Math.round(animation.length * 20)) : 20;
+        const durationTicks = Math.max(1, Math.round(animation.length * 20)) + secondsToTicks(projectOptionalNumeric(animation.start_delay, 0, `animations[${sourceIndex}].start_delay`), `${animation.name}.start_delay`);
         const fallback = createMolangPreviewFallback(animation.name, durationTicks, reason);
         animationDiagnostics.push(fallback.diagnostic);
         display = createPreviewOnlyProjectAnimation(animation, sourceIndex, fallback.preview, displayElements, nodes, runtimeHierarchy, cubeAnimation);
@@ -566,15 +566,15 @@ function createPreviewOnlyProjectAnimation(
   runtimeHierarchy: AjRuntimeHierarchy,
   cubeAnimation?: ImportedAnimation,
 ): ImportedAnimation {
-  const durationTicks = Number.isFinite(animation.length) && animation.length > 0 ? Math.max(1, Math.round(animation.length * 20)) : 20;
   const startDelayTicks = secondsToTicks(projectOptionalNumeric(animation.start_delay, 0, `animations[${index}].start_delay`), `${animation.name}.start_delay`);
+  const durationTicks = requireAnimationDurationTicks(Math.max(1, Math.round(animation.length * 20)) + startDelayTicks, `${animation.name}.length`);
   const blendWeight = projectOptionalNumeric(animation.blend_weight, 1, `animations[${index}].blend_weight`);
   return {
     id: sanitizeResourcePath(animation.name, `animation_${index + 1}`),
     name: prettify(animation.name),
     durationTicks,
-    playbackMode: animation.loop === "loop" ? "loop" : "once",
-    loopDelayTicks: 0,
+    playbackMode: animation.loop === "hold_on_last_frame" || animation.loop === "hold" ? "hold" : animation.loop === "loop" ? "loop" : "once",
+    loopDelayTicks: animation.loop === "loop" ? secondsToTicks(projectOptionalNumeric(animation.loop_delay, 0, `animations[${index}].loop_delay`), `${animation.name}.loop_delay`) : 0,
     events: { start: [], timeline: [], loop: [], stop: [] },
     preview,
     exportAvailability: { exportable: true },

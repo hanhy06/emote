@@ -31,10 +31,6 @@ export function importBedrockAnimationDocument(document: BedrockAnimationDocumen
       diagnostics.push(...animationDiagnostics);
       return [imported];
     } catch (reason) {
-      if (reason instanceof PreviewUnavailableError) {
-        diagnostics.push(...animationDiagnostics);
-        return [createPreviewOnlyAnimation(name, animation, index, reason, diagnostics)];
-      }
       diagnostics.push(skippedAnimationIssue(name, `animations.${name}`, reason));
       return [];
     }
@@ -57,31 +53,6 @@ export function importBedrockAnimationDocument(document: BedrockAnimationDocumen
   };
 }
 
-function createPreviewOnlyAnimation(name: string, animation: BedrockAnimation, index: number, reason: PreviewUnavailableError, diagnostics: ImportDiagnostic[]): ImportedAnimation {
-  const sourceDuration = bedrockAnimationDurationSeconds(animation);
-  const animationDurationTicks = sourceDuration === 0 && bedrockAnimationUsesTime(animation)
-    ? MAX_ANIMATION_DURATION_TICKS
-    : sourceDuration > 0 ? Math.max(1, Math.round(sourceDuration * TICKS_PER_SECOND)) : TICKS_PER_SECOND;
-  const startDelayTicks = numericStartDelayTicks(animation) ?? 0;
-  const durationTicks = requireAnimationDurationTicks(
-    animationDurationTicks === MAX_ANIMATION_DURATION_TICKS ? animationDurationTicks : animationDurationTicks + startDelayTicks,
-    `${name} duration`,
-  );
-  const fallback = createMolangPreviewFallback(name, durationTicks, reason);
-  diagnostics.push(fallback.diagnostic);
-  return {
-    id: sanitizeResourcePath(name, `animation_${index + 1}`),
-    name,
-    durationTicks,
-    playbackMode: animation.loop === true ? "loop" : animation.loop === "hold_on_last_frame" ? "hold" : "once",
-    loopDelayTicks: 0,
-    events: { start: [], timeline: [], loop: [], stop: [] },
-    preview: fallback.preview,
-    exportAvailability: { exportable: true },
-    runtime: { kind: "native", ...createBedrockRuntime(animation, null, startDelayTicks, durationTicks) },
-  };
-}
-
 function importAnimation(name: string, animation: BedrockAnimation, index: number, diagnostics: ImportDiagnostic[]): ImportedAnimation {
   const sourceDuration = bedrockAnimationDurationSeconds(animation);
   const assumedDuration = sourceDuration === 0 && bedrockAnimationUsesTime(animation);
@@ -93,29 +64,55 @@ function importAnimation(name: string, animation: BedrockAnimation, index: numbe
       sourcePath: `animations.${name}.animation_length`,
     });
   }
-  const playbackRate = bedrockAnimationPlaybackRate(animation, name);
+  let playbackRate: number | null = null;
+  let previewReason: PreviewUnavailableError | undefined;
+  try {
+    playbackRate = bedrockAnimationPlaybackRate(animation, name);
+  } catch (reason) {
+    if (!(reason instanceof PreviewUnavailableError)) throw reason;
+    previewReason = reason;
+  }
   const startDelayTicks = numericStartDelayTicks(animation) ?? 0;
   const maximumAnimationTicks = assumedDuration ? MAX_ANIMATION_DURATION_TICKS - startDelayTicks : undefined;
   if (maximumAnimationTicks !== undefined && maximumAnimationTicks < 1) throw new Error(`${name}.start_delay leaves no time for the animation.`);
   const animationDurationTicks = assumedDuration
     ? maximumAnimationTicks!
-    : Math.max(1, Math.round(sourceDuration / playbackRate * TICKS_PER_SECOND));
+    : Math.max(1, Math.round(sourceDuration / (playbackRate ?? 1) * TICKS_PER_SECOND));
   const durationTicks = requireAnimationDurationTicks(
     animationDurationTicks + startDelayTicks,
     `${name}.animation_length`,
   );
   const previewAnimationDurationTicks = assumedDuration ? TICKS_PER_SECOND : animationDurationTicks;
-  const runtimeSamplePlan = planBedrockAnimationSamples(animation, previewAnimationDurationTicks, playbackRate);
+  const runtimeSamplePlan = planBedrockAnimationSamples(animation, previewAnimationDurationTicks, playbackRate ?? 1);
+  let loopDelayTicks = 0;
+  try {
+    loopDelayTicks = Math.max(0, Math.round(evaluateBedrockExpression(animation.loop_delay ?? 0, 0, 1, `${name}.loop_delay`) * TICKS_PER_SECOND));
+  } catch (reason) {
+    if (!(reason instanceof PreviewUnavailableError)) throw reason;
+    previewReason ??= reason;
+    diagnostics.push({ severity: "warning", code: "bedrock_animation_property_ignored", message: `${name}.loop_delay has no matching dynamic playback setting and was omitted.`, sourcePath: `animations.${name}.loop_delay` });
+  }
+  const runtime = createBedrockRuntime(animation, playbackRate, startDelayTicks, durationTicks, runtimeSamplePlan);
+  let preview;
+  try {
+    if (previewReason) throw previewReason;
+    preview = createBedrockAnimationPreview(name, animation, previewAnimationDurationTicks, playbackRate ?? 1, startDelayTicks);
+  } catch (reason) {
+    if (!(reason instanceof PreviewUnavailableError)) throw reason;
+    const fallback = createMolangPreviewFallback(name, startDelayTicks + previewAnimationDurationTicks, reason);
+    preview = fallback.preview;
+    diagnostics.push(fallback.diagnostic);
+  }
   return {
     id: sanitizeResourcePath(name, `animation_${index + 1}`),
     name,
     durationTicks,
     playbackMode: animation.loop === true ? "loop" : animation.loop === "hold_on_last_frame" ? "hold" : "once",
-    loopDelayTicks: Math.max(0, Math.round(evaluateBedrockExpression(animation.loop_delay ?? 0, 0, 1, `${name}.loop_delay`) * TICKS_PER_SECOND)),
+    loopDelayTicks,
     events: { start: [], timeline: [], loop: [], stop: [] },
-    preview: createBedrockAnimationPreview(name, animation, previewAnimationDurationTicks, playbackRate, startDelayTicks),
+    preview,
     exportAvailability: { exportable: true },
-    runtime: { kind: "native", ...createBedrockRuntime(animation, playbackRate, startDelayTicks, durationTicks, runtimeSamplePlan) },
+    runtime: { kind: "native", ...runtime },
   };
 }
 
