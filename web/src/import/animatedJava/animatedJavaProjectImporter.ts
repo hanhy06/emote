@@ -1,4 +1,4 @@
-import type { BlockStateData, DisplayNbtPatch, ItemStackData, RuntimeNodeTracks } from "../../domain/minecraftData";
+import type { BlockStateData, DisplayNbtPatch, ItemStackData, RuntimeNode, RuntimeNodeTracks } from "../../domain/minecraftData";
 import type { PreviewProjection, PreviewVisibilityKeyframe } from "../../domain/previewProjection";
 import { readDisplayNbt } from "../../format/minecraftData";
 import { Matrix4 } from "three";
@@ -32,6 +32,7 @@ import { ANIMATED_JAVA_BLUEPRINT_TRANSFORMS } from "./animatedJavaCubeTransform"
 import { createMolangPreviewFallback } from "../common/previewFallback";
 import { molangScalar } from "../common/molangVector";
 import { hasMolangExpression } from "../../format/molang/runtimeAnalysis";
+import { initialDisplayNbt } from "../common/runtimeOutput";
 
 interface ProjectTransformGraph {
   groups: ReadonlyMap<string, AjProjectGroup>;
@@ -494,7 +495,7 @@ function projectAnimatedJavaState(animation: ImportedAnimation, frames: ProjectN
     if (!(reason instanceof PreviewUnavailableError)) throw reason;
     preview = createMolangPreviewFallback(animation.name, preview.durationTicks, reason).preview;
   }
-  const runtimeTracks = projectAnimatedJavaRuntimeState(animation.runtime.tracks, framesByNode);
+  const runtimeTracks = projectAnimatedJavaRuntimeState(animation.runtime.nodes, animation.runtime.tracks, framesByNode);
   return {
     ...animation,
     preview,
@@ -522,6 +523,7 @@ function projectAnimatedJavaPreviewState(
 }
 
 function projectAnimatedJavaRuntimeState(
+  nodes: Record<string, RuntimeNode>,
   sourceTracks: Record<string, RuntimeNodeTracks>,
   framesByNode: ReadonlyMap<string, readonly ProjectNodeStateFrame[]>,
 ): Record<string, RuntimeNodeTracks> {
@@ -530,11 +532,20 @@ function projectAnimatedJavaRuntimeState(
     const runtime = runtimeTracks[nodeId] ?? {};
     const visible = nodeFrames.flatMap((frame) => frame.visible === undefined ? [] : [{ tick: frame.tick, value: frame.visible }]);
     const nbt = nodeFrames.flatMap((frame) => frame.nbt ? [{ tick: frame.tick, value: frame.nbt }] : []);
-    runtimeTracks[nodeId] = {
+    const track: RuntimeNodeTracks = {
       ...runtime,
       ...(visible.length ? { visible: [...new Map([...(runtime.visible ?? []), ...visible].map((frame) => [frame.tick, frame])).values()].sort((first, second) => first.tick - second.tick) } : {}),
       ...(nbt.length ? { nbt: [...(runtime.nbt ?? []), ...nbt].sort((first, second) => first.tick - second.tick) } : {}),
     };
+    const node = nodes[nodeId];
+    if (track.visible?.length && track.visible[0].tick !== 0) track.visible.unshift({ tick: 0, value: node.type === "anchor" ? true : node.visible ?? true });
+    if (track.nbt?.length && track.nbt.every((frame) => !("molang" in frame.value))) {
+      const patches = track.nbt.map((frame) => frame.value as DisplayNbtPatch);
+      const initial = { tick: 0, value: initialDisplayNbt(node, patches, track.nbt[0].tick === 0 ? patches[0] : undefined) };
+      if (track.nbt[0].tick === 0) track.nbt[0] = initial;
+      else track.nbt.unshift(initial);
+    }
+    runtimeTracks[nodeId] = track;
   }
   return runtimeTracks;
 }

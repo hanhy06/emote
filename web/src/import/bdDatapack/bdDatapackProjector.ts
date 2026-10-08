@@ -3,6 +3,7 @@ import type { ImportedAnimation, ImportedNode, ImportedProject } from "../../dom
 import { createDefaultPlayerBehavior } from "../../format/emoteAnimation";
 import { sanitizeResourcePath } from "../../format/resourceLocation";
 import type { BdDatapackSource, BdSourceDisplay } from "./bdDatapackSource";
+import { initialDisplayNbt } from "../common/runtimeOutput";
 
 export function projectBdDatapack(source: BdDatapackSource, sourceName: string): ImportedProject {
   const name = prettify(source.namespace);
@@ -20,6 +21,13 @@ export function projectBdDatapack(source: BdDatapackSource, sourceName: string):
         visibility: [],
         nbt: animation.nbt[display.id].map((frame) => ({ ...frame, value: { ...frame.value } })),
       }]));
+      for (const display of source.displays) {
+        const frames = runtimeTracks[display.id].nbt;
+        if (frames.length === 0) continue;
+        const initial = { tick: 0, value: initialDisplayNbt(nodes[display.id], frames.map((frame) => frame.value), frames[0].tick === 0 ? frames[0].value : undefined) };
+        if (frames[0].tick === 0) frames[0] = initial;
+        else frames.unshift(initial);
+      }
       const previewTracks = Object.fromEntries(source.displays.map((display) => [display.id, {
         transforms: animation.transforms[display.id].map((frame) => ({ ...frame, interpolation: { ...frame.interpolation } })),
         visibility: [],
