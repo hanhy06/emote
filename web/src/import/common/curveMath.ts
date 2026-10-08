@@ -1,11 +1,11 @@
 import { CubicBezierCurve, SplineCurve, Vector2 } from "three";
 
-type EasingFunction = (progress: number) => number;
+type EasingFunction = (progress: number, argument?: number) => number;
 
-const easeOut = (easing: EasingFunction): EasingFunction => (progress) => 1 - easing(1 - progress);
-const easeInOut = (easing: EasingFunction): EasingFunction => (progress) => progress < 0.5
-  ? easing(progress * 2) / 2
-  : 1 - easing((1 - progress) * 2) / 2;
+const easeOut = (easing: EasingFunction): EasingFunction => (progress, argument) => 1 - easing(1 - progress, argument);
+const easeInOut = (easing: EasingFunction): EasingFunction => (progress, argument) => progress < 0.5
+  ? easing(progress * 2, argument) / 2
+  : 1 - easing((1 - progress) * 2, argument) / 2;
 const power = (exponent: number): EasingFunction => (progress) => Math.pow(progress, exponent);
 
 const sine: EasingFunction = (progress) => 1 - Math.cos(progress * Math.PI / 2);
@@ -15,10 +15,12 @@ const quartic: EasingFunction = power(4);
 const quintic: EasingFunction = power(5);
 const exponential: EasingFunction = (progress) => Math.pow(2, 10 * (progress - 1));
 const circular: EasingFunction = (progress) => 1 - Math.sqrt(1 - progress * progress);
-const back: EasingFunction = (progress) => progress * progress * ((1.70158 + 1) * progress - 1.70158);
-const elastic: EasingFunction = (progress) => 1 - Math.pow(Math.cos(progress * Math.PI / 2), 3) * Math.cos(progress * Math.PI);
-const bounce: EasingFunction = (progress) => {
-  const bounciness = 0.5;
+const back: EasingFunction = (progress, argument = 1) => {
+  const overshoot = argument * 1.70158;
+  return progress * progress * ((overshoot + 1) * progress - overshoot);
+};
+const elastic: EasingFunction = (progress, argument = 1) => 1 - Math.pow(Math.cos(progress * Math.PI / 2), 3) * Math.cos(progress * argument * Math.PI);
+const bounce: EasingFunction = (progress, bounciness = 0.5) => {
   const one = 121 / 16 * progress * progress;
   const two = 121 / 4 * bounciness * Math.pow(progress - 6 / 11, 2) + 1 - bounciness;
   const three = 121 * bounciness * bounciness * Math.pow(progress - 9 / 11, 2) + 1 - bounciness * bounciness;
@@ -64,11 +66,12 @@ const EASINGS: Readonly<Record<string, EasingFunction>> = {
 export const SUPPORTED_EASINGS = Object.freeze(Object.keys(EASINGS));
 
 export function easingProgress(name: string, progress: number, args?: number[]): number | undefined {
-  if (name.toLowerCase() === "step") {
+  const normalized = name.replaceAll("_", "").toLowerCase();
+  if (normalized === "step") {
     const steps = Math.max(2, Math.floor(args?.[0] ?? 5));
     return Math.floor(progress * steps + 1e-9) / steps;
   }
-  return EASINGS[name.toLowerCase()]?.(progress);
+  return EASINGS[normalized]?.(progress, args?.[0]);
 }
 
 export function sampleSpline(points: readonly (readonly [number, number])[], progress: number): number {
