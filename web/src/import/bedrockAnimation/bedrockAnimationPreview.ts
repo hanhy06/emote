@@ -58,7 +58,12 @@ function collectApproximateTransforms(name: string, animation: BedrockAnimation,
   const transforms = new Map<string, BedrockPlayerTransform>();
   for (const [sourceBoneName, sourceBone] of Object.entries(animation.bones ?? {})) {
     const bone = resolveBedrockPlayerBone(sourceBoneName);
-    if (!bone) continue;
+    if (!bone) {
+      for (const [channel, fallback] of [["position", [0, 0, 0]], ["rotation", [0, 0, 0]], ["scale", [1, 1, 1]]] as const) {
+        evaluateApproximateBedrockChannel(sourceBone[channel], time, [...fallback], `${name}.${sourceBoneName}.${channel}`);
+      }
+      continue;
+    }
     transforms.set(bone.id, {
       position: evaluateApproximateBedrockChannel(sourceBone.position, time, [0, 0, 0], `${name}.${sourceBoneName}.position`),
       rotation: evaluateApproximateBedrockChannel(sourceBone.rotation, time, [0, 0, 0], `${name}.${sourceBoneName}.rotation`),

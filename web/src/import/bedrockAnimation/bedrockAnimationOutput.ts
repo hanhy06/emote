@@ -18,6 +18,7 @@ export function createBedrockRuntime(
   startDelayTicks: number,
   durationTicks: number,
   samplePlan?: AnimationSamplePlan,
+  unknownBoneIds: Record<string, string> = {},
 ): Omit<Extract<AnimationRuntimeData, { kind: "native" }>, "kind"> {
   const timelineRate = playbackRate ?? 1;
   const nodes: Record<string, RuntimeNode> = {
@@ -25,8 +26,9 @@ export function createBedrockRuntime(
   };
   const tracks: Record<string, RuntimeNodeTracks> = {};
   const editorNodeByRuntimeNode: Record<string, string> = {};
-  for (const bone of BEDROCK_PLAYER_BONES) {
-    const source = Object.entries(animation.bones ?? {}).find(([name]) => resolveBedrockPlayerBone(name)?.id === bone.id)?.[1];
+  const unknownBones = Object.keys(animation.bones ?? {}).filter((name) => unknownBoneIds[name]).map((name) => ({ id: unknownBoneIds[name], parent: undefined, pivot: ZERO }));
+  for (const bone of [...BEDROCK_PLAYER_BONES, ...unknownBones]) {
+    const source = Object.entries(animation.bones ?? {}).find(([name]) => (resolveBedrockPlayerBone(name)?.id ?? unknownBoneIds[name]) === bone.id)?.[1];
     const parent = bone.parent ? `${bone.parent}_x` : BEDROCK_RUNTIME_SCENE_ID;
     const parentPivot = BEDROCK_PLAYER_BONES.find((candidate) => candidate.id === bone.parent)?.pivot ?? ZERO;
     const basePosition = bedrockPositionToCanonical(
@@ -36,6 +38,10 @@ export function createBedrockRuntime(
     nodes[`${bone.id}_z`] = { type: "anchor", parent, transform: { position: basePosition, rotation: ZERO, scale: ONE } };
     nodes[`${bone.id}_y`] = { type: "anchor", parent: `${bone.id}_z`, transform: { position: ZERO, rotation: ZERO, scale: ONE } };
     nodes[`${bone.id}_x`] = { type: "anchor", parent: `${bone.id}_y`, transform: { position: ZERO, rotation: ZERO, scale: ONE } };
+    if (unknownBones.some((unknown) => unknown.id === bone.id)) {
+      nodes[bone.id] = { type: "item_display", parent: `${bone.id}_x`, transform: { position: ZERO, rotation: ZERO, scale: ONE }, itemStack: { id: "minecraft:air", count: 1 }, itemDisplay: "none" };
+      editorNodeByRuntimeNode[bone.id] = bone.id;
+    }
     for (const slice of BEDROCK_PLAYER_SLICES.filter((candidate) => candidate.bone.id === bone.id)) {
       nodes[slice.id] = {
         type: "item_display",

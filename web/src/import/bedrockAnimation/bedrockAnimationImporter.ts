@@ -19,15 +19,28 @@ import {
 import { createBedrockRuntime } from "./bedrockAnimationOutput";
 import { createBedrockAnimationPreview } from "./bedrockAnimationPreview";
 import { createMolangPreviewFallback } from "../common/previewFallback";
+import { IDENTITY_MATRIX } from "../../format/matrix";
 
 export function importBedrockAnimationDocument(document: BedrockAnimationDocument, sourceName: string): ImportedProject {
   const sourceStem = sourceName.replace(/\.json$/i, "").trim() || "Bedrock Animation";
   const diagnostics: ImportDiagnostic[] = [...(document.animationDiagnostics ?? [])];
+  const nodes = createBedrockPlayerNodes();
+  const unknownBoneIds: Record<string, string> = {};
+  for (const animation of Object.values(document.animations)) {
+    for (const boneName of Object.keys(animation.bones ?? {})) {
+      if (resolveBedrockPlayerBone(boneName) || unknownBoneIds[boneName]) continue;
+      const base = `bedrock_custom_${sanitizeResourcePath(boneName, "bone").replaceAll("/", "_")}`;
+      let id = base;
+      for (let suffix = 2; nodes[id]; suffix++) id = `${base}_${suffix}`;
+      unknownBoneIds[boneName] = id;
+      nodes[id] = { binding: { sourceNodeId: boneName }, type: "item_display", defaultMatrix: IDENTITY_MATRIX, visible: true, itemStack: { id: "minecraft:air", count: 1 }, itemDisplay: "none" };
+    }
+  }
   const animations = Object.entries(document.animations).flatMap(([name, animation], index) => {
     const animationDiagnostics: ImportDiagnostic[] = [];
     try {
       collectAnimationDiagnostics(name, animation, animationDiagnostics);
-      const imported = importAnimation(name, animation, index, animationDiagnostics);
+      const imported = importAnimation(name, animation, index, animationDiagnostics, unknownBoneIds);
       diagnostics.push(...animationDiagnostics);
       return [imported];
     } catch (reason) {
@@ -46,14 +59,14 @@ export function importBedrockAnimationDocument(document: BedrockAnimationDocumen
     suggestedPlayer: createDefaultPlayerBehavior(),
     suggestedNamespace: sanitizeNamespace(sourceStem),
     suggestedRotationDeadzone: 0,
-    nodes: createBedrockPlayerNodes(),
+    nodes,
     animations,
     diagnostics,
     resources: new Map(),
   };
 }
 
-function importAnimation(name: string, animation: BedrockAnimation, index: number, diagnostics: ImportDiagnostic[]): ImportedAnimation {
+function importAnimation(name: string, animation: BedrockAnimation, index: number, diagnostics: ImportDiagnostic[], unknownBoneIds: Record<string, string>): ImportedAnimation {
   const sourceDuration = bedrockAnimationDurationSeconds(animation);
   const assumedDuration = sourceDuration === 0 && bedrockAnimationUsesTime(animation);
   if (assumedDuration) {
@@ -92,7 +105,7 @@ function importAnimation(name: string, animation: BedrockAnimation, index: numbe
     previewReason ??= reason;
     diagnostics.push({ severity: "warning", code: "bedrock_animation_property_ignored", message: `${name}.loop_delay has no matching dynamic playback setting and was omitted.`, sourcePath: `animations.${name}.loop_delay` });
   }
-  const runtime = createBedrockRuntime(animation, playbackRate, startDelayTicks, durationTicks, runtimeSamplePlan);
+  const runtime = createBedrockRuntime(animation, playbackRate, startDelayTicks, durationTicks, runtimeSamplePlan, unknownBoneIds);
   let preview;
   try {
     if (previewReason) throw previewReason;
@@ -138,8 +151,8 @@ function collectAnimationDiagnostics(name: string, animation: BedrockAnimation, 
     if (!resolveBedrockPlayerBone(boneName) && !isHiddenBedrockAccessoryBone(boneName)) {
       diagnostics.push({
         severity: "warning",
-        code: "bedrock_animation_bone_ignored",
-        message: `${name} bone ${boneName} is not part of the supported player rig and was ignored.`,
+        code: "bedrock_animation_bone_as_air",
+        message: `${name} bone ${boneName} was imported as an air item display; its transforms remain playable.`,
         sourcePath: `animations.${name}.bones.${boneName}`,
       });
     }
