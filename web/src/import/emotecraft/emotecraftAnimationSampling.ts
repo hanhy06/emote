@@ -2,7 +2,14 @@ import { Euler, Matrix4, Quaternion, Vector3 } from "three";
 import type { Matrix16 } from "../../domain/matrix";
 import { ConversionError } from "../../foundation/diagnostics";
 import { matrix4ToRowMajor } from "../../format/matrix";
-import { usesRuntimeMolangState } from "../../format/molang/runtimeAnalysis";
+import { hasMolangExpression, usesRuntimeMolangState } from "../../format/molang/runtimeAnalysis";
+import { mapMolangResult, rewriteMolangIdentifiers } from "../../format/molang/sourceTransformer";
+import type { ImportedNode } from "../../domain/conversionSeed";
+import type { RuntimeNode, RuntimeNodeTracks, RuntimeScalar, RuntimeVector } from "../../domain/minecraftData";
+import type { AnimationRuntimeData } from "../../domain/runtimeProjection";
+import { affineMolang, molangScalar } from "../common/molangVector";
+import { IDENTITY_TRANSFORM, importedNodeToRuntimeNode } from "../common/runtimeOutput";
+import { sanitizeResourcePath } from "../../format/resourceLocation";
 import { easingProgress } from "../common/curveMath";
 import { planAnimationAnchorSamples, type AnimationAnchor } from "../common/animationSampling";
 import { MolangBakeEvaluator } from "../common/molangBakeEvaluator";
@@ -46,25 +53,26 @@ const EVALUATOR = new MolangBakeEvaluator({
   },
 });
 
-export function sampleEmotecraftAnimation(animation: PalAnimation, displayName: string, durationTicks: number): EmotecraftAnimationSamples {
+export function sampleEmotecraftAnimation(animation: PalAnimation, displayName: string, durationTicks: number, options: { createPose?: boolean; airBoneIds?: Record<string, string> } = {}): EmotecraftAnimationSamples {
   const bentBones = new Set(EMOTECRAFT_PLAYER_PARTS.filter((part) => animation.bones[part.bone]?.bend.length).map((part) => part.bone));
   const slices = createEmotecraftSlices(bentBones);
   const snapshotAt = (time: number) => {
-    const poses = evaluatePoses(animation, time * 20);
-    const matrices = buildSliceMatrices(animation, slices, poses);
+    const poses = evaluatePoses(animation, time * 20, options.createPose);
+    const matrices = buildSliceMatrices(animation, slices, poses, options.airBoneIds);
     return slices.map((slice) => matrices.get(slice.id)!);
   };
-  const samplePlan = planAnimationAnchorSamples(collectAnimationAnchors(animation), durationTicks, slices.length, snapshotAt);
-  const transforms = Object.fromEntries(slices.map((slice) => [slice.id, [] as EmotecraftSampleFrame[]]));
+  const samplePlan = options.createPose ? { sourceTimes: new Map<number, number>(), stepTicks: new Set<number>() } : planAnimationAnchorSamples(collectAnimationAnchors(animation), durationTicks, slices.length, snapshotAt);
+  const nodeIds = [...slices.map((slice) => slice.id), ...Object.values(options.airBoneIds ?? {})];
+  const transforms = Object.fromEntries(nodeIds.map((id) => [id, [] as EmotecraftSampleFrame[]]));
   let bindMatrices: Map<string, Matrix4> | undefined;
-  for (let tick = 0; tick <= durationTicks; tick++) {
+  for (let tick = 0; tick <= (options.createPose ? 0 : durationTicks); tick++) {
     const sourceTick = (samplePlan.sourceTimes.get(tick) ?? tick / 20) * 20;
-    const poses = evaluatePoses(animation, sourceTick);
-    const matrices = buildSliceMatrices(animation, slices, poses);
+    const poses = evaluatePoses(animation, sourceTick, options.createPose);
+    const matrices = buildSliceMatrices(animation, slices, poses, options.airBoneIds);
     bindMatrices ??= matrices;
-    for (const slice of slices) transforms[slice.id].push({
+    for (const id of nodeIds) transforms[id].push({
       tick,
-      matrix: matrix4ToRowMajor(matrices.get(slice.id)!, `${displayName}/${slice.id}/${tick}`),
+      matrix: matrix4ToRowMajor(matrices.get(id)!, `${displayName}/${id}/${tick}`),
       step: tick === 0 || samplePlan.stepTicks.has(tick),
     });
   }
@@ -92,8 +100,8 @@ function collectAnimationAnchors(animation: PalAnimation): AnimationAnchor[] {
   return [...anchors.values()].sort((first, second) => first.time - second.time);
 }
 
-function evaluatePoses(animation: PalAnimation, tick: number): Map<string, BonePose> {
-  return new Map(Object.entries(animation.bones).map(([name, bone]) => [name, {
+function evaluatePoses(animation: PalAnimation, tick: number, createPose = false): Map<string, BonePose> {
+  return new Map(Object.entries(animation.bones).map(([name, bone]) => [name, createPose ? DEFAULT_POSE : {
     position: evaluateAxes(name, bone.position, tick, animation, "position"),
     rotation: evaluateAxes(name, bone.rotation, tick, animation, "rotation"),
     scale: evaluateAxes(name, bone.scale, tick, animation, "scale"),
@@ -177,7 +185,7 @@ function easeInOutSine(progress: number): number {
   return -(Math.cos(Math.PI * clamped) - 1) / 2;
 }
 
-function buildSliceMatrices(animation: PalAnimation, slices: readonly EmotecraftSlice[], poses: ReadonlyMap<string, BonePose>): Map<string, Matrix4> {
+function buildSliceMatrices(animation: PalAnimation, slices: readonly EmotecraftSlice[], poses: ReadonlyMap<string, BonePose>, airBoneIds: Record<string, string> = {}): Map<string, Matrix4> {
   const root = new Matrix4().makeScale(EMOTECRAFT_RENDER_SCALE, EMOTECRAFT_RENDER_SCALE, EMOTECRAFT_RENDER_SCALE);
   const body = root.clone().multiply(localBoneMatrix("body", undefined, poses.get("body"), animation));
   const boneMatrices = new Map<string, Matrix4>([["body", body]]);
@@ -201,10 +209,168 @@ function buildSliceMatrices(animation: PalAnimation, slices: readonly Emotecraft
     const bend = pivotRotationMatrix([0, 6, 0], torsoBend);
     for (const name of ["head", "left_arm", "right_arm"]) boneMatrices.set(name, body.clone().multiply(bend).multiply(body.clone().invert()).multiply(worldFor(name)));
   }
-  return new Map(slices.map((slice) => {
+  const matrices = new Map(slices.map((slice) => {
     const upper = boneMatrices.get(slice.source.bone)!;
     return [slice.id, slice.lower ? upper.clone().multiply(lowerBendMatrix(poses.get(slice.source.bone)?.bend ?? 0)) : upper];
   }));
+  for (const [name, id] of Object.entries(airBoneIds)) matrices.set(id, worldFor(name));
+  return matrices;
+}
+
+export function createEmotecraftRuntime(animation: PalAnimation, importedNodes: Record<string, ImportedNode>, samples: EmotecraftAnimationSamples, airBoneIds: Record<string, string>): AnimationRuntimeData {
+  const sceneId = "emotecraft_scene";
+  const nodes: Record<string, RuntimeNode> = { [sceneId]: { type: "anchor", transform: { ...IDENTITY_TRANSFORM, scale: [EMOTECRAFT_RENDER_SCALE, EMOTECRAFT_RENDER_SCALE, EMOTECRAFT_RENDER_SCALE] } } };
+  const tracks: Record<string, RuntimeNodeTracks> = {};
+  const bindings: Record<string, string> = {};
+  const names = new Set(["body", ...EMOTECRAFT_PLAYER_PARTS.map((part) => part.bone), ...Object.keys(animation.bones), ...Object.keys(animation.pivots), ...Object.values(animation.parents)]);
+  const boneIds = new Map<string, string>();
+  for (const name of names) {
+    const base = `pal_${sanitizeResourcePath(name, "bone").replaceAll("/", "_")}`;
+    let id = base;
+    for (let suffix = 2; [...boneIds.values()].includes(id); suffix++) id = `${base}_${suffix}`;
+    boneIds.set(name, id);
+  }
+  for (const name of names) {
+    const id = boneIds.get(name)!;
+    const parentName = name === "body" ? undefined : animation.parents[name] ?? "body";
+    const parent = parentName ? `${boneIds.get(parentName)!}_x` : sceneId;
+    const pivot = animation.pivots[name] ?? EMOTECRAFT_PIVOTS[name] ?? ZERO_PIVOT;
+    const parentPivot = parentName ? animation.pivots[parentName] ?? EMOTECRAFT_PIVOTS[parentName] ?? ZERO_PIVOT : ZERO_PIVOT;
+    const position = pivot.map((value, axis) => (value - parentPivot[axis]) / 16) as [number, number, number];
+    nodes[`${id}_z`] = { type: "anchor", parent, transform: { ...IDENTITY_TRANSFORM, position } };
+    nodes[`${id}_y`] = { type: "anchor", parent: `${id}_z`, transform: IDENTITY_TRANSFORM };
+    nodes[`${id}_x`] = { type: "anchor", parent: `${id}_y`, transform: IDENTITY_TRANSFORM };
+    nodes[`${id}_lower`] = { type: "anchor", parent: `${id}_x`, transform: { ...IDENTITY_TRANSFORM, position: [0, -6 / 16, 0] } };
+    const bone = animation.bones[name];
+    if (!bone) continue;
+    const frameTracks = { position: [], rotation: [], scale: [] } as Required<Pick<RuntimeNodeTracks, "position" | "rotation" | "scale">>;
+    const yRotation: NonNullable<RuntimeNodeTracks["rotation"]> = [];
+    const xRotation: NonNullable<RuntimeNodeTracks["rotation"]> = [];
+    const lowerPosition: NonNullable<RuntimeNodeTracks["position"]> = [];
+    const lowerRotation: NonNullable<RuntimeNodeTracks["rotation"]> = [];
+    for (let tick = 0; tick <= samples.durationTicks; tick++) {
+      const interpolation = tick < samples.durationTicks ? { interpolation: "step" as const } : {};
+      const rotation = bone.rotation.map((frames, axis) => affineMolang(nativeChannelValue(frames, tick, animation, 0, true), axis === 2 ? 1 : -1, 0)) as unknown as RuntimeVector;
+      frameTracks.position.push({ tick, value: bone.position.map((frames, axis) => affineMolang(nativeChannelValue(frames, tick, animation, 0, false), (axis === 0 ? -1 : 1) / 16, position[axis])) as unknown as RuntimeVector, ...interpolation });
+      frameTracks.rotation.push({ tick, value: [0, 0, rotation[2]], ...interpolation });
+      yRotation.push({ tick, value: [0, rotation[1], 0], ...interpolation });
+      xRotation.push({ tick, value: [rotation[0], 0, 0], ...interpolation });
+      frameTracks.scale.push({ tick, value: bone.scale.map((frames) => nativeChannelValue(frames, tick, animation, 1, false)) as unknown as RuntimeVector, ...interpolation });
+      if (bone.bend.length) {
+        const bend = nativeChannelValue(bone.bend, tick, animation, 0, true);
+        const sine = typeof bend === "number" ? Math.sin(bend * Math.PI / 180) : mapMolangResult(bend, (value) => `math.sin(${value})`);
+        const cosine = typeof bend === "number" ? Math.cos(bend * Math.PI / 180) : mapMolangResult(bend, (value) => `math.cos(${value})`);
+        lowerPosition.push({ tick, value: [0, affineMolang(cosine, -2 / 16, -4 / 16), affineMolang(sine, 2 / 16, 0)], ...interpolation });
+        lowerRotation.push({ tick, value: [affineMolang(bend, -1, 0), 0, 0], ...interpolation });
+      }
+    }
+    tracks[`${id}_z`] = { position: frameTracks.position, rotation: frameTracks.rotation };
+    tracks[`${id}_y`] = { rotation: yRotation };
+    tracks[`${id}_x`] = { rotation: xRotation, scale: frameTracks.scale };
+    if (lowerPosition.length) tracks[`${id}_lower`] = { position: lowerPosition, rotation: lowerRotation };
+  }
+  const torsoBend = animation.bones.torso?.bend;
+  if (animation.applyBendToOtherBones && torsoBend?.length) {
+    const bendId = "pal_inherited_torso_bend";
+    nodes[bendId] = { type: "anchor", parent: `${boneIds.get("body")!}_x`, transform: IDENTITY_TRANSFORM };
+    const position: NonNullable<RuntimeNodeTracks["position"]> = [];
+    const rotation: NonNullable<RuntimeNodeTracks["rotation"]> = [];
+    for (let tick = 0; tick <= samples.durationTicks; tick++) {
+      const bend = nativeChannelValue(torsoBend, tick, animation, 0, true);
+      const sine = typeof bend === "number" ? Math.sin(bend * Math.PI / 180) : mapMolangResult(bend, (value) => `math.sin(${value})`);
+      const cosine = typeof bend === "number" ? Math.cos(bend * Math.PI / 180) : mapMolangResult(bend, (value) => `math.cos(${value})`);
+      const interpolation = tick < samples.durationTicks ? { interpolation: "step" as const } : {};
+      position.push({ tick, value: [0, affineMolang(cosine, -6 / 16, 6 / 16), affineMolang(sine, 6 / 16, 0)], ...interpolation });
+      rotation.push({ tick, value: [affineMolang(bend, -1, 0), 0, 0], ...interpolation });
+    }
+    tracks[bendId] = { position, rotation };
+    const inheritedParents = new Map<string, string>();
+    const inheritParent = (name: string): string => {
+      if (name === "body") return bendId;
+      const existing = inheritedParents.get(name);
+      if (existing) return existing;
+      const id = boneIds.get(name)!;
+      const inherited = `${id}_inherited`;
+      inheritedParents.set(name, `${inherited}_x`);
+      const parent = inheritParent(animation.parents[name] ?? "body");
+      for (const axis of ["z", "y", "x"]) {
+        nodes[`${inherited}_${axis}`] = { ...nodes[`${id}_${axis}`], parent: axis === "z" ? parent : `${inherited}_${axis === "y" ? "z" : "y"}` };
+        if (tracks[`${id}_${axis}`]) tracks[`${inherited}_${axis}`] = tracks[`${id}_${axis}`];
+      }
+      return `${inherited}_x`;
+    };
+    for (const name of ["head", "left_arm", "right_arm"]) {
+      nodes[`${boneIds.get(name)!}_z`].parent = inheritParent(animation.parents[name] ?? "body");
+    }
+  }
+  for (const slice of samples.slices) {
+    nodes[slice.id] = importedNodeToRuntimeNode(importedNodes[slice.id], IDENTITY_TRANSFORM, `${boneIds.get(slice.source.bone)!}_${slice.lower ? "lower" : "x"}`);
+    bindings[slice.id] = slice.id;
+  }
+  for (const [name, id] of Object.entries(airBoneIds)) {
+    nodes[id] = importedNodeToRuntimeNode(importedNodes[id], IDENTITY_TRANSFORM, `${boneIds.get(name)!}_x`);
+    bindings[id] = id;
+  }
+  return { kind: "native", nodes, tracks, bindings };
+}
+
+function nativeChannelValue(frames: readonly PalKeyframe[], tick: number, animation: PalAnimation, fallback: number, angular: boolean): RuntimeScalar {
+  if (!frames.length) return fallback;
+  const frame = frames.find((candidate) => candidate.endTick > tick) ?? frames.at(-1)!;
+  const progress = Math.max(0, Math.min(1, frame.endTick > frame.startTick ? (tick - frame.startTick) / (frame.endTick - frame.startTick) : 0));
+  const scalar = (value: PalExpression): RuntimeScalar => typeof value === "number" ? angular ? value * 180 / Math.PI : value : molangScalar(rewriteMolangIdentifiers(value, (identifier) => /^(?:q|query|global)\.key_frame_lerp_time$/i.test(identifier) ? String(progress) : undefined));
+  const argument = (value: PalExpression, index: number): RuntimeScalar => {
+    const rewritten = typeof value === "number" ? value : molangScalar(rewriteMolangIdentifiers(value, (identifier) => /^(?:q|query|global)\.key_frame_lerp_time$/i.test(identifier) ? String(progress) : undefined));
+    return angular && (frame.easing === "catmullrom" || frame.easing === "bezier" && index % 2 === 0) ? affineMolang(rewritten, 180 / Math.PI, 0) : rewritten;
+  };
+  const start = scalar(frame.start);
+  const end = scalar(frame.end);
+  let value: RuntimeScalar;
+  if (typeof start === "number" && typeof end === "number" && !frame.easingArgs.some((args) => args.some(hasMolangExpression))) {
+    const args = frame.easingArgs.map((args, index) => args.map((arg) => Number(argument(arg, index))));
+    value = interpolateFrame(frame, start, end, progress, args);
+  } else if (frame.easing === "constant") {
+    value = progress >= 1 ? end : start;
+  } else if (frame.easing === "catmullrom" && frame.easingArgs.length >= 2) {
+    const p0 = frame.easingArgs[0][0] === undefined ? start : argument(frame.easingArgs[0][0], 0);
+    const p3 = frame.easingArgs[1][0] === undefined ? end : argument(frame.easingArgs[1][0], 1);
+    value = `((${start}) * ${1 - 2.5 * progress ** 2 + 1.5 * progress ** 3} + (${end}) * ${0.5 * progress + 2 * progress ** 2 - 1.5 * progress ** 3} + (${p0}) * ${-0.5 * progress + progress ** 2 - 0.5 * progress ** 3} + (${p3}) * ${-0.5 * progress ** 2 + 0.5 * progress ** 3})`;
+  } else if (frame.easing === "bezier" && frame.easingArgs.length >= 2) {
+    const length = Math.max((frame.endTick - frame.startTick) / 20, Number.EPSILON);
+    const rightTime = Math.max(0, Math.min(1, Number(frame.easingArgs[3]?.[0] ?? 0.1) / length));
+    const leftTime = Math.max(0, Math.min(1, 1 + Number(frame.easingArgs[1]?.[0] ?? 0) / length));
+    let t = 0;
+    let distance = Infinity;
+    for (let index = 0; index <= 200; index++) {
+      const candidate = index / 200;
+      const current = Math.abs(cubic(candidate, 0, rightTime, leftTime, 1) - progress);
+      if (current < distance) { distance = current; t = candidate; }
+    }
+    const left = argument(frame.easingArgs[0]?.[0] ?? 0, 0);
+    const right = argument(frame.easingArgs[2]?.[0] ?? 0, 2);
+    if (hasMolangExpression(frame.easingArgs[1]?.[0]) || hasMolangExpression(frame.easingArgs[3]?.[0])) {
+      value = `t.emote_curve_right = math.clamp((${argument(frame.easingArgs[3]?.[0] ?? 0.1, 3)}) / ${length}, 0, 1); t.emote_curve_left = math.clamp(1 + (${argument(frame.easingArgs[1]?.[0] ?? 0, 1)}) / ${length}, 0, 1); t.emote_curve_best = 0; t.emote_curve_distance = 1000; t.emote_curve_index = 0; loop(201, { t.emote_curve_t = t.emote_curve_index / 200; t.emote_curve_current = math.abs(3 * math.pow(1 - t.emote_curve_t, 2) * t.emote_curve_t * t.emote_curve_right + 3 * (1 - t.emote_curve_t) * math.pow(t.emote_curve_t, 2) * t.emote_curve_left + math.pow(t.emote_curve_t, 3) - ${progress}); t.emote_curve_best = t.emote_curve_current < t.emote_curve_distance ? t.emote_curve_t : t.emote_curve_best; t.emote_curve_distance = math.min(t.emote_curve_distance, t.emote_curve_current); t.emote_curve_index = t.emote_curve_index + 1; }); return ((${start}) * (1 - 3 * math.pow(t.emote_curve_best, 2) + 2 * math.pow(t.emote_curve_best, 3)) + (${end}) * (3 * math.pow(t.emote_curve_best, 2) - 2 * math.pow(t.emote_curve_best, 3)) + (${right}) * (3 * math.pow(1 - t.emote_curve_best, 2) * t.emote_curve_best) + (${left}) * (3 * (1 - t.emote_curve_best) * math.pow(t.emote_curve_best, 2)));`;
+    } else {
+      value = `((${start}) * ${1 - 3 * t ** 2 + 2 * t ** 3} + (${end}) * ${3 * t ** 2 - 2 * t ** 3} + (${right}) * ${3 * (1 - t) ** 2 * t} + (${left}) * ${3 * (1 - t) * t ** 2})`;
+    }
+  } else if (frame.easing === "step" && hasMolangExpression(frame.easingArgs[0]?.[0])) {
+    const steps = `math.max(2, math.floor(${argument(frame.easingArgs[0][0], 0)}))`;
+    const eased = `(math.floor(${progress} * (${steps}) + 0.000000001) / (${steps}))`;
+    value = `((${start}) * (1 - ${eased}) + (${end}) * ${eased})`;
+  } else {
+    const args = frame.easingArgs.map((args) => Number(args[0] ?? 0));
+    const eased = easingProgress(frame.easing, progress, args) ?? progress;
+    value = `((${start}) * ${1 - eased} + (${end}) * ${eased})`;
+  }
+  if (animation.beginTick !== undefined && animation.beginTick > 0 && tick < animation.beginTick) {
+    const blend = easeInOutSine(tick / animation.beginTick);
+    value = affineMolang(value, blend, fallback * (1 - blend));
+  }
+  if (animation.endTick !== undefined && animation.lengthTicks > animation.endTick && tick >= animation.endTick) {
+    const blend = easeInOutSine((tick - animation.endTick) / (animation.lengthTicks - animation.endTick));
+    value = affineMolang(value, 1 - blend, fallback * blend);
+  }
+  return value;
 }
 
 function localBoneMatrix(name: string, parentName: string | undefined, pose: BonePose | undefined, animation: PalAnimation): Matrix4 {

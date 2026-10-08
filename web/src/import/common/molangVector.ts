@@ -1,4 +1,5 @@
 import type { RuntimeScalar, RuntimeVectorKeyframe } from "../../domain/minecraftData";
+import { mapMolangResult } from "../../format/molang/sourceTransformer";
 
 export type MolangVector = [RuntimeScalar, RuntimeScalar, RuntimeScalar];
 
@@ -11,12 +12,14 @@ export function molangScalar(value: string | number): RuntimeScalar {
 export function affineMolang(value: RuntimeScalar, factor: number, offset: number): RuntimeScalar {
   if (typeof value === "number") return value * factor + offset;
   if (factor === 1 && offset === 0) return value;
-  const scaled = factor === 1 ? `(${value})` : `((${value}) * ${factor})`;
-  return offset === 0 ? scaled : `(${scaled} + ${offset})`;
+  return mapMolangResult(value, (result) => {
+    const scaled = factor === 1 ? `(${result})` : `((${result}) * ${factor})`;
+    return offset === 0 ? scaled : `(${scaled} + ${offset})`;
+  });
 }
 
 export function negateMolang(value: RuntimeScalar): RuntimeScalar {
-  return typeof value === "number" ? -value : `-(${value})`;
+  return typeof value === "number" ? -value : mapMolangResult(value, (result) => `-(${result})`);
 }
 
 export function isolateMolangAxis(
