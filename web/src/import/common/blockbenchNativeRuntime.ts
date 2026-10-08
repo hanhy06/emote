@@ -9,7 +9,7 @@ import { blockbenchEasingToEmote } from "./animationEasing";
 import { affineMolang, isolateMolangAxis, molangScalar, negateMolang, type MolangVector } from "./molangVector";
 import { IDENTITY_TRANSFORM, importedNodeToRuntimeNode, ONE_VECTOR, ZERO_VECTOR } from "./runtimeOutput";
 import type { CubeProjectTransformConvention } from "./blockbenchCubeTransform";
-import { usesRuntimeMolangState } from "../../format/molang/runtimeAnalysis";
+import { hasMolangExpression } from "../../format/molang/runtimeAnalysis";
 import type { BlockbenchChannelEvaluator } from "./blockbenchKeyframeEvaluator";
 import type { BoneEntry } from "./blockbenchCubeModel";
 import { blockbenchChannelSampling } from "./blockbenchAnimationSource";
@@ -99,8 +99,8 @@ function blockbenchChannelFrames(
   const { channels, transforms } = options;
   const source = (animator.keyframes ?? []).filter((frame) => frame.channel === channel).sort((first, second) => first.time - second.time);
   if (source.length === 0) return undefined;
-  const usesRuntimeState = source.some((frame) => frame.data_points.some((point) => usesRuntimeMolangState(point.x) || usesRuntimeMolangState(point.y) || usesRuntimeMolangState(point.z)));
-  if (!usesRuntimeState && channels.canBake(source, channel, [...fallback], `runtime.${channel}`)) {
+  const usesMolang = source.some((frame) => frame.data_points.some((point) => hasMolangExpression(point.x) || hasMolangExpression(point.y) || hasMolangExpression(point.z)));
+  if (!usesMolang && channels.canBake(source, channel, [...fallback], `runtime.${channel}`)) {
     const baked = Array.from({ length: durationTicks + 1 }, (_, tick): RuntimeVectorKeyframe => {
       const sourceTime = startDelayTicks > 0 ? (tick - startDelayTicks) / TICKS_PER_SECOND : sourceTimes?.get(tick) ?? tick / TICKS_PER_SECOND;
       const value = transform(channels.evaluate(source, channel, sourceTime, [...fallback], `runtime.${channel}`) as MolangVector);

@@ -45,7 +45,11 @@ describe("documentation sample conversion", () => {
     const expected = await readJson(`docs/sample/${emoteFileName(actual.id)}`) as EmoteAnimation;
 
 
-    expectMatchingMatrices(removeRedundantKeyframes(actual), expected);
+    const preservedTimeExpressions = name === "no" || name === "yes";
+    if (preservedTimeExpressions) {
+      expect(JSON.stringify(actual.timeline.tracks)).toContain("math.sin(q.anim_time * 120)");
+    }
+    expectMatchingMatrices(removeRedundantKeyframes(actual), expected, preservedTimeExpressions ? ["left_arm", "right_arm"] : []);
   });
 
   it.each(SIT_MATRIX_SAMPLES)("matches the existing %s sample", async (name) => {
@@ -144,7 +148,7 @@ describe("current schema JSON samples", () => {
   });
 });
 
-function expectMatchingMatrices(actual: EmoteAnimation, expected: EmoteAnimation): void {
+function expectMatchingMatrices(actual: EmoteAnimation, expected: EmoteAnimation, preservedExpressionNodes: readonly string[] = []): void {
   const actualTracks = bakeSchema4Preview(actual);
   const expectedTracks = bakeSchema4Preview(expected);
   const displayNodeIds = (animation: EmoteAnimation) => Object.entries(animation.nodes)
@@ -153,6 +157,7 @@ function expectMatchingMatrices(actual: EmoteAnimation, expected: EmoteAnimation
 
   expect(displayNodeIds(actual)).toEqual(displayNodeIds(expected));
   for (const id of displayNodeIds(expected)) {
+    if (preservedExpressionNodes.some((nodeId) => id === nodeId || id.startsWith(`${nodeId}_`))) continue;
     const actualFrames = actualTracks[id]?.transforms;
     const expectedFrames = expectedTracks[id]?.transforms;
     expect(actualFrames, `${id} display node must exist`).toBeDefined();

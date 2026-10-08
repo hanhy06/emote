@@ -7,6 +7,7 @@ const PREVIEW_ERROR = "unsupported_geckolib_preview_molang";
 
 export const GECKOLIB_CHANNELS = createBlockbenchChannelEvaluator({
   bakeEvaluator: new MolangBakeEvaluator({
+    rejectNondeterministic: true,
     error: { code: BAKE_ERROR, message: (expression) => `GeckoLib expression ${expression} cannot be baked.` },
   }),
   previewEvaluator: new MolangBakeEvaluator({

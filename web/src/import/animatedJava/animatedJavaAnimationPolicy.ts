@@ -7,6 +7,7 @@ const PREVIEW_ERROR = "unsupported_animated_java_preview_molang";
 
 export const ANIMATED_JAVA_CHANNELS = createBlockbenchChannelEvaluator({
   bakeEvaluator: new MolangBakeEvaluator({
+    rejectNondeterministic: true,
     error: { code: BAKE_ERROR, message: (expression) => `Animated Java expression ${expression} cannot be baked.` },
   }),
   previewEvaluator: new MolangBakeEvaluator({

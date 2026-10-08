@@ -10,6 +10,10 @@ import { rewriteMolangIdentifiers } from "./sourceTransformer";
 
 const QUERY_IDENTIFIER = /^(?:q|query)\.([A-Za-z_][A-Za-z0-9_]*)$/i;
 
+export function hasMolangExpression(value: unknown): value is string {
+  return typeof value === "string" && !/^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(value.trim());
+}
+
 export const PREVIEW_RUNTIME_QUERY_VALUES: Readonly<Record<string, number>> = Object.fromEntries(
   [...MOLANG_QUERY_VALUE_NAMES].flatMap((name) => {
     const value = TRUTHY_PREVIEW_QUERY_VALUE_NAMES.has(name) ? 1 : 0;

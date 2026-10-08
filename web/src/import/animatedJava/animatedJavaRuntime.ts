@@ -5,7 +5,7 @@ import type { AnimationRuntimeData } from "../../domain/runtimeProjection";
 import { affineMolang, isolateMolangAxis, molangScalar, type MolangVector } from "../common/molangVector";
 import { IDENTITY_TRANSFORM, importedNodeToRuntimeNode, ONE_VECTOR, ZERO_VECTOR } from "../common/runtimeOutput";
 import { blockbenchEasingToEmote, blockbenchIntervalIsStep } from "../common/animationEasing";
-import { usesRuntimeMolangState } from "../../format/molang/runtimeAnalysis";
+import { hasMolangExpression } from "../../format/molang/runtimeAnalysis";
 import type { AjProjectAnimation, AjProjectDisplayElement, AjProjectKeyframe } from "./animatedJavaProjectSchema";
 import { ANIMATED_JAVA_CHANNELS } from "./animatedJavaAnimationPolicy";
 
@@ -94,8 +94,8 @@ function ajProjectFrames(
 ): RuntimeVectorKeyframe[] | undefined {
   const source = keyframes.filter((frame) => frame.channel === channel).sort((a, b) => a.time - b.time);
   if (source.length === 0) return undefined;
-  const usesRuntimeState = source.some((frame) => frame.data_points.some((point) => usesRuntimeMolangState(point.x) || usesRuntimeMolangState(point.y) || usesRuntimeMolangState(point.z)));
-  if (!usesRuntimeState && ANIMATED_JAVA_CHANNELS.canBake(source, channel, [...sourceFallback], `runtime.${channel}`)) {
+  const usesMolang = source.some((frame) => frame.data_points.some((point) => hasMolangExpression(point.x) || hasMolangExpression(point.y) || hasMolangExpression(point.z)));
+  if (!usesMolang && ANIMATED_JAVA_CHANNELS.canBake(source, channel, [...sourceFallback], `runtime.${channel}`)) {
     const baked = Array.from({ length: durationTicks + 1 }, (_, tick): RuntimeVectorKeyframe => {
       const animationTick = tick - startDelayTicks;
       const roundedAnchors = source.filter((frame) => Math.round(frame.time * TICKS_PER_SECOND) === animationTick);

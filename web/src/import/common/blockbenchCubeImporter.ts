@@ -40,7 +40,7 @@ import type { CubeProjectTransformConvention } from "./blockbenchCubeTransform";
 import { planAnimationSamples } from "./blockbenchAnimationSampling";
 import type { AnimationSamplePlan } from "./animationSampling";
 import type { BoneEntry } from "./blockbenchCubeModel";
-import { usesRuntimeMolangState } from "../../format/molang/runtimeAnalysis";
+import { hasMolangExpression, usesRuntimeMolangState } from "../../format/molang/runtimeAnalysis";
 import type { BlockbenchAnimationSource, BlockbenchTransformChannel } from "./blockbenchAnimationSource";
 import {
   PLAYER_RENDER_SCALE,
@@ -304,9 +304,11 @@ function resolveBlockbenchAnimationSource(
     `${animation.name}.length`,
   );
   const boneAnimators = resolveBoneAnimators(animation, index, bones, formatLabel, diagnosticPrefix);
-  let nativeRuntime = options.runtimeOutput === "native" || blockbenchAnimationUsesRuntimeState(animation);
+  let nativeRuntime = options.runtimeOutput === "native" || blockbenchAnimationUsesMolang(animation);
   let samplePlan: AnimationSamplePlan | undefined;
-  if (!blockbenchAnimationUsesRuntimeState(animation)) {
+  if (!Object.values(animation.animators).some((animator) => (animator.keyframes ?? []).some((frame) => frame.data_points.some((point) =>
+    usesRuntimeMolangState(point.x) || usesRuntimeMolangState(point.y) || usesRuntimeMolangState(point.z),
+  )))) {
     const snapshots = new Map<string, Matrix4[]>();
     const snapshotAt = (time: number) => {
       const key = time.toFixed(9);
@@ -476,9 +478,9 @@ function approximatePreviewStepAt(
   return false;
 }
 
-function blockbenchAnimationUsesRuntimeState(animation: BbAnimation): boolean {
+function blockbenchAnimationUsesMolang(animation: BbAnimation): boolean {
   return Object.values(animation.animators).some((animator) => (animator.keyframes ?? []).some((keyframe) => keyframe.data_points.some((point) =>
-    usesRuntimeMolangState(point.x) || usesRuntimeMolangState(point.y) || usesRuntimeMolangState(point.z),
+    hasMolangExpression(point.x) || hasMolangExpression(point.y) || hasMolangExpression(point.z),
   )));
 }
 
