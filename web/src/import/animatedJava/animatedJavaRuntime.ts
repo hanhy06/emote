@@ -65,7 +65,7 @@ export function createAnimatedJavaRuntime(
     const rotation = ajProjectFrames(keyframes, "rotation", ZERO_VECTOR, ZERO_VECTOR, startDelayTicks, durationTicks, (value, axis) => affineMolang(value, (axis === 2 ? 1 : -1) * blendWeight, 0));
     const scale = ajProjectFrames(keyframes, "scale", ONE_VECTOR, baseScale, startDelayTicks, durationTicks, (value, axis) => {
       const blended = affineMolang(value, blendWeight, 1 - blendWeight);
-      return element.type === "animated_java:vanilla_item_display" ? blended : multiply(blended, baseScale[axis]);
+      return element.type === "animated_java:vanilla_item_display" && !element.airFallback ? blended : multiply(blended, baseScale[axis]);
     });
     if (position) tracks[ids.x] = { position };
     if (rotation) {

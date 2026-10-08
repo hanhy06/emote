@@ -33,7 +33,13 @@ export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {
   },
 
   async import(input: ImportInput): Promise<ImportedProject> {
-    const parsed = parseInputJson(input);
+    let parsed = parseInputJson(input);
+    if (isRecord(parsed) && isRecord(parsed.nodes)) {
+      parsed = { ...parsed, nodes: Object.fromEntries(Object.entries(parsed.nodes).map(([id, node]) => {
+        if (!isRecord(node) || ["anchor", "item_display", "block_display", "text_display"].includes(String(node.type))) return [id, node];
+        return [id, { ...node, type: "item_display", item_stack_snbt: '{id:"minecraft:air",count:1}', item_display: "none", skin: undefined }];
+      })) };
+    }
     const animation = requireEmoteAnimation(parsed);
     const issues = validateEmoteAnimation(animation);
     if (issues.length > 0) {

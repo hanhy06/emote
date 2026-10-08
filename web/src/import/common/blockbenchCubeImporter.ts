@@ -19,6 +19,7 @@ import {
   type BbLocator,
   type BbOutlinerEntry,
   type BbOutlinerGroup,
+  type BbUnknownElement,
   type BlockbenchCubeProject,
 } from "./blockbenchCubeSchema";
 import type { BlockbenchChannelEvaluator } from "./blockbenchKeyframeEvaluator";
@@ -96,13 +97,17 @@ export function importBlockbenchCubeContent(
     const boneMatrix = new Matrix4().set(...boneWorldMatrix(bone, new Map(), transforms, formatLabel));
     const playableCubes = playableCubesByBone.get(bone.uuid) ?? [];
     if (playableCubes.length === 0) {
-      nodes[bone.id] = {
+      const localMatrix = bone.airDisplay ? new Matrix4().makeScale(...(bone.airDisplay.scale ?? [1, 1, 1]) as [number, number, number]) : new Matrix4();
+      const common = {
         binding: { sourceNodeId: bone.id},
-        type: "anchor",
-        defaultMatrix: matrix4ToRowMajor(boneMatrix, `${formatLabel} bone ${bone.id}`),
-        };
-      bone.nodes.push({ id: bone.id, localMatrix: new Matrix4() });
+        defaultMatrix: matrix4ToRowMajor(boneMatrix.clone().multiply(localMatrix), `${formatLabel} bone ${bone.id}`),
+      };
+      nodes[bone.id] = bone.airDisplay
+        ? { ...common, type: "item_display", visible: true, itemStack: { id: "minecraft:air", count: 1 }, itemDisplay: "none" }
+        : { ...common, type: "anchor" };
+      bone.nodes.push({ id: bone.id, localMatrix });
       bindEditorNode(bone.uuid, bone.id);
+      if (bone.airDisplay) diagnostics.push({ severity: "warning", code: `${options.diagnosticPrefix}_element_as_air`, message: `${bone.group.name} (${bone.airDisplay.type}) was imported as an air item display; its transforms remain playable.`, sourcePath: bone.uuid });
     } else for (const [cubeIndex, cube] of playableCubes.entries()) {
       const nodeId = cubeIndex === 0 ? bone.id : uniqueCubeNodeId(bone, cube, cubeIndex, nodeIds);
       const hiddenAccessory = isHiddenAccessoryBone(bone);
@@ -188,11 +193,17 @@ function buildBoneEntries(project: BlockbenchCubeProject, formatLabel: string): 
   const ids = new Set<string>();
   const visit = (entry: BbOutlinerEntry, parent?: BoneEntry) => {
     if (typeof entry === "string") {
-      if (!parent) throw new Error(`${formatLabel} cube ${entry} is not parented to a bone.`);
       const element = elements.get(entry);
       if (!element) throw new Error(`${formatLabel} outliner references unknown element ${entry}.`);
+      if (element.type && element.type !== "cube" && element.type !== "locator") {
+        const display = element as BbUnknownElement;
+        visit({ uuid: display.uuid, name: display.name ?? display.uuid, origin: display.position ?? display.origin ?? [0, 0, 0], rotation: display.rotation ?? [0, 0, 0], children: [] }, parent);
+        entries.at(-1)!.airDisplay = display;
+        return;
+      }
+      if (!parent) throw new Error(`${formatLabel} cube ${entry} is not parented to a bone.`);
       if (isLocator(element)) parent.locators.push(element);
-      else parent.cubes.push(element);
+      else parent.cubes.push(element as BbCube);
       return;
     }
     const saved = groups.get(entry.uuid);

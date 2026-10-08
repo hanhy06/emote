@@ -69,6 +69,14 @@ function requireOutlinerEntry(value: unknown, path: string): void {
 
 function requireElement(value: unknown, path: string): void {
   const element = requireRecord(value, path);
+  if (typeof element.type === "string" && element.type !== "cube" && element.type !== "locator") {
+    requireString(element.uuid, `${path}.uuid`);
+    optionalString(element.name, `${path}.name`);
+    for (const property of ["position", "origin", "rotation", "scale"]) {
+      if (element[property] !== undefined) requireVector(element[property], `${path}.${property}`);
+    }
+    return;
+  }
   if (element.type === "locator") {
     requireString(element.uuid, `${path}.uuid`);
     requireString(element.name, `${path}.name`);

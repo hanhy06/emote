@@ -48,7 +48,17 @@ export interface BbLocator {
   ignore_inherited_scale?: boolean;
 }
 
-export type BbElement = BbCube | BbLocator;
+export interface BbUnknownElement {
+  uuid: string;
+  name?: string;
+  type: string;
+  position?: number[];
+  origin?: number[];
+  rotation?: number[];
+  scale?: number[];
+}
+
+export type BbElement = BbCube | BbLocator | BbUnknownElement;
 
 export interface BbFace {
   uv?: number[];

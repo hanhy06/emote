@@ -54,6 +54,7 @@ export interface AjProjectDisplayElement extends AjProjectElementBase {
   config?: Record<string, unknown>;
   configs?: { default?: Record<string, unknown>; variants?: Record<string, unknown> };
   onSummonFunction?: string;
+  airFallback?: boolean;
 }
 
 export interface AjProjectLocator extends AjProjectElementBase {

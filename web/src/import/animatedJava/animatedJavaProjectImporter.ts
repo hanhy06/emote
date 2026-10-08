@@ -59,6 +59,25 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
   if (!project.meta.format_version.startsWith("1.")) {
     throw new Error(`Unsupported Animated Java project version: ${project.meta.format_version}`);
   }
+  const fallbackDiagnostics: ImportDiagnostic[] = [];
+  project = {
+    ...project,
+    elements: project.elements.map((element) => {
+      if (element.type === "cube" || element.type === "locator" || element.type === "camera" || isDirectDisplay(element.type)) return element;
+      const source = element as Record<string, unknown>;
+      fallbackDiagnostics.push({ severity: "warning", code: "animated_java_element_as_air", message: `${element.name} (${element.type}) was imported as an air item display; its transforms remain playable.`, sourcePath: `elements.${element.uuid}` });
+      return {
+        ...element,
+        type: "animated_java:vanilla_item_display",
+        item: "minecraft:air",
+        position: Array.isArray(source.position) ? source.position : Array.isArray(source.origin) ? source.origin : [0, 0, 0],
+        rotation: Array.isArray(source.rotation) ? source.rotation : [0, 0, 0],
+        scale: Array.isArray(source.scale) ? source.scale : [1, 1, 1],
+        visibility: source.visibility !== false,
+        airFallback: true,
+      } as AjProjectDisplayElement;
+    }),
+  };
   const sourceStem = input.name.replace(/\.ajblueprint$/i, "").trim() || project.name?.trim() || "Animated Java";
   if (project.animations.length === 0 && project.animationDiagnostics?.length) {
     throw new ConversionError("no_importable_animations", `No Animated Java animations could be imported. ${project.animationDiagnostics.map((issue) => issue.message).join(" ")}`);
@@ -95,7 +114,7 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
   applyGroupDefaultConfigs(nodes, project, transformGraph, nodeBindings);
   if (Object.keys(nodes).length === 0) throw new Error("Animated Java project does not contain importable nodes.");
 
-  const diagnostics: ImportDiagnostic[] = [...(project.animationDiagnostics ?? []), ...(cubeContent?.diagnostics ?? [])];
+  const diagnostics: ImportDiagnostic[] = [...fallbackDiagnostics, ...(project.animationDiagnostics ?? []), ...(cubeContent?.diagnostics ?? [])];
   appendProjectCapabilityDiagnostics(project, diagnostics);
   const animations = sourceAnimations.flatMap((animation, index) => {
     const sourceIndex = project.animationSourceIndices?.[index] ?? index;
@@ -722,7 +741,7 @@ function projectElementMatrix(
     .map((value) => value * blendWeight);
   const baseScale = "scale" in element ? element.scale : [1, 1, 1];
   // AJ item displays replace scale; block and text displays multiply their base scale.
-  const absoluteScale = element.type === "animated_java:vanilla_item_display";
+  const absoluteScale = element.type === "animated_java:vanilla_item_display" && !element.airFallback;
   const scaleKeyframes = (animator?.keyframes ?? []).filter((frame) => frame.channel === "scale");
   const scale = scaleKeyframes.some((frame) => frame.time <= sourceTime + 1e-9)
     ? evaluateProjectTransformChannel(scaleKeyframes, "scale", sourceTime, [1, 1, 1], `${path}/scale`)
