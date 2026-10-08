@@ -283,6 +283,7 @@ export function App() {
                   : "This file does not contain assignable model parts."}</p>
               </div>
               <div className="preview-controls">
+                {availability?.status === "create_pose" && <output title={availability.reason}>Create pose</output>}
                 {availability?.status === "full" && (
                   <label className="frame-slider">
                     <span>Preview frame</span>

@@ -14,7 +14,7 @@ import { matrix4ToRowMajor, multiplyMatrix16 } from "../../format/matrix";
 import { parseMinecraftTime, TICKS_PER_SECOND } from "../../format/time";
 import type { PreviewNodeTrack } from "../../domain/previewProjection";
 import { ConversionError, PreviewUnavailableError } from "../../foundation/diagnostics";
-import { PREVIEW_RUNTIME_QUERY_VALUES, previewRuntimeQueryFunction } from "../../format/molang/runtimeAnalysis";
+import { PREVIEW_RUNTIME_QUERY_VALUES, previewRuntimeQueryFunction, usesRuntimeMolangState } from "../../format/molang/runtimeAnalysis";
 
 const NONDETERMINISTIC_FUNCTION = /math\.(?:random|random_integer|die_roll|die_roll_integer)\b/i;
 const QUERY_ASSIGNMENT = /\b(?:q|query)\s*\.[a-z_][a-z0-9_]*\s*=(?!=)/i;
@@ -46,9 +46,16 @@ interface NodeState {
   isVisible: boolean;
 }
 
-export function bakeSchema4Preview(animation: EmoteAnimation): Record<string, PreviewNodeTrack> {
+export function bakeSchema4Preview(animation: EmoteAnimation, options: { approximateRuntime?: boolean } = {}): Record<string, PreviewNodeTrack> {
   const durationTicks = parseMinecraftTime(animation.timeline.duration, 1);
-  const session = new PreviewMolangSession(durationTicks);
+  const session = new PreviewMolangSession(durationTicks, options.approximateRuntime ?? false);
+  for (const [nodeId, track] of Object.entries(animation.timeline.tracks)) {
+    for (const frame of track.nbt ?? []) {
+      if (typeof frame.value !== "string" && usesRuntimeMolangState(frame.value.molang)) {
+        throw previewError(`timeline.tracks.${nodeId}.nbt`, "uses runtime Molang");
+      }
+    }
+  }
   const states = prepareNodeStates(animation);
   const result = Object.fromEntries(states.map((state) => [state.id, {
     transforms: [],
@@ -95,13 +102,12 @@ class PreviewMolangSession {
   private readonly parser = new MolangParser();
   private readonly queries: Record<string, number> = { ...PREVIEW_RUNTIME_QUERY_VALUES };
 
-  constructor(private readonly durationTicks: number) {
+  constructor(private readonly durationTicks: number, private readonly approximateRuntime: boolean) {
     this.parser.variableHandler = (key, _variables, args) => {
       if (args) {
         const value = previewRuntimeQueryFunction(key);
         if (value !== undefined) return value;
       }
-      if (key.startsWith("variable.") || key.startsWith("temp.")) return 0;
       throw new Error(`references unsupported Molang value ${key}`);
     };
   }
@@ -122,6 +128,7 @@ class PreviewMolangSession {
 
   evaluate(source: string | number, path: string, allowPersistentAssignment = false): number {
     if (typeof source === "number") return requireFinite(source, path);
+    if (!this.approximateRuntime && usesRuntimeMolangState(source)) throw previewError(path, "uses runtime Molang");
     if (NONDETERMINISTIC_FUNCTION.test(source)) throw previewError(path, "uses nondeterministic Molang");
     if (QUERY_ASSIGNMENT.test(source)) throw previewError(path, "assigns a query");
     if (!allowPersistentAssignment && PERSISTENT_ASSIGNMENT.test(source)) {

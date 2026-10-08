@@ -1,7 +1,7 @@
 import MolangParser from "molangjs/dist/molang.esm.js";
 import { TICKS_PER_SECOND } from "../../format/time";
 import { ConversionError, PreviewUnavailableError } from "../../foundation/diagnostics";
-import { PREVIEW_RUNTIME_QUERY_VALUES, previewRuntimeQueryFunction } from "../../format/molang/runtimeAnalysis";
+import { PREVIEW_RUNTIME_QUERY_VALUES, previewRuntimeQueryFunction, usesRuntimeMolangState } from "../../format/molang/runtimeAnalysis";
 
 export interface MolangBakeContext {
   animationTime: number;
@@ -41,6 +41,9 @@ export class MolangBakeEvaluator {
   evaluate(expression: string | number, context: MolangBakeContext, path: string): number {
     if (typeof expression === "number") return this.requireFinite(expression, expression, path);
     if (NUMERIC_LITERAL.test(expression.trim())) return this.requireFinite(Number(expression), expression, path);
+    if (this.options.error.previewUnavailable && usesRuntimeMolangState(expression)) {
+      throw this.error(this.options.error.message(expression, path), path);
+    }
     if (this.options.rejectNondeterministic && NONDETERMINISTIC_FUNCTION.test(expression)) {
       const message = this.options.error.nondeterministicMessage?.(expression, path)
         ?? this.options.error.message(expression, path);

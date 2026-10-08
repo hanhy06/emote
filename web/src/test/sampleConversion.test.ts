@@ -149,8 +149,8 @@ describe("current schema JSON samples", () => {
 });
 
 function expectMatchingMatrices(actual: EmoteAnimation, expected: EmoteAnimation, preservedExpressionNodes: readonly string[] = []): void {
-  const actualTracks = bakeSchema4Preview(actual);
-  const expectedTracks = bakeSchema4Preview(expected);
+  const actualTracks = bakeSchema4Preview(actual, { approximateRuntime: true });
+  const expectedTracks = bakeSchema4Preview(expected, { approximateRuntime: true });
   const displayNodeIds = (animation: EmoteAnimation) => Object.entries(animation.nodes)
     .filter(([, node]) => node.type !== "anchor")
     .map(([id]) => id).sort();
