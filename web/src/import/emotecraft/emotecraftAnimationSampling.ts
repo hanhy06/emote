@@ -224,10 +224,13 @@ export function createEmotecraftRuntime(animation: PalAnimation, importedNodes: 
   const bindings: Record<string, string> = {};
   const names = new Set(["body", ...EMOTECRAFT_PLAYER_PARTS.map((part) => part.bone), ...Object.keys(animation.bones), ...Object.keys(animation.pivots), ...Object.values(animation.parents)]);
   const boneIds = new Map<string, string>();
+  const runtimeIds = new Set([sceneId, "pal_inherited_torso_bend", ...Object.keys(importedNodes)]);
   for (const name of names) {
     const base = `pal_${sanitizeResourcePath(name, "bone").replaceAll("/", "_")}`;
     let id = base;
-    for (let suffix = 2; [...boneIds.values()].includes(id); suffix++) id = `${base}_${suffix}`;
+    for (let suffix = 2; [id, ...["x", "y", "z", "lower", "inherited_x", "inherited_y", "inherited_z"].map((axis) => `${id}_${axis}`)].some((candidate) => runtimeIds.has(candidate)); suffix++) id = `${base}_${suffix}`;
+    for (const axis of ["x", "y", "z", "lower", "inherited_x", "inherited_y", "inherited_z"]) runtimeIds.add(`${id}_${axis}`);
+    runtimeIds.add(id);
     boneIds.set(name, id);
   }
   for (const name of names) {

@@ -68,11 +68,11 @@ export function createBlockbenchNativeRuntime(options: BlockbenchNativeRuntimeOp
     const rotationSampling = blockbenchChannelSampling(source, bone.uuid, "rotation");
     const scaleSampling = blockbenchChannelSampling(source, bone.uuid, "scale");
     const position = blockbenchChannelFrames(animator, "position", ZERO_VECTOR, durationTicks, startDelayTicks, positionSampling?.sourceTimes, positionSampling?.stepTicks, (values) => transforms.position(values, negateMolang)
-      .map((value, axis) => affineMolang(value, blendWeight / 16, basePosition[axis])) as MolangVector, options);
+      .map((value, axis) => affineMolang(value, affineMolang(blendWeight, 1 / 16, 0), basePosition[axis])) as MolangVector, options);
     const rotation = blockbenchChannelFrames(animator, "rotation", ZERO_VECTOR, durationTicks, startDelayTicks, rotationSampling?.sourceTimes, rotationSampling?.stepTicks, (values) => transforms.rotation(values, negateMolang)
       .map((value) => affineMolang(value, blendWeight, 0)) as MolangVector, options);
     const scale = blockbenchChannelFrames(animator, "scale", ONE_VECTOR, durationTicks, startDelayTicks, scaleSampling?.sourceTimes, scaleSampling?.stepTicks, (values) => values
-      .map((value) => affineMolang(value, blendWeight, 1 - blendWeight)) as MolangVector, options);
+      .map((value) => affineMolang(value, blendWeight, affineMolang(blendWeight, -1, 1))) as MolangVector, options);
     if (position) tracks[`${bone.id}_z`] = { position };
     if (rotation) {
       tracks[`${bone.id}_z`] = { ...tracks[`${bone.id}_z`], rotation: isolateMolangAxis(rotation, 2, (value) => affineMolang(value, 1, baseRotation[2])) };

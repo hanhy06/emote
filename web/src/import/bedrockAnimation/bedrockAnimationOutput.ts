@@ -2,7 +2,7 @@ import type { RuntimeNode, RuntimeNodeTracks, RuntimeScalar, RuntimeVectorKeyfra
 import type { AnimationRuntimeData } from "../../domain/runtimeProjection";
 import { TICKS_PER_SECOND } from "../../format/time";
 import { bedrockPositionToCanonical, bedrockRotationToCanonical } from "./coordinateSpace";
-import { affineMolang, isolateMolangAxis, negateMolang, type MolangVector } from "../common/molangVector";
+import { affineMolang, isolateMolangAxis, molangScalar, negateMolang, type MolangVector } from "../common/molangVector";
 import type { BedrockAnimation, BedrockChannel, BedrockExpression, BedrockKeyframe, BedrockKeyframeValue, BedrockVector } from "./bedrockAnimationSchema";
 import { BEDROCK_PLAYER_BONES, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_SLICES, BEDROCK_RUNTIME_SCENE_ID, resolveBedrockPlayerBone } from "./bedrockPlayerRig";
 import { rewriteMolangIdentifiers } from "../../format/molang/sourceTransformer";
@@ -21,6 +21,7 @@ export function createBedrockRuntime(
   unknownBoneIds: Record<string, string> = {},
 ): Omit<Extract<AnimationRuntimeData, { kind: "native" }>, "kind"> {
   const timelineRate = playbackRate ?? 1;
+  const blendWeight = molangScalar(animation.blend_weight ?? 1);
   const nodes: Record<string, RuntimeNode> = {
     [BEDROCK_RUNTIME_SCENE_ID]: { type: "anchor", transform: { position: ZERO, rotation: ZERO, scale: [BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE] } },
   };
@@ -54,9 +55,9 @@ export function createBedrockRuntime(
     }
     if (!source) continue;
     const position = convertChannel(source.position, ZERO, ZERO, timelineRate, playbackRate, startDelayTicks, durationTicks, samplePlan, (values) =>
-      bedrockPositionToCanonical(values, negateMolang).map((value, axis) => affineMolang(value, 1 / 16, basePosition[axis])) as MolangVector);
-    const rotation = convertChannel(source.rotation, ZERO, ZERO, timelineRate, playbackRate, startDelayTicks, durationTicks, samplePlan, (values) => bedrockRotationToCanonical(values, negateMolang));
-    const scale = convertChannel(source.scale, ONE, ONE, timelineRate, playbackRate, startDelayTicks, durationTicks, samplePlan, (values) => values);
+      bedrockPositionToCanonical(values, negateMolang).map((value, axis) => affineMolang(value, affineMolang(blendWeight, 1 / 16, 0), basePosition[axis])) as MolangVector);
+    const rotation = convertChannel(source.rotation, ZERO, ZERO, timelineRate, playbackRate, startDelayTicks, durationTicks, samplePlan, (values) => bedrockRotationToCanonical(values, negateMolang).map((value) => affineMolang(value, blendWeight, 0)) as MolangVector);
+    const scale = convertChannel(source.scale, ONE, ONE, timelineRate, playbackRate, startDelayTicks, durationTicks, samplePlan, (values) => values.map((value) => affineMolang(value, blendWeight, affineMolang(blendWeight, -1, 1))) as MolangVector);
     if (position) tracks[`${bone.id}_z`] = { position };
     if (rotation) {
       tracks[`${bone.id}_z`] = { ...tracks[`${bone.id}_z`], rotation: isolateMolangAxis(rotation, 2) };

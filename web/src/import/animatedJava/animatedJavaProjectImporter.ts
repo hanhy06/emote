@@ -30,6 +30,8 @@ import { createAnimatedJavaCubeRuntime } from "./animatedJavaCubeRuntime";
 import { ANIMATED_JAVA_CHANNELS } from "./animatedJavaAnimationPolicy";
 import { ANIMATED_JAVA_BLUEPRINT_TRANSFORMS } from "./animatedJavaCubeTransform";
 import { createMolangPreviewFallback } from "../common/previewFallback";
+import { molangScalar } from "../common/molangVector";
+import { hasMolangExpression } from "../../format/molang/runtimeAnalysis";
 
 interface ProjectTransformGraph {
   groups: ReadonlyMap<string, AjProjectGroup>;
@@ -40,7 +42,7 @@ interface ProjectTransformGraph {
 interface ProjectNodeStateFrame {
   nodeId: string;
   tick: number;
-  visible?: boolean;
+  visible?: boolean | string;
   nbt?: DisplayNbtPatch;
 }
 
@@ -302,6 +304,14 @@ function resolveAnimatedJavaAnimationState(
   const stateFrames: ProjectNodeStateFrame[] = [];
   for (const [animatorId, animator] of Object.entries(source.animators)) {
     for (const [keyframeIndex, frame] of (animator.keyframes ?? []).entries()) {
+      if (frame.channel === "visibility") {
+        const value = frame.data_points.at(-1)?.x;
+        if (value !== undefined) {
+          const visible = typeof value === "number" ? value !== 0 : value === "true" || value === "1" ? true : value === "false" || value === "0" ? false : value;
+          for (const nodeId of projectOutputNodeIds(animatorId, graph, bindings)) stateFrames.push({ nodeId, tick: startDelayTicks + Math.round(frame.time * 20), visible });
+        }
+        continue;
+      }
       if (frame.channel !== "variant") continue;
       const tick = startDelayTicks + Math.round(frame.time * 20);
       for (const point of frame.data_points) {
@@ -369,6 +379,12 @@ function appendProjectCapabilityDiagnostics(project: AjProject, diagnostics: Imp
     sourcePath: "collections",
   });
   collectContinuousFunctionDiagnostics(project, "", diagnostics);
+  for (const [index, animation] of project.animations.entries()) {
+    for (const property of ["start_delay", "loop_delay"] as const) {
+      const value = animation[property];
+      if (typeof value === "string" && value.trim() && !Number.isFinite(Number(value))) diagnostics.push({ severity: "warning", code: "animated_java_timing_ignored", message: `${animation.name}.${property} has no matching dynamic playback setting and was omitted.`, sourcePath: `animations[${index}].${property}` });
+    }
+  }
 }
 
 function collectContinuousFunctionDiagnostics(value: unknown, path: string, diagnostics: ImportDiagnostic[]): void {
@@ -471,11 +487,17 @@ function projectAnimatedJavaState(animation: ImportedAnimation, frames: ProjectN
     nodeFrames.push(frame);
     framesByNode.set(frame.nodeId, nodeFrames);
   }
-  const previewTracks = projectAnimatedJavaPreviewState(animation.preview.tracks, framesByNode);
+  let preview = animation.preview;
+  try {
+    preview = { ...preview, tracks: projectAnimatedJavaPreviewState(preview.tracks, framesByNode) };
+  } catch (reason) {
+    if (!(reason instanceof PreviewUnavailableError)) throw reason;
+    preview = createMolangPreviewFallback(animation.name, preview.durationTicks, reason).preview;
+  }
   const runtimeTracks = projectAnimatedJavaRuntimeState(animation.runtime.tracks, framesByNode);
   return {
     ...animation,
-    preview: { ...animation.preview, tracks: previewTracks },
+    preview,
     runtime: { ...animation.runtime, tracks: runtimeTracks },
   };
 }
@@ -489,8 +511,11 @@ function projectAnimatedJavaPreviewState(
     const preview = previewTracks[nodeId] ?? { transforms: [], visibility: [] };
     previewTracks[nodeId] = {
       ...preview,
-      visibility: [...preview.visibility, ...nodeFrames.flatMap((frame) => frame.visible === undefined ? [] : [{ tick: frame.tick, visible: frame.visible }])]
-        .sort((first, second) => first.tick - second.tick),
+      visibility: [...new Map([...preview.visibility, ...nodeFrames.flatMap((frame) => {
+        if (frame.visible === undefined) return [];
+        const visible = typeof frame.visible === "boolean" ? frame.visible : ANIMATED_JAVA_CHANNELS.evaluateApproximate([{ channel: "position", time: frame.tick / 20, data_points: [{ x: frame.visible, y: 0, z: 0 }] }], "position", frame.tick / 20, [0, 0, 0], `${nodeId}.visible`)[0] !== 0;
+        return [{ tick: frame.tick, visible }];
+      })].map((frame) => [frame.tick, frame])).values()].sort((first, second) => first.tick - second.tick),
     };
   }
   return previewTracks;
@@ -507,7 +532,7 @@ function projectAnimatedJavaRuntimeState(
     const nbt = nodeFrames.flatMap((frame) => frame.nbt ? [{ tick: frame.tick, value: frame.nbt }] : []);
     runtimeTracks[nodeId] = {
       ...runtime,
-      ...(visible.length ? { visible: [...(runtime.visible ?? []), ...visible].sort((first, second) => first.tick - second.tick) } : {}),
+      ...(visible.length ? { visible: [...new Map([...(runtime.visible ?? []), ...visible].map((frame) => [frame.tick, frame])).values()].sort((first, second) => first.tick - second.tick) } : {}),
       ...(nbt.length ? { nbt: [...(runtime.nbt ?? []), ...nbt].sort((first, second) => first.tick - second.tick) } : {}),
     };
   }
@@ -587,7 +612,7 @@ function createPreviewOnlyProjectAnimation(
 ): ImportedAnimation {
   const startDelayTicks = secondsToTicks(projectOptionalNumeric(animation.start_delay, 0, `animations[${index}].start_delay`), `${animation.name}.start_delay`);
   const durationTicks = requireAnimationDurationTicks(Math.max(1, Math.round(animation.length * 20)) + startDelayTicks, `${animation.name}.length`);
-  const blendWeight = projectOptionalNumeric(animation.blend_weight, 1, `animations[${index}].blend_weight`);
+  const blendWeight = animation.blend_weight === undefined || animation.blend_weight === "" ? 1 : molangScalar(animation.blend_weight);
   return {
     id: sanitizeResourcePath(animation.name, `animation_${index + 1}`),
     name: prettify(animation.name),
@@ -667,12 +692,17 @@ function importProjectAnimation(
   if (playbackMode !== "once" && playbackMode !== "hold" && playbackMode !== "loop") throw new Error(`Animated Java animation ${animation.name} has unsupported loop mode ${animation.loop}.`);
   const startDelaySeconds = projectOptionalNumeric(animation.start_delay, 0, `animations[${animationIndex}].start_delay`);
   const startDelayTicks = secondsToTicks(startDelaySeconds, `${animation.name}.start_delay`);
-  const blendWeight = projectOptionalNumeric(animation.blend_weight, 1, `animations[${animationIndex}].blend_weight`);
+  const runtimeBlendWeight = animation.blend_weight === undefined || animation.blend_weight === "" ? 1 : molangScalar(animation.blend_weight);
+  const blendWeight = ANIMATED_JAVA_CHANNELS.evaluateApproximate([{ channel: "position", time: 0, data_points: [{ x: runtimeBlendWeight, y: 0, z: 0 }] }], "position", 0, [1, 0, 0], `${animation.name}.blend_weight`)[0];
   const durationTicks = requireAnimationDurationTicks(
     secondsToTicks(animation.length, `${animation.name}.length`) + startDelayTicks,
     `${animation.name}.length`,
   );
   const tracks: PreviewProjection["tracks"] = {};
+  for (const property of ["start_delay", "loop_delay"] as const) {
+    const value = animation[property];
+    if (hasMolangExpression(value)) ANIMATED_JAVA_CHANNELS.evaluateApproximate([{ channel: "position", time: 0, data_points: [{ x: value, y: 0, z: 0 }] }], "position", 0, [0, 0, 0], `${animation.name}.${property}`);
+  }
   const stateFrames: ProjectNodeStateFrame[] = [];
   const previewTicks = approximateProjectPreviewTicks(animation, durationTicks, startDelayTicks);
   for (const element of elements) {
@@ -704,7 +734,7 @@ function importProjectAnimation(
     events: { start: [], timeline: [], loop: [], stop: [] },
     preview: { durationTicks, tracks, availability: { status: "full" } },
     exportAvailability: { exportable: true },
-    runtime: { kind: "native", ...createAnimatedJavaRuntime(animation, elements, nodes, runtimeHierarchy, blendWeight, startDelayTicks, durationTicks, cubeAnimation?.runtime) },
+    runtime: { kind: "native", ...createAnimatedJavaRuntime(animation, elements, nodes, runtimeHierarchy, runtimeBlendWeight, startDelayTicks, durationTicks, cubeAnimation?.runtime) },
   }, stateFrames);
 }
 
@@ -838,20 +868,13 @@ function projectVisibility(frame: AjProjectKeyframe, element: AjProjectDisplayEl
   if (typeof value === "number") return value !== 0;
   if (value === "true" || value === "1") return true;
   if (value === "false" || value === "0") return false;
-  throw new ConversionError("invalid_animated_java_visibility", `Animated Java visibility value ${value} is not boolean.`);
-}
-
-function projectNumeric(value: string | number, path: string): number {
-  const parsed = typeof value === "number" ? value : Number(value.trim());
-  if (!Number.isFinite(parsed)) {
-    throw new PreviewUnavailableError("unsupported_animated_java_molang", `Animated Java expression ${String(value)} is not a numeric constant.`, path);
-  }
-  return parsed;
+  return ANIMATED_JAVA_CHANNELS.evaluateApproximate([{ channel: "position", time: frame.time, data_points: [{ x: value, y: 0, z: 0 }] }], "position", frame.time, [0, 0, 0], `${element.uuid}.visible`)[0] !== 0;
 }
 
 function projectOptionalNumeric(value: string | number | undefined, fallback: number, path: string): number {
   if (value === undefined || (typeof value === "string" && value.trim() === "")) return fallback;
-  return projectNumeric(value, path);
+  const numeric = typeof value === "number" ? value : Number(value.trim());
+  return Number.isFinite(numeric) ? numeric : fallback;
 }
 
 export function itemArgumentToData(value: string): ItemStackData {

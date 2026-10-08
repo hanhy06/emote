@@ -21,7 +21,7 @@ export function createAnimatedJavaRuntime(
   elements: AjProjectDisplayElement[],
   importedNodes: Record<string, ImportedNode>,
   hierarchy: AjRuntimeHierarchy,
-  blendWeight: number,
+  blendWeight: RuntimeScalar,
   startDelayTicks = 0,
   durationTicks = startDelayTicks + Math.max(1, Math.round(animation.length * TICKS_PER_SECOND)),
   cubeRuntime?: AnimationRuntimeData,
@@ -61,10 +61,10 @@ export function createAnimatedJavaRuntime(
     editorNodeByRuntimeNode[element.uuid] = element.uuid;
 
     const keyframes = animation.animators[element.uuid]?.keyframes ?? [];
-    const position = ajProjectFrames(keyframes, "position", ZERO_VECTOR, basePosition, startDelayTicks, durationTicks, (value, axis) => affineMolang(value, (axis === 0 ? -1 : 1) * blendWeight / 16, basePosition[axis]));
-    const rotation = ajProjectFrames(keyframes, "rotation", ZERO_VECTOR, ZERO_VECTOR, startDelayTicks, durationTicks, (value, axis) => affineMolang(value, (axis === 2 ? 1 : -1) * blendWeight, 0));
+    const position = ajProjectFrames(keyframes, "position", ZERO_VECTOR, basePosition, startDelayTicks, durationTicks, (value, axis) => affineMolang(value, affineMolang(blendWeight, (axis === 0 ? -1 : 1) / 16, 0), basePosition[axis]));
+    const rotation = ajProjectFrames(keyframes, "rotation", ZERO_VECTOR, ZERO_VECTOR, startDelayTicks, durationTicks, (value, axis) => affineMolang(value, affineMolang(blendWeight, axis === 2 ? 1 : -1, 0), 0));
     const scale = ajProjectFrames(keyframes, "scale", ONE_VECTOR, baseScale, startDelayTicks, durationTicks, (value, axis) => {
-      const blended = affineMolang(value, blendWeight, 1 - blendWeight);
+      const blended = affineMolang(value, blendWeight, affineMolang(blendWeight, -1, 1));
       return element.type === "animated_java:vanilla_item_display" && !element.airFallback ? blended : multiply(blended, baseScale[axis]);
     });
     if (position) tracks[ids.x] = { position };

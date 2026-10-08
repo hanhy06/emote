@@ -48,6 +48,7 @@ import {
   type BlockbenchNativeRuntimeFactory,
 } from "./blockbenchNativeRuntime";
 import { createMolangPreviewFallback } from "./previewFallback";
+import { molangScalar } from "./molangVector";
 
 export interface CubeProjectImportOptions {
   transforms: CubeProjectTransformConvention;
@@ -217,6 +218,11 @@ function buildBoneEntries(project: BlockbenchCubeProject, formatLabel: string): 
     entry.children.forEach((child) => visit(child, bone));
   };
   project.outliner.forEach((entry) => visit(entry));
+  for (const bone of entries) {
+    if (!bone.airDisplay) continue;
+    const base = bone.id;
+    for (let suffix = 2; entries.some((other) => other !== bone && [other.id, `${other.id}_x`, `${other.id}_y`, `${other.id}_z`].some((id) => [bone.id, `${bone.id}_x`, `${bone.id}_y`, `${bone.id}_z`].includes(id))); suffix++) bone.id = `${base}_${suffix}`;
+  }
   return entries;
 }
 
@@ -307,15 +313,19 @@ function resolveBlockbenchAnimationSource(
   const playbackMode = loop === "hold_on_last_frame" ? "hold" : loop;
   if (playbackMode !== "once" && playbackMode !== "hold" && playbackMode !== "loop") throw new Error(`${formatLabel} animation ${animation.name} has unsupported loop mode ${loop}.`);
   if (!Number.isFinite(animation.length) || animation.length < 0) throw new Error(`${formatLabel} animation ${animation.name} has an invalid length.`);
-  const startDelaySeconds = optionalNumericValue(animation.start_delay, 0, `animations[${index}].start_delay`, formatLabel, diagnosticPrefix);
-  const blendWeight = optionalNumericValue(animation.blend_weight, 1, `animations[${index}].blend_weight`, formatLabel, diagnosticPrefix);
+  const startDelaySeconds = optionalNumericValue(animation.start_delay, 0);
+  const blendWeight = animation.blend_weight === undefined || animation.blend_weight === "" ? 1 : molangScalar(animation.blend_weight);
+  for (const property of ["start_delay", "loop_delay"] as const) {
+    const value = animation[property];
+    if (value !== undefined && typeof value === "string" && value.trim() && !Number.isFinite(Number(value))) diagnostics.push({ severity: "warning", code: `${diagnosticPrefix}_timing_ignored`, message: `${animation.name}.${property} has no matching dynamic playback setting and was omitted.`, sourcePath: `animations[${index}].${property}` });
+  }
   const effectEvents = importEffectEvents(animation, index, bones, diagnostics, formatLabel, diagnosticPrefix);
   const durationTicks = requireAnimationDurationTicks(
     Math.max(1, Math.round((animation.length + startDelaySeconds) * TICKS_PER_SECOND), ...effectEvents.map((event) => event.tick + 1)),
     `${animation.name}.length`,
   );
   const boneAnimators = resolveBoneAnimators(animation, index, bones, formatLabel, diagnosticPrefix);
-  let nativeRuntime = options.runtimeOutput === "native" || blockbenchAnimationUsesMolang(animation);
+  let nativeRuntime = options.runtimeOutput === "native" || blockbenchAnimationUsesMolang(animation) || hasMolangExpression(blendWeight);
   let samplePlan: AnimationSamplePlan | undefined;
   if (!Object.values(animation.animators).some((animator) => (animator.keyframes ?? []).some((frame) => frame.data_points.some((point) =>
     usesRuntimeMolangState(point.x) || usesRuntimeMolangState(point.y) || usesRuntimeMolangState(point.z),
@@ -348,7 +358,7 @@ function resolveBlockbenchAnimationSource(
     blendWeight,
     playbackMode,
     loopDelayTicks: playbackMode === "loop"
-      ? Math.round(numericValue(animation.loop_delay ?? 0, `animations[${index}].loop_delay`, formatLabel, diagnosticPrefix) * TICKS_PER_SECOND)
+      ? Math.round(numericValue(animation.loop_delay ?? 0) * TICKS_PER_SECOND)
       : 0,
     events: effectEvents,
     requiresNativeRuntime: nativeRuntime,
@@ -382,6 +392,11 @@ function projectBlockbenchPreview(
   diagnosticPrefix: string,
 ): PreviewProjection {
   const tracks: PreviewProjection["tracks"] = {};
+  for (const property of ["start_delay", "loop_delay"] as const) {
+    const value = source.animation[property];
+    if (hasMolangExpression(value)) channels.evaluateApproximate([{ channel: "position", time: 0, data_points: [{ x: value, y: 0, z: 0 }] }], "position", 0, [0, 0, 0], `${source.animation.name}.${property}`);
+  }
+  const blendWeight = channels.evaluateApproximate([{ channel: "position", time: 0, data_points: [{ x: source.blendWeight, y: 0, z: 0 }] }], "position", 0, [1, 0, 0], `${source.animation.name}.blend_weight`)[0];
   const ticks = approximatePreviewTicks(source.animation, source.durationTicks, source.startDelayTicks);
   for (const bone of bones) {
     const animator = source.animators.get(bone.uuid);
@@ -393,7 +408,7 @@ function projectBlockbenchPreview(
       const previousTick = ticks[tickIndex - 1];
       transforms.push({
         tick,
-        matrix: matrix4ToRowMajor(animatedWorldMatrix(bone, source.animation, source.animators, sourceTime, cache, source.animationIndex, source.blendWeight, convention, channels.evaluateApproximate), `${source.animation.name}/${bone.id}/${tick}`),
+        matrix: matrix4ToRowMajor(animatedWorldMatrix(bone, source.animation, source.animators, sourceTime, cache, source.animationIndex, blendWeight, convention, channels.evaluateApproximate), `${source.animation.name}/${bone.id}/${tick}`),
         interpolation: tick === 0 || approximatePreviewStepAt(source.animators, previousTick / TICKS_PER_SECOND - source.startDelaySeconds, sourceTime)
           ? { type: "step" }
           : { type: "linear", durationTicks: Math.max(1, tick - previousTick) },
@@ -429,7 +444,7 @@ function projectBlockbenchRuntime(
       const step = boneSampling.some((sampling) => sampling.stepTicks.has(tick));
       transforms.push({
         tick,
-        matrix: matrix4ToRowMajor(animatedWorldMatrix(bone, source.animation, source.animators, sourceTime, cache, source.animationIndex, source.blendWeight, convention, channels.evaluate), `${source.animation.name}/${bone.id}/${tick}`),
+        matrix: matrix4ToRowMajor(animatedWorldMatrix(bone, source.animation, source.animators, sourceTime, cache, source.animationIndex, typeof source.blendWeight === "number" ? source.blendWeight : 1, convention, channels.evaluate), `${source.animation.name}/${bone.id}/${tick}`),
         interpolation: tick === 0 || step ? { type: "step" } : { type: "linear", durationTicks: 1 },
       });
     }
@@ -662,15 +677,15 @@ function matrixWithoutScale(matrix: Matrix4): Matrix4 {
   return new Matrix4().compose(position, rotation, new Vector3(1, 1, 1));
 }
 
-function numericValue(value: string | number, path: string, formatLabel: string, diagnosticPrefix: string): number {
+function numericValue(value: string | number): number {
   const number = typeof value === "number" ? value : Number(value.trim());
-  if (!Number.isFinite(number)) throw new ConversionError(`unsupported_${diagnosticPrefix}_molang`, `${formatLabel} expression ${String(value)} is not a numeric constant.`, path);
+  if (!Number.isFinite(number)) return 0;
   return number;
 }
 
-function optionalNumericValue(value: string | number | undefined, fallback: number, path: string, formatLabel: string, diagnosticPrefix: string): number {
+function optionalNumericValue(value: string | number | undefined, fallback: number): number {
   if (value === undefined || (typeof value === "string" && value.trim() === "")) return fallback;
-  return numericValue(value, path, formatLabel, diagnosticPrefix);
+  return numericValue(value);
 }
 
 function validNamespace(value: string | undefined): string | undefined {

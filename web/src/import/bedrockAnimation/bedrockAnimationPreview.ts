@@ -2,7 +2,7 @@ import type { PreviewProjection } from "../../domain/previewProjection";
 import { matrix4ToRowMajor } from "../../format/matrix";
 import { TICKS_PER_SECOND } from "../../format/time";
 import type { BedrockAnimation } from "./bedrockAnimationSchema";
-import { evaluateApproximateBedrockChannel } from "./bedrockAnimationBaker";
+import { evaluateApproximateBedrockChannel, evaluateBedrockExpression } from "./bedrockAnimationBaker";
 import {
   BEDROCK_PLAYER_SLICES,
   buildBedrockPlayerWorldMatrices,
@@ -56,6 +56,7 @@ export function createBedrockAnimationPreview(
 
 function collectApproximateTransforms(name: string, animation: BedrockAnimation, time: number): Map<string, BedrockPlayerTransform> {
   const transforms = new Map<string, BedrockPlayerTransform>();
+  const blendWeight = evaluateBedrockExpression(animation.blend_weight ?? 1, time, 1, `${name}.blend_weight`);
   for (const [sourceBoneName, sourceBone] of Object.entries(animation.bones ?? {})) {
     const bone = resolveBedrockPlayerBone(sourceBoneName);
     if (!bone) {
@@ -65,9 +66,9 @@ function collectApproximateTransforms(name: string, animation: BedrockAnimation,
       continue;
     }
     transforms.set(bone.id, {
-      position: evaluateApproximateBedrockChannel(sourceBone.position, time, [0, 0, 0], `${name}.${sourceBoneName}.position`),
-      rotation: evaluateApproximateBedrockChannel(sourceBone.rotation, time, [0, 0, 0], `${name}.${sourceBoneName}.rotation`),
-      scale: evaluateApproximateBedrockChannel(sourceBone.scale, time, [1, 1, 1], `${name}.${sourceBoneName}.scale`),
+      position: evaluateApproximateBedrockChannel(sourceBone.position, time, [0, 0, 0], `${name}.${sourceBoneName}.position`).map((value) => value * blendWeight),
+      rotation: evaluateApproximateBedrockChannel(sourceBone.rotation, time, [0, 0, 0], `${name}.${sourceBoneName}.rotation`).map((value) => value * blendWeight),
+      scale: evaluateApproximateBedrockChannel(sourceBone.scale, time, [1, 1, 1], `${name}.${sourceBoneName}.scale`).map((value) => 1 + (value - 1) * blendWeight),
     });
   }
   return transforms;

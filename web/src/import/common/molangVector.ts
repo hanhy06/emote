@@ -9,12 +9,12 @@ export function molangScalar(value: string | number): RuntimeScalar {
   return Number.isFinite(numeric) ? numeric : value.trim();
 }
 
-export function affineMolang(value: RuntimeScalar, factor: number, offset: number): RuntimeScalar {
-  if (typeof value === "number") return value * factor + offset;
+export function affineMolang(value: RuntimeScalar, factor: RuntimeScalar, offset: RuntimeScalar): RuntimeScalar {
+  if (typeof value === "number" && typeof factor === "number" && typeof offset === "number") return value * factor + offset;
   if (factor === 1 && offset === 0) return value;
-  return mapMolangResult(value, (result) => {
-    const scaled = factor === 1 ? `(${result})` : `((${result}) * ${factor})`;
-    return offset === 0 ? scaled : `(${scaled} + ${offset})`;
+  return mapMolangResult(String(value), (result) => {
+    const scaled = factor === 1 ? `(${result})` : `((${result}) * ${typeof factor === "number" ? factor : `(${factor})`})`;
+    return offset === 0 ? scaled : `(${scaled} + ${typeof offset === "number" ? offset : `(${offset})`})`;
   });
 }
 

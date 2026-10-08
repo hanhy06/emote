@@ -25,13 +25,15 @@ export function importBedrockAnimationDocument(document: BedrockAnimationDocumen
   const sourceStem = sourceName.replace(/\.json$/i, "").trim() || "Bedrock Animation";
   const diagnostics: ImportDiagnostic[] = [...(document.animationDiagnostics ?? [])];
   const nodes = createBedrockPlayerNodes();
+  const runtimeNodeIds = new Set(Object.keys(nodes));
   const unknownBoneIds: Record<string, string> = {};
   for (const animation of Object.values(document.animations)) {
     for (const boneName of Object.keys(animation.bones ?? {})) {
       if (resolveBedrockPlayerBone(boneName) || unknownBoneIds[boneName]) continue;
       const base = `bedrock_custom_${sanitizeResourcePath(boneName, "bone").replaceAll("/", "_")}`;
       let id = base;
-      for (let suffix = 2; nodes[id]; suffix++) id = `${base}_${suffix}`;
+      for (let suffix = 2; [id, `${id}_x`, `${id}_y`, `${id}_z`].some((candidate) => runtimeNodeIds.has(candidate)); suffix++) id = `${base}_${suffix}`;
+      for (const candidate of [id, `${id}_x`, `${id}_y`, `${id}_z`]) runtimeNodeIds.add(candidate);
       unknownBoneIds[boneName] = id;
       nodes[id] = { binding: { sourceNodeId: boneName }, type: "item_display", defaultMatrix: IDENTITY_MATRIX, visible: true, itemStack: { id: "minecraft:air", count: 1 }, itemDisplay: "none" };
     }
@@ -132,7 +134,6 @@ function importAnimation(name: string, animation: BedrockAnimation, index: numbe
 function collectAnimationDiagnostics(name: string, animation: BedrockAnimation, diagnostics: ImportDiagnostic[]): void {
   const ignored = [
     [animation.start_delay !== undefined && numericStartDelayTicks(animation) === null ? animation.start_delay : undefined, "start_delay"],
-    [animation.blend_weight, "blend_weight"],
     [animation.override_previous_animation, "override_previous_animation"],
     [animation.particle_effects, "particle_effects"],
     [animation.sound_effects, "sound_effects"],
