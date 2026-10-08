@@ -36,7 +36,7 @@ export function projectBdDatapack(source: BdDatapackSource, sourceName: string):
         runtime: { kind: "baked", tracks: runtimeTracks },
       };
     }),
-    diagnostics: [...source.diagnostics, ...(source.droppedCamera ? [{
+    diagnostics: [...source.diagnostics, ...source.displays.filter((display) => display.airFallback).map((display) => ({ severity: "warning" as const, code: "bd_datapack_node_as_air", message: `${display.tag} was imported as an air item display; its transforms remain playable.` })), ...(source.droppedCamera ? [{
       severity: "warning",
       code: "bd_datapack_camera_ignored",
       message: "BD Engine camera movement is not part of the emote format and was ignored.",
@@ -48,7 +48,7 @@ export function projectBdDatapack(source: BdDatapackSource, sourceName: string):
 
 function projectNode(display: BdSourceDisplay): ImportedNode {
   const common = {
-    binding: { sourceNodeId: display.id, skinGroupId: display.id },
+    binding: { sourceNodeId: display.id, ...(display.airFallback ? {} : { skinGroupId: display.id }) },
     defaultMatrix: display.defaultMatrix,
     visible: true,
     ...(display.entityNbt ? { entityNbt: display.entityNbt } : {}),

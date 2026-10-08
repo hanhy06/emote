@@ -2,7 +2,7 @@ import { unzipSync } from "fflate";
 import type { BlockStateData, DisplayNbtPatch, ItemStackData } from "../../domain/minecraftData";
 import type { Matrix16 } from "../../domain/matrix";
 import { readBlockState, readDisplayNbt, readItemStack } from "../../format/minecraftData";
-import { asMatrix16 } from "../../format/matrix";
+import { asMatrix16, IDENTITY_MATRIX } from "../../format/matrix";
 import { requireAnimationDurationTicks } from "../../format/time";
 import {
   findMatchingSnbtDelimiter,
@@ -40,6 +40,7 @@ interface BdSourceDisplayBase {
   defaultMatrix: Matrix16;
   entityNbt?: string;
   initialPayload: string;
+  airFallback?: boolean;
 }
 
 export type BdSourceDisplay =
@@ -121,7 +122,7 @@ function hasZipHeader(bytes: Uint8Array): boolean {
 
 function readDisplays(createFunction: string, namespace: string): BdSourceDisplay[] {
   const found: { index: number; display: BdSourceDisplay }[] = [];
-  const entityStart = /\{\s*id\s*:\s*["'](?:minecraft:)?(item_display|block_display|text_display)["']/g;
+  const entityStart = /\{\s*id\s*:\s*["'](?:minecraft:)?([A-Za-z0-9_.:-]+)["']/g;
   for (const match of createFunction.matchAll(entityStart)) {
     const start = match.index!;
     const end = findMatchingSnbtDelimiter(createFunction, start, "{", "}");
@@ -144,9 +145,12 @@ function readDisplays(createFunction: string, namespace: string): BdSourceDispla
 }
 
 function readDisplay(id: string, tag: string, type: string, compound: string): BdSourceDisplay {
-  const defaultMatrix = readMatrix(readSnbtRawField(compound, "transformation"), `${id} create transformation`);
+  const transformation = readSnbtRawField(compound, "transformation");
+  const unknownType = !["item_display", "block_display", "text_display"].includes(type);
+  const defaultMatrix = unknownType && !transformation ? IDENTITY_MATRIX : readMatrix(transformation, `${id} create transformation`);
   const entityNbt = omitSnbtFields(compound, OWNED_DISPLAY_FIELDS);
   const common = { id, tag, defaultMatrix, ...(entityNbt ? { entityNbt } : {}) };
+  if (unknownType) return { ...common, type: "item_display", airFallback: true, initialPayload: '{id:"minecraft:air",count:1}', itemStack: { id: "minecraft:air", count: 1 }, itemDisplay: "none" };
   if (type === "item_display") {
     const item = readSnbtRawField(compound, "item");
     if (!item) throw new Error(`BD Engine datapack node ${id} does not contain an item.`);
@@ -196,6 +200,7 @@ function readAnimations(
       const currentPayloadByTag = new Map(displays.map((display) => [display.tag, display.initialPayload]));
       for (const frame of frames) {
         const lines = frame.content.split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
+        const rawPatches = new Map<string, Map<string, string>>();
         for (const line of lines) {
           if (line.startsWith("#") || line.startsWith("schedule function ")) continue;
           if (line.includes(`tag=${archive.namespace}_camera`)) {
@@ -203,20 +208,40 @@ function readAnimations(
             continue;
           }
           const merge = /^data merge entity @e\[([^\]]+)]\s+(\{.*})$/.exec(line);
-          if (!merge) throw new Error(`Unsupported command in ${frame.path}: ${line}`);
+          if (!merge) {
+            diagnostics.push({ severity: "warning", code: "bd_datapack_command_ignored", message: `Command has no matching display update and was omitted: ${line}`, sourcePath: frame.path });
+            continue;
+          }
           const tag = /(?:^|,)tag=([^,\]]+)/.exec(merge[1])?.[1];
           const display = tag ? displayByTag.get(tag) : undefined;
           if (!tag || !display) throw new Error(`Keyframe ${frame.path} targets an unknown display tag: ${tag ?? "<missing>"}`);
-          validateDisplayMerge(display, merge[2], frame.path);
+          const payloadField = display.type === "item_display" ? "item" : display.type === "block_display" ? "block_state" : "text";
+          const extra = omitSnbtFields(merge[2], new Set(["transformation", "interpolation_duration", "start_interpolation", payloadField]));
+          if (extra) {
+            const patch = rawPatches.get(display.id) ?? new Map<string, string>();
+            for (const field of parseSnbtCompound(extra)) patch.set(field.name, field.value);
+            rawPatches.set(display.id, patch);
+          }
           const payloadUpdate = readDisplayPayloadUpdate(display, merge[2]);
           if (!payloadUpdate) continue;
           const mergedPayload = mergeSnbtValue(currentPayloadByTag.get(tag)!, payloadUpdate);
           setNbtFrame(nbt[display.id], frame.index * TICKS_PER_BD_FRAME, display, display.initialPayload, mergedPayload);
           currentPayloadByTag.set(tag, mergedPayload);
         }
+        for (const [id, patch] of rawPatches) {
+          const tick = frame.index * TICKS_PER_BD_FRAME;
+          const previous = nbt[id].at(-1);
+          const value = previous?.tick === tick ? previous.value : { rawFields: [] };
+          const fields = new Map(value.rawFields.map((field) => [field.name, field.value]));
+          for (const [name, rawValue] of patch) fields.set(name, rawValue);
+          const next = { tick, value: { ...value, rawFields: [...fields].map(([name, rawValue]) => ({ name, value: rawValue })) } };
+          if (previous?.tick === tick) nbt[id][nbt[id].length - 1] = next;
+          else nbt[id].push(next);
+        }
         for (const line of lines) {
           if (line.startsWith("#") || line.startsWith("schedule function ") || line.includes(`tag=${archive.namespace}_camera`)) continue;
-          const merge = /^data merge entity @e\[([^\]]+)]\s+(\{.*})$/.exec(line)!;
+          const merge = /^data merge entity @e\[([^\]]+)]\s+(\{.*})$/.exec(line);
+          if (!merge) continue;
           const matrix = readSnbtRawField(merge[2], "transformation");
           if (!matrix) continue;
           const tag = /(?:^|,)tag=([^,\]]+)/.exec(merge[1])?.[1];
@@ -244,15 +269,6 @@ function readAnimations(
     }
   });
   return { animations, droppedCamera, diagnostics };
-}
-
-function validateDisplayMerge(display: BdSourceDisplay, compound: string, path: string): void {
-  const allowed = new Set(["transformation", "interpolation_duration", "start_interpolation"]);
-  if (display.type === "item_display") allowed.add("item");
-  else if (display.type === "block_display") allowed.add("block_state");
-  else allowed.add("text");
-  const unsupported = parseSnbtCompound(compound).find((field) => !allowed.has(field.name));
-  if (unsupported) throw new Error(`Unsupported display data field ${unsupported.name} in ${path}.`);
 }
 
 function readDisplayPayloadUpdate(display: BdSourceDisplay, compound: string): string | null {
