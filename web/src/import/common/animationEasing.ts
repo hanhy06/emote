@@ -5,10 +5,10 @@ import { SUPPORTED_EASINGS } from "./curveMath";
 export const SUPPORTED_BLOCKBENCH_EASINGS = Object.freeze([...SUPPORTED_EASINGS, "step"]);
 
 export function blockbenchEasingToEmote(name: string | undefined): RuntimeEasing | undefined {
-  const normalized = (name ?? "linear").replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
+  const normalized = (name ?? "linear").replaceAll("_", "").toLowerCase();
   if (normalized === "none") return "linear";
-  return SUPPORTED_BLOCKBENCH_EASINGS.includes(normalized.replaceAll("_", "")) && normalized !== "step"
-    ? normalized as RuntimeEasing
+  return SUPPORTED_BLOCKBENCH_EASINGS.includes(normalized) && normalized !== "step"
+    ? normalized.replace(/^ease(inout|in|out)/, (_, direction: string) => `ease_${direction === "inout" ? "in_out" : direction}_`) as RuntimeEasing
     : undefined;
 }
 
