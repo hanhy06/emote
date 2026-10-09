@@ -3,22 +3,32 @@ import { createConversionDocument } from "../domain/conversionDocument";
 import { combineConversionDocuments } from "../domain/conversionBatch";
 import type { ImportedSequence } from "../domain/emoteDefinition";
 import { ConversionError, conversionErrorMessage, type ConversionIssue } from "../foundation/diagnostics";
-import { isImportedSequence, type ImportAdapterLoader } from "./adapter";
-import { detectAdapter, importDetected } from "./adapterRegistry";
+import { detectInputFormat, readInput, INPUT_FORMATS } from "./formats";
 
 export interface ImportFile {
   name: string;
   arrayBuffer(): Promise<ArrayBuffer>;
 }
 
-export async function importFileBatch(files: readonly ImportFile[], adapters: readonly ImportAdapterLoader[]): Promise<ConversionDocument> {
+export async function importFileBatch(files: readonly ImportFile[]): Promise<ConversionDocument> {
   const results = await Promise.allSettled(files.map(async (file) => {
     const input = { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) };
-    const detected = await detectAdapter(adapters, input);
-    const source = await importDetected(detected, input);
-    return isImportedSequence(source)
+    const format = await detectInputFormat(input);
+    const label = INPUT_FORMATS[format].label;
+    let source;
+    try {
+      source = await readInput(format, input);
+    } catch (reason) {
+      throw ConversionError.fromUnknown(
+        reason,
+        `${format}_import_failed`,
+        `Could not import ${input.name} as ${label}.`,
+        input.name,
+      );
+    }
+    return "kind" in source
       ? { sequence: source }
-      : { document: createConversionDocument(source, detected.adapter.label) };
+      : { document: createConversionDocument(source, label) };
   }));
 
   const documents: ConversionDocument[] = [];

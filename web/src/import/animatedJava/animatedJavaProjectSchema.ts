@@ -15,6 +15,12 @@ import { validateSourceAnimations } from "../common/animationValidation";
 
 export type AjProjectExpression = string | number;
 
+export interface ProjectTransformGraph {
+  groups: ReadonlyMap<string, AjProjectGroup>;
+  groupParents: ReadonlyMap<string, string | undefined>;
+  elementParents: ReadonlyMap<string, string | undefined>;
+}
+
 export interface AjProject {
   meta: { format: string; format_version: string };
   name?: string;
@@ -54,7 +60,6 @@ export interface AjProjectDisplayElement extends AjProjectElementBase {
   config?: Record<string, unknown>;
   configs?: { default?: Record<string, unknown>; variants?: Record<string, unknown> };
   onSummonFunction?: string;
-  airFallback?: boolean;
 }
 
 export interface AjProjectLocator extends AjProjectElementBase {

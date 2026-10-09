@@ -1,5 +1,4 @@
-import type { BlockStateData, DisplayNbtPatch, DisplayNbtValue, ItemStackData, RawNbtField } from "../domain/minecraftData";
-import type { EmoteNbtValue } from "./emoteAnimation";
+import type { BlockStateData, DisplayNbtPatch, ItemStackData, RawNbtField } from "../domain/minecraftData";
 import type { MinecraftVersionProfile } from "./minecraftVersionProfiles";
 import { parseSnbtCompound, readSnbtString, serializeSnbtCompound, serializeSnbtString } from "./snbt";
 
@@ -71,10 +70,6 @@ export function writeDisplayNbt(value: DisplayNbtPatch, profile: MinecraftVersio
     ["block_state", value.blockState === undefined ? undefined : writeBlockState(value.blockState, profile)],
     ["item", value.itemStack === undefined ? undefined : writeItemStack(value.itemStack, profile)],
   ]);
-}
-
-export function readDisplayNbtValue(value: EmoteNbtValue): DisplayNbtValue {
-  return typeof value === "string" ? readDisplayNbt(value) : value;
 }
 
 function snbtString(value: string): string {

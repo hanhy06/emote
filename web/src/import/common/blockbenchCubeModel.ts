@@ -1,6 +1,8 @@
 import type { Matrix4 } from "three";
 import type { BbCube, BbGroup, BbLocator, BbUnknownElement } from "./blockbenchCubeSchema";
 
+export const PLAYER_RENDER_SCALE = 0.9375;
+
 export interface BoneNodeEntry {
   id: string;
   localMatrix: Matrix4;
@@ -16,5 +18,5 @@ export interface BoneEntry {
   cubes: BbCube[];
   locators: BbLocator[];
   nodes: BoneNodeEntry[];
-  airDisplay?: BbUnknownElement;
+  sourceElement?: BbUnknownElement;
 }

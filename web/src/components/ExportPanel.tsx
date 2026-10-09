@@ -1,8 +1,6 @@
 interface DownloadItem {
   label: string;
   detail: string;
-  exportable: boolean;
-  reason?: string;
 }
 
 interface ExportPanelProps {
@@ -24,8 +22,6 @@ export function ExportPanel({
   onDownloadAllAnimations,
   onDownloadSequence,
 }: ExportPanelProps) {
-  const bundleDisabled = disabled || animations.some((animation) => !animation.exportable);
-
   return (
     <section className="export">
       <div className="section-heading export-heading">
@@ -38,16 +34,16 @@ export function ExportPanel({
       </div>
       {error && <p className="error" role="alert">{error}</p>}
       {animations.length >= 1 && <div className="bundle-actions">
-        <button type="button" disabled={bundleDisabled} onClick={onDownloadAllAnimations}>Download all JSON</button>
-        <button className="primary-button" type="button" disabled={bundleDisabled} onClick={onDownloadSequence}>Download sequence files</button>
+        <button type="button" disabled={disabled} onClick={onDownloadAllAnimations}>Download all JSON</button>
+        <button className="primary-button" type="button" disabled={disabled} onClick={onDownloadSequence}>Download sequence files</button>
       </div>}
       <h3>Animations</h3>
       <ul className="download-list">
         {animations.map((animation, index) => (
           <li key={`${animation.detail}:${index}`}>
-            <span><strong>{animation.label}</strong><small>{animation.exportable ? animation.detail : `${animation.detail} · Export unavailable`}</small>{!animation.exportable && animation.reason && <small>{animation.reason}</small>}</span>
+            <span><strong>{animation.label}</strong><small>{animation.detail}</small></span>
             <div className="download-actions">
-              <button className="primary-button" type="button" disabled={disabled || !animation.exportable} onClick={() => onDownloadAnimation(index)}>Download JSON</button>
+              <button className="primary-button" type="button" disabled={disabled} onClick={() => onDownloadAnimation(index)}>Download JSON</button>
             </div>
           </li>
         ))}

@@ -1,10 +1,9 @@
 import { Matrix4, Vector3 } from "three";
-import type { Matrix16 } from "../../format/emoteAnimation";
+import type { Matrix16 } from "../../domain/matrix";
 import { matrix4ToRowMajor } from "../../format/matrix";
 import type { ImportedSkinPart } from "../../domain/conversionSeed";
 import type { BbCube } from "./blockbenchCubeSchema";
 import type { BoneEntry } from "./blockbenchCubeModel";
-import type { CubeProjectTransformConvention } from "./blockbenchCubeTransform";
 import {
   humanoidJointFillMatrix,
   humanoidRenderPieces,
@@ -56,11 +55,7 @@ export function isHiddenAccessoryBone(bone: BoneEntry): boolean {
   return false;
 }
 
-export function cubePlayerHeadMatrix(cube: BbCube, bone: BoneEntry, transforms: CubeProjectTransformConvention): Matrix16 | undefined {
-  const inflate = cube.inflate ?? 0;
-  const sourceFrom = cube.from.map((value, axis) => value - bone.group.origin[axis] - inflate);
-  const sourceTo = cube.to.map((value, axis) => value - bone.group.origin[axis] + inflate);
-  const canonical = transforms.bounds(sourceFrom, sourceTo);
+export function cubePlayerHeadMatrix(cube: BbCube, bone: BoneEntry, canonical: { from: readonly number[]; to: readonly number[] }): Matrix16 | undefined {
   const from = canonical.from.map((value) => value / 16);
   const to = canonical.to.map((value) => value / 16);
   const size = to.map((value, axis) => value - from[axis]);

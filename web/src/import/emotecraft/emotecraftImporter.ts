@@ -1,108 +1,55 @@
-import type { BakedRuntimeNodeTracks } from "../../domain/minecraftData";
-import type { ImportedAnimation, ImportedProject, ImportDiagnostic } from "../../domain/conversionSeed";
-import { createDefaultPlayerBehavior } from "../../format/emoteAnimation";
+import { importedNodeHints } from "../../domain/conversionSeed";
+import type { ImportedProject, ImportDiagnostic } from "../../domain/conversionSeed";
+import type { TimelineEventIR } from "../../domain/animationIR";
+import { createDefaultPlayerBehavior } from "../../domain/emoteDefinition";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
-import { requireAnimationDurationTicks } from "../../format/time";
-import { createEmotecraftRuntime, sampleEmotecraftAnimation } from "./emotecraftAnimationSampling";
-import type { EmotecraftFile, PalAnimation } from "./emotecraftBinary";
+import type { EmotecraftFile } from "./emotecraftBinary";
 import { convertEmotecraftSong } from "./emotecraftNbs";
-import { createEmotecraftNodes, EMOTECRAFT_PLAYER_PARTS } from "./emotecraftPlayerRig";
-import { hasMolangExpression } from "../../format/molang/runtimeAnalysis";
-import { ConversionError, PreviewUnavailableError } from "../../foundation/diagnostics";
-import { createMolangPreviewFallback } from "../common/previewFallback";
-import { matrix4ToRowMajor } from "../../format/matrix";
+import { createEmotecraftAnimationIR } from "./emotecraftAnimationIR";
 
 export function importEmotecraftFile(file: EmotecraftFile, sourceName: string): ImportedProject {
-  const animation = file.animation;
-  const sourceStem = sourceName.replace(/\.emotecraft$/i, "").trim() || "Emotecraft Emote";
-  const displayName = file.metadata.name?.trim() || sourceStem;
-  const durationTicks = requireAnimationDurationTicks(Math.max(1, Math.ceil(animation.lengthTicks)), `${displayName} duration`);
-  const loopStartTicks = requireLoopStartTick(animation, durationTicks, displayName);
-  const song = file.song ? convertEmotecraftSong(file.song, durationTicks) : { events: [], diagnostics: [] };
-  const diagnostics = [...collectDiagnostics(file), ...song.diagnostics];
-  const knownBones = new Set(["body", ...EMOTECRAFT_PLAYER_PARTS.map((part) => part.bone)]);
-  const airBoneIds: Record<string, string> = {};
-  for (const name of new Set([...Object.keys(animation.bones), ...Object.keys(animation.pivots)])) {
-    if (knownBones.has(name)) continue;
-    const base = `emotecraft_custom_${sanitizeResourcePath(name, "bone").replaceAll("/", "_")}`;
-    let id = base;
-    for (let suffix = 2; Object.values(airBoneIds).includes(id); suffix++) id = `${base}_${suffix}`;
-    airBoneIds[name] = id;
-    diagnostics.push({ severity: "warning", code: "emotecraft_bone_as_air", message: `Emotecraft bone ${name} was imported as an air item display; its transforms remain playable.` });
-  }
-  let samples;
-  let previewFallback;
-  try {
-    samples = sampleEmotecraftAnimation(animation, displayName, durationTicks, { airBoneIds });
-  } catch (reason) {
-    if (!(reason instanceof ConversionError) || !["unsupported_emotecraft_molang", "unsupported_emotecraft_runtime_molang"].includes(reason.code)) throw reason;
-    samples = sampleEmotecraftAnimation(animation, displayName, durationTicks, { createPose: true, airBoneIds });
-    previewFallback = createMolangPreviewFallback(displayName, durationTicks, new PreviewUnavailableError(reason.code, reason.message, reason.sourcePath));
-    diagnostics.push(previewFallback.diagnostic);
-  }
-  const nodes = createEmotecraftNodes(samples.slices, samples.bindMatrices);
-  for (const [name, id] of Object.entries(airBoneIds)) nodes[id] = { binding: { sourceNodeId: name }, type: "item_display", defaultMatrix: matrix4ToRowMajor(samples.bindMatrices.get(id)!, `${name} bind matrix`), visible: true, itemStack: { id: "minecraft:air", count: 1 }, itemDisplay: "none" };
-  const usesMolang = Object.values(animation.bones).some((bone) => [...bone.position, ...bone.rotation, ...bone.scale, bone.bend].some((frames) => frames.some((frame) => hasMolangExpression(frame.start) || hasMolangExpression(frame.end) || frame.easingArgs.some((args) => args.some(hasMolangExpression)))));
-  const tracks: Record<string, BakedRuntimeNodeTracks> = Object.fromEntries(Object.entries(samples.transforms).map(([nodeId, frames]) => [nodeId, {
-    transforms: frames.map((frame) => ({
-      tick: frame.tick,
-      matrix: frame.matrix,
-      interpolation: frame.step ? { type: "step" } : { type: "linear", durationTicks: 1 },
-    })),
-    visibility: [],
-    nbt: [],
-  }]));
-  const metadata = {
-    name: displayName,
-    description: file.metadata.description?.trim() || `${displayName} emote.`,
-    ...(file.metadata.author ? { author: file.metadata.author } : {}),
-    ...(file.metadata.badges.length ? { badges: file.metadata.badges } : {}),
-  };
-  const importedAnimation: ImportedAnimation = {
-    id: sanitizeResourcePath(displayName, "emotecraft_emote"),
-    name: displayName,
-    suggestedMetadata: metadata,
-    durationTicks,
-    playbackMode: animation.loop === "once" ? "once" : animation.loop === "hold" ? "hold" : "loop",
-    loopStartTicks,
-    loopDelayTicks: 0,
-    events: { start: [], timeline: song.events, loop: [], stop: [] },
-    preview: previewFallback?.preview ?? {
-      durationTicks: samples.durationTicks,
-      availability: { status: "full" },
-      tracks: Object.fromEntries(Object.entries(tracks).map(([nodeId, track]) => [nodeId, { transforms: track.transforms, visibility: track.visibility }])),
-    },
-    exportAvailability: { exportable: true },
-    runtime: usesMolang ? createEmotecraftRuntime(animation, nodes, samples, airBoneIds) : { kind: "baked", tracks },
-  };
-  return {
-    source: "emotecraft_binary",
-    sourceName,
-    suggestedMetadata: metadata,
-    suggestedPlayer: createDefaultPlayerBehavior(),
-    suggestedNamespace: sanitizeNamespace(displayName),
-    suggestedRotationDeadzone: 0,
-    nodes,
-    animations: [importedAnimation],
-    diagnostics,
-    resources: new Map(),
-  };
-}
-
-function requireLoopStartTick(animation: PalAnimation, durationTicks: number, displayName: string): number {
-  if (animation.loop !== "loop_from_tick") return 0;
-  const tick = Math.round(animation.loopStartTick);
-  if (!Number.isFinite(animation.loopStartTick) || tick < 0 || tick >= durationTicks) {
-    throw new Error(`${displayName} loop start must resolve within 0..${durationTicks - 1} ticks.`);
-  }
-  return tick;
-}
-
-function collectDiagnostics(file: EmotecraftFile): ImportDiagnostic[] {
+  const name = file.metadata.name?.trim() || sourceName.replace(/\.emotecraft$/i, "").trim() || "Emotecraft Emote";
   const diagnostics: ImportDiagnostic[] = [];
-  if (file.icon) diagnostics.push({ severity: "warning", code: "emotecraft_icon_ignored", message: "The embedded Emotecraft icon is not part of the emote animation format and was ignored." });
-  for (const [kind, count] of [["sound", file.animation.effects.sounds.length], ["particle", file.animation.effects.particles.length], ["instruction", file.animation.effects.instructions.length]] as const) {
-    if (count) diagnostics.push({ severity: "warning", code: `emotecraft_${kind}_effects_ignored`, message: `${count} Emotecraft ${kind} effect(s) cannot be converted automatically and were ignored.` });
+  const { ir, imported: nodes } = createEmotecraftAnimationIR(file.animation, name, diagnostics);
+  if (file.animation.loop === "loop_from_tick" && (!Number.isFinite(file.animation.loopStartTick) || file.animation.loopStartTick < 0 || file.animation.loopStartTick / 20 >= ir.animation.duration)) throw new Error(`${name} loop start must be before the animation end.`);
+  const effects = file.animation.effects;
+  const timeline: TimelineEventIR[] = [];
+  for (const [index, sound] of effects.sounds.entries()) {
+    if (!sound.sound.trim()) {
+      diagnostics.push({ severity: "warning", code: "emotecraft_effect_ignored", message: `${name} at ${sound.tick}t: an effect without a resource identifier was omitted.`, sourcePath: `effects.sounds[${index}]` });
+      continue;
+    }
+    timeline.push({ time: sound.tick / 20, source: { type: "player" }, origin: { type: "root" }, action: { type: "commands", commands: [`playsound ${sound.sound.trim()} master @s ~ ~ ~`] } });
   }
-  return diagnostics;
+  for (const [index, particle] of effects.particles.entries()) {
+    const sourcePath = `effects.particles[${index}]`;
+    if (!particle.effect.trim()) {
+      diagnostics.push({ severity: "warning", code: "emotecraft_effect_ignored", message: `${name} at ${particle.tick}t: an effect without a resource identifier was omitted.`, sourcePath });
+      continue;
+    }
+    const node = particle.locator.trim() ? Object.entries(ir.nodes).find(([, node]) => node.source?.node_id === particle.locator.trim())?.[0] : undefined;
+    timeline.push({ time: particle.tick / 20, source: { type: "server" }, origin: node ? { type: "node", node } : { type: "root" }, action: { type: "commands", commands: [`particle ${particle.effect.trim()} ~ ~ ~`] } });
+    if (particle.locator.trim() && !node) diagnostics.push({ severity: "warning", code: "emotecraft_effect_origin_approximated", message: `${name} at ${particle.tick}t: effect locator could not be resolved; the root position is used. Review and edit the event.`, sourcePath });
+    if (particle.script.trim()) diagnostics.push({ severity: "warning", code: "emotecraft_particle_script_ignored", message: `${name} at ${particle.tick}t: particle pre-effect script was omitted. Review and edit the event.`, sourcePath });
+  }
+  for (const [index, instruction] of effects.instructions.entries()) {
+    const lines = instruction.instruction.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    const commands = lines.map((line) => line.replace(/^\//, "").trim()).filter(Boolean);
+    if (commands.length) timeline.push({ time: instruction.tick / 20, source: { type: "player" }, origin: { type: "root" }, action: { type: "commands", commands } });
+    if (lines.some((line) => !line.startsWith("/"))) diagnostics.push({ severity: "warning", code: "emotecraft_instruction_approximated", message: `${name} at ${instruction.tick}t: uninterpreted instructions were kept as commands; behavior may differ. Review and edit them.`, sourcePath: `effects.instructions[${index}]` });
+  }
+  ir.animation.duration = Math.max(ir.animation.duration, ...timeline.map((event) => event.time));
+  const durationTicks = Math.ceil(ir.animation.duration * 20);
+  const song = file.song ? convertEmotecraftSong(file.song, durationTicks) : { events: [], diagnostics: [] };
+  diagnostics.push(...song.diagnostics);
+  ir.animation.events = { start: [], timeline: [...timeline, ...song.events].sort((first, second) => first.time - second.time), loop: [], stop: [] };
+  ir.metadata = { name, description: file.metadata.description?.trim() || `${name} emote.`,
+    ...(file.metadata.author ? { author: file.metadata.author } : {}), ...(file.metadata.badges.length ? { badges: file.metadata.badges } : {}) };
+  if (file.icon) diagnostics.push({ severity: "warning", code: "emotecraft_icon_ignored", message: "Embedded icon is outside the animation output contract." });
+  return {
+    source: "emotecraft_binary", sourceName, suggestedMetadata: ir.metadata, suggestedPlayer: createDefaultPlayerBehavior(),
+    suggestedNamespace: sanitizeNamespace(name), suggestedRotationDeadzone: 0, nodeHints: importedNodeHints(nodes),
+    animations: [{ ir, id: sanitizeResourcePath(name, "emotecraft_emote"), name, suggestedMetadata: ir.metadata,
+    }], diagnostics, resources: new Map(),
+  };
 }

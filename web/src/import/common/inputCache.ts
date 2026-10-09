@@ -1,5 +1,5 @@
 import { parse, printParseErrorCode, type ParseError } from "jsonc-parser";
-import type { ImportInput, ProbeResult } from "../input";
+import type { ImportInput } from "../input";
 
 const inputCaches = new WeakMap<ImportInput, Map<string, unknown>>();
 
@@ -9,14 +9,6 @@ export function cachedInputValue<T>(input: ImportInput, key: string, load: () =>
   const value = load();
   cache.set(key, value);
   return value;
-}
-
-export function cachedInputPromise<T>(input: ImportInput, key: string, load: () => Promise<T>): Promise<T> {
-  const cache = cacheFor(input);
-  if (cache.has(key)) return cache.get(key) as Promise<T>;
-  const promise = load();
-  cache.set(key, promise);
-  return promise;
 }
 
 export function parseInputJson(input: ImportInput): unknown {
@@ -34,15 +26,6 @@ export function parseInputJsonc(input: ImportInput): unknown {
     if (error) throw new Error(`Invalid JSONC at offset ${error.offset}: ${printParseErrorCode(error.error)}.`);
     return value;
   });
-}
-
-export function probeParsedInput(
-  input: ImportInput,
-  parseInput: (input: ImportInput) => unknown,
-  probe: (value: unknown) => ProbeResult,
-  invalidReason: string,
-): ProbeResult {
-  try { return probe(parseInput(input)); } catch { return { confidence: 0, reason: invalidReason }; }
 }
 
 function cacheFor(input: ImportInput): Map<string, unknown> {

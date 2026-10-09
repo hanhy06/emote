@@ -1,5 +1,6 @@
 import { fromArrayBuffer } from "@nbsjs/core";
-import type { ImportedTimelineEvent, ImportDiagnostic } from "../../domain/conversionSeed";
+import type { ImportDiagnostic } from "../../domain/conversionSeed";
+import type { TimelineEventIR } from "../../domain/animationIR";
 
 const MINECRAFT_INSTRUMENTS = [
   "harp", "bass", "basedrum", "snare", "hat", "guitar", "flute", "bell", "chime", "xylophone",
@@ -8,7 +9,7 @@ const MINECRAFT_INSTRUMENTS = [
 ] as const;
 
 export interface EmotecraftSongConversion {
-  events: ImportedTimelineEvent[];
+  events: TimelineEventIR[];
   diagnostics: ImportDiagnostic[];
 }
 
@@ -27,7 +28,7 @@ export function convertEmotecraftSong(bytes: Uint8Array, durationTicks: number):
     };
   }
 
-  const commandsByTick = new Map<number, string[]>();
+  const commandsByTime = new Map<number, string[]>();
   const solo = song.hasSolo();
   let ignoredCustomNotes = 0;
   let truncatedNotes = 0;
@@ -41,8 +42,8 @@ export function convertEmotecraftSong(bytes: Uint8Array, durationTicks: number):
         ignoredCustomNotes++;
         continue;
       }
-      const tick = Math.round(songTick * 20 / song.getTempo());
-      if (tick < 0 || tick > durationTicks) {
+      const time = songTick / song.getTempo();
+      if (time < 0 || time > durationTicks / 20) {
         truncatedNotes++;
         continue;
       }
@@ -51,9 +52,9 @@ export function convertEmotecraftSong(bytes: Uint8Array, durationTicks: number):
       ignoredPanning ||= (layer.stereo ?? 0) !== 0 || (note.panning ?? 0) !== 0;
       const pitch = 2 ** (((note.key ?? 45) - 45 + (note.pitch ?? 0) / 100) / 12);
       const command = `playsound minecraft:block.note_block.${instrument} record @a ~ ~ ~ ${formatNumber(volume)} ${formatNumber(pitch)} 0`;
-      const commands = commandsByTick.get(tick) ?? [];
+      const commands = commandsByTime.get(time) ?? [];
       commands.push(command);
-      commandsByTick.set(tick, commands);
+      commandsByTime.set(time, commands);
     }
   }
 
@@ -79,9 +80,9 @@ export function convertEmotecraftSong(bytes: Uint8Array, durationTicks: number):
     message: "The embedded NBS song loop is not independent from the emote timeline and was ignored.",
   });
 
-  const events = [...commandsByTick.entries()]
+  const events = [...commandsByTime.entries()]
     .sort(([first], [second]) => first - second)
-    .map(([tick, commands]) => ({ tick, source: { type: "player" as const }, origin: { type: "root" as const }, commands }));
+    .map(([time, commands]) => ({ time, source: { type: "player" as const }, origin: { type: "root" as const }, action: { type: "commands" as const, commands } }));
   return { events, diagnostics };
 }
 

@@ -1,5 +1,5 @@
-import type { EmoteCallback } from "../../format/emoteAnimation";
-import { parseCallbacks } from "../../format/emoteAnimationRuntime";
+import { EMOTE_SCHEMA_VERSION, parseCallbacks } from "../../format/emote";
+import type { EmoteCallback, EmoteMetadata, EmotePlayerBehavior, ImportedSequence, SequenceStep, SequenceWeightedChoice } from "../../domain/emoteDefinition";
 import { parseMinecraftTime } from "../../format/time";
 import { isResourceLocation } from "../../format/resourceLocation";
 import {
@@ -15,10 +15,10 @@ import type { ImportInput } from "../input";
 import { ConversionError } from "../../foundation/diagnostics";
 import { parseInputJson } from "../common/inputCache";
 
-export interface EmoteSequence {
+interface EmoteSequence {
   callbacks?: EmoteCallback[];
   type: "sequence";
-  schema_version: 4;
+  schema_version: typeof EMOTE_SCHEMA_VERSION;
   target_minecraft_version?: string;
   id: string;
   metadata: RuntimeRecord;
@@ -29,7 +29,7 @@ export interface EmoteSequence {
   steps: RuntimeRecord[];
 }
 
-export function convertSequenceInput(input: ImportInput): EmoteSequence | null {
+function convertSequenceInput(input: ImportInput): EmoteSequence | null {
   let value: unknown;
   try {
     value = parseInputJson(input);
@@ -37,14 +37,50 @@ export function convertSequenceInput(input: ImportInput): EmoteSequence | null {
     return null;
   }
   if (!isRecord(value) || value.type !== "sequence") return null;
-  if (value.schema_version === 4) return requireSequence(value);
+  if (value.schema_version === EMOTE_SCHEMA_VERSION) return requireSequence(value);
   throw new ConversionError("unsupported_sequence_schema", `Unsupported sequence schema: ${String(value.schema_version)}.`, "schema_version");
+}
+
+export function importSequence(input: ImportInput): ImportedSequence {
+  const sequence = convertSequenceInput(input);
+  if (!sequence) throw new Error("Input is not an Emote sequence.");
+  return {
+    kind: "sequence",
+    source: "emote_sequence",
+    sourceName: input.name,
+    id: sequence.id,
+    ...(sequence.target_minecraft_version ? { targetMinecraftVersion: sequence.target_minecraft_version } : {}),
+    metadata: { ...sequence.metadata } as EmoteMetadata,
+    cooldown: sequence.settings.cooldown,
+    player: { ...sequence.settings.player, stop_conditions: { ...(sequence.settings.player.stop_conditions as Record<string, unknown>) } } as EmotePlayerBehavior,
+    steps: sequence.steps.map(importStep),
+    callbacks: sequence.callbacks?.map((callback) => ({ ...callback })),
+  };
+}
+
+function importStep(step: Record<string, unknown>): SequenceStep {
+  if (typeof step.wait === "string") return { wait: step.wait };
+  const emote = typeof step.emote === "string" ? step.emote : importChoices(step.emote as unknown[]);
+  return {
+    emote,
+    ...(typeof step.repeat === "number" ? { repeat: step.repeat } : {}),
+    ...(typeof step.transition === "string" ? { transition: step.transition } : {}),
+  };
+}
+
+function importChoices(values: unknown[]): SequenceWeightedChoice[] {
+  const weighted = values.length > 1 && typeof values[1] === "number";
+  const result: SequenceWeightedChoice[] = [];
+  for (let index = 0; index < values.length; index += weighted ? 2 : 1) {
+    result.push({ id: values[index] as string, ...(weighted ? { chance: values[index + 1] as number } : {}) });
+  }
+  return result;
 }
 
 function requireSequence(value: unknown): EmoteSequence {
   const root = requireRecord(value, "sequence");
   if (root.type !== "sequence") throw invalid("type", "must be sequence");
-  if (root.schema_version !== 4) throw invalid("schema_version", "must be 4");
+  if (root.schema_version !== EMOTE_SCHEMA_VERSION) throw invalid("schema_version", `must be ${EMOTE_SCHEMA_VERSION}`);
   if (root.participants !== undefined && root.participants !== null) throw invalid("participants", "two-player matching is no longer supported");
   const id = requireString(root.id, "id");
   if (!isResourceLocation(id)) throw invalid("id", "must be a Minecraft resource location");
@@ -64,7 +100,7 @@ function requireSequence(value: unknown): EmoteSequence {
     if ("wait" in steps[index - 1]) throw invalid(`steps[${index}].wait`, "must not follow another wait step");
   });
   return {
-    type: "sequence", schema_version: 4,
+    type: "sequence", schema_version: EMOTE_SCHEMA_VERSION,
     ...(typeof root.target_minecraft_version === "string" ? { target_minecraft_version: root.target_minecraft_version } : {}),
     id, metadata, settings: { cooldown, player }, steps,
     ...(root.callbacks === undefined ? {} : { callbacks: parseCallbacks(root.callbacks) }),

@@ -1,19 +1,9 @@
-import {
-  documentPartAssignments,
-  documentPartOrders,
-  type ConversionDocument,
-  type ConversionNode,
-} from "../domain/conversionDocument";
-import type { PreviewAvailability, PreviewNodeTrack, PreviewProjection } from "../domain/previewProjection";
+import { documentPartAssignments, documentPartOrders, type ConversionAnimation, type ConversionDocument } from "../domain/conversionDocument";
+import { evaluatePoseIR } from "../domain/animationIRPose";
+import type { PreviewAvailability } from "../domain/previewProjection";
 import type { PlayerSkinPart } from "../domain/player";
-
-type ConversionItemNode = Extract<ConversionNode, { type: "item_display" }>;
-
-interface SkinCandidate {
-  nodeId: string;
-  partIndex: number;
-  node: ConversionItemNode;
-}
+import { matrix4ToRowMajor } from "../format/matrix";
+import { MolangBakeEvaluator } from "./molangEvaluator";
 
 export interface PreviewPart {
   nodeId: string;
@@ -32,79 +22,53 @@ export interface PreviewModel {
   hasReviewNodes: boolean;
 }
 
-export function createPreviewModel(
-  document: ConversionDocument,
-  nodeIds: readonly string[],
-  projection: PreviewProjection | undefined,
-  previewFrameIndex: number,
-): PreviewModel {
-  const availability = projection?.availability ?? null;
-  const durationTicks = projection?.durationTicks ?? 0;
-  const tick = availability?.status !== "full" || previewFrameIndex === 0
-    ? null
-    : Math.min(previewFrameIndex - 1, Math.max(0, durationTicks));
-  const scopedNodeIds = new Set(nodeIds);
-  const scopedNodes = Object.fromEntries(Object.entries(document.nodes).filter(([nodeId]) => scopedNodeIds.has(nodeId)));
-  const candidates = findSkinCandidates(scopedNodes);
-
-  return {
-    tick,
-    durationTicks,
-    availability,
-    parts: createPreviewParts(candidates, projection, tick),
-    assignments: pickNodeValues(documentPartAssignments(document), scopedNodeIds),
-    orders: pickNodeValues(documentPartOrders(document), scopedNodeIds),
-    hasReviewNodes: candidates.length > 0,
-  };
-}
-
-function pickNodeValues<T>(values: Record<string, T>, nodeIds: ReadonlySet<string>): Record<string, T> {
-  return Object.fromEntries(Object.entries(values).filter(([nodeId]) => nodeIds.has(nodeId)));
-}
-
-function findSkinCandidates(nodes: Readonly<Record<string, ConversionNode>>): SkinCandidate[] {
-  const candidates = Object.entries(nodes).flatMap(([nodeId, node]) => node.type === "item_display" && node.binding.skinGroupId
-    ? [{ nodeId, partIndex: 0, node }]
-    : []);
-  const partIndexByGroup = new Map<string, number>();
-  return candidates.map((candidate) => {
-    const group = candidate.node.binding.skinGroupId!;
-    if (!partIndexByGroup.has(group)) partIndexByGroup.set(group, partIndexByGroup.size);
-    return { ...candidate, partIndex: partIndexByGroup.get(group)! };
-  });
-}
-
-function createPreviewParts(
-  candidates: SkinCandidate[],
-  projection: PreviewProjection | undefined,
-  tick: number | null,
-): PreviewPart[] {
-  const previewTracks = projection?.tracks;
-  return candidates.filter((candidate) => isVisibleAtTick(
-    candidate.node.visible,
-    previewTracks?.[candidate.nodeId],
-    tick,
-  )).map((candidate) => {
-    let sourceMatrix = candidate.node.defaultMatrix;
-    if (tick !== null) {
-      const transforms = previewTracks?.[candidate.nodeId]?.transforms;
-      for (let index = (transforms?.length ?? 0) - 1; index >= 0; index--) {
-        const transform = transforms?.[index];
-        if (!transform || transform.tick > tick) continue;
-        sourceMatrix = transform.matrix;
-        break;
-      }
+export function createPreviewModel(document: ConversionDocument, animation: ConversionAnimation | undefined, previewFrameIndex: number): PreviewModel {
+  const nodeIds = new Set(animation?.nodeIds ?? []);
+  const candidates = Object.entries(document.skinCandidates).filter(([id]) => nodeIds.has(id));
+  const reasons = new Set<string>();
+  const approximate = (reason: string) => { reasons.add(reason); };
+  const evaluator = new MolangBakeEvaluator({ rejectNondeterministic: true, error: {
+    code: "animation_preview", previewUnavailable: true, message: (expression) => `Expression uses its base component: ${expression}`,
+  } });
+  const evaluate = (value: number | { molang: string }, progress: number, base = 0): number => {
+    try {
+      return evaluator.evaluate(typeof value === "number" ? value : value.molang, { animationTime: time, keyframeLerpTime: progress, lifeTime: elapsed }, "preview");
+    } catch (reason) {
+      approximate(reason instanceof Error ? reason.message : String(reason));
+      return base;
     }
-    return {
-      nodeId: candidate.nodeId,
-      partIndex: candidate.partIndex,
-      matrix: sourceMatrix,
-      ...(candidate.node.playerHeadConversionMatrix ? { conversionMatrix: candidate.node.playerHeadConversionMatrix } : {}),
-    };
-  });
-}
-
-function isVisibleAtTick(defaultVisible: boolean, track: PreviewNodeTrack | undefined, tick: number | null): boolean {
-  if (tick === null) return defaultVisible;
-  return track?.visibility.filter((keyframe) => keyframe.tick <= tick).at(-1)?.visible ?? defaultVisible;
+  };
+  let time = 0, elapsed = 0;
+  const delay = animation?.clip.playback?.start_delay;
+  const startDelay = delay === undefined ? 0 : Math.max(0, evaluate(delay, 0));
+  const durationTicks = animation ? Math.ceil((animation.clip.duration + startDelay) * 20) : 0;
+  const tick = previewFrameIndex === 0 ? null : Math.min(previewFrameIndex - 1, durationTicks);
+  elapsed = (tick ?? 0) / 20;
+  time = Math.min(animation?.clip.duration ?? 0, Math.max(0, elapsed - startDelay));
+  const parts: PreviewPart[] = [];
+  let availability: PreviewAvailability | null = animation ? { status: "full" } : null;
+  if (animation) {
+    if (animation.clip.clock?.type === "molang") approximate("Runtime animation clock is approximated with elapsed time.");
+    if (animation.clip.programs?.initialize || animation.clip.programs?.update) approximate("Runtime programs are preserved; dependent expressions use their base components.");
+    try {
+      const poses = evaluatePoseIR({ ...animation, nodes: Object.fromEntries(animation.nodeIds.map((id) => [id, document.nodes[id]])),
+        animation: tick === null || elapsed < startDelay ? { ...animation.clip, tracks: [] } : animation.clip }, time, evaluate, approximate);
+      const groups = new Map<string, number>();
+      for (const [id, candidate] of candidates) {
+        if (!groups.has(candidate.groupId)) groups.set(candidate.groupId, groups.size);
+        const pose = poses[id];
+        if (!pose?.attachments[candidate.attachmentId]) continue;
+        const fitted = document.nodes[id].transform?.some((operation) => operation.id === candidate.fittingOperation?.id);
+        parts.push({ nodeId: id, partIndex: groups.get(candidate.groupId)!, matrix: matrix4ToRowMajor(pose.matrix, id),
+          ...(!fitted && candidate.fittingOperation ? { conversionMatrix: candidate.fittingOperation.value } : {}) });
+      }
+      if (reasons.size) availability = { status: "approximate", reason: [...reasons].join(" ") };
+    } catch (reason) {
+      availability = { status: "unavailable", reason: reason instanceof Error ? reason.message : String(reason) };
+    }
+  }
+  return { tick, durationTicks, availability, parts,
+    assignments: Object.fromEntries(Object.entries(documentPartAssignments(document)).filter(([id]) => nodeIds.has(id))),
+    orders: Object.fromEntries(Object.entries(documentPartOrders(document)).filter(([id]) => nodeIds.has(id))),
+    hasReviewNodes: candidates.length > 0 };
 }

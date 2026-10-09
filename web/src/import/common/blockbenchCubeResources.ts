@@ -1,31 +1,10 @@
 import { sanitizeResourcePath } from "../../format/resourceLocation";
 import { ConversionError } from "../../foundation/diagnostics";
-import { itemModelResourcePath, type GeneratedResource } from "../../domain/generatedResource";
-import type { BbCube, BbTexture, BlockbenchCubeProject } from "./blockbenchCubeSchema";
+import type { GeneratedResource } from "../../domain/generatedResource";
+import type { BbCube, BbTexture } from "./blockbenchCubeSchema";
 import type { BoneEntry } from "./blockbenchCubeModel";
-import type { CubeProjectTransformConvention } from "./blockbenchCubeTransform";
 
 const SUPPORTED_FACES = new Set(["north", "south", "east", "west", "up", "down"]);
-const TEXTURELESS_MODEL_TEXTURE = "minecraft:block/white_concrete";
-
-export function writeSourceCubeResources(
-  project: BlockbenchCubeProject,
-  bones: BoneEntry[],
-  namespace: string,
-  projectPath: string,
-  resources: Map<string, GeneratedResource>,
-  transforms: CubeProjectTransformConvention,
-): void {
-  if (!bones.some((bone) => bone.cubes.length > 0)) return;
-  writeEmbeddedTextures(project.textures, namespace, projectPath, resources);
-  const resourceNodeIds = new Set(bones.map((bone) => bone.id));
-  for (const bone of bones) {
-    for (const [cubeIndex, cube] of bone.cubes.entries()) {
-      const nodeId = cubeIndex === 0 ? bone.id : uniqueCubeNodeId(bone, cube, cubeIndex, resourceNodeIds);
-      writeCubeResources(project, bone, cube, namespace, `${projectPath}/${nodeId}`, resources, transforms);
-    }
-  }
-}
 
 export function uniqueCubeNodeId(bone: BoneEntry, cube: BbCube, cubeIndex: number, ids: Set<string>): string {
   const cubeName = sanitizeResourcePath(cube.name?.trim() || `cube_${cubeIndex + 1}`, `cube_${cubeIndex + 1}`).replaceAll("/", "_");
@@ -36,33 +15,7 @@ export function uniqueCubeNodeId(bone: BoneEntry, cube: BbCube, cubeIndex: numbe
   return id;
 }
 
-export function writeCubeResources(
-  project: BlockbenchCubeProject,
-  bone: BoneEntry,
-  cube: BbCube,
-  namespace: string,
-  modelPath: string,
-  resources: Map<string, GeneratedResource>,
-  transforms: CubeProjectTransformConvention,
-): void {
-  const sourceTextures = project.textures.length > 0 ? project.textures : [{}];
-  const usedTextureIndexes = referencedTextureIndexes(cube, sourceTextures);
-  const textures = project.textures.length > 0
-    ? Object.fromEntries([...usedTextureIndexes].map((index) => [
-        `layer${index}`,
-        `${namespace}:item/${modelPath.split("/").slice(0, -1).join("/")}/${textureFileStem(project.textures.length, index)}`,
-      ]))
-    : { layer0: TEXTURELESS_MODEL_TEXTURE };
-  const model = {
-    kind: "cuboid_model" as const,
-    textures,
-    elements: [cubeModelElement(cube, bone.group.origin, project.resolution, sourceTextures, transforms)],
-  };
-  resources.set(`assets/${namespace}/models/item/${modelPath}.json`, model);
-  resources.set(itemModelResourcePath(namespace, modelPath), { kind: "item_model", model: `${namespace}:item/${modelPath}` });
-}
-
-function referencedTextureIndexes(cube: BbCube, textures: BbTexture[]): Set<number> {
+export function referencedTextureIndexes(cube: BbCube, textures: BbTexture[]): Set<number> {
   const result = new Set<number>();
   for (const [direction, face] of Object.entries(cube.faces)) {
     if (!SUPPORTED_FACES.has(direction) || face.enabled === false || face.texture === null || face.uv == null) continue;
@@ -71,32 +24,7 @@ function referencedTextureIndexes(cube: BbCube, textures: BbTexture[]): Set<numb
   return result;
 }
 
-function cubeModelElement(cube: BbCube, boneOrigin: number[], resolution: { width: number; height: number }, textures: BbTexture[], transforms: CubeProjectTransformConvention): Record<string, unknown> {
-  const inflate = cube.inflate ?? 0;
-  const sourceFrom = cube.from.map((value, axis) => value - boneOrigin[axis] - inflate);
-  const sourceTo = cube.to.map((value, axis) => value - boneOrigin[axis] + inflate);
-  const canonical = transforms.bounds(sourceFrom, sourceTo);
-  const faces = Object.fromEntries(Object.entries(cube.faces).flatMap(([direction, face]) => {
-    if (!SUPPORTED_FACES.has(direction) || face.enabled === false || face.texture === null || face.uv == null) return [];
-    return [[direction, {
-      uv: [
-        face.uv[0] * 16 / resolution.width,
-        face.uv[1] * 16 / resolution.height,
-        face.uv[2] * 16 / resolution.width,
-        face.uv[3] * 16 / resolution.height,
-      ],
-      texture: `#layer${resolveFaceTextureIndex(face.texture, textures)}`,
-      ...(face.rotation == null || face.rotation === 0 ? {} : { rotation: face.rotation }),
-    }]];
-  }));
-  return {
-    from: canonical.from.map((value) => value + 8),
-    to: canonical.to.map((value) => value + 8),
-    faces,
-  };
-}
-
-function writeEmbeddedTextures(textures: BbTexture[], namespace: string, projectPath: string, resources: Map<string, GeneratedResource>): void {
+export function writeEmbeddedTextures(textures: BbTexture[], namespace: string, projectPath: string, resources: Map<string, GeneratedResource>): void {
   if (textures.length === 0) return;
   for (const [index, texture] of textures.entries()) {
     if (!texture.source?.startsWith("data:image/png;base64,")) {
@@ -110,11 +38,11 @@ function writeEmbeddedTextures(textures: BbTexture[], namespace: string, project
   }
 }
 
-function textureFileStem(textureCount: number, index: number): string {
+export function textureFileStem(textureCount: number, index: number): string {
   return textureCount === 1 ? "texture" : `texture_${index}`;
 }
 
-function resolveFaceTextureIndex(reference: number | string | null | undefined, textures: BbTexture[]): number {
+export function resolveFaceTextureIndex(reference: number | string | null | undefined, textures: BbTexture[]): number {
   if (reference === undefined && textures.length === 1) return 0;
   const numeric = typeof reference === "number" ? reference : typeof reference === "string" && /^#?\d+$/.test(reference) ? Number(reference.replace(/^#/, "")) : undefined;
   const index = numeric ?? textures.findIndex((texture) => reference === texture.uuid || reference === texture.id || reference === texture.name);

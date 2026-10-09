@@ -2,18 +2,12 @@ import {
   BAKEABLE_TIME_QUERY_VALUE_NAMES,
   BUILT_IN_PREVIEW_QUERY_FUNCTION_NAMES,
   MOLANG_QUERY_VALUE_NAMES,
-  PLAYER_ROTATION_QUERY_VALUE_NAMES,
   TRUTHY_PREVIEW_QUERY_VALUE_NAMES,
   ZERO_PREVIEW_QUERY_FUNCTION_NAMES,
 } from "./queryCatalog";
 import { nextMolangSourceCharacter, scanMolangSource } from "./sourceScanner";
-import { rewriteMolangIdentifiers } from "./sourceTransformer";
 
 const QUERY_IDENTIFIER = /^(?:q|query)\.([A-Za-z_][A-Za-z0-9_]*)$/i;
-
-export function hasMolangExpression(value: unknown): value is string {
-  return typeof value === "string" && !/^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(value.trim());
-}
 
 export const PREVIEW_RUNTIME_QUERY_VALUES: Readonly<Record<string, number>> = Object.fromEntries(
   [...MOLANG_QUERY_VALUE_NAMES].flatMap((name) => {
@@ -42,11 +36,4 @@ export function usesRuntimeMolangState(value: unknown): boolean {
     }
   }
   return false;
-}
-
-export function negatePlayerRotationQueries(expression: string): string {
-  return rewriteMolangIdentifiers(expression, (identifier) => {
-    const match = QUERY_IDENTIFIER.exec(identifier);
-    return match && PLAYER_ROTATION_QUERY_VALUE_NAMES.has(match[1].toLowerCase()) ? `-(${identifier})` : undefined;
-  });
 }

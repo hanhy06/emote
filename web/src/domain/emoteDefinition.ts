@@ -1,7 +1,41 @@
-import type { EmoteCallback, EmoteMetadata, EmotePlayerBehavior } from "../format/emoteAnimation";
-import type { ImportedAnimation } from "./conversionSeed";
+export interface EmoteCallback {
+  name: string;
+  payload?: string;
+}
 
-export type EmoteDefinition = ImportedAnimation | ImportedSequence;
+export interface EmoteMetadata {
+  name: string;
+  description: string;
+  [key: string]: unknown;
+}
+
+export interface EmotePlayerBehavior {
+  hidden: boolean;
+  stop_conditions: {
+    movement_distance: number;
+    jump: boolean;
+    submerge: boolean;
+    ride: boolean;
+    damage: boolean;
+    attack: boolean;
+    game_mode_change: boolean;
+  };
+}
+
+export function createDefaultPlayerBehavior(): EmotePlayerBehavior {
+  return {
+    hidden: true,
+    stop_conditions: {
+      movement_distance: 0.3,
+      jump: true,
+      submerge: true,
+      ride: true,
+      damage: true,
+      attack: true,
+      game_mode_change: true,
+    },
+  };
+}
 
 export interface ImportedSequence {
   callbacks?: EmoteCallback[];

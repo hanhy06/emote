@@ -51,18 +51,8 @@ export function optionalBoolean(value: unknown, path: string): boolean | undefin
   return value === undefined ? undefined : requireBoolean(value, path);
 }
 
-export function requireStringValue<const T extends string>(value: unknown, allowed: readonly T[], path: string): T {
-  const string = requireString(value, path);
-  if (!allowed.includes(string as T)) throw invalidInput(path, `must be one of: ${allowed.join(", ")}`);
-  return string as T;
-}
-
 export function requireNumberArray(value: unknown, path: string): number[] {
   return requireArray(value, path).map((entry, index) => requireNumber(entry, `${path}[${index}]`));
-}
-
-export function requireStringArray(value: unknown, path: string): string[] {
-  return requireArray(value, path).map((entry, index) => requireString(entry, `${path}[${index}]`));
 }
 
 function invalidInput(path: string, message: string): ConversionError {

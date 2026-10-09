@@ -1,10 +1,8 @@
 import type { ImportedNode } from "../../domain/conversionSeed";
-import type { DisplayNbtPatch, RuntimeLocalTransform, RuntimeNode } from "../../domain/minecraftData";
+import type { DisplayNbtPatch } from "../../domain/minecraftData";
 import { readDisplayNbt } from "../../format/minecraftData";
 
 export const ZERO_VECTOR = [0, 0, 0] as const;
-export const ONE_VECTOR = [1, 1, 1] as const;
-export const IDENTITY_TRANSFORM: RuntimeLocalTransform = { position: ZERO_VECTOR, rotation: ZERO_VECTOR, scale: ONE_VECTOR };
 
 const DISPLAY_NBT_DEFAULTS: Readonly<Record<string, string>> = {
   billboard: '"fixed"', view_range: "1f", shadow_radius: "0f", shadow_strength: "1f", width: "0f", height: "0f", glow_color_override: "-1",
@@ -14,7 +12,7 @@ const TEXT_DISPLAY_NBT_DEFAULTS: Readonly<Record<string, string>> = {
   line_width: "200", background: "1073741824", text_opacity: "-1b", shadow: "0b", see_through: "0b", default_background: "0b", alignment: '"center"',
 };
 
-export function initialDisplayNbt(node: ImportedNode | RuntimeNode, patches: readonly DisplayNbtPatch[], atZero?: DisplayNbtPatch): DisplayNbtPatch {
+export function initialDisplayNbt(node: ImportedNode, patches: readonly DisplayNbtPatch[], atZero?: DisplayNbtPatch): DisplayNbtPatch {
   if (node.type === "anchor") throw new Error("Anchor nodes do not support NBT tracks.");
   const source = readDisplayNbt(node.entityNbt ?? "{}");
   const sourceFields = new Map([...source.rawFields, ...(atZero?.rawFields ?? [])].map((field) => [field.name, field.value]));
@@ -31,17 +29,4 @@ export function initialDisplayNbt(node: ImportedNode | RuntimeNode, patches: rea
     ...(patches.some((patch) => patch.itemStack !== undefined) && node.type === "item_display" ? { itemStack: { ...node.itemStack, ...source.itemStack, ...atZero?.itemStack } } : {}),
     ...(patches.some((patch) => patch.blockState !== undefined) && node.type === "block_display" ? { blockState: { ...node.blockState, ...source.blockState, ...atZero?.blockState } } : {}),
   };
-}
-
-export function importedNodeToRuntimeNode(node: ImportedNode, transform: RuntimeLocalTransform, parent?: string): RuntimeNode {
-  const common = {
-    ...(parent ? { parent } : {}),
-    ...("visible" in node && !node.visible ? { visible: false } : {}),
-    ...("entityNbt" in node && node.entityNbt ? { entityNbt: node.entityNbt } : {}),
-    transform,
-  };
-  if (node.type === "anchor") return { type: "anchor", ...common };
-  if (node.type === "item_display") return { type: "item_display", ...common, itemStack: node.itemStack, itemDisplay: node.itemDisplay };
-  if (node.type === "block_display") return { type: "block_display", ...common, blockState: node.blockState };
-  return { type: "text_display", ...common, text: node.text };
 }

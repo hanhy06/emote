@@ -15,5 +15,4 @@ export const BUILT_IN_PREVIEW_QUERY_FUNCTION_NAMES = new Set<string>(catalog.pre
 export const ZERO_PREVIEW_QUERY_FUNCTION_NAMES = new Set<string>(
   MOD_SUPPORTED_QUERY_FUNCTION_NAMES.filter((name) => !BUILT_IN_PREVIEW_QUERY_FUNCTION_NAMES.has(name)),
 );
-export const PLAYER_ROTATION_QUERY_VALUE_NAMES = new Set<string>(catalog.playerRotationValues);
 export const TRUTHY_PREVIEW_QUERY_VALUE_NAMES = new Set<string>(catalog.preview.truthyValues);

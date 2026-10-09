@@ -2,9 +2,9 @@ import { ConversionError } from "../foundation/diagnostics";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
 import type { GeneratedResource } from "./generatedResource";
-import type { ConversionAnimation, ConversionDocument, ConversionNode, SkinGroup } from "./conversionDocument";
-import { remapAnimationRuntimeData, remapImportedAnimationEvents, remapPreviewProjection } from "./importedAnimationRemapper";
-import { remapEditorNodeBinding } from "./nodeBindings";
+import type { ConversionAnimation, ConversionDocument, SkinCandidate } from "./conversionDocument";
+import type { NodeIR } from "./animationIR";
+import { remapClipIR } from "./animationIRConversion";
 import { isSequenceControlId, type ImportedSequence, type SequenceAnimationStep, type SequenceStep } from "./emoteDefinition";
 
 export function combineConversionDocuments(documents: readonly ConversionDocument[], importedSequences: readonly ImportedSequence[] = []): ConversionDocument {
@@ -12,8 +12,8 @@ export function combineConversionDocuments(documents: readonly ConversionDocumen
   if (importedSequences.length > 1) throw new ConversionError("multiple_sequences", "Open at most one sequence at a time.");
   if (documents.length === 1) return applyImportedSequence(documents[0], importedSequences[0]);
 
-  const nodes: Record<string, ConversionNode> = {};
-  const skinGroups: Record<string, SkinGroup> = {};
+  const nodes: Record<string, NodeIR> = {};
+  const skinCandidates: Record<string, SkinCandidate> = {};
   const animations: ConversionAnimation[] = [];
   const animationIds = new Set<string>();
   const resources = new Map(documents[0].resources);
@@ -26,21 +26,20 @@ export function combineConversionDocuments(documents: readonly ConversionDocumen
     for (const [id, node] of Object.entries(document.nodes)) {
       nodes[nodeId(id)] = {
         ...node,
-        binding: remapEditorNodeBinding(node.binding, { editorNodeId: nodeId, editorGroupId: groupId }),
+        ...(node.parent ? { parent: nodeId(node.parent) } : {}),
       };
     }
-    for (const [id, group] of Object.entries(document.skinGroups)) {
-      skinGroups[groupId(id)] = { ...group, nodeIds: group.nodeIds.map(nodeId) };
+    for (const [id, candidate] of Object.entries(document.skinCandidates)) {
+      skinCandidates[nodeId(id)] = { ...candidate, groupId: groupId(candidate.groupId), sceneId: groupId(candidate.sceneId) };
     }
     animations.push(...document.animations.map((animation) => {
-      const ids = { editorNodeId: nodeId, runtimeNodeId: nodeId, editorGroupId: groupId };
-      const id = uniqueAnimationId(animation.output.namespace, animation.runtime.id, animationIds);
+      const separator = animation.id.indexOf(":");
+      const id = uniqueAnimationId(animation.id.slice(0, separator), animation.id.slice(separator + 1), animationIds);
       return {
         ...animation,
+        id: `${animation.id.slice(0, separator)}:${id}`,
         nodeIds: animation.nodeIds.map(nodeId),
-        preview: remapPreviewProjection(animation.preview, ids),
-        runtime: { ...animation.runtime, id, data: remapAnimationRuntimeData(animation.runtime.data, ids) },
-        events: remapImportedAnimationEvents(animation.events, nodeId),
+        clip: remapClipIR(animation.clip, nodeId),
       };
     }));
     if (index > 0) mergeResources(resources, document.resources);
@@ -55,7 +54,7 @@ export function combineConversionDocuments(documents: readonly ConversionDocumen
       adapterLabel: [...new Set(documents.map((document) => document.origin.adapterLabel))].join(", "),
     },
     nodes,
-    skinGroups,
+    skinCandidates,
     animations,
     sequence: { ...first.sequence, namespace: "emote" },
     diagnostics: documents.flatMap((document) => document.diagnostics),
@@ -67,7 +66,7 @@ function applyImportedSequence(document: ConversionDocument, sequence: ImportedS
   if (!sequence) return document;
   const animationIds = new Set<string>();
   for (const animation of document.animations) {
-    const id = animation.runtime.sourceReferenceId;
+    const id = animation.sourceReferenceId;
     if (!id) continue;
     if (animationIds.has(id)) throw new ConversionError("duplicate_source_animation_id", `Multiple imported animations use the same id: ${id}`, id);
     animationIds.add(id);

@@ -1,14 +1,11 @@
-import type { EmoteCallback, EmoteEvent, EmoteMetadata, EmotePlayerBehavior, Matrix16, PlayerSkinPart } from "../format/emoteAnimation";
+import type { EmoteMetadata, EmotePlayerBehavior } from "./emoteDefinition";
+import type { Matrix16 } from "./matrix";
+import type { PlayerSkinPart } from "./player";
 import type { BlockStateData, ItemStackData } from "./minecraftData";
 import type { GeneratedResource } from "./generatedResource";
 import type { ConversionIssue } from "../foundation/diagnostics";
-import type { SourceNodeBinding } from "./nodeBindings";
-import type { PreviewNodeTrack, PreviewProjection, PreviewTransformKeyframe, PreviewVisibilityKeyframe } from "./previewProjection";
-import type { AnimationRuntimeData, RuntimeExportAvailability } from "./runtimeProjection";
-
-export type { PreviewAvailability, PreviewInterpolation, PreviewNodeTrack, PreviewProjection, PreviewTransformKeyframe, PreviewVisibilityKeyframe } from "./previewProjection";
-
-// Source adapters produce this neutral seed; the editable document consumes it once.
+import { normalizeResourceLocation } from "../format/resourceLocation";
+import type { AnimationIR } from "./animationIR";
 
 export type ImportSource = "bd_datapack" | "animated_java_blueprint" | "geckolib_bbmodel" | "bedrock_animation_json" | "emotecraft_binary" | "emote_json" | "emote_sequence";
 
@@ -23,18 +20,16 @@ export interface ImportedProject {
   suggestedCooldown?: string;
   suggestedRotationDeadzone?: number;
   suggestedDisplayInterpolation?: string;
-  nodes: Record<string, ImportedNode>;
+  nodeHints: Record<string, ImportedNodeHint>;
   animations: ImportedAnimation[];
   diagnostics: ImportDiagnostic[];
   resources: Map<string, GeneratedResource>;
 }
 
 export interface ImportedNodeBase {
-  binding: SourceNodeBinding;
-  defaultMatrix: Matrix16;
+  binding: { sourceNodeId: string; skinGroupId?: string };
   visible: boolean;
   entityNbt?: string;
-
 }
 
 export type ImportedNode =
@@ -56,31 +51,33 @@ export interface ImportedSkinPart {
 }
 
 export interface ImportedAnimation {
-  callbacks?: EmoteCallback[];
+  ir: AnimationIR;
   id: string;
   sourceReferenceId?: string;
   name: string;
   suggestedMetadata?: EmoteMetadata;
-  durationTicks: number;
-  playbackMode: "once" | "hold" | "loop" | "server_sync";
-  loopStartTicks?: number;
-  loopDelayTicks: number;
-  events: {
-    start: EmoteEvent[];
-    timeline: ImportedTimelineEvent[];
-    loop: EmoteEvent[];
-    stop: EmoteEvent[];
-  };
-  preview: PreviewProjection;
-  exportAvailability: RuntimeExportAvailability;
-  runtime: AnimationRuntimeData;
 }
 
-export type ImportedTransformKeyframe = PreviewTransformKeyframe;
-export type ImportedVisibilityKeyframe = PreviewVisibilityKeyframe;
+export interface ImportedNodeHint {
+  sourceNodeId: string;
+  skinCandidate?: {
+    groupId: string;
+    fittingMatrix?: Matrix16;
+    suggestion?: ImportedSkinPart;
+  };
+}
 
-export interface ImportedTimelineEvent extends EmoteEvent {
-  tick: number;
+export function importedNodeHints(nodes: Record<string, ImportedNode>): Record<string, ImportedNodeHint> {
+  return Object.fromEntries(Object.entries(nodes).map(([id, node]) => [id, {
+    sourceNodeId: node.binding.sourceNodeId,
+    ...(node.type === "item_display" && (node.skin || node.suggestedSkin || node.playerHeadConversionMatrix || normalizeResourceLocation(node.itemStack.id) === "minecraft:player_head") ? {
+      skinCandidate: {
+        groupId: node.binding.skinGroupId ?? id,
+        ...(node.playerHeadConversionMatrix ? { fittingMatrix: node.playerHeadConversionMatrix } : {}),
+        ...(node.suggestedSkin ?? node.skin ? { suggestion: node.suggestedSkin ?? node.skin } : {}),
+      },
+    } : {}),
+  }]));
 }
 
 export type ImportDiagnostic = ConversionIssue;

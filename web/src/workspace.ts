@@ -1,17 +1,17 @@
 import {
   assignDocumentSkinOrder,
   assignDocumentSkinPart,
-  createConversionDocument,
   documentPartAssignments,
   replaceDocumentAnimationTimelineEvents,
   updateDocumentAnimationLifecycleEvents,
-  updateDocumentAnimationOutput,
-  type AnimationOutputSettings,
+  updateDocumentAnimation,
   type ConversionDocument,
 } from "./domain/conversionDocument";
-import type { ImportedProject } from "./domain/conversionSeed";
-import type { EmoteCallback, EmoteEvent, PlayerSkinPart } from "./format/emoteAnimation";
+import type { EmoteCallback } from "./domain/emoteDefinition";
+import type { PlayerSkinPart } from "./domain/player";
+import type { Animation, EventIR, TimelineEventIR } from "./domain/animationIR";
 import { selectNode, selectNodes } from "./preview/skinParts";
+import { TICKS_PER_SECOND } from "./format/time";
 
 export type WorkspacePage = 0 | 1 | 2;
 
@@ -34,7 +34,6 @@ export interface WorkspaceState {
 
 export type WorkspaceAction =
   | { type: "open_started"; message: string }
-  | { type: "open_succeeded"; project: ImportedProject; adapterLabel: string }
   | { type: "documents_open_succeeded"; document: ConversionDocument }
   | { type: "open_failed"; message: string }
   | { type: "export_started"; message: string }
@@ -47,10 +46,10 @@ export type WorkspaceAction =
   | { type: "nodes_selected"; nodeIds: readonly string[]; additive: boolean }
   | { type: "skin_part_assigned"; part: PlayerSkinPart | null }
   | { type: "skin_order_assigned"; order: number }
-  | { type: "animation_output_changed"; output: AnimationOutputSettings }
+  | { type: "animation_changed"; ir: Animation }
   | { type: "minecraft_version_changed"; version: string }
-  | { type: "lifecycle_events_changed"; events: { callbacks: EmoteCallback[]; start: EmoteEvent[]; loop: EmoteEvent[]; stop: EmoteEvent[] } }
-  | { type: "timeline_events_changed"; tick: number; events: EmoteEvent[] };
+  | { type: "lifecycle_events_changed"; events: { callbacks: EmoteCallback[]; start: EventIR[]; loop: EventIR[]; stop: EventIR[] } }
+  | { type: "timeline_events_changed"; events: TimelineEventIR[] };
 
 export const EMPTY_SELECTION = new Set<string>();
 
@@ -66,10 +65,6 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
   switch (action.type) {
     case "open_started":
       return { ...state, openError: "", exportError: "", operation: { type: "opening", message: action.message } };
-    case "open_succeeded": {
-      const session = createConversionSession(action.project, action.adapterLabel);
-      return openedSession(state, session);
-    }
     case "documents_open_succeeded": {
       const session = createConversionSessionFromDocument(action.document);
       return openedSession(state, session);
@@ -85,10 +80,7 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
     case "page_selected":
       return { ...state, page: action.page };
     case "animation_selected":
-      return updateSession(state, (session) => selectSessionAnimation(session, action.index), (session) => {
-        const animation = session.document.animations[session.animationIndex];
-        return animation?.preview.availability.status === "unavailable" ? 1 : state.page;
-      });
+      return updateSession(state, (session) => selectSessionAnimation(session, action.index));
     case "preview_frame_selected":
       return updateSession(state, (session) => ({ ...session, previewFrameIndex: action.index, selectedNodeIds: new Set() }));
     case "node_selected":
@@ -111,10 +103,10 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
         ...session,
         document: assignDocumentSkinOrder(session.document, session.selectedNodeIds, action.order),
       }));
-    case "animation_output_changed":
+    case "animation_changed":
       return updateSession(state, (session) => ({
         ...session,
-        document: updateDocumentAnimationOutput(session.document, session.animationIndex, action.output),
+        document: updateDocumentAnimation(session.document, session.animationIndex, action.ir),
       }));
     case "minecraft_version_changed":
       return updateSession(state, (session) => ({
@@ -129,22 +121,38 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
     case "timeline_events_changed":
       return updateSession(state, (session) => ({
         ...session,
-        document: replaceDocumentAnimationTimelineEvents(session.document, session.animationIndex, action.tick, action.events),
+        document: replaceDocumentAnimationTimelineEvents(session.document, session.animationIndex, action.events),
       }));
   }
 }
 
 export function assignmentSummary(document: ConversionDocument): string {
   const assignments = documentPartAssignments(document);
-  const assigned = Object.values(document.skinGroups).filter((group) => group.nodeIds.every((nodeId) => assignments[nodeId])).length;
-  const skin = Object.keys(document.skinGroups).length
-    ? `${assigned}/${Object.keys(document.skinGroups).length} skin parts assigned`
+  const groups = [...new Set(Object.values(document.skinCandidates).map((candidate) => candidate.groupId))];
+  const assigned = groups.filter((group) => Object.entries(document.skinCandidates).filter(([, candidate]) => candidate.groupId === group).every(([id]) => assignments[id])).length;
+  const skin = groups.length
+    ? `${assigned}/${groups.length} skin parts assigned`
     : "No skin assignment needed";
   return document.resources.size ? `${skin} · ${document.resources.size} resource files` : skin;
 }
 
-function createConversionSession(project: ImportedProject, adapterLabel: string): ConversionSession {
-  return createConversionSessionFromDocument(createConversionDocument(project, adapterLabel));
+export function eventReviewLocations(document: ConversionDocument | null): { owner: string; locations: string[] }[] {
+  if (!document) return [];
+  const review: { owner: string; locations: string[] }[] = [];
+  for (const animation of document.animations) {
+    const events = animation.clip.events;
+    const locations: string[] = [];
+    if (events?.start?.some((event) => event.action.type === "commands" && event.action.commands.length > 0)) locations.push("start");
+    const times = [...new Set(events?.timeline?.filter((event) => event.action.type === "commands" && event.action.commands.length > 0).map((event) => event.time) ?? [])].sort((first, second) => first - second);
+    if (times.length) locations.push(`frames: ${times.map((time) => `${Number((time * TICKS_PER_SECOND).toPrecision(12))}t`).join(", ")}`);
+    for (const phase of ["loop", "stop"] as const) {
+      if (events?.[phase]?.some((event) => event.action.type === "commands" && event.action.commands.length > 0)) locations.push(phase);
+    }
+    if (animation.callbacks?.length) locations.push("callbacks");
+    if (locations.length) review.push({ owner: `Animation ${animation.id}`, locations });
+  }
+  if (document.sequence.callbacks?.length) review.push({ owner: `Sequence ${document.sequence.displayName}`, locations: ["callbacks"] });
+  return review;
 }
 
 function createConversionSessionFromDocument(document: ConversionDocument): ConversionSession {
@@ -157,9 +165,7 @@ function createConversionSessionFromDocument(document: ConversionDocument): Conv
 }
 
 function openedSession(state: WorkspaceState, session: ConversionSession): WorkspaceState {
-  const animation = session.document.animations[session.animationIndex];
-  const page = animation?.preview.availability.status === "unavailable" ? 1 : 0;
-  return { ...state, session, page, operation: { type: "idle" } };
+  return { ...state, session, page: 0, operation: { type: "idle" } };
 }
 
 function selectSessionAnimation(session: ConversionSession, animationIndex: number): ConversionSession {
@@ -170,9 +176,8 @@ function selectSessionAnimation(session: ConversionSession, animationIndex: numb
 function updateSession(
   state: WorkspaceState,
   edit: (session: ConversionSession) => ConversionSession,
-  page: (session: ConversionSession) => WorkspacePage = () => state.page,
 ): WorkspaceState {
   if (!state.session) return state;
   const session = edit(state.session);
-  return { ...state, session, page: page(session) };
+  return { ...state, session };
 }

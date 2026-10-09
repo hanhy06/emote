@@ -1,9 +1,9 @@
 import { compileConversionAnimationArtifact } from "../compiler/animationCompiler";
-import { animationOutputId, type ConversionDocument } from "../domain/conversionDocument";
+import type { ConversionDocument } from "../domain/conversionDocument";
 import { formatMinecraftTime, parseMinecraftTime } from "../format/time";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
-import { serializeEmoteAnimation } from "../format/serializer";
-import { removeRedundantKeyframes } from "../format/keyframeCleanup";
+import { serializeAnimation } from "../format/animation";
+import { EMOTE_SCHEMA_VERSION } from "../format/emote";
 import type { ExportResult } from "./types";
 import { isSequenceControlId, type SequenceAnimationStep, type SequenceStep } from "../domain/emoteDefinition";
 import { ConversionError } from "../foundation/diagnostics";
@@ -37,12 +37,12 @@ interface CompiledAnimationFiles {
 
 function compileAnimationFile(document: ConversionDocument, animationIndex: number): CompiledAnimationFile {
   const compiled = compileConversionAnimationArtifact(document, animationIndex);
-  const animation = removeRedundantKeyframes(compiled.animation);
+  const animation = compiled.animation;
   return {
     generatedResourceReferences: compiled.generatedResourceReferences,
     file: {
-      blob: new Blob([serializeEmoteAnimation(animation)], { type: "application/json" }),
-      fileName: animationFileNames(document.animations.map((entry, index) => index === animationIndex ? animation.id : animationOutputId(entry)))[animationIndex],
+      blob: new Blob([serializeAnimation(animation)], { type: "application/json" }),
+      fileName: animationFileNames(document.animations.map((entry) => entry.id))[animationIndex],
     },
   };
 }
@@ -52,28 +52,28 @@ function compileAnimationFiles(document: ConversionDocument, includeSequence: bo
   const compiled = document.animations.map((_, index) => compileConversionAnimationArtifact(
     document,
     index,
-    includeSequence ? { standalone: false } : undefined,
+    includeSequence ? false : undefined,
   ));
-  const animations = compiled.map((entry) => removeRedundantKeyframes(entry.animation));
+  const animations = compiled.map((entry) => entry.animation);
   const fileNames = animationFileNames(animations.map((animation) => animation.id));
   const generatedResourceReferences = new Set(compiled.flatMap((entry) => [...entry.generatedResourceReferences]));
   const files: ExportResult[] = animations.map((animation, index) => {
     return {
-      blob: new Blob([serializeEmoteAnimation(animation)], { type: "application/json" }),
+      blob: new Blob([serializeAnimation(animation)], { type: "application/json" }),
       fileName: fileNames[index],
     };
   });
   if (includeSequence) {
     const sequenceOutput = document.sequence;
-    const outputIdBySourceId = new Map(document.animations.flatMap((entry, index) => entry.runtime.sourceReferenceId
-      ? [[entry.runtime.sourceReferenceId, animations[index].id] as const] : []));
+    const outputIdBySourceId = new Map(document.animations.flatMap((entry, index) => entry.sourceReferenceId
+      ? [[entry.sourceReferenceId, animations[index].id] as const] : []));
     const baseSequenceId = `${sanitizeNamespace(sequenceOutput.namespace)}:${sanitizeResourcePath(sequenceOutput.idPath ?? sequenceOutput.displayName)}`;
     let sequenceId = baseSequenceId;
     let suffix = 1;
     while (animations.some((animation) => animation.id === sequenceId)) sequenceId = `${baseSequenceId}.${suffix++}`;
     const sequence = {
       type: "sequence",
-      schema_version: 4,
+      schema_version: EMOTE_SCHEMA_VERSION,
       target_minecraft_version: document.targetMinecraftVersion,
       id: sequenceId,
       ...(sequenceOutput.callbacks?.length ? { callbacks: sequenceOutput.callbacks.map((callback) => ({ ...callback })) } : {}),

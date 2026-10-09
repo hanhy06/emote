@@ -7,13 +7,15 @@ import { ExportPanel } from "./components/ExportPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { downloadExports } from "./export/download";
 import type { ExportResult } from "./export/types";
-import type { EmoteCallback, EmoteEvent, PlayerSkinPart } from "./format/emoteAnimation";
-import { IMPORT_ADAPTERS } from "./import/adapters";
+import type { EmoteCallback } from "./domain/emoteDefinition";
+import type { PlayerSkinPart } from "./domain/player";
+import type { EventIR, TimelineEventIR } from "./domain/animationIR";
+import { INPUT_FORMATS } from "./import/formats";
 import { importFileBatch } from "./import/importBatch";
 import { conversionErrorMessage, groupConversionWarnings } from "./foundation/diagnostics";
-import { countImportedCommands } from "./import/common/securityWarning";
 import {
   assignmentSummary,
+  eventReviewLocations,
   EMPTY_SELECTION,
   INITIAL_WORKSPACE,
   workspaceReducer,
@@ -21,7 +23,7 @@ import {
 } from "./workspace";
 import { createPreviewModel } from "./preview/previewModel";
 const PartPreview = lazy(() => import("./components/PartPreview"));
-const ACCEPTED_EXTENSIONS = [...new Set(IMPORT_ADAPTERS.flatMap((adapter) => adapter.extensions))]
+const ACCEPTED_EXTENSIONS = [...new Set(Object.values(INPUT_FORMATS).map((format) => format.extension))]
   .map((extension) => `.${extension}`)
   .join(",");
 const IMPORT_FORMATS = [
@@ -50,6 +52,7 @@ const IMPORT_FORMATS = [
 export function App() {
   const [workspace, dispatch] = useReducer(workspaceReducer, INITIAL_WORKSPACE);
   const [eventJsonValid, setEventJsonValid] = useState(true);
+  const [settingsValid, setSettingsValid] = useState(true);
   const [eventEditorRevision, setEventEditorRevision] = useState(0);
   const { session, page, openError, exportError, operation } = workspace;
   const busy = operation.type !== "idle";
@@ -61,18 +64,16 @@ export function App() {
   const preview = useMemo(() => {
     if (!session) return null;
     const selectedAnimation = session.document.animations[session.animationIndex];
-    return createPreviewModel(session.document, selectedAnimation?.nodeIds ?? [], selectedAnimation?.preview, session.previewFrameIndex);
+    return createPreviewModel(session.document, selectedAnimation, session.previewFrameIndex);
   }, [session]);
   const assignments = preview?.assignments ?? {};
   const orders = preview?.orders ?? {};
   const selectedNodeIds = session?.selectedNodeIds ?? EMPTY_SELECTION;
   const selectedAnimation = project?.animations[animationIndex];
-  const animation = selectedAnimation?.runtime;
   const availability = preview?.availability ?? null;
-  const exportAvailability = selectedAnimation?.runtime.availability ?? null;
   const previewDurationTicks = preview?.durationTicks ?? 0;
-  const animationOptions = project?.animations[animationIndex]?.output;
-  const importedCommandCount = useMemo(() => countImportedCommands(project), [project]);
+  const animationOptions = selectedAnimation;
+  const eventReview = useMemo(() => eventReviewLocations(project), [project]);
   const warningGroups = useMemo(() => groupConversionWarnings(project?.diagnostics ?? []), [project]);
   const previewTick = preview?.tick ?? null;
   const previewParts = preview?.parts ?? [];
@@ -89,8 +90,9 @@ export function App() {
     dispatch({ type: "open_started", message: files.length === 1 ? "Opening animation project" : `Opening ${files.length} animation projects` });
     try {
       await showLoadingScreen();
-      const document = await importFileBatch(files, IMPORT_ADAPTERS);
+      const document = await importFileBatch(files);
       setEventJsonValid(true);
+      setSettingsValid(true);
       setEventEditorRevision((revision) => revision + 1);
       dispatch({ type: "documents_open_succeeded", document });
     } catch (reason) {
@@ -149,19 +151,19 @@ export function App() {
     dispatch({ type: "skin_order_assigned", order });
   }
 
-  function changeLifecycleEvents(events: { callbacks: EmoteCallback[]; start: EmoteEvent[]; loop: EmoteEvent[]; stop: EmoteEvent[] }) {
+  function changeLifecycleEvents(events: { callbacks: EmoteCallback[]; start: EventIR[]; loop: EventIR[]; stop: EventIR[] }) {
     dispatch({ type: "lifecycle_events_changed", events });
   }
 
-  function changeTimelineEvents(tick: number, events: EmoteEvent[]) {
-    dispatch({ type: "timeline_events_changed", tick, events });
+  function changeTimelineEvents(events: TimelineEventIR[]) {
+    dispatch({ type: "timeline_events_changed", events });
   }
 
   const hasSelectedAssignment = [...selectedNodeIds].some((nodeId) => assignments[nodeId] != null);
   const filePicker = (
-    <label className={`file-input${busy || !eventJsonValid ? " disabled" : ""}`}>
+    <label className={`file-input${busy || !eventJsonValid || !settingsValid ? " disabled" : ""}`}>
       <span>{session ? "Open other files" : "Choose animation files"}</span>
-      <input type="file" accept={ACCEPTED_EXTENSIONS} multiple onChange={handleFileChange} disabled={busy || !eventJsonValid} />
+      <input type="file" accept={ACCEPTED_EXTENSIONS} multiple onChange={handleFileChange} disabled={busy || !eventJsonValid || !settingsValid} />
     </label>
   );
 
@@ -217,7 +219,7 @@ export function App() {
         </section>
       )}
 
-      {session && project && selectedAnimation && animation && (
+      {session && project && selectedAnimation && (
         <>
           <section className="project-summary" aria-label="Imported project">
             <div className="project-file">
@@ -226,11 +228,11 @@ export function App() {
             </div>
             <label className="project-animation">
               <span>Animation</span>
-              <select value={animationIndex} disabled={project.animations.length === 1 || !eventJsonValid} onChange={(event) => {
+              <select value={animationIndex} disabled={project.animations.length === 1 || !eventJsonValid || !settingsValid} onChange={(event) => {
                 const nextIndex = Number(event.currentTarget.value);
                 dispatch({ type: "animation_selected", index: nextIndex });
               }}>
-                {project.animations.map((item, index) => <option value={index} key={`${item.runtime.id}:${index}`}>{item.runtime.sourceName}</option>)}
+                {project.animations.map((item, index) => <option value={index} key={index}>{item.metadata.name}</option>)}
               </select>
             </label>
             <dl>
@@ -242,7 +244,7 @@ export function App() {
 
           <nav className="workflow-pages" aria-label="Conversion pages">
             {(["Review", "Settings", "Export"] as const).map((label, index) => (
-              <button className={page === index ? "active" : ""} type="button" disabled={!eventJsonValid && page !== index} onClick={() => dispatch({ type: "page_selected", page: index as WorkspacePage })} key={label}>
+              <button className={page === index ? "active" : ""} type="button" disabled={(!eventJsonValid || !settingsValid) && page !== index} onClick={() => dispatch({ type: "page_selected", page: index as WorkspacePage })} key={label}>
                 <span>{index + 1}</span>{label}
               </button>
             ))}
@@ -264,13 +266,15 @@ export function App() {
             </details>
           ))}
 
-          {importedCommandCount > 0 && (
-            <p className="message warning" role="alert">
-              <strong>Review event commands before installing this animation.</strong>
-              <span>
-                This project contains {importedCommandCount} {importedCommandCount === 1 ? "command" : "commands"} that will run with server operator permission. Only install animations from sources you trust.
-              </span>
-            </p>
+          {eventReview.length > 0 && (
+            <details className="message warning warning-group" role="alert">
+              <summary>Review commands and callbacks at these locations ({eventReview.length})</summary>
+              <ul>
+                {eventReview.map((entry) => (
+                  <li key={entry.owner}><strong>{entry.owner}</strong><span>{entry.locations.join(" · ")}</span></li>
+                ))}
+              </ul>
+            </details>
           )}
 
           {page === 0 && <section className="workspace page-panel" aria-labelledby="workspace-title">
@@ -283,8 +287,8 @@ export function App() {
                   : "This file does not contain assignable model parts."}</p>
               </div>
               <div className="preview-controls">
-                {availability?.status === "create_pose" && <output title={availability.reason}>Create pose</output>}
-                {availability?.status === "full" && (
+                {availability?.status === "approximate" && <output title={availability.reason}>Approximate preview</output>}
+                {(availability?.status === "full" || availability?.status === "approximate") && (
                   <label className="frame-slider">
                     <span>Preview frame</span>
                     <input type="range" min="0" max={previewDurationTicks + 1} step="1" value={previewFrameIndex} disabled={!eventJsonValid} onChange={(event) => {
@@ -323,34 +327,39 @@ export function App() {
             ) : (
               <div className="no-skin-parts"><strong>Ready to export</strong><span>No player skin assignments are required.</span></div>
             )}
-            {exportAvailability?.exportable && <EventPanel
-              key={`${eventEditorRevision}:${animationIndex}:${previewTick === null ? "lifecycle" : previewTick}`}
-              events={selectedAnimation.events}
+            <EventPanel
+              key={`${eventEditorRevision}:${animationIndex}`}
+              events={{
+                start: selectedAnimation.clip.events?.start ?? [],
+                timeline: selectedAnimation.clip.events?.timeline ?? [],
+                loop: selectedAnimation.clip.events?.loop ?? [],
+                stop: selectedAnimation.clip.events?.stop ?? [],
+              }}
               callbacks={selectedAnimation.callbacks}
               tick={previewTick}
+              duration={selectedAnimation.clip.duration}
               disabled={busy}
               onLifecycleChange={changeLifecycleEvents}
               onTimelineChange={changeTimelineEvents}
               onValidityChange={setEventJsonValid}
-            />}
+            />
           </section>}
 
           {page === 1 && animationOptions && <SettingsPanel
-            metadata={animationOptions}
+            key={`${eventEditorRevision}:${animationIndex}`}
+            animation={animationOptions}
             minecraftVersion={project.targetMinecraftVersion}
             disabled={busy}
-            onMetadataChange={(output) => dispatch({ type: "animation_output_changed", output })}
+            onChange={(ir) => dispatch({ type: "animation_changed", ir })}
+            onValidityChange={setSettingsValid}
             onMinecraftVersionChange={(version) => dispatch({ type: "minecraft_version_changed", version })}
           />}
 
           {page === 2 && <ExportPanel
             assignmentSummary={assignmentSummary(project)}
-            animations={project.animations.map((item) => {
-              const itemAvailability = item.runtime.availability;
-              return { label: item.output.displayName, detail: item.runtime.id, exportable: itemAvailability.exportable, reason: itemAvailability.reason };
-            })}
+            animations={project.animations.map((item) => ({ label: item.metadata.name, detail: item.id }))}
             error={exportError}
-            disabled={busy}
+            disabled={busy || !settingsValid}
             onDownloadAnimation={handleAnimationDownload}
             onDownloadAllAnimations={() => handleAnimationBundle(false)}
             onDownloadSequence={() => handleAnimationBundle(true)}

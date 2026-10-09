@@ -49,18 +49,6 @@ export function nextMolangSourceCharacter(source: string, offset: number): strin
   return undefined;
 }
 
-export function quoteMolangString(value: string, quote: "'" | '"'): string {
-  const escaped = value
-    .replaceAll("\\", "\\\\")
-    .replaceAll(quote, `\\${quote}`)
-    .replaceAll("\n", "\\n")
-    .replaceAll("\r", "\\r")
-    .replaceAll("\t", "\\t")
-    .replaceAll("\b", "\\b")
-    .replaceAll("\f", "\\f");
-  return `${quote}${escaped}${quote}`;
-}
-
 function decodeMolangString(value: string): string {
   return value.replace(/\\([\\'"nrtbf])/g, (_escape, character: string) => {
     if (character === "n") return "\n";
