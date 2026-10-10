@@ -1,10 +1,10 @@
 import type { ConversionIssue } from "../foundation/diagnostics";
 import type { PlayerSkinPart } from "./player";
-import { orderedNodeIds, type AnimationEntryIR, type AnimationIR, type AttachmentIR, type AnimationSetIR, type NodeIR, type TimelineEventIR, type TransformOperationIR } from "./animationIR";
+import { orderedNodeIds, type AnimationEntryIR, type AnimationIR, type AttachmentIR, type AnimationSetIR, type EventIR, type NodeIR, type TransformOperationIR } from "./animationIR";
 import { normalizeAnimationTimes, normalizeSequenceTimes, remapClip, removeTinyStaticNodes } from "./animationIRConversion";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
-import { parseAnimationSeconds } from "../format/time";
+import { parseAnimationSeconds, parseMinecraftTime } from "../format/time";
 import type { GeneratedResource } from "./generatedResource";
 import type { EmoteCallback, EmotePlayerBehavior, SequenceStep } from "./emoteDefinition";
 import type { ImportedProject, ImportedSkinPart, InputFormat } from "./conversionSeed";
@@ -232,11 +232,14 @@ export function updateLifecycleEvents(document: ConversionDocument, animationInd
     clip: { ...animation.clip, events: { ...structuredClone(commandEvents), timeline: structuredClone(animation.clip.events?.timeline ?? []) } } });
 }
 
-export function replaceTimelineEvents(document: ConversionDocument, animationIndex: number, events: TimelineEventIR[]): ConversionDocument {
+export function replaceTimelineEvents(document: ConversionDocument, animationIndex: number, tick: number, events: EventIR[]): ConversionDocument {
   const animation = document.animations[animationIndex];
   if (!animation) return document;
   return updateAnimation(document, animationIndex, { ...animation,
-    clip: { ...animation.clip, events: { ...animation.clip.events, timeline: structuredClone(events).sort((first, second) => parseAnimationSeconds(first.time) - parseAnimationSeconds(second.time)) } } });
+    clip: { ...animation.clip, events: { ...animation.clip.events, timeline: [
+      ...(animation.clip.events?.timeline ?? []).filter((event) => parseMinecraftTime(event.time) !== tick),
+      ...structuredClone(events).map((event) => ({ ...event, time: `${tick}t` })),
+    ].sort((first, second) => parseAnimationSeconds(first.time) - parseAnimationSeconds(second.time)) } } });
 }
 
 export function updateAnimation(document: ConversionDocument, animationIndex: number, animation: AnimationEntryIR): ConversionDocument {

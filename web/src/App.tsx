@@ -9,7 +9,7 @@ import { downloadExports } from "./export/download";
 import type { ExportResult } from "./export/types";
 import type { EmoteCallback } from "./domain/emoteDefinition";
 import type { PlayerSkinPart } from "./domain/player";
-import type { EventIR, TimelineEventIR } from "./domain/animationIR";
+import type { EventIR } from "./domain/animationIR";
 import { INPUT_FORMATS } from "./import/formats";
 import { importFileBatch } from "./import/importBatch";
 import { conversionErrorMessage, groupConversionWarnings } from "./foundation/diagnostics";
@@ -154,8 +154,8 @@ export function App() {
     dispatch({ type: "lifecycle_events_changed", events });
   }
 
-  function changeTimelineEvents(events: TimelineEventIR[]) {
-    dispatch({ type: "timeline_events_changed", events });
+  function changeTimelineEvents(tick: number, events: EventIR[]) {
+    dispatch({ type: "timeline_events_changed", tick, events });
   }
 
   const filePicker = (
@@ -325,7 +325,7 @@ export function App() {
               <div className="no-skin-parts"><strong>Ready to export</strong><span>No player skin assignments are required.</span></div>
             )}
             <EventPanel
-              key={`${eventEditorRevision}:${animationIndex}`}
+              key={`${eventEditorRevision}:${animationIndex}:${previewTick === null ? "lifecycle" : previewTick}`}
               events={{
                 start: selectedAnimation.clip.events?.start ?? [],
                 timeline: selectedAnimation.clip.events?.timeline ?? [],

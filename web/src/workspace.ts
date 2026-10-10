@@ -10,7 +10,7 @@ import {
 } from "./domain/conversionDocument";
 import type { EmoteCallback } from "./domain/emoteDefinition";
 import type { PlayerSkinPart } from "./domain/player";
-import type { AnimationEntryIR, EventIR, TimelineEventIR } from "./domain/animationIR";
+import type { AnimationEntryIR, EventIR } from "./domain/animationIR";
 import { TICKS_PER_SECOND } from "./format/time";
 
 export type WorkspacePage = 0 | 1 | 2;
@@ -49,7 +49,7 @@ export type WorkspaceAction =
   | { type: "animation_changed"; ir: AnimationEntryIR }
   | { type: "minecraft_version_changed"; version: string }
   | { type: "lifecycle_events_changed"; events: { callbacks: EmoteCallback[]; start: EventIR[]; loop: EventIR[]; stop: EventIR[] } }
-  | { type: "timeline_events_changed"; events: TimelineEventIR[] };
+  | { type: "timeline_events_changed"; tick: number; events: EventIR[] };
 
 export const EMPTY_SELECTION = new Set<string>();
 
@@ -121,7 +121,7 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
     case "timeline_events_changed":
       return updateSession(state, (session) => ({
         ...session,
-        document: replaceTimelineEvents(session.document, session.animationIndex, action.events),
+        document: replaceTimelineEvents(session.document, session.animationIndex, action.tick, action.events),
       }));
   }
 }
