@@ -1,6 +1,6 @@
 import type { ConversionIssue } from "../foundation/diagnostics";
 import type { PlayerSkinPart } from "./player";
-import { orderedNodeIds, type AnimationEntryIR, type AnimationIR, type AttachmentIR, type AnimationSetIR, type EventIR, type NodeIR, type TransformOperationIR } from "./animationIR";
+import { orderedNodeIds, type AnimationEntryIR, type AnimationIR, type AttachmentIR, type AnimationSetIR, type ClipIR, type EventIR, type NodeIR, type TransformOperationIR } from "./animationIR";
 import { normalizeAnimationTimes, remapClip, removeTinyStaticNodes } from "./animationIRConversion";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
@@ -23,6 +23,7 @@ export interface SkinCandidate {
 export interface ConversionAnimation extends AnimationEntryIR {
   sourceName: string;
   sourceReferenceId?: string;
+  sourcePlayback: ClipIR["playback"];
 }
 
 export type ConversionAnimationEvents = Required<NonNullable<AnimationIR["animation"]["events"]>>;
@@ -114,7 +115,7 @@ export function createConversionDocument(project: ImportedProject, formatLabel: 
     }
     const { nodes: _nodes, animation: sourceClip, target_minecraft_version: _version, ...fields } = ir;
     const clip = remapClip(sourceClip, (id) => ids.get(id) ?? id);
-    return { ...fields, clip, nodeIds: [...ids.values()], sourceName: animation.name,
+    return { ...fields, clip, nodeIds: [...ids.values()], sourceName: animation.name, sourcePlayback: structuredClone(sourceClip.playback),
       sourceReferenceId: animation.sourceReferenceId };
   });
   let document: ConversionDocument = {

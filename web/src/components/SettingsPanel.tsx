@@ -1,5 +1,6 @@
 import { useState } from "preact/hooks";
 import type { AnimationEntryIR, TimeValueIR } from "../domain/animationIR";
+import type { ConversionAnimation } from "../domain/conversionDocument";
 import { AdditionalMetadataEditor } from "./AdditionalMetadataEditor";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
 import { createDefaultPlayerBehavior } from "../domain/emoteDefinition";
@@ -11,7 +12,7 @@ const STOP_CONDITION_OPTIONS = [
 ] as const;
 
 interface SettingsPanelProps {
-  animation: AnimationEntryIR;
+  animation: ConversionAnimation;
   minecraftVersion: string;
   disabled: boolean;
   onChange: (animation: AnimationEntryIR) => void;
@@ -102,6 +103,7 @@ export function SettingsPanel({ animation, minecraftVersion, disabled, onChange,
         <p>Time accepts d, s, t, or bare ticks. Your time strings are preserved; Minecraft converts them to ticks when loading.</p>
         <div className="fields settings-selectors">
           <div className="playback-settings-group">
+            <div>
             <label>Playback mode<select value={mode} disabled={disabled} onChange={(event) => {
               const nextMode = event.currentTarget.value as NonNullable<typeof playback.mode>;
               const nextDrafts = { ...drafts };
@@ -114,6 +116,15 @@ export function SettingsPanel({ animation, minecraftVersion, disabled, onChange,
             }}>
               <option value="once">Play once</option><option value="hold">Hold last frame</option><option value="loop">Loop</option><option value="server_sync">Server-synchronized loop</option>
             </select></label>
+            <button type="button" disabled={disabled} onClick={() => {
+              const nextDrafts = { ...drafts };
+              delete nextDrafts.loop_start;
+              delete nextDrafts.loop_delay;
+              setDrafts(nextDrafts);
+              onValidityChange(Object.values(nextDrafts).every((draft) => !draft.error));
+              onChange({ ...animation, clip: { ...animation.clip, playback: structuredClone(animation.sourcePlayback) } });
+            }}>Source setting</button>
+            </div>
             <label>Loop start<input value={timeText("loop_start", playback.loop_start)} disabled={disabled || mode !== "loop"} onInput={(event) => editDraft("loop_start", event.currentTarget.value)} onBlur={(event) => updateTime("loop_start", event.currentTarget.value)} /></label>
             <label>Loop delay<input value={timeText("loop_delay", playback.loop_delay)} disabled={disabled || mode === "once" || mode === "hold"} onInput={(event) => editDraft("loop_delay", event.currentTarget.value)} onBlur={(event) => updateTime("loop_delay", event.currentTarget.value)} /></label>
           </div>
