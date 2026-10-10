@@ -7,6 +7,7 @@ import { parseSnbtCompound } from "../format/snbt";
 import type { AnimationJson } from "../format/animation";
 import { EMOTE_SCHEMA_VERSION } from "../format/emote";
 import { ConversionError } from "../foundation/diagnostics";
+import { removeRedundantKeyframes } from "../domain/animationIRConversion";
 
 export function compileAnimation(document: ConversionDocument, index: number, standalone?: boolean): { animation: AnimationJson; generatedResourceReferences: ReadonlySet<string> } {
   const entry = document.animations[index];
@@ -54,5 +55,6 @@ export function compileAnimation(document: ConversionDocument, index: number, st
       if (typeof patch.merge === "string") patch.merge = formatNbt(patch.merge);
     }
   }
+  removeRedundantKeyframes(ir);
   return { animation: { ...ir, type: "animation", schema_version: EMOTE_SCHEMA_VERSION }, generatedResourceReferences };
 }
