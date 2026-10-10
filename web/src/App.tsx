@@ -16,6 +16,7 @@ import { conversionErrorMessage, groupConversionWarnings } from "./foundation/di
 import {
   assignmentSummary,
   eventReviewLocations,
+  sequenceReferenceWarnings,
   EMPTY_SELECTION,
   INITIAL_WORKSPACE,
   workspaceReducer,
@@ -77,7 +78,7 @@ export function App() {
     ...(eventReview.some((entry) => entry.locations.some((location) => location !== "callbacks")) ? ["commands"] : []),
     ...(eventReview.some((entry) => entry.locations.includes("callbacks")) ? ["callbacks"] : []),
   ];
-  const warningGroups = useMemo(() => groupConversionWarnings(project?.diagnostics ?? []), [project]);
+  const warningGroups = useMemo(() => groupConversionWarnings([...(project?.diagnostics ?? []), ...sequenceReferenceWarnings(project)]), [project]);
   const previewTick = preview?.tick ?? null;
   const previewParts = preview?.parts ?? [];
   const hasReviewNodes = preview?.hasReviewNodes ?? false;

@@ -8,7 +8,8 @@ import {
   updateAnimation,
   type ConversionDocument,
 } from "./domain/conversionDocument";
-import type { EmoteCallback } from "./domain/emoteDefinition";
+import { isSequenceControlId, type EmoteCallback } from "./domain/emoteDefinition";
+import type { ConversionIssue } from "./foundation/diagnostics";
 import type { PlayerSkinPart } from "./domain/player";
 import type { AnimationEntryIR, EventIR } from "./domain/animationIR";
 import { TICKS_PER_SECOND } from "./format/time";
@@ -153,6 +154,21 @@ export function eventReviewLocations(document: ConversionDocument | null): { own
   }
   if (document.sequence.callbacks?.length) review.push({ owner: `Sequence ${document.sequence.name}`, locations: ["callbacks"] });
   return review;
+}
+
+export function sequenceReferenceWarnings(document: ConversionDocument | null): ConversionIssue[] {
+  if (!document) return [];
+  const knownIds = new Set(document.animations.flatMap((animation) => animation.sourceReferenceId ? [animation.id, animation.sourceReferenceId] : [animation.id]));
+  return (document.sequence.steps ?? []).flatMap((step, index) => {
+    if ("wait" in step) return [];
+    const ids = typeof step.emote === "string" ? [step.emote] : step.emote.map((choice) => choice.id);
+    return [...new Set(ids)].filter((id) => !knownIds.has(id) && !isSequenceControlId(id)).map((id) => ({
+      severity: "warning" as const,
+      code: "sequence_external_reference",
+      message: `Sequence ${document.sequence.name}, step ${index + 1}: ${id} is not included in this export. The reference is preserved; make sure this emote is available on the server.`,
+      sourcePath: `$.steps[${index}].emote`,
+    }));
+  });
 }
 
 function selectNode(current: ReadonlySet<string>, nodeId: string, additive: boolean): Set<string> {
