@@ -130,7 +130,7 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
 
         @Override
         public Component getNarration() {
-            return Component.literal(this.emote.displayName());
+            return Component.literal(this.emote.name());
         }
 
         @Override
@@ -143,7 +143,7 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
 
             int textX = controlX + CONTROL_SIZE + TEXT_GAP;
             int textWidth = Math.max(0, getContentRight() - textX - TEXT_GAP);
-            graphics.text(minecraft.font, fitText(this.emote.displayName(), textWidth), textX, controlY + 3, 0xFFFFFFFF);
+            graphics.text(minecraft.font, fitText(this.emote.name(), textWidth), textX, controlY + 3, 0xFFFFFFFF);
             graphics.text(minecraft.font, fitText(this.emote.description(), textWidth), textX, controlY + 16, 0xFF9DAAB3);
         }
 

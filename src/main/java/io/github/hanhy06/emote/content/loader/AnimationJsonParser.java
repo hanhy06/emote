@@ -31,21 +31,21 @@ public final class AnimationJsonParser {
         Identifier id = d.requireIdentifier(d.requireString(root, "id", "$"), "$.id");
         Map<String, Node> nodes = nodes(d.requireObject(root, "nodes", "$"), d);
         JsonObject clip = d.requireObject(root, "animation", "$");
-        int duration = d.requireTime(clip, "duration", "$.animation", 1);
-        if (duration > 12000) throw d.error("$.animation.duration", "must not exceed 12000 ticks");
+        int durationTicks = d.requireTime(clip, "duration", "$.animation", 1);
+        if (durationTicks > 12000) throw d.error("$.animation.duration", "must not exceed 12000 ticks");
         JsonObject playback = object(clip, "playback", "$.animation", d);
-        LoopMode mode = enumeration(LoopMode.class, text(playback, "mode", "once", "$.animation.playback", d), "$.animation.playback.mode", d);
-        int loopStart = playback.has("loop_start") ? d.requireTime(playback, "loop_start", "$.animation.playback", 0) : 0;
-        if (loopStart < 0 || loopStart >= duration || mode != LoopMode.LOOP && loopStart != 0) throw d.error("$.animation.playback.loop_start", "invalid loop start");
+        PlaybackMode mode = enumeration(PlaybackMode.class, text(playback, "mode", "once", "$.animation.playback", d), "$.animation.playback.mode", d);
+        int loopStartTick = playback.has("loop_start") ? d.requireTime(playback, "loop_start", "$.animation.playback", 0) : 0;
+        if (loopStartTick < 0 || loopStartTick >= durationTicks || mode != PlaybackMode.LOOP && loopStartTick != 0) throw d.error("$.animation.playback.loop_start", "invalid loop start");
         ScalarValue startDelay = delay(playback, "start_delay", d), loopDelay = delay(playback, "loop_delay", d);
         JsonObject settings = object(root, "settings", "$", d);
-        int cooldown = settings.has("cooldown") ? d.requireTime(settings, "cooldown", "$.settings", 0) : 0;
+        int cooldownTicks = settings.has("cooldown") ? d.requireTime(settings, "cooldown", "$.settings", 0) : 0;
         double deadzone = number(settings, "rotation_deadzone", 50, "$.settings", d);
         int interpolation = settings.has("display_interpolation_ticks") ? d.requireInt(settings, "display_interpolation_ticks", "$.settings") : 1;
-        if (cooldown < 0) throw d.error("$.settings.cooldown", "must not be negative");
+        if (cooldownTicks < 0) throw d.error("$.settings.cooldown", "must not be negative");
         if (deadzone < 0 || deadzone > 180) throw d.error("$.settings.rotation_deadzone", "must be between 0 and 180");
         if (interpolation < 0) throw d.error("$.settings.display_interpolation_ticks", "must not be negative");
-        EmotePlayerBehavior behavior = animationPlayer(object(settings, "player", "$.settings", d), d);
+        EmotePlayerBehavior playerBehavior = animationPlayer(object(settings, "player", "$.settings", d), d);
         JsonObject programs = object(clip, "programs", "$.animation", d);
         MolangPrograms molang = new MolangPrograms(program(programs, "initialize", "$.animation.programs", d), program(programs, "update", "$.animation.programs", d));
         JsonObject clock = object(clip, "clock", "$.animation", d);
@@ -53,13 +53,13 @@ public final class AnimationJsonParser {
         if (!Set.of("elapsed", "molang").contains(clockType)) throw d.error("$.animation.clock.type", "unknown clock");
         String expression = clockType.equals("molang") ? program(clock, "expression", "$.animation.clock", d) : null;
         if (clockType.equals("molang") && expression == null) throw d.error("$.animation.clock.expression", "is required");
-        Map<String, Track> tracks = tracks(d.requireArray(clip, "tracks", "$.animation"), nodes, duration, d);
-        Events events = events(object(clip, "events", "$.animation", d), nodes, duration, d);
+        Map<String, Track> tracks = tracks(d.requireArray(clip, "tracks", "$.animation"), nodes, durationTicks, d);
+        Events events = events(object(clip, "events", "$.animation", d), nodes, durationTicks, d);
         return new LoadedAnimation(d.sourcePath(), new EmoteAnimation(id,
             parseMetadata(d.requireObject(root, "metadata", "$"), d),
-            new Settings(bool(settings, "standalone", true, "$.settings", d), cooldown, (float) deadzone, interpolation, behavior,
-                new PlaybackSettings(mode, loopStart, startDelay, loopDelay)),
-            molang, nodes, new Timeline(duration, tracks, events, expression), parseCallbacks(root, d),
+            new Settings(bool(settings, "standalone", true, "$.settings", d), cooldownTicks, (float) deadzone, interpolation, playerBehavior,
+                new PlaybackSettings(mode, loopStartTick, startDelay, loopDelay)),
+            molang, nodes, new Clip(durationTicks, tracks, events, expression), parseCallbacks(root, d),
             root.has("target_minecraft_version") ? d.requireString(root, "target_minecraft_version", "$") : null,
             object(root, "resources", "$", d), object(root, "source", "$", d)));
     }
@@ -201,7 +201,7 @@ public final class AnimationJsonParser {
         return nodes;
     }
 
-    private Map<String, Track> tracks(JsonArray input, Map<String, Node> nodes, int duration, EmoteJsonDocument d) throws EmoteLoadException {
+    private Map<String, Track> tracks(JsonArray input, Map<String, Node> nodes, int durationTicks, EmoteJsonDocument d) throws EmoteLoadException {
         Map<String, Track> result = new LinkedHashMap<>();
         Set<List<String>> signatures = new HashSet<>();
         for (int i = 0; i < input.size(); i++) {
@@ -244,11 +244,11 @@ public final class AnimationJsonParser {
                 for (int k = 0; k < array.size(); k++) {
                     String kp = p + ".keys[" + k + "]";
                     JsonObject keyframe = d.requireObject(array.get(k), kp);
-                    int time = d.requireTime(keyframe, "time", kp, 0);
-                    if (time < 0 || time > duration || time < previous || time == previous && channel != Channel.NBT) {
+                    int tick = d.requireTime(keyframe, "time", kp, 0);
+                    if (tick < 0 || tick > durationTicks || tick < previous || tick == previous && channel != Channel.NBT) {
                         throw d.error(kp + ".time", channel == Channel.NBT ? "must not decrease and must be within duration" : "must increase strictly within duration");
                     }
-                    previous = time;
+                    previous = tick;
                     Value pre, post;
                     if (keyframe.has("value")) {
                         if (keyframe.has("pre") || keyframe.has("post")) throw d.error(kp, "value and pre/post are exclusive");
@@ -258,7 +258,7 @@ public final class AnimationJsonParser {
                         pre = value(d.requireElement(keyframe, "pre", kp), channel, size, kp + ".pre", d);
                         post = value(d.requireElement(keyframe, "post", kp), channel, size, kp + ".post", d);
                     }
-                    keys.add(new Keyframe(time, pre, post));
+                    keys.add(new Keyframe(tick, pre, post));
                 }
                 if (type == DriverType.CURVE) {
                     JsonArray arraySegments = d.requireArray(driver, "segments", p);
@@ -324,7 +324,7 @@ public final class AnimationJsonParser {
         List<String> remove = strings(d.optionalArray(patch, "remove", path), path + ".remove", d);
         for (String field : remove) if (RUNTIME_NBT_FIELDS.contains(field)) throw d.error(path + ".remove", "cannot remove runtime-owned field " + field);
         JsonElement merge = d.requireElement(patch, "merge", path);
-        if (merge.isJsonPrimitive() && merge.getAsJsonPrimitive().isString()) return new FixedNbtValue(compound(merge.getAsString(), path + ".merge", false, d, true), remove);
+        if (merge.isJsonPrimitive() && merge.getAsJsonPrimitive().isString()) return new ConstantNbtValue(compound(merge.getAsString(), path + ".merge", false, d, true), remove);
         ScalarValue expression = scalar(merge, path + ".merge", d);
         if (!(expression instanceof MolangValue m)) throw d.error(path + ".merge", "requires SNBT or Molang");
         return new MolangNbtValue(m.source(), m.path(), remove);
@@ -338,7 +338,7 @@ public final class AnimationJsonParser {
         return new VectorValue(values);
     }
 
-    private Events events(JsonObject input, Map<String, Node> nodes, int duration, EmoteJsonDocument d) throws EmoteLoadException {
+    private Events events(JsonObject input, Map<String, Node> nodes, int durationTicks, EmoteJsonDocument d) throws EmoteLoadException {
         Map<String, List<Event>> phases = new HashMap<>();
         List<TimelineEvent> timeline = new ArrayList<>();
         for (var entry : input.entrySet()) {
@@ -371,9 +371,9 @@ public final class AnimationJsonParser {
                 else if (type.equals("external")) parsed = new Event(new CommandSource(st, sourceNode, attachment), new CommandOrigin(ot, originNode, offset), List.of(), d.requireIdentifier(nonempty(action, "key", p + ".action", d), p + ".action.key"), d.requireElement(action, "data", p + ".action"));
                 else throw d.error(p + ".action.type", "unknown action");
                 if (phase.equals("timeline")) {
-                    int time = d.requireTime(event, "time", p, 0);
-                    if (time < 0 || time > duration) throw d.error(p + ".time", "must be within duration");
-                    timeline.add(new TimelineEvent(time, enumeration(Direction.class, text(event, "direction", "forward", p, d), p + ".direction", d), parsed));
+                    int tick = d.requireTime(event, "time", p, 0);
+                    if (tick < 0 || tick > durationTicks) throw d.error(p + ".time", "must be within duration");
+                    timeline.add(new TimelineEvent(tick, enumeration(Direction.class, text(event, "direction", "forward", p, d), p + ".direction", d), parsed));
                 } else {
                     if (event.has("time") || event.has("direction")) throw d.error(p, "time/direction require timeline phase");
                     events.add(parsed);
@@ -381,7 +381,7 @@ public final class AnimationJsonParser {
             }
             phases.put(phase, events);
         }
-        timeline.sort(Comparator.comparingDouble(TimelineEvent::time));
+        timeline.sort(Comparator.comparingDouble(TimelineEvent::tick));
         return new Events(phases.getOrDefault("start", List.of()), timeline, phases.getOrDefault("loop", List.of()), phases.getOrDefault("stop", List.of()));
     }
 

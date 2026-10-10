@@ -29,7 +29,7 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
     private List<Context> callbackContexts = List.of();
     private List<Context> animationCallbackContexts = List.of();
     private Map<PreparedAnimation, List<CallbackRegistry.Binding>> animationBindings = Map.of();
-    private PlaybackState playbackState = PlaybackState.RUNNING;
+    private PlaybackState state = PlaybackState.RUNNING;
     private @Nullable PlaybackStopReason stopReason;
     private long elapsedTicks;
     private long lastServerTick;
@@ -69,13 +69,13 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
         return this.sessionId;
     }
 
-    public PlaybackState playbackState() {
-        return this.playbackState;
+    public PlaybackState state() {
+        return this.state;
     }
 
-    public PlaybackInfo playbackInfo() {
+    public PlaybackInfo info() {
         UUID playerUuid = this.actors.get("actor") instanceof ServerPlayer player ? player.getUUID() : null;
-        return new PlaybackInfo(this.sessionId, playerUuid, Identifier.parse(this.emoteId), this.playbackState,
+        return new PlaybackInfo(this.sessionId, playerUuid, Identifier.parse(this.emoteId), this.state,
             this.elapsedTicks, this.playback.currentTick(), this.playback.position(), placement());
     }
 
@@ -106,18 +106,18 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
         this.playback.bindLifecycleListener(this);
     }
 
-    public void startPlayback() {
+    public void start() {
         beginFrame();
         try {
             if (this.callbacksStarted) throw new IllegalStateException("Callbacks already started.");
             this.playback.restoreDeferredVisibility();
             this.playback.startEvents();
-            if (this.playbackState != PlaybackState.RUNNING) return;
+            if (this.state != PlaybackState.RUNNING) return;
             this.callbacksStarted = true;
             for (Context context : this.callbackContexts) {
                 context.started = true;
                 invokeCallback(context, context.binding.callbacks()::onStart);
-                if (this.playbackState != PlaybackState.RUNNING) break;
+                if (this.state != PlaybackState.RUNNING) break;
             }
             startAnimationCallbacks();
         } finally {
@@ -125,20 +125,20 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
         }
     }
 
-    public boolean setTick(int time) {
-        if (!this.playback.canSetTick(time) || this.playbackState != PlaybackState.RUNNING) return false;
-        return queueSeek(() -> this.playback.setTick(time));
+    public boolean setTick(int tick) {
+        if (!this.playback.canSetTick(tick) || this.state != PlaybackState.RUNNING) return false;
+        return queueSeek(() -> this.playback.setTick(tick));
     }
 
-    public boolean setAnimationTick(int time) {
-        if (!this.playback.canSetAnimationTick(time) || this.playbackState != PlaybackState.RUNNING) return false;
-        return queueSeek(() -> this.playback.setAnimationTick(time));
+    public boolean setAnimationTick(int animationTick) {
+        if (!this.playback.canSetAnimationTick(animationTick) || this.state != PlaybackState.RUNNING) return false;
+        return queueSeek(() -> this.playback.setAnimationTick(animationTick));
     }
 
-    public boolean setStep(int stepIndex, int repeatIndex, int time) {
-        this.playback.stepSegment(stepIndex, repeatIndex, time);
-        if (!this.playback.canSeek() || this.playbackState != PlaybackState.RUNNING) return false;
-        return queueSeek(() -> this.playback.setStep(stepIndex, repeatIndex, time));
+    public boolean setStep(int stepIndex, int repeatIndex, int animationTick) {
+        this.playback.stepSegment(stepIndex, repeatIndex, animationTick);
+        if (!this.playback.canSeek() || this.state != PlaybackState.RUNNING) return false;
+        return queueSeek(() -> this.playback.setStep(stepIndex, repeatIndex, animationTick));
     }
 
     private boolean queueSeek(Runnable seek) {
@@ -157,7 +157,7 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
     private void applyPendingSeek() {
         Runnable seek = this.pendingSeek;
         this.pendingSeek = null;
-        if (seek == null || this.playbackState != PlaybackState.RUNNING) return;
+        if (seek == null || this.state != PlaybackState.RUNNING) return;
         this.applyingTick = true;
         try { seek.run(); }
         finally { this.applyingTick = false; }
@@ -167,13 +167,13 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
     public boolean hasPendingSeek() { return this.pendingSeek != null; }
 
     @Override
-    public void onPositionChanged(int animationTime) {
-        for (Context context : this.animationCallbackContexts) context.localTime = animationTime;
+    public void onPositionChanged(int animationTick) {
+        for (Context context : this.animationCallbackContexts) context.animationTick = animationTick;
     }
 
     private void startAnimationCallbacks() {
         for (Context context : this.animationCallbackContexts) {
-            if (this.playbackState != PlaybackState.RUNNING) break;
+            if (this.state != PlaybackState.RUNNING) break;
             context.started = true;
             invokeCallback(context, context.binding.callbacks()::onStart);
         }
@@ -183,16 +183,16 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
     public void onStart(PreparedAnimation animation) {
         this.animationCallbackContexts = this.animationBindings.getOrDefault(animation, List.of()).stream()
             .map(binding -> new Context(binding, true)).toList();
-        Integer time = this.playback.position().animationTick();
-        onPositionChanged(time == null ? 0 : time);
+        Integer animationTick = this.playback.position().animationTick();
+        onPositionChanged(animationTick == null ? 0 : animationTick);
         if (this.callbacksStarted) startAnimationCallbacks();
     }
 
     @Override
-    public void onTick(int animationTime) {
-        onPositionChanged(animationTime);
+    public void onTick(int animationTick) {
+        onPositionChanged(animationTick);
         for (Context context : this.animationCallbackContexts) {
-            if (this.playbackState != PlaybackState.RUNNING) break;
+            if (this.state != PlaybackState.RUNNING) break;
             invokeCallback(context, context.binding.callbacks()::onTick);
         }
     }
@@ -214,25 +214,25 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
     }
 
     public boolean tick(long serverTick) {
-        if (this.playbackState != PlaybackState.RUNNING || this.lastServerTick == serverTick) return false;
+        if (this.state != PlaybackState.RUNNING || this.lastServerTick == serverTick) return false;
         this.lastServerTick = serverTick;
         this.elapsedTicks++;
         return true;
     }
 
     public void tickCallbacks() {
-        if (!this.callbacksStarted || this.playbackState != PlaybackState.RUNNING) return;
+        if (!this.callbacksStarted || this.state != PlaybackState.RUNNING) return;
         for (Context context : this.callbackContexts) {
             invokeCallback(context, context.binding.callbacks()::onTick);
-            if (this.playbackState != PlaybackState.RUNNING) break;
+            if (this.state != PlaybackState.RUNNING) break;
         }
     }
 
     private void loopCallbacks() {
-        if (!this.callbacksStarted || this.playbackState != PlaybackState.RUNNING) return;
+        if (!this.callbacksStarted || this.state != PlaybackState.RUNNING) return;
         for (Context context : this.callbackContexts) {
             invokeCallback(context, context.binding.callbacks()::onLoop);
-            if (this.playbackState != PlaybackState.RUNNING) break;
+            if (this.state != PlaybackState.RUNNING) break;
         }
     }
 
@@ -259,15 +259,15 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
     }
 
     public boolean beginClose(PlaybackStopReason reason) {
-        if (this.playbackState != PlaybackState.RUNNING) return false;
-        this.playbackState = PlaybackState.CLOSING;
+        if (this.state != PlaybackState.RUNNING) return false;
+        this.state = PlaybackState.CLOSING;
         this.pendingSeek = null;
         this.stopReason = Objects.requireNonNull(reason, "reason");
         return true;
     }
 
     public void closeCallbacks() {
-        if (this.playbackState != PlaybackState.CLOSING || this.callbacksClosed) return;
+        if (this.state != PlaybackState.CLOSING || this.callbacksClosed) return;
         this.callbacksClosed = true;
         onClose(this.stopReason);
         for (Context context : this.callbackContexts) {
@@ -285,7 +285,7 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
     }
 
     public void completeClose() {
-        this.playbackState = PlaybackState.CLOSED;
+        this.state = PlaybackState.CLOSED;
         for (Context context : this.callbackContexts) context.userState = null;
     }
 
@@ -293,7 +293,7 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
         private final CallbackRegistry.Binding binding;
         private final boolean animationScoped;
         private final long startTick;
-        private int localTime;
+        private int animationTick;
         private @Nullable PlaybackStopReason closeReason;
         private boolean started;
         private @Nullable Object userState;
@@ -310,10 +310,10 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
         public ServerLevel getWorld() { return Objects.requireNonNull(getServer().getLevel(PlaybackSession.this.levelKey), "Playback level unavailable."); }
         public long getElapsedTicks() { return PlaybackSession.this.elapsedTicks - this.startTick; }
         public int getTick() { return PlaybackSession.this.playback.currentTick(); }
-        public @Nullable Integer getAnimationTick() { return this.animationScoped ? Integer.valueOf(this.localTime) : PlaybackSession.this.playback.position().animationTick(); }
-        public boolean setTick(int time) { return PlaybackSession.this.setTick(time); }
-        public boolean setAnimationTick(int time) { return PlaybackSession.this.setAnimationTick(time); }
-        public boolean setStep(int stepIndex, int repeatIndex, int time) { return PlaybackSession.this.setStep(stepIndex, repeatIndex, time); }
+        public @Nullable Integer getAnimationTick() { return this.animationScoped ? Integer.valueOf(this.animationTick) : PlaybackSession.this.playback.position().animationTick(); }
+        public boolean setTick(int tick) { return PlaybackSession.this.setTick(tick); }
+        public boolean setAnimationTick(int animationTick) { return PlaybackSession.this.setAnimationTick(animationTick); }
+        public boolean setStep(int stepIndex, int repeatIndex, int animationTick) { return PlaybackSession.this.setStep(stepIndex, repeatIndex, animationTick); }
         public Vec3 getRootPosition() { return PlaybackSession.this.nodes.root().position(); }
         public Optional<PlaybackStopReason> getStopReason() { return Optional.ofNullable(this.closeReason != null ? this.closeReason : PlaybackSession.this.stopReason); }
         public @Nullable Object getUserState() { return this.userState; }

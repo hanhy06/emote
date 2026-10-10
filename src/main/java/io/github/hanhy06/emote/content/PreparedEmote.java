@@ -34,11 +34,11 @@ public sealed interface PreparedEmote permits PreparedAnimation, PreparedSequenc
 
     Path sourcePath();
 
-    @org.jspecify.annotations.Nullable Integer duration();
+    @org.jspecify.annotations.Nullable Integer durationTicks();
 
-    int cooldown();
+    int cooldownTicks();
 
-    EmoteAnimation.LoopMode loopMode();
+    EmoteAnimation.PlaybackMode playbackMode();
 
     default int nodeCount() { return nodes().size(); }
 

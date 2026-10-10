@@ -24,7 +24,7 @@ public final class PreparedSequence implements PreparedEmote {
     private final Map<String, Matrix4f> defaultMatrices;
     private final List<String> nodeOrder;
     private final List<SkinBinding> skinBindings;
-    private final @Nullable Integer duration;
+    private final @Nullable Integer durationTicks;
     private final float rotationDeadzone;
 
     private PreparedSequence(LoadedSequence loaded, List<Step> steps) {
@@ -32,7 +32,7 @@ public final class PreparedSequence implements PreparedEmote {
         this.sourcePath = loaded.sourcePath();
         this.steps = List.copyOf(steps);
         PreparedAnimation first = steps.stream().filter(AnimationStep.class::isInstance).map(AnimationStep.class::cast)
-            .flatMap(step -> step.candidates().stream()).filter(AnimationChoice.class::isInstance)
+            .flatMap(step -> step.choices().stream()).filter(AnimationChoice.class::isInstance)
             .map(AnimationChoice.class::cast).map(AnimationChoice::animation).findFirst()
             .orElseThrow(() -> new IllegalArgumentException("Sequence must reference at least one animation"));
         this.skinBindings = first.skinBindings();
@@ -42,7 +42,7 @@ public final class PreparedSequence implements PreparedEmote {
         Map<String, Matrix4f> matrices = new LinkedHashMap<>();
         for (Step step : steps) {
             if (!(step instanceof AnimationStep animationStep)) continue;
-            for (Choice choice : animationStep.candidates()) {
+            for (Choice choice : animationStep.choices()) {
                 if (!(choice instanceof AnimationChoice selected)) continue;
                 PreparedAnimation animation = selected.animation();
                 if (!this.skinBindings.equals(animation.skinBindings())) throw new IllegalArgumentException("Sequence animations must use the same skin layout: " + first.id() + " and " + animation.id());
@@ -63,7 +63,7 @@ public final class PreparedSequence implements PreparedEmote {
         this.displayContents = Map.copyOf(contents);
         this.defaultMatrices = Map.copyOf(matrices);
         this.nodeOrder = List.copyOf(nodes.keySet());
-        this.duration = fixedDuration(steps);
+        this.durationTicks = fixedDurationTicks(steps);
     }
 
     public static PreparedSequence prepare(EmoteSequence model, Map<String, PreparedAnimation> animations) throws EmoteLoadException {
@@ -86,17 +86,17 @@ public final class PreparedSequence implements PreparedEmote {
                 continue;
             }
             EmoteSequence.AnimationStep step = (EmoteSequence.AnimationStep) sourceStep;
-            List<Choice> candidates = new ArrayList<>(step.choices().size());
+            List<Choice> choices = new ArrayList<>(step.choices().size());
             for (EmoteSequence.Choice choice : step.choices()) {
                 EmoteSequence.Control control = EmoteSequence.Control.fromId(choice.targetId());
                 if (control != null) {
-                    candidates.add(new ControlChoice(control, choice.chance()));
+                    choices.add(new ControlChoice(control, choice.chance()));
                     continue;
                 }
                 PreparedAnimation animation = resolveAnimation(choice.targetId().toString(), animations);
-                candidates.add(new AnimationChoice(animation, choice.chance()));
+                choices.add(new AnimationChoice(animation, choice.chance()));
             }
-            resolvedSteps.add(new AnimationStep(candidates, step.repeat(), step.transitionTicks()));
+            resolvedSteps.add(new AnimationStep(choices, step.repeat(), step.transitionTicks()));
         }
         return List.copyOf(resolvedSteps);
     }
@@ -106,38 +106,38 @@ public final class PreparedSequence implements PreparedEmote {
         if (animation == null) {
             throw new IllegalArgumentException("Unknown or disabled animation: " + id);
         }
-        if (animation.loopMode() == EmoteAnimation.LoopMode.SERVER_SYNC) {
+        if (animation.playbackMode() == EmoteAnimation.PlaybackMode.SERVER_SYNC) {
             throw new IllegalArgumentException("Server-synchronized animation is not supported in a sequence: " + animation.id());
         }
-        if (animation.loopMode() == EmoteAnimation.LoopMode.HOLD) {
+        if (animation.playbackMode() == EmoteAnimation.PlaybackMode.HOLD) {
             throw new IllegalArgumentException("Hold animation is not supported in a sequence: " + animation.id());
         }
         return animation;
     }
 
 
-    private static @Nullable Integer fixedDuration(List<Step> steps) {
-        long duration = 0;
+    private static @Nullable Integer fixedDurationTicks(List<Step> steps) {
+        long durationTicks = 0;
         boolean previousPose = false;
         for (Step step : steps) {
             if (step instanceof WaitStep wait) {
-                duration += wait.ticks();
+                durationTicks += wait.ticks();
                 continue;
             }
             AnimationStep animationStep = (AnimationStep) step;
-            if (animationStep.candidates().size() != 1 || !(animationStep.candidates().getFirst() instanceof AnimationChoice choice)) return null;
+            if (animationStep.choices().size() != 1 || !(animationStep.choices().getFirst() instanceof AnimationChoice choice)) return null;
             var animation = choice.animation().model();
             var playback = animation.settings().playback();
-            if (animation.timeline().clock() != null || !(playback.startDelay() instanceof EmoteAnimation.ConstantValue start)
+            if (animation.clip().clock() != null || !(playback.startDelay() instanceof EmoteAnimation.ConstantValue start)
                 || !(playback.loopDelay() instanceof EmoteAnimation.ConstantValue delay)) return null;
             for (int repeat = 0; repeat < animationStep.repeat(); repeat++) {
-                if (previousPose) duration += animationStep.transitionTicks();
-                duration += (long) start.value() + animation.timeline().duration();
-                if (repeat + 1 < animationStep.repeat() && playback.mode() == EmoteAnimation.LoopMode.LOOP) duration += (long) delay.value();
+                if (previousPose) durationTicks += animationStep.transitionTicks();
+                durationTicks += (long) start.value() + animation.clip().durationTicks();
+                if (repeat + 1 < animationStep.repeat() && playback.mode() == EmoteAnimation.PlaybackMode.LOOP) durationTicks += (long) delay.value();
                 previousPose = true;
             }
         }
-        return Math.toIntExact(duration);
+        return Math.toIntExact(durationTicks);
     }
 
     public EmoteSequence model() { return this.model; }
@@ -146,10 +146,10 @@ public final class PreparedSequence implements PreparedEmote {
     @Override public EmoteMetadata metadata() { return this.model.metadata(); }
     @Override public Path sourcePath() { return this.sourcePath; }
     @Override public boolean standalone() { return true; }
-    @Override public EmotePlayerBehavior playerBehavior() { return this.model.settings().player(); }
-    @Override public @Nullable Integer duration() { return this.duration; }
-    @Override public int cooldown() { return this.model.settings().cooldownTicks(); }
-    @Override public EmoteAnimation.LoopMode loopMode() { return EmoteAnimation.LoopMode.ONCE; }
+    @Override public EmotePlayerBehavior playerBehavior() { return this.model.settings().playerBehavior(); }
+    @Override public @Nullable Integer durationTicks() { return this.durationTicks; }
+    @Override public int cooldownTicks() { return this.model.settings().cooldownTicks(); }
+    @Override public EmoteAnimation.PlaybackMode playbackMode() { return EmoteAnimation.PlaybackMode.ONCE; }
     @Override public Map<String, EmoteAnimation.Node> nodes() { return this.nodes; }
     @Override public List<String> nodeOrder() { return this.nodeOrder; }
     @Override public Map<String, Map<String, DisplayData>> displayContents() { return this.displayContents; }
@@ -166,14 +166,14 @@ public final class PreparedSequence implements PreparedEmote {
     public sealed interface Step permits AnimationStep, WaitStep {
     }
 
-    public record AnimationStep(List<Choice> candidates, int repeat, int transitionTicks) implements Step {
+    public record AnimationStep(List<Choice> choices, int repeat, int transitionTicks) implements Step {
         public AnimationStep {
-            candidates = List.copyOf(candidates);
-            if (candidates.isEmpty()) {
-                throw new IllegalArgumentException("sequence emote candidates must not be empty");
+            choices = List.copyOf(choices);
+            if (choices.isEmpty()) {
+                throw new IllegalArgumentException("sequence animation choices must not be empty");
             }
-            if (candidates.stream().anyMatch(Objects::isNull)) {
-                throw new NullPointerException("candidates");
+            if (choices.stream().anyMatch(Objects::isNull)) {
+                throw new NullPointerException("choices");
             }
             if (repeat < 1) {
                 throw new IllegalArgumentException("sequence repeat must be at least 1");
@@ -183,8 +183,8 @@ public final class PreparedSequence implements PreparedEmote {
             }
         }
 
-        public AnimationStep(List<Choice> candidates, int repeat) {
-            this(candidates, repeat, 0);
+        public AnimationStep(List<Choice> choices, int repeat) {
+            this(choices, repeat, 0);
         }
     }
 

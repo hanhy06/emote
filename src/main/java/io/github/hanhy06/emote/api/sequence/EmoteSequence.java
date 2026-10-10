@@ -57,12 +57,12 @@ public record EmoteSequence(
         validateLinearSteps(steps, "sequence");
     }
 
-    public record Settings(int cooldownTicks, EmotePlayerBehavior player) {
+    public record Settings(int cooldownTicks, EmotePlayerBehavior playerBehavior) {
         public Settings {
             if (cooldownTicks < 0) {
                 throw new IllegalArgumentException("cooldown must not be negative");
             }
-            Objects.requireNonNull(player, "player");
+            Objects.requireNonNull(playerBehavior, "playerBehavior");
         }
     }
 

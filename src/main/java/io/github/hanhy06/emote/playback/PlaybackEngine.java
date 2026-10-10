@@ -103,7 +103,7 @@ public final class PlaybackEngine implements ConfigListener {
             nodes = this.entityController.create(request.level(), request.root(), emote);
             EntityTimelineTarget target = new EntityTimelineTarget(emote, nodes, this.entityController);
             timeline.bindEvents(new EventCommandExecutor(request.level(), request.commandSource(), nodes, timeline));
-            if (emote.loopMode() == EmoteAnimation.LoopMode.SERVER_SYNC) {
+            if (emote.playbackMode() == EmoteAnimation.PlaybackMode.SERVER_SYNC) {
                 timeline.startSynchronized(target, EmoteMod.SERVER.overworld().getGameTime());
             } else {
                 timeline.start(target);
@@ -117,7 +117,7 @@ public final class PlaybackEngine implements ConfigListener {
             register(session, request.lifecycle());
             request.lifecycle().onStarted(session);
             if (contains(session)) notifyStarted(session);
-            if (contains(session)) session.startPlayback();
+            if (contains(session)) session.start();
             return new StartResult.Success(session);
         } catch (RuntimeException exception) {
             EmoteMod.LOGGER.warn("Failed to start emote {}", emote.id(), exception);

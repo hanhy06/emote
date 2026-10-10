@@ -234,7 +234,7 @@ public final class AdminCommand {
             source.sendSystemMessage(createListEntry(
                 emote.id(),
                 emote.metadata(),
-                emote.duration(),
+                emote.durationTicks(),
                 emote.standalone()
             ));
         }
@@ -313,9 +313,9 @@ public final class AdminCommand {
             }
 
             PreparedEmote emote = this.emoteCatalog.find(session.emoteId());
-            String displayName = emote == null ? session.emoteId() : emote.name();
+            String name = emote == null ? session.emoteId() : emote.name();
             source.sendSuccess(
-                () -> Component.literal("Stopped " + displayName + " for " + player.getName().getString() + "."),
+                () -> Component.literal("Stopped " + name + " for " + player.getName().getString() + "."),
                 true
             );
             stoppedCount++;

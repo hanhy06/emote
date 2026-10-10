@@ -84,13 +84,13 @@ public class EmoteQueryService {
             return 0;
         }
 
-        String displayName = emote.displayName().toLowerCase(Locale.ROOT);
+        String name = emote.name().toLowerCase(Locale.ROOT);
         String id = emote.id().toLowerCase(Locale.ROOT);
         String description = emote.description().toLowerCase(Locale.ROOT);
-        if (displayName.equals(query.text())) return 0;
-        if (displayName.startsWith(query.text())) return 1;
+        if (name.equals(query.text())) return 0;
+        if (name.startsWith(query.text())) return 1;
         if (id.startsWith(query.text())) return 2;
-        if (displayName.contains(query.text()) || id.contains(query.text()) || description.contains(query.text())) return 3;
+        if (name.contains(query.text()) || id.contains(query.text()) || description.contains(query.text())) return 3;
         return Integer.MAX_VALUE;
     }
 

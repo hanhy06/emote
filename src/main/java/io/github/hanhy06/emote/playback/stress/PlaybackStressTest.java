@@ -334,12 +334,12 @@ public final class PlaybackStressTest {
 
     private void startAtInitialTick(PlaybackPlayer timeline, PlaybackPlayer.TimelineTarget target, EmoteAnimation animation, int requestedTick) {
         int initialTick = requestedTick;
-        if (animation.settings().playback().mode() == EmoteAnimation.LoopMode.ONCE
-            || animation.settings().playback().mode() == EmoteAnimation.LoopMode.HOLD) {
+        if (animation.settings().playback().mode() == EmoteAnimation.PlaybackMode.ONCE
+            || animation.settings().playback().mode() == EmoteAnimation.PlaybackMode.HOLD) {
             initialTick = Math.clamp(
                 initialTick,
                 0,
-                Math.max(0, animation.timeline().duration() - 1)
+                Math.max(0, animation.clip().durationTicks() - 1)
             );
         }
         timeline.startAtCyclePhase(target, initialTick);

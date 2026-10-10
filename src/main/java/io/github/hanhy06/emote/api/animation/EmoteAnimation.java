@@ -16,15 +16,15 @@ import java.util.Set;
 import io.github.hanhy06.emote.api.EmoteCallback;
 
 public record EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings settings, MolangPrograms molang,
-                             Map<String, Node> nodes, Timeline timeline, List<EmoteCallback> callbacks,
+                             Map<String, Node> nodes, Clip clip, List<EmoteCallback> callbacks,
                              String targetMinecraftVersion, JsonObject resources, JsonObject source) {
     public static final int SCHEMA_VERSION = 5;
     public static final Set<String> RUNTIME_NBT_FIELDS = Set.of("id", "UUID", "Pos", "Motion", "Rotation", "Passengers", "Tags",
         "transformation", "interpolation_duration", "start_interpolation", "teleport_duration");
 
     public EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings settings, MolangPrograms molang,
-                          Map<String, Node> nodes, Timeline timeline, List<EmoteCallback> callbacks) {
-        this(id, metadata, settings, molang, nodes, timeline, callbacks, null, new JsonObject(), new JsonObject());
+                          Map<String, Node> nodes, Clip clip, List<EmoteCallback> callbacks) {
+        this(id, metadata, settings, molang, nodes, clip, callbacks, null, new JsonObject(), new JsonObject());
     }
 
     public EmoteAnimation {
@@ -33,7 +33,7 @@ public record EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings set
         Objects.requireNonNull(settings, "settings");
         Objects.requireNonNull(molang, "molang");
         nodes = Map.copyOf(nodes);
-        Objects.requireNonNull(timeline, "timeline");
+        Objects.requireNonNull(clip, "clip");
         callbacks = List.copyOf(callbacks);
         Objects.requireNonNull(resources, "resources");
         Objects.requireNonNull(source, "source");
@@ -42,22 +42,22 @@ public record EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings set
     public record MolangPrograms(String initialize, String update) {
         public static MolangPrograms empty() { return new MolangPrograms(null, null); }
     }
-    public record Settings(boolean standalone, int cooldown, float rotationDeadzone, int displayInterpolationTicks,
-                           EmotePlayerBehavior player, PlaybackSettings playback) {
+    public record Settings(boolean standalone, int cooldownTicks, float rotationDeadzone, int displayInterpolationTicks,
+                           EmotePlayerBehavior playerBehavior, PlaybackSettings playback) {
         public Settings {
-            if (cooldown < 0) throw new IllegalArgumentException("Invalid cooldown");
+            if (cooldownTicks < 0) throw new IllegalArgumentException("Invalid cooldown");
             if (!Float.isFinite(rotationDeadzone) || rotationDeadzone < 0 || rotationDeadzone > 180) throw new IllegalArgumentException("Invalid rotation deadzone");
             if (displayInterpolationTicks < 0) throw new IllegalArgumentException("Invalid display interpolation");
-            Objects.requireNonNull(player); Objects.requireNonNull(playback);
+            Objects.requireNonNull(playerBehavior); Objects.requireNonNull(playback);
         }
     }
-    public record PlaybackSettings(LoopMode mode, int loopStart, ScalarValue startDelay, ScalarValue loopDelay) {
-        public PlaybackSettings(LoopMode mode, int loopStart, int loopDelay) {
-            this(mode, loopStart, new ConstantValue(0), new ConstantValue(loopDelay));
+    public record PlaybackSettings(PlaybackMode mode, int loopStartTick, ScalarValue startDelay, ScalarValue loopDelay) {
+        public PlaybackSettings(PlaybackMode mode, int loopStartTick, int loopDelayTicks) {
+            this(mode, loopStartTick, new ConstantValue(0), new ConstantValue(loopDelayTicks));
         }
         public PlaybackSettings {
             Objects.requireNonNull(mode); Objects.requireNonNull(startDelay); Objects.requireNonNull(loopDelay);
-            if (loopStart < 0 || mode != LoopMode.LOOP && loopStart != 0) throw new IllegalArgumentException("Invalid loop start");
+            if (loopStartTick < 0 || mode != PlaybackMode.LOOP && loopStartTick != 0) throw new IllegalArgumentException("Invalid loop start");
             for (ScalarValue delay : List.of(startDelay, loopDelay)) {
                 if (delay instanceof ConstantValue c && (c.value() < 0 || c.value() > Integer.MAX_VALUE || c.value() != Math.rint(c.value()))) throw new IllegalArgumentException("Delay must be a non-negative integer tick count");
             }
@@ -91,10 +91,10 @@ public record EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings set
     public record TextAttachment(boolean visible, CompoundTag entityNbt, JsonElement text) implements Attachment {}
     public record SkinAttachment(boolean visible, PlayerSkinPart part, double from, double to) implements Attachment {}
     public record ExternalAttachment(boolean visible, Identifier key, JsonElement data) implements Attachment {}
-    public record Timeline(int duration, Map<String, Track> tracks, Events events, String clock) {
-        public Timeline(int duration, Map<String, Track> tracks, Events events) { this(duration, tracks, events, null); }
-        public Timeline {
-            if (duration <= 0) throw new IllegalArgumentException("Invalid duration");
+    public record Clip(int durationTicks, Map<String, Track> tracks, Events events, String clock) {
+        public Clip(int durationTicks, Map<String, Track> tracks, Events events) { this(durationTicks, tracks, events, null); }
+        public Clip {
+            if (durationTicks <= 0) throw new IllegalArgumentException("Invalid duration");
             tracks = Map.copyOf(tracks); Objects.requireNonNull(events);
         }
     }
@@ -105,7 +105,7 @@ public record EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings set
     public record Driver(DriverType type, Value value, List<Keyframe> keys, List<Segment> segments, boolean firstPre) {
         public Driver { keys = List.copyOf(keys); segments = List.copyOf(segments); }
     }
-    public record Keyframe(int time, Value pre, Value post) {}
+    public record Keyframe(int tick, Value pre, Value post) {}
     public enum Interpolation { STEP, LINEAR, SLERP, CATMULL_ROM, HERMITE, BEZIER }
     public record Segment(Interpolation interpolation, Easing easing, double tension, VectorValue previous,
                           VectorValue following, VectorValue outTangent, VectorValue inTangent, List<BezierHandle> handles) {
@@ -125,14 +125,14 @@ public record EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings set
     public sealed interface VisibilityValue extends Value permits ConstantVisibility, MolangVisibility {}
     public record ConstantVisibility(boolean value) implements VisibilityValue {}
     public record MolangVisibility(String source, String path) implements VisibilityValue {}
-    public sealed interface NbtValue extends Value permits FixedNbtValue, MolangNbtValue {}
-    public record FixedNbtValue(CompoundTag value, List<String> remove) implements NbtValue {
-        public FixedNbtValue { remove = List.copyOf(remove); }
+    public sealed interface NbtValue extends Value permits ConstantNbtValue, MolangNbtValue {}
+    public record ConstantNbtValue(CompoundTag value, List<String> remove) implements NbtValue {
+        public ConstantNbtValue { remove = List.copyOf(remove); }
     }
     public record MolangNbtValue(String source, String path, List<String> remove) implements NbtValue {
         public MolangNbtValue { remove = List.copyOf(remove); }
     }
-    public enum LoopMode { ONCE, HOLD, LOOP, SERVER_SYNC }
+    public enum PlaybackMode { ONCE, HOLD, LOOP, SERVER_SYNC }
     public record Events(List<Event> start, List<TimelineEvent> timeline, List<Event> loop, List<Event> stop) {
         public Events { start = List.copyOf(start); timeline = List.copyOf(timeline); loop = List.copyOf(loop); stop = List.copyOf(stop); }
         public static Events empty() { return new Events(List.of(), List.of(), List.of(), List.of()); }
@@ -141,7 +141,7 @@ public record EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings set
         public Event(CommandSource source, CommandOrigin origin, List<String> commands) { this(source, origin, commands, null, null); }
         public Event { commands = List.copyOf(commands); }
     }
-    public record TimelineEvent(int time, Direction direction, Event event) {}
+    public record TimelineEvent(int tick, Direction direction, Event event) {}
     public enum Direction { FORWARD, BACKWARD, BOTH }
     public record CommandSource(SourceType type, String node, String attachment) {
         public CommandSource(SourceType type, String node) { this(type, node, null); }

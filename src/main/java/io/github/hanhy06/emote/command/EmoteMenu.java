@@ -91,7 +91,7 @@ public final class EmoteMenu {
         for (EmoteSummary emoteSummary : emoteSummaryList.subList(dialogPage.startIndex(), dialogPage.endIndex())) {
             String command = "/" + emoteSummary.createPlayCommand();
             actionButtons.add(createRunCommandButton(
-                emoteSummary.displayName(),
+                emoteSummary.name(),
                 emoteSummary.description(),
                 command
             ));
@@ -216,10 +216,10 @@ public final class EmoteMenu {
 
     private String createActivePlaybackText(PlaybackSession session) {
         PreparedEmote emote = this.emoteCatalog.find(session.emoteId());
-        String displayName = emote == null
+        String name = emote == null
             ? session.emoteId()
             : emote.name();
-        return " Active: " + displayName;
+        return " Active: " + name;
     }
 
     private record DialogPage(

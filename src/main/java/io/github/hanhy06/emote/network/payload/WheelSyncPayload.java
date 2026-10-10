@@ -17,7 +17,7 @@ public record WheelSyncPayload(List<EmoteSummary> emotes) implements CustomPacke
         ByteBufCodecs.STRING_UTF8,
         EmoteSummary::id,
         ByteBufCodecs.STRING_UTF8,
-        EmoteSummary::displayName,
+        EmoteSummary::name,
         ByteBufCodecs.STRING_UTF8,
         EmoteSummary::description,
         EmoteSummary::new

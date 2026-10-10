@@ -60,7 +60,7 @@ public final class PreparedAnimation implements PreparedEmote {
     public static PreparedAnimation prepare(LoadedAnimation loaded, HolderLookup.Provider registries) throws EmoteLoadException {
         Objects.requireNonNull(loaded, "loaded");
         Objects.requireNonNull(registries, "registries");
-        if (loaded.model().timeline().duration() > 12000) throw new EmoteLoadException(loaded.sourcePath(), "$.animation.duration", "must not exceed 12000 ticks");
+        if (loaded.model().clip().durationTicks() > 12000) throw new EmoteLoadException(loaded.sourcePath(), "$.animation.duration", "must not exceed 12000 ticks");
         try {
             return new PreparedAnimation(loaded, resolveDisplayContents(loaded, registries));
         } catch (IllegalArgumentException exception) {
@@ -128,7 +128,7 @@ public final class PreparedAnimation implements PreparedEmote {
 
     private static Map<String, io.github.hanhy06.emote.molang.MolangEngine.CompiledExpression> compileExpressions(EmoteAnimation animation) {
         Map<String, io.github.hanhy06.emote.molang.MolangEngine.CompiledExpression> result = new HashMap<>();
-        for (var track : animation.timeline().tracks().values()) {
+        for (var track : animation.clip().tracks().values()) {
             List<EmoteAnimation.Value> values = new ArrayList<>();
             if (track.driver().value() != null) values.add(track.driver().value());
             for (var key : track.driver().keys()) { values.add(key.pre()); values.add(key.post()); }
@@ -149,7 +149,7 @@ public final class PreparedAnimation implements PreparedEmote {
                 if (scalar instanceof EmoteAnimation.MolangValue m) compileExpression(result, m.source(), m.path(), false);
             }
         }
-        if (animation.timeline().clock() != null) compileExpression(result, animation.timeline().clock(), "$.animation.clock.expression", false);
+        if (animation.clip().clock() != null) compileExpression(result, animation.clip().clock(), "$.animation.clock.expression", false);
         if (animation.molang().initialize() != null) compileExpression(result, animation.molang().initialize(), "$.animation.programs.initialize", true);
         if (animation.molang().update() != null) compileExpression(result, animation.molang().update(), "$.animation.programs.update", true);
         for (var delay : List.of(animation.settings().playback().startDelay(), animation.settings().playback().loopDelay())) {
@@ -173,11 +173,11 @@ public final class PreparedAnimation implements PreparedEmote {
 
     private void requireSupportedPlayback() {
         var playback = model.settings().playback();
-        if (playback.mode() == EmoteAnimation.LoopMode.SERVER_SYNC && (model.timeline().clock() != null || model.molang().update() != null
+        if (playback.mode() == EmoteAnimation.PlaybackMode.SERVER_SYNC && (model.clip().clock() != null || model.molang().update() != null
             || !(playback.startDelay() instanceof EmoteAnimation.ConstantValue) || !(playback.loopDelay() instanceof EmoteAnimation.ConstantValue))) {
             throw new IllegalArgumentException("$.animation.playback: server_sync requires reconstructible clock and state");
         }
-        var events = model.timeline().events();
+        var events = model.clip().events();
         Map<String, List<EmoteAnimation.Event>> phases = Map.of("start", events.start(), "timeline", events.timeline().stream().map(EmoteAnimation.TimelineEvent::event).toList(), "loop", events.loop(), "stop", events.stop());
         phases.forEach((phase, actions) -> {
             for (int index = 0; index < actions.size(); index++) {
@@ -193,8 +193,8 @@ public final class PreparedAnimation implements PreparedEmote {
             }
             if (parentUnknown || node.transform().stream().anyMatch(op -> op.op() == EmoteAnimation.OperationType.MATRIX)) unknownOrientations.add(id);
         }
-        for (var track : model.timeline().tracks().values()) {
-            if (playback.mode() == EmoteAnimation.LoopMode.SERVER_SYNC && track.driver().keys().stream().anyMatch(key -> key.post() instanceof EmoteAnimation.MolangNbtValue)) {
+        for (var track : model.clip().tracks().values()) {
+            if (playback.mode() == EmoteAnimation.PlaybackMode.SERVER_SYNC && track.driver().keys().stream().anyMatch(key -> key.post() instanceof EmoteAnimation.MolangNbtValue)) {
                 throw new IllegalArgumentException("$.animation.playback: server_sync cannot reconstruct dynamic NBT");
             }
         }
@@ -250,7 +250,7 @@ public final class PreparedAnimation implements PreparedEmote {
     }
 
     public EmotePlayerBehavior playerBehavior() {
-        return this.model.settings().player();
+        return this.model.settings().playerBehavior();
     }
 
     public Path sourcePath() {
@@ -262,17 +262,17 @@ public final class PreparedAnimation implements PreparedEmote {
     }
 
     @Override
-    public @Nullable Integer duration() {
-        return this.model.timeline().clock() == null ? this.model.timeline().duration() : null;
+    public @Nullable Integer durationTicks() {
+        return this.model.clip().clock() == null ? this.model.clip().durationTicks() : null;
     }
 
     @Override
-    public int cooldown() {
-        return this.model.settings().cooldown();
+    public int cooldownTicks() {
+        return this.model.settings().cooldownTicks();
     }
 
     @Override
-    public EmoteAnimation.LoopMode loopMode() {
+    public EmoteAnimation.PlaybackMode playbackMode() {
         return this.model.settings().playback().mode();
     }
 

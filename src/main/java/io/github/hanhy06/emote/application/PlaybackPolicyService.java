@@ -70,14 +70,14 @@ public final class PlaybackPolicyService implements AccessConfigListener {
         if (permission != null && !permission.allowed()) {
             return Decision.denied("You do not have permission to use this emote.");
         }
-        if (!rules.checkCooldown() || emote.cooldown() <= 0) {
+        if (!rules.checkCooldown() || emote.cooldownTicks() <= 0) {
             return Decision.allowed();
         }
 
         if (permission == null) {
             permission = resolvePermission(player, emote.id());
         }
-        int baseCooldownTicks = emote.cooldown();
+        int baseCooldownTicks = emote.cooldownTicks();
         int cooldownTicks = permission.cooldown()
             .map(modifier -> modifier.apply(baseCooldownTicks))
             .orElse(baseCooldownTicks);

@@ -45,7 +45,7 @@ public final class ApiEventDispatcher implements PlaybackEngine.Lifecycle {
 
     @Override
     public void onStarted(PlaybackSession session) {
-        PlaybackInfo playback = session.playbackInfo();
+        PlaybackInfo playback = session.info();
         UUID key = session.sessionId();
         StartDispatch dispatch = new StartDispatch(List.copyOf(this.playbackListeners));
         if (this.startingPlaybacks.putIfAbsent(key, dispatch) != null) {
@@ -73,7 +73,7 @@ public final class ApiEventDispatcher implements PlaybackEngine.Lifecycle {
         PlaybackSession session,
         PlaybackStopReason reason
     ) {
-        PlaybackInfo playback = session.playbackInfo();
+        PlaybackInfo playback = session.info();
         StartDispatch startDispatch = this.startingPlaybacks.get(session.sessionId());
         List<EmotePlaybackListener> listeners;
         if (startDispatch == null) {
@@ -98,9 +98,9 @@ public final class ApiEventDispatcher implements PlaybackEngine.Lifecycle {
             emote.standalone(),
             emote.metadata(),
             emote.playerBehavior(),
-            emote.duration(),
-            emote.cooldown(),
-            emote.loopMode()
+            emote.durationTicks(),
+            emote.cooldownTicks(),
+            emote.playbackMode()
         );
     }
 

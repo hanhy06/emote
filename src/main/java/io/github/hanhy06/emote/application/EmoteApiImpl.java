@@ -168,7 +168,7 @@ public final class EmoteApiImpl extends EmoteApi {
         if (session == null) {
             return Optional.empty();
         }
-        return Optional.of(session.playbackInfo());
+        return Optional.of(session.info());
     }
 
     @Override
@@ -180,7 +180,7 @@ public final class EmoteApiImpl extends EmoteApi {
     public Optional<PlaybackInfo> getPlayback(UUID sessionId) {
         Objects.requireNonNull(sessionId, "sessionId");
         requireServerThread();
-        return Optional.ofNullable(this.engine.findSession(sessionId)).map(PlaybackSession::playbackInfo);
+        return Optional.ofNullable(this.engine.findSession(sessionId)).map(PlaybackSession::info);
     }
 
     @Override

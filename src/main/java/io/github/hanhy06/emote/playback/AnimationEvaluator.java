@@ -31,14 +31,13 @@ final class AnimationEvaluator {
     private final Map<String, CompoundTag> nbtCaptures = new HashMap<>();
     private int nbtCycle;
     private MolangEngine.Session session;
-    private long lifeTime;
 
     AnimationEvaluator(PreparedAnimation animation, MolangQuerySource querySource) {
         this.animation = animation;
         this.querySource = querySource;
         this.nodeIds = animation.nodeOrder();
         for (var id : this.nodeIds) this.matrices.put(id, new Matrix4f());
-        for (var track : animation.model().timeline().tracks().values()) {
+        for (var track : animation.model().clip().tracks().values()) {
             String node = track.target().node();
             if (track.channel() == Channel.VALUE) {
                 this.tracks.computeIfAbsent(node, ignored -> new HashMap<>()).put(track.target().operation(), track);
@@ -52,31 +51,31 @@ final class AnimationEvaluator {
         }
     }
 
-    void initialize(int loopCount, long lifeTime) {
+    void initialize(int loopCount, long lifetimeTicks) {
         if (this.session != null) return;
         this.session = MolangEngine.INSTANCE.createSession();
         this.nbtCycle = loopCount;
-        prepareFrame(0, loopCount, 0, lifeTime);
+        prepareFrame(0, loopCount, 0, lifetimeTicks);
         if (this.animation.model().molang().initialize() != null) {
             this.session.evaluate(this.animation.expression("$.animation.programs.initialize"));
         }
     }
 
-    void prepareFrame(int time, int loopCount, int deltaTime, long lifeTime) {
-        setFrameQueries(time, loopCount, deltaTime, lifeTime);
+    void prepareFrame(int tick, int loopCount, int deltaTicks, long lifetimeTicks) {
+        setFrameQueries(tick, loopCount, deltaTicks, lifetimeTicks);
         this.querySource.apply(this.session);
     }
 
-    int nextTime(int previousTime, int loopCount, int deltaTime, long lifeTime) {
-        prepareFrame(previousTime, loopCount, deltaTime, lifeTime);
-        if (this.animation.model().timeline().clock() == null) return Math.addExact(previousTime, deltaTime);
-        double time = this.session.evaluate(this.animation.expression("$.animation.clock.expression")) * 20;
-        if (!Double.isFinite(time) || time > Integer.MAX_VALUE) throw new IllegalStateException("$.animation.clock.expression produced an invalid tick count");
-        return (int) Math.round(Math.max(0, time));
+    int nextTick(int previousTick, int loopCount, int deltaTicks, long lifetimeTicks) {
+        prepareFrame(previousTick, loopCount, deltaTicks, lifetimeTicks);
+        if (this.animation.model().clip().clock() == null) return Math.addExact(previousTick, deltaTicks);
+        double tick = this.session.evaluate(this.animation.expression("$.animation.clock.expression")) * 20;
+        if (!Double.isFinite(tick) || tick > Integer.MAX_VALUE) throw new IllegalStateException("$.animation.clock.expression produced an invalid tick count");
+        return (int) Math.round(Math.max(0, tick));
     }
 
-    int delay(ScalarValue delay, int time, int loopCount, int deltaTime, long lifeTime) {
-        setFrameQueries(time, loopCount, deltaTime, lifeTime);
+    int delay(ScalarValue delay, int tick, int loopCount, int deltaTicks, long lifetimeTicks) {
+        setFrameQueries(tick, loopCount, deltaTicks, lifetimeTicks);
         double value = switch (delay) {
             case ConstantValue constant -> constant.value();
             case MolangValue molang -> this.session.evaluate(this.animation.expression(molang.path())) * 20;
@@ -98,44 +97,43 @@ final class AnimationEvaluator {
     Map<String, CompoundTag> nbt(int index) { return this.nbt.getOrDefault(nodeId(index), Map.of()); }
     Set<String> nbtRemoved(int index, String attachmentId) { return this.nbtRemoved.get(nodeId(index)).get(attachmentId); }
 
-    private void setFrameQueries(int time, int loopCount, int deltaTime, long lifeTime) {
-        this.lifeTime = lifeTime;
-        this.session.setQuery("anim_time", time / 20.0);
-        this.session.setQuery("anim_time_ticks", time);
-        this.session.setQuery("anim_length", this.animation.model().timeline().duration() / 20.0);
-        this.session.setQuery("delta_time", deltaTime / 20.0);
+    private void setFrameQueries(int tick, int loopCount, int deltaTicks, long lifetimeTicks) {
+        this.session.setQuery("anim_time", tick / 20.0);
+        this.session.setQuery("anim_time_ticks", tick);
+        this.session.setQuery("anim_length", this.animation.model().clip().durationTicks() / 20.0);
+        this.session.setQuery("delta_time", deltaTicks / 20.0);
         this.session.setQuery("loop_count", loopCount);
         this.session.setQuery("key_frame_lerp_time", 0);
-        this.session.setQuery("life_time", lifeTime / 20.0);
+        this.session.setQuery("life_time", lifetimeTicks / 20.0);
     }
 
-    void evaluateFrame(int time, int loopCount, int deltaTime, long lifeTime, boolean update) {
-        evaluateFrame(time, loopCount, deltaTime, lifeTime, update, true);
+    void evaluateFrame(int tick, int loopCount, int deltaTicks, long lifetimeTicks, boolean update) {
+        evaluateFrame(tick, loopCount, deltaTicks, lifetimeTicks, update, true);
     }
 
-    void evaluateFrame(int time, int loopCount, int deltaTime, long lifeTime, boolean update, boolean captureNbt) {
-        time = Math.min(time, this.animation.model().timeline().duration());
-        setFrameQueries(time, loopCount, deltaTime, lifeTime);
+    void evaluateFrame(int tick, int loopCount, int deltaTicks, long lifetimeTicks, boolean update, boolean captureNbt) {
+        tick = Math.min(tick, this.animation.model().clip().durationTicks());
+        setFrameQueries(tick, loopCount, deltaTicks, lifetimeTicks);
         if (update && this.animation.model().molang().update() != null) {
             this.session.evaluate(this.animation.expression("$.animation.programs.update"));
         }
-        if (this.nbtTracks.isEmpty() || this.animation.loopMode() == LoopMode.SERVER_SYNC) this.nbtCycle = loopCount;
+        if (this.nbtTracks.isEmpty() || this.animation.playbackMode() == PlaybackMode.SERVER_SYNC) this.nbtCycle = loopCount;
         while (captureNbt && this.nbtCycle < loopCount) {
-            setFrameQueries(this.animation.model().timeline().duration(), this.nbtCycle, deltaTime, lifeTime);
-            evaluateNbt(this.animation.model().timeline().duration());
+            setFrameQueries(this.animation.model().clip().durationTicks(), this.nbtCycle, deltaTicks, lifetimeTicks);
+            evaluateNbt(this.animation.model().clip().durationTicks());
             this.nbtCaptures.clear();
             this.nbtCycle++;
-            setFrameQueries(this.animation.model().settings().playback().loopStart(), this.nbtCycle, deltaTime, lifeTime);
-            evaluateNbt(this.animation.model().settings().playback().loopStart());
+            setFrameQueries(this.animation.model().settings().playback().loopStartTick(), this.nbtCycle, deltaTicks, lifetimeTicks);
+            evaluateNbt(this.animation.model().settings().playback().loopStartTick());
         }
-        setFrameQueries(time, loopCount, deltaTime, lifeTime);
+        setFrameQueries(tick, loopCount, deltaTicks, lifetimeTicks);
         for (String id : this.nodeIds) {
             Node node = this.animation.model().nodes().get(id);
             Matrix4f local = new Matrix4f();
             Quaternionf orientation = new Quaternionf();
             for (Operation operation : node.transform()) {
                 Track track = this.tracks.getOrDefault(id, Map.of()).get(operation.id());
-                double[] value = sample(track == null ? null : track.driver(), time, operation.value());
+                double[] value = sample(track == null ? null : track.driver(), tick, operation.value());
                 local.mul(PreparedAnimation.operationMatrix(operation, value));
                 if (operation.op() == OperationType.ROTATE_EULER || operation.op() == OperationType.ROTATE_QUATERNION) {
                     orientation.mul(PreparedAnimation.operationRotation(operation, value)).normalize();
@@ -162,19 +160,19 @@ final class AnimationEvaluator {
             }
             if (!world.isFinite()) throw new IllegalStateException("Node " + id + " produced a non-finite transform");
             this.orientations.put(id, orientation);
-            boolean visible = sampleVisibility(this.nodeVisibilityTracks.get(id), time, node.visible());
+            boolean visible = sampleVisibility(this.nodeVisibilityTracks.get(id), tick, node.visible());
             if (node.parentId() != null && node.inherit().visibility()) visible &= this.visibility.get(node.parentId());
             this.visibility.put(id, visible);
             Map<String, Boolean> attachments = this.attachmentVisibility.computeIfAbsent(id, ignored -> new LinkedHashMap<>());
             for (var attachment : node.attachments().entrySet().stream().sorted(Map.Entry.comparingByKey()).toList()) {
                 attachments.put(attachment.getKey(), sampleVisibility(
-                    this.attachmentVisibilityTracks.getOrDefault(id, Map.of()).get(attachment.getKey()), time, attachment.getValue().visible()));
+                    this.attachmentVisibilityTracks.getOrDefault(id, Map.of()).get(attachment.getKey()), tick, attachment.getValue().visible()));
             }
         }
-        if (captureNbt) evaluateNbt(time);
+        if (captureNbt) evaluateNbt(tick);
     }
 
-    private void evaluateNbt(double time) {
+    private void evaluateNbt(double tick) {
         this.session.setQuery("key_frame_lerp_time", 0);
         for (String nodeId : this.nodeIds) {
             Map<String, Track> tracks = this.nbtTracks.getOrDefault(nodeId, Map.of());
@@ -184,13 +182,13 @@ final class AnimationEvaluator {
                 CompoundTag state = new CompoundTag();
                 Set<String> removed = new HashSet<>();
                 for (Keyframe key : tracks.get(attachmentId).driver().keys()) {
-                    if (key.time() > time) break;
+                    if (key.tick() > tick) break;
                     NbtValue patch = (NbtValue) key.post();
-                    List<String> remove = patch instanceof FixedNbtValue fixed ? fixed.remove() : ((MolangNbtValue) patch).remove();
+                    List<String> remove = patch instanceof ConstantNbtValue constant ? constant.remove() : ((MolangNbtValue) patch).remove();
                     remove.forEach(state::remove);
                     removed.addAll(remove);
                     CompoundTag merge;
-                    if (patch instanceof FixedNbtValue fixed) merge = fixed.value();
+                    if (patch instanceof ConstantNbtValue constant) merge = constant.value();
                     else {
                         MolangNbtValue molang = (MolangNbtValue) patch;
                         merge = this.nbtCaptures.get(molang.path());
@@ -214,19 +212,19 @@ final class AnimationEvaluator {
         }
     }
 
-    private boolean sampleVisibility(Track track, double time, boolean base) {
+    private boolean sampleVisibility(Track track, double tick, boolean base) {
         if (track == null) return base;
         Driver driver = track.driver();
         VisibilityValue value;
         if (driver.type() == DriverType.EXPRESSION) value = (VisibilityValue) driver.value();
         else {
             List<Keyframe> keys = driver.keys();
-            if (time < keys.getFirst().time()) {
+            if (tick < keys.getFirst().tick()) {
                 if (!driver.firstPre()) return base;
                 value = (VisibilityValue) keys.getFirst().pre();
             } else {
                 int index = 0;
-                while (index + 1 < keys.size() && keys.get(index + 1).time() <= time) index++;
+                while (index + 1 < keys.size() && keys.get(index + 1).tick() <= tick) index++;
                 value = (VisibilityValue) keys.get(index).post();
             }
         }
@@ -236,17 +234,17 @@ final class AnimationEvaluator {
         };
     }
 
-    private double[] sample(Driver driver, double time, List<Double> base) {
+    private double[] sample(Driver driver, double tick, List<Double> base) {
         if (driver == null) return base.stream().mapToDouble(Double::doubleValue).toArray();
         if (driver.type() == DriverType.EXPRESSION) return vector((VectorValue) driver.value(), 0);
         List<Keyframe> keys = driver.keys();
-        if (time < keys.getFirst().time()) return driver.firstPre() ? vector((VectorValue) keys.getFirst().pre(), 0) : base.stream().mapToDouble(Double::doubleValue).toArray();
+        if (tick < keys.getFirst().tick()) return driver.firstPre() ? vector((VectorValue) keys.getFirst().pre(), 0) : base.stream().mapToDouble(Double::doubleValue).toArray();
         int index = 0;
-        while (index + 1 < keys.size() && keys.get(index + 1).time() <= time) index++;
+        while (index + 1 < keys.size() && keys.get(index + 1).tick() <= tick) index++;
         Keyframe left = keys.get(index);
-        if (time == left.time() || index == keys.size() - 1) return vector((VectorValue) left.post(), 1);
+        if (tick == left.tick() || index == keys.size() - 1) return vector((VectorValue) left.post(), 1);
         Keyframe right = keys.get(index + 1);
-        double progress = (time - left.time()) / (right.time() - left.time());
+        double progress = (tick - left.tick()) / (right.tick() - left.tick());
         double[] start = vector((VectorValue) left.post(), progress);
         Segment segment = driver.segments().get(index);
         if (segment.interpolation() == Interpolation.STEP) return start;
@@ -261,15 +259,15 @@ final class AnimationEvaluator {
         double[] following = segment.following() == null ? end : vector(segment.following(), progress);
         double[] out = segment.outTangent() == null ? null : vector(segment.outTangent(), progress);
         double[] in = segment.inTangent() == null ? null : vector(segment.inTangent(), progress);
-        double duration = (right.time() - left.time()) / 20.0;
+        double durationSeconds = (right.tick() - left.tick()) / 20.0;
         double[] result = new double[start.length];
         for (int i = 0; i < start.length; i++) {
             double a = start[i], b = end[i];
             result[i] = switch (segment.interpolation()) {
                 case LINEAR -> a + (b - a) * t;
                 case CATMULL_ROM, HERMITE -> {
-                    double m0 = segment.interpolation() == Interpolation.HERMITE ? out[i] * duration : segment.tension() * (b - previous[i]);
-                    double m1 = segment.interpolation() == Interpolation.HERMITE ? in[i] * duration : segment.tension() * (following[i] - a);
+                    double m0 = segment.interpolation() == Interpolation.HERMITE ? out[i] * durationSeconds : segment.tension() * (b - previous[i]);
+                    double m1 = segment.interpolation() == Interpolation.HERMITE ? in[i] * durationSeconds : segment.tension() * (following[i] - a);
                     double t2 = t * t, t3 = t2 * t;
                     yield (2 * t3 - 3 * t2 + 1) * a + (t3 - 2 * t2 + t) * m0
                         + (-2 * t3 + 3 * t2) * b + (t3 - t2) * m1;
