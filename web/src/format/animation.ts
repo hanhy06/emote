@@ -7,5 +7,5 @@ export interface AnimationJson extends AnimationIR {
 }
 
 export function serializeAnimation(animation: AnimationJson): string {
-  return `${JSON.stringify(animation, null, 2)}\n`;
+  return JSON.stringify(animation);
 }
