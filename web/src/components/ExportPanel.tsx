@@ -1,11 +1,8 @@
-interface DownloadItem {
-  label: string;
-  detail: string;
-}
+import type { ConversionAnimation } from "../domain/conversionDocument";
 
 interface ExportPanelProps {
   assignmentSummary: string;
-  animations: DownloadItem[];
+  animations: ConversionAnimation[];
   error: string;
   disabled: boolean;
   onDownloadAnimation: (index: number) => void;
@@ -40,8 +37,8 @@ export function ExportPanel({
       <h3>Animations</h3>
       <ul className="download-list">
         {animations.map((animation, index) => (
-          <li key={`${animation.detail}:${index}`}>
-            <span><strong>{animation.label}</strong><small>{animation.detail}</small></span>
+          <li key={`${animation.id}:${index}`}>
+            <span><strong>{animation.metadata.name}</strong><small>{animation.id}</small></span>
             <div className="download-actions">
               <button className="primary-button" type="button" disabled={disabled} onClick={() => onDownloadAnimation(index)}>Download JSON</button>
             </div>

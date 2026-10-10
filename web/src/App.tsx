@@ -72,7 +72,6 @@ export function App() {
   const selectedAnimation = project?.animations[animationIndex];
   const availability = preview?.availability ?? null;
   const previewDurationTicks = preview?.durationTicks ?? 0;
-  const animationOptions = selectedAnimation;
   const eventReview = useMemo(() => eventReviewLocations(project), [project]);
   const warningGroups = useMemo(() => groupConversionWarnings(project?.diagnostics ?? []), [project]);
   const previewTick = preview?.tick ?? null;
@@ -159,7 +158,6 @@ export function App() {
     dispatch({ type: "timeline_events_changed", events });
   }
 
-  const hasSelectedAssignment = [...selectedNodeIds].some((nodeId) => assignments[nodeId] != null);
   const filePicker = (
     <label className={`file-input${busy || !eventJsonValid || !settingsValid ? " disabled" : ""}`}>
       <span>{session ? "Open other files" : "Choose animation files"}</span>
@@ -318,7 +316,6 @@ export function App() {
                   assignments={assignments}
                   orders={orders}
                           selectedNodeIds={selectedNodeIds}
-                  hasSelectedAssignment={hasSelectedAssignment}
                   onAssignPart={assignSelected}
                   onAssignOrder={assignOrder}
                           onSelectNode={handleNodeSelect}
@@ -344,9 +341,9 @@ export function App() {
             />
           </section>}
 
-          {page === 1 && animationOptions && <SettingsPanel
+          {page === 1 && selectedAnimation && <SettingsPanel
             key={`${eventEditorRevision}:${animationIndex}`}
-            animation={animationOptions}
+            animation={selectedAnimation}
             minecraftVersion={project.targetMinecraftVersion}
             disabled={busy}
             onChange={(ir) => dispatch({ type: "animation_changed", ir })}
@@ -356,7 +353,7 @@ export function App() {
 
           {page === 2 && <ExportPanel
             assignmentSummary={assignmentSummary(project)}
-            animations={project.animations.map((item) => ({ label: item.metadata.name, detail: item.id }))}
+            animations={project.animations}
             error={exportError}
             disabled={busy || !settingsValid}
             onDownloadAnimation={handleAnimationDownload}

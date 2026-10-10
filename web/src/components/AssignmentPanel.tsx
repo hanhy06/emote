@@ -13,7 +13,6 @@ interface AssignmentPanelProps {
   assignments: PartAssignments;
   orders: PartOrders;
   selectedNodeIds: ReadonlySet<string>;
-  hasSelectedAssignment: boolean;
   onAssignPart: (skinPart: PlayerSkinPart | null) => void;
   onAssignOrder: (order: number) => void;
   onSelectNode: (nodeId: string, additive: boolean) => void;
@@ -24,12 +23,12 @@ export function AssignmentPanel({
   assignments,
   orders,
   selectedNodeIds,
-  hasSelectedAssignment,
   onAssignPart,
   onAssignOrder,
   onSelectNode,
 }: AssignmentPanelProps) {
   const hasSelectedSkinPart = parts.some((part) => selectedNodeIds.has(part.nodeId));
+  const hasSelectedAssignment = [...selectedNodeIds].some((nodeId) => assignments[nodeId] != null);
   const selectableItems = parts.map((part) => ({ nodeId: part.nodeId, label: `#${part.partIndex}`, detail: assignmentLabel(assignments[part.nodeId], orders[part.nodeId]) }));
   const partItems = useRef(new Map<string, HTMLLIElement>());
   const partList = useRef<HTMLUListElement>(null);
