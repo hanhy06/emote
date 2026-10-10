@@ -1,5 +1,5 @@
 import { sourceSecondsTime, parseAnimationSeconds } from "../../format/time";
-import { itemModelResourcePath, type GeneratedResource } from "../../domain/generatedResource";
+import type { GeneratedResource } from "../../domain/generatedResource";
 import { Matrix4 } from "three";
 import { importedNodeHints } from "../../domain/conversionSeed";
 import type { EventIR, TimelineEventIR } from "../../domain/animationIR";
@@ -88,7 +88,6 @@ export function importGeckoLibProject(project: GeckoLibBbmodelProject, sourceNam
           id: "minecraft:paper",
           count: 1,
           components: [{ name: "minecraft:item_model", value: serializeSnbtString(`${namespace}:${modelPath}`) }],
-          generatedResourceReferences: [itemModelResourcePath(namespace, modelPath)],
         },
         ...(conversionMatrix ? { playerHeadConversionMatrix: conversionMatrix } : {}),
         ...(skin ? { suggestedSkin: skin } : {}),

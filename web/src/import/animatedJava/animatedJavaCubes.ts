@@ -83,7 +83,7 @@ export function importAnimatedJavaCubes(project: AjProject, sourceStem: string, 
         binding: { sourceNodeId: id, ...(skin ? { skinGroupId: `${skin.part}_${skin.order}` } : {}) },
         type: "item_display",
         visible: true, itemDisplay: "none",
-        itemStack: { id: "minecraft:paper", count: 1, components: [{ name: "minecraft:item_model", value: serializeSnbtString(`${namespace}:${modelPath}`) }], generatedResourceReferences: [itemModelResourcePath(namespace, modelPath)] },
+        itemStack: { id: "minecraft:paper", count: 1, components: [{ name: "minecraft:item_model", value: serializeSnbtString(`${namespace}:${modelPath}`) }] },
         ...(conversion ? { playerHeadConversionMatrix: conversion } : {}), ...(skin ? { suggestedSkin: skin } : {}),
       };
       bindNode(bone.uuid, id);

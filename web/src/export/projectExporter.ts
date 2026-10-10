@@ -1,7 +1,6 @@
 import { compileAnimation } from "../compiler/animationCompiler";
 import type { ConversionDocument } from "../domain/conversionDocument";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
-import { serializeAnimation } from "../format/animation";
 import { EMOTE_SCHEMA_VERSION } from "../format/emote";
 import type { ExportResult } from "./types";
 import { isSequenceControlId, type SequenceAnimationStep, type SequenceStep } from "../domain/emoteDefinition";
@@ -40,7 +39,7 @@ function compileAnimationFile(document: ConversionDocument, animationIndex: numb
   return {
     generatedResourceReferences: compiled.generatedResourceReferences,
     file: {
-      blob: new Blob([serializeAnimation(animation)], { type: "application/json" }),
+      blob: new Blob([JSON.stringify(animation)], { type: "application/json" }),
       fileName: animationFileNames(document.animations.map((entry) => entry.id))[animationIndex],
     },
   };
@@ -58,7 +57,7 @@ function compileAnimationFiles(document: ConversionDocument, includeSequence: bo
   const generatedResourceReferences = new Set(compiled.flatMap((entry) => [...entry.generatedResourceReferences]));
   const files: ExportResult[] = animations.map((animation, index) => {
     return {
-      blob: new Blob([serializeAnimation(animation)], { type: "application/json" }),
+      blob: new Blob([JSON.stringify(animation)], { type: "application/json" }),
       fileName: fileNames[index],
     };
   });

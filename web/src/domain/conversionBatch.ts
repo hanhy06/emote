@@ -64,12 +64,6 @@ export function combineConversionDocuments(documents: readonly ConversionDocumen
 
 function applyImportedSequence(document: ConversionDocument, sequence: ImportedSequence | undefined): ConversionDocument {
   if (!sequence) return document;
-  const animationIds = new Set<string>();
-  for (const animation of document.animations) {
-    const id = animation.sourceReferenceId;
-    if (!id) continue;
-    animationIds.add(id);
-  }
   const separator = sequence.id.indexOf(":");
   return {
     ...document,
@@ -83,7 +77,6 @@ function applyImportedSequence(document: ConversionDocument, sequence: ImportedS
       additionalMetadata: Object.fromEntries(Object.entries(sequence.metadata).filter(([key]) => key !== "name" && key !== "description")),
       cooldown: sequence.cooldown,
       player: sequence.player,
-      sourceReferenceId: sequence.id,
       steps: sequence.steps,
       callbacks: sequence.callbacks?.map((callback) => ({ ...callback })),
     },

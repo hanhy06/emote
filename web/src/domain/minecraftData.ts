@@ -14,7 +14,6 @@ export interface ItemStackData {
   count?: number;
   components?: RawNbtField[];
   extraFields?: RawNbtField[];
-  generatedResourceReferences?: string[];
 }
 
 export interface DisplayNbtPatch {

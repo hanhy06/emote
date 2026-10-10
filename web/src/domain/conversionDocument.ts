@@ -35,12 +35,11 @@ export interface SequenceOutputSettings {
   additionalMetadata: Record<string, unknown>;
   cooldown: string;
   player: EmotePlayerBehavior;
-  sourceReferenceId?: string;
   steps?: SequenceStep[];
 }
 
 export interface ConversionDocument extends AnimationSetIR {
-  origin: { source: InputFormat; sourceName: string; formatLabel: string; minecraftVersion?: string };
+  origin: { source: InputFormat; sourceName: string; formatLabel: string };
   animations: ConversionAnimation[];
   skinCandidates: Record<string, SkinCandidate>;
   sequence: SequenceOutputSettings;
@@ -115,7 +114,7 @@ export function createConversionDocument(project: ImportedProject, formatLabel: 
       sourceReferenceId: animation.sourceReferenceId };
   });
   let document: ConversionDocument = {
-    origin: { source: project.source, sourceName: project.sourceName, formatLabel, ...(project.suggestedMinecraftVersion ? { minecraftVersion: project.suggestedMinecraftVersion } : {}) },
+    origin: { source: project.source, sourceName: project.sourceName, formatLabel },
     targetMinecraftVersion: project.suggestedMinecraftVersion && Object.hasOwn(MINECRAFT_VERSION_PROFILES, project.suggestedMinecraftVersion)
       ? project.suggestedMinecraftVersion : DEFAULT_TARGET_MINECRAFT_VERSION,
     nodes, skinCandidates, animations,

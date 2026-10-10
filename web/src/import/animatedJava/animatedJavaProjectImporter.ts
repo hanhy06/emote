@@ -75,8 +75,6 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
     const animationDiagnostics: ConversionIssue[] = [];
     try {
       const effects = projectEffectEvents(animation, cubeContent, animationDiagnostics, sourceIndex);
-      for (const element of [...displayElements, ...logicalElements]) {
-      }
       const state = resolveAnimatedJavaAnimationState(effects, animation, project, nodes, transformGraph, nodeBindings, animationDiagnostics, sourceIndex);
       const ir = createAnimatedJavaAnimationIR(animation, project, transformGraph, nodes, sceneScale, state.nodeFrames, cubeContent);
       ir.animation.events = { start: state.startEvents, timeline: state.timelineEvents, loop: [], stop: [] };

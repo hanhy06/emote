@@ -5,7 +5,3 @@ export interface AnimationJson extends AnimationIR {
   type: "animation";
   schema_version: typeof EMOTE_SCHEMA_VERSION;
 }
-
-export function serializeAnimation(animation: AnimationJson): string {
-  return JSON.stringify(animation);
-}
