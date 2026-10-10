@@ -1,5 +1,6 @@
-import type { AnimationIR, CurveIR, DriverIR, NodeIR, ValueIR } from "../../domain/animationIR";
-import { scalarIR } from "../../domain/animationIRConversion";
+import { sourceSecondsTime, parseAnimationSeconds } from "../../format/time";
+import type { AnimationIR, CurveIR, DriverIR, NodeIR, TimelineEventIR, ValueIR } from "../../domain/animationIR";
+import { scalarIR, sourceDelayIR } from "../../domain/animationIRConversion";
 import type { ImportedNode, ImportDiagnostic } from "../../domain/conversionSeed";
 import { importedNodeIR } from "../common/blockbenchAnimationIR";
 import { affineMolang, molangScalar, negateMolang, type MolangVector } from "../common/molangVector";
@@ -17,15 +18,16 @@ export function createBedrockAnimationIR(animation: BedrockAnimation, name: stri
     sourcePath: `animations.${name}.animation_length`,
   });
   const nodes: Record<string, NodeIR> = { scene: { transform: [{ id: "scale", op: "scale", value: [BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE] }] } };
+  const timeline: TimelineEventIR[] = [];
   const ir: AnimationIR = {
     id: "emote:imported", metadata: { name, description: `${name} emote.` }, nodes,
     animation: {
-      duration: Math.max(0.05, sourceDuration || (assumedDuration ? 600 : 0.05),
-        ...[animation.particle_effects, animation.sound_effects, animation.timeline].flatMap((events) => events && typeof events === "object" && !Array.isArray(events) ? Object.keys(events).map(Number) : [])),
+      duration: sourceSecondsTime(animation.animation_length !== undefined && typeof animation.animation_length !== "number" ? animation.animation_length : Math.max(0.05, sourceDuration || (assumedDuration ? 600 : 0.05),
+        ...[animation.particle_effects, animation.sound_effects, animation.timeline].flatMap((events) => events && typeof events === "object" && !Array.isArray(events) ? Object.keys(events).map(Number) : []))),
       ...(animation.anim_time_update !== undefined ? { clock: { type: "molang", expression: String(animation.anim_time_update) } as const } : {}),
       playback: { mode: animation.loop === true ? "loop" : animation.loop === "hold_on_last_frame" ? "hold" : "once",
-        start_delay: scalarIR(animation.start_delay ?? 0), loop_delay: scalarIR(animation.loop_delay ?? 0) },
-      tracks: [], events: { timeline: [] },
+        start_delay: sourceDelayIR(animation.start_delay ?? 0), loop_delay: sourceDelayIR(animation.loop_delay ?? 0) },
+      tracks: [], events: { timeline },
     },
   };
   const unknown = Object.entries(unknownBoneIds).map(([sourceName, id]) => ({ id, sourceName, parent: undefined, pivot: [0, 0, 0] as const }));
@@ -58,13 +60,13 @@ export function createBedrockAnimationIR(animation: BedrockAnimation, name: stri
       };
       const vector = (v: BedrockVector) => transform((Array.isArray(v) ? v : [v, v, v]).map(molangScalar) as MolangVector);
       let driver: DriverIR;
-      if (typeof c !== "object" || Array.isArray(c)) driver = { type: "expression", value: vector(c as BedrockVector) };
+      if (c === null || typeof c !== "object" || Array.isArray(c)) driver = { type: "expression", value: vector(c as BedrockVector) };
       else {
         const entries = Object.entries(c).sort(([a], [b]) => Number(a) - Number(b));
         const key = (v: unknown): BedrockKeyframeValue | undefined => typeof v === "object" && v !== null && !Array.isArray(v) ? v as BedrockKeyframeValue : undefined;
         const pre = (v: unknown) => key(v) ? vector(key(v)!.pre ?? key(v)!.post!) : vector(v as BedrockVector);
         const post = (v: unknown) => key(v) ? vector(key(v)!.post ?? key(v)!.pre!) : vector(v as BedrockVector);
-        const curve: CurveIR = { type: "curve", keys: entries.map(([time, v]) => ({ time: Number(time), pre: pre(v), post: post(v) })), segments: entries.slice(0, -1).map(([, v], index) => {
+        const curve: CurveIR = { type: "curve", keys: entries.map(([time, v]) => ({ time: `${time}s`, pre: pre(v), post: post(v) })), segments: entries.slice(0, -1).map(([, v], index) => {
           const next = entries[index + 1][1];
           return key(v)?.lerp_mode === "catmullrom" || key(next)?.lerp_mode === "catmullrom"
             ? { interpolation: "catmull_rom", previous: post(entries[Math.max(0, index - 1)][1]), following: pre(entries[Math.min(entries.length - 1, index + 2)][1]) }
@@ -78,31 +80,32 @@ export function createBedrockAnimationIR(animation: BedrockAnimation, name: stri
   for (const property of ["particle_effects", "sound_effects", "timeline"] as const) {
     const data = animation[property];
     if (!data || typeof data !== "object" || Array.isArray(data)) continue;
-    for (const [time, value] of Object.entries(data)) {
-      const sourcePath = `animations.${name}.${property}.${time}`;
+    for (const [timestamp, value] of Object.entries(data)) {
+      const time = Number(timestamp);
+      const sourcePath = `animations.${name}.${property}.${timestamp}`;
       for (const entry of Array.isArray(value) ? value : [value]) {
         if (property === "timeline") {
           const lines = typeof entry === "string" ? entry.split(/\r?\n/).map((line) => line.trim()).filter(Boolean) : [];
           const commands = lines.map((line) => line.replace(/^\//, "").trim()).filter(Boolean);
-          if (commands.length) ir.animation.events!.timeline!.push({ time: Number(time), source: { type: "player" }, origin: { type: "root" }, action: { type: "commands", commands } });
-          if (!commands.length || lines.some((line) => !line.startsWith("/"))) diagnostics.push({ severity: "warning", code: commands.length ? "bedrock_instruction_approximated" : "bedrock_instruction_ignored", message: `${name} at ${Number(time) * 20}t: ${commands.length ? "uninterpreted instructions were kept as commands; behavior may differ. Review and edit them." : "an unsupported timeline entry was omitted."}`, sourcePath });
+          if (commands.length) timeline.push({ time: sourceSecondsTime(time), source: { type: "player" }, origin: { type: "root" }, action: { type: "commands", commands } });
+          if (!commands.length || lines.some((line) => !line.startsWith("/"))) diagnostics.push({ severity: "warning", code: commands.length ? "bedrock_instruction_approximated" : "bedrock_instruction_ignored", message: `${name} at ${time * 20}t: ${commands.length ? "uninterpreted instructions were kept as commands; behavior may differ. Review and edit them." : "an unsupported timeline entry was omitted."}`, sourcePath });
           continue;
         }
         const effect = typeof entry === "string" ? entry.trim() : isRecord(entry) && typeof entry.effect === "string" ? entry.effect.trim() : "";
         if (!effect) {
-          diagnostics.push({ severity: "warning", code: "bedrock_effect_ignored", message: `${name} at ${Number(time) * 20}t: an effect without a resource identifier was omitted.`, sourcePath });
+          diagnostics.push({ severity: "warning", code: "bedrock_effect_ignored", message: `${name} at ${time * 20}t: an effect without a resource identifier was omitted.`, sourcePath });
           continue;
         }
         const locator = isRecord(entry) && typeof entry.locator === "string" ? entry.locator : "";
         const node = locator ? Object.entries(nodes).find(([, node]) => node.source?.node_id === locator)?.[0] : undefined;
-        ir.animation.events!.timeline!.push({ time: Number(time), source: { type: property === "sound_effects" ? "player" : "server" }, origin: node ? { type: "node", node } : { type: "root" }, action: { type: "commands", commands: [property === "sound_effects" ? `playsound ${effect} master @s ~ ~ ~` : `particle ${effect} ~ ~ ~`] } });
-        diagnostics.push({ severity: "warning", code: "bedrock_effect_approximated", message: `${name} at ${Number(time) * 20}t: a Bedrock effect was converted to a Java command; resource aliases and effect settings may differ. Review and edit the event.`, sourcePath });
-        if (locator && !node) diagnostics.push({ severity: "warning", code: "bedrock_effect_origin_approximated", message: `${name} at ${Number(time) * 20}t: effect locator could not be resolved; the root position is used. Review and edit the event.`, sourcePath });
-        if (isRecord(entry) && typeof entry.pre_effect_script === "string" && entry.pre_effect_script.trim()) diagnostics.push({ severity: "warning", code: "bedrock_particle_script_ignored", message: `${name} at ${Number(time) * 20}t: particle pre-effect script was omitted. Review and edit the event.`, sourcePath });
+        timeline.push({ time: sourceSecondsTime(time), source: { type: property === "sound_effects" ? "player" : "server" }, origin: node ? { type: "node", node } : { type: "root" }, action: { type: "commands", commands: [property === "sound_effects" ? `playsound ${effect} master @s ~ ~ ~` : `particle ${effect} ~ ~ ~`] } });
+        diagnostics.push({ severity: "warning", code: "bedrock_effect_approximated", message: `${name} at ${time * 20}t: a Bedrock effect was converted to a Java command; resource aliases and effect settings may differ. Review and edit the event.`, sourcePath });
+        if (locator && !node) diagnostics.push({ severity: "warning", code: "bedrock_effect_origin_approximated", message: `${name} at ${time * 20}t: effect locator could not be resolved; the root position is used. Review and edit the event.`, sourcePath });
+        if (isRecord(entry) && typeof entry.pre_effect_script === "string" && entry.pre_effect_script.trim()) diagnostics.push({ severity: "warning", code: "bedrock_particle_script_ignored", message: `${name} at ${time * 20}t: particle pre-effect script was omitted. Review and edit the event.`, sourcePath });
       }
     }
   }
-  ir.animation.events!.timeline!.sort((first, second) => first.time - second.time);
+  timeline.sort((first, second) => parseAnimationSeconds(first.time) - parseAnimationSeconds(second.time));
   return ir;
 }
 

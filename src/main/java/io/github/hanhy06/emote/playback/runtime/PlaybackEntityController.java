@@ -36,8 +36,10 @@ import net.minecraft.world.phys.Vec3;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 import static io.github.hanhy06.emote.playback.runtime.PlaybackNodes.*;
+import io.github.hanhy06.emote.content.PreparedAnimation;
 
 public final class PlaybackEntityController {
     public void applySkin(PlaybackNodes nodes, Collection<SkinBinding> bindings, Map<PlayerSkinRegion, String> skin) {
@@ -49,26 +51,29 @@ public final class PlaybackEntityController {
             if (node == null) {
                 continue;
             }
+            AttachmentInstance attachment = node.attachments().get(binding.attachmentId());
+            if (attachment == null) continue;
             String textureUrl = skin.get(binding.region());
             if (textureUrl == null
-                || !(node.entity() instanceof Display.ItemDisplay itemDisplay)
-                || !(node.displayContent() instanceof DisplayData.Item(ItemStack itemStack, var _))
+                || !(attachment.entity() instanceof Display.ItemDisplay itemDisplay)
+                || !(attachment.displayContent() instanceof DisplayData.Item(ItemStack itemStack, var _))
                 || !itemStack.is(Items.PLAYER_HEAD)) {
                 continue;
             }
-            itemStack.set(DataComponents.PROFILE, PlayerHeadProfileFactory.createProfile(textureUrl));
-            node.setItemStack(itemStack);
+            ItemStack skinnedStack = itemStack.copy();
+            skinnedStack.set(DataComponents.PROFILE, PlayerHeadProfileFactory.createProfile(textureUrl));
+            attachment.setItemStack(skinnedStack);
             TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, itemDisplay.registryAccess());
-            ItemStack initialItem = TagValueInput.create(ProblemReporter.DISCARDING, itemDisplay.registryAccess(), node.initialEntityData())
+            ItemStack initialItem = TagValueInput.create(ProblemReporter.DISCARDING, itemDisplay.registryAccess(), attachment.initialEntityData())
                 .read("item", ItemStack.CODEC).orElse(ItemStack.EMPTY);
             if (initialItem.is(Items.PLAYER_HEAD)) {
                 initialItem.set(DataComponents.PROFILE, PlayerHeadProfileFactory.createProfile(textureUrl));
                 output.store("item", ItemStack.CODEC, initialItem);
-                node.setInitialItem(output.buildResult().get("item"));
+                attachment.setInitialItem(output.buildResult().get("item"));
             }
             SlotAccess itemSlot = itemDisplay.getSlot(0);
             if (!itemSlot.get().isEmpty()) {
-                itemSlot.set(itemStack);
+                itemSlot.set(skinnedStack);
             }
         }
     }
@@ -79,23 +84,27 @@ public final class PlaybackEntityController {
 
     public PlaybackNodes create(ServerLevel level, RootTransform root, PreparedEmote emote) {
         LinkedHashMap<String, NodeInstance> instances = new LinkedHashMap<>();
-        for (Map.Entry<String, EmoteAnimation.Node> entry : emote.model().nodes().entrySet()) {
-            DisplayData preparedData = emote.source().preparedDisplayData().get(entry.getKey());
-            NodeInstance instance = createNode(level, root, entry.getKey(), entry.getValue(), preparedData, emote.model().settings().rotationDeadzone());
-            instances.put(entry.getKey(), instance);
+        for (String nodeId : emote.nodeOrder()) {
+            EmoteAnimation.Node node = emote.nodes().get(nodeId);
+            Map<String, DisplayData> preparedData = emote.displayContents().getOrDefault(nodeId, Map.of());
+            LinkedHashMap<String, AttachmentInstance> attachments = new LinkedHashMap<>();
+            node.attachments().entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(entry ->
+                attachments.put(entry.getKey(), createAttachment(level, root, nodeId, entry.getKey(),
+                    entry.getValue(), preparedData.get(entry.getKey()), emote.rotationDeadzone())));
+            instances.put(nodeId, new NodeInstance(nodeId, node, attachments));
         }
         return new PlaybackNodes(root, instances);
     }
 
-    public PlaybackNodes create(ServerLevel level, Vec3 position, float yaw, PreparedEmote emote) {
+    public PlaybackNodes create(ServerLevel level, Vec3 position, float yaw, PreparedAnimation emote) {
         return create(level, RootTransform.create(position, yaw), emote);
     }
 
     public void add(ServerLevel level, PlaybackNodes nodes) {
         try {
-            for (NodeInstance node : nodes.nodes().values()) {
+            for (AttachmentInstance node : nodes.attachments().toList()) {
                 if (!node.isAnchor() && !level.addFreshEntity(node.entity())) {
-                    throw new IllegalStateException("Failed to add display entity for node " + node.id());
+                    throw new IllegalStateException("Failed to add display entity for attachment " + node.id());
                 }
             }
         } catch (RuntimeException exception) {
@@ -114,7 +123,7 @@ public final class PlaybackEntityController {
         float relativeYaw = nodes.root().relativeYaw(viewYaw);
         boolean rotationChanged = Mth.packDegrees(previousRelativeYaw) != Mth.packDegrees(relativeYaw);
         int interpolationTicks = positionRotationInterpolationTicks(rotationDeadzone);
-        for (NodeInstance node : nodes.nodes().values()) {
+        for (AttachmentInstance node : nodes.attachments().toList()) {
             if (!node.isAnchor()) {
                 ((DisplayAccessor) node.entity()).emote$setPosRotInterpolationDuration(interpolationTicks);
                 if (rotationChanged) {
@@ -129,7 +138,7 @@ public final class PlaybackEntityController {
         if (!nodes.moveSceneTo(position)) {
             return false;
         }
-        for (NodeInstance node : nodes.nodes().values()) {
+        for (AttachmentInstance node : nodes.attachments().toList()) {
             if (!node.isAnchor()) {
                 node.entity().setPos(nodes.root().position());
             }
@@ -137,7 +146,7 @@ public final class PlaybackEntityController {
         return true;
     }
 
-    public void setVisible(NodeInstance node, boolean visible) {
+    public void setVisible(AttachmentInstance node, boolean visible) {
         if (node.isAnchor()) {
             return;
         }
@@ -154,59 +163,39 @@ public final class PlaybackEntityController {
         }
     }
 
-    public void applyNbt(PlaybackNodes nodes, NodeInstance node, CompoundTag nbt) {
-        if (node.isAnchor()) return;
-        node.recordNbtFields(nbt);
-        TypedEntityData.of(node.entity().getType(), nbt).loadInto(node.entity());
-        if (nbt.contains("item")) {
-            ItemDisplayAccessor accessor = (ItemDisplayAccessor) node.entity();
-            node.setItemStack(accessor.emote$getItemStack());
-        } else if (nbt.contains("block_state")) {
-            BlockDisplayAccessor accessor = (BlockDisplayAccessor) node.entity();
-            node.setDisplayContent(new DisplayData.Block(accessor.emote$getBlockState()));
-        } else if (nbt.contains("text")) {
-            TextDisplayAccessor accessor = (TextDisplayAccessor) node.entity();
-            Component text = resolveText((Display.TextDisplay) node.entity(), accessor.emote$getText());
-            accessor.emote$setText(text);
-            node.setDisplayContent(new DisplayData.Text(text));
-        }
-        setVisible(node, nodes.effectiveVisibility(node.id()));
-    }
-
-    public void resetNbt(PlaybackNodes nodes, NodeInstance node) {
-        if (node.isAnchor() || !node.hasModifiedNbt()) return;
-        TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, node.entity().registryAccess());
-        node.entity().saveWithoutId(output);
+    public void applyNbt(PlaybackNodes nodes, String nodeId, AttachmentInstance attachment, CompoundTag nbt, Set<String> remove) {
+        if (attachment.isAnchor()) return;
+        TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, attachment.entity().registryAccess());
+        attachment.entity().saveWithoutId(output);
         CompoundTag current = output.buildResult();
-        var restored = node.restoreNbtFields(current);
-        node.entity().load(TagValueInput.create(ProblemReporter.DISCARDING, node.entity().registryAccess(), current));
-        if (restored.contains("item")) {
-            node.setItemStack(((ItemDisplayAccessor) node.entity()).emote$getItemStack());
-        } else if (restored.contains("block_state")) {
-            node.setDisplayContent(new DisplayData.Block(((BlockDisplayAccessor) node.entity()).emote$getBlockState()));
-        } else if (restored.contains("text")) {
-            TextDisplayAccessor accessor = (TextDisplayAccessor) node.entity();
-            Component text = resolveText((Display.TextDisplay) node.entity(), accessor.emote$getText());
-            accessor.emote$setText(text);
-            node.setDisplayContent(new DisplayData.Text(text));
-        }
-        setVisible(node, nodes.effectiveVisibility(node.id()));
+        Set<String> changed = attachment.replaceNbtState(current, nbt, remove);
+        loadNbt(nodes, nodeId, attachment, current, changed);
     }
 
-    public void applyTransformation(
-        PlaybackNodes playbackNodes,
-        NodeInstance node,
-        PreparedEmote.PreparedTransform transform,
-        int interpolationDurationTicks
-    ) {
-        if (node.isAnchor()) {
-            return;
+    public void resetNbt(PlaybackNodes nodes, String nodeId, AttachmentInstance attachment) {
+        if (attachment.isAnchor() || !attachment.hasModifiedNbt()) return;
+        TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, attachment.entity().registryAccess());
+        attachment.entity().saveWithoutId(output);
+        CompoundTag current = output.buildResult();
+        Set<String> restored = attachment.restoreNbtFields(current);
+        loadNbt(nodes, nodeId, attachment, current, restored);
+    }
+
+    private void loadNbt(PlaybackNodes nodes, String nodeId, AttachmentInstance attachment, CompoundTag current, Set<String> changed) {
+        attachment.entity().load(TagValueInput.create(ProblemReporter.DISCARDING, attachment.entity().registryAccess(), current));
+        if (attachment.entity() instanceof Display.ItemDisplay && (changed.contains("item") || changed.contains("item_display"))) {
+            ItemDisplayAccessor accessor = (ItemDisplayAccessor) attachment.entity();
+            ItemStack item = changed.contains("item") ? accessor.emote$getItemStack() : ((DisplayData.Item) attachment.displayContent()).itemStack();
+            attachment.setDisplayContent(new DisplayData.Item(item, accessor.emote$getItemTransform()));
+        } else if (attachment.entity() instanceof Display.BlockDisplay && changed.contains("block_state")) {
+            attachment.setDisplayContent(new DisplayData.Block(((BlockDisplayAccessor) attachment.entity()).emote$getBlockState()));
+        } else if (attachment.entity() instanceof Display.TextDisplay && changed.contains("text")) {
+            TextDisplayAccessor accessor = (TextDisplayAccessor) attachment.entity();
+            Component text = resolveText((Display.TextDisplay) attachment.entity(), accessor.emote$getText());
+            accessor.emote$setText(text);
+            attachment.setDisplayContent(new DisplayData.Text(text));
         }
-        applyTransformation(
-            node,
-            playbackNodes.displayTransformation(transform),
-            interpolationDurationTicks
-        );
+        setVisible(attachment, nodes.effectiveVisibility(nodeId, attachment.id()));
     }
 
     public void applyTransformation(
@@ -217,23 +206,26 @@ public final class PlaybackEntityController {
         if (node.isAnchor()) {
             return;
         }
-        applyTransformation(node.entity(), transformation, interpolationDurationTicks);
+        for (AttachmentInstance attachment : node.attachments().values()) {
+            if (attachment.entity() != null) applyTransformation(attachment.entity(), transformation, interpolationDurationTicks);
+        }
     }
 
-    private NodeInstance createNode(
+    private AttachmentInstance createAttachment(
         ServerLevel level,
         RootTransform root,
         String nodeId,
-        EmoteAnimation.Node node,
+        String attachmentId,
+        EmoteAnimation.Attachment attachment,
         DisplayData preparedData,
         float rotationDeadzone
     ) {
-        if (node instanceof EmoteAnimation.AnchorNode) {
-            return new NodeInstance(nodeId, node, null, null);
+        if (attachment instanceof EmoteAnimation.ExternalAttachment) {
+            return new AttachmentInstance(attachmentId, attachment, null, null);
         }
 
-        Display entity = createDisplay(level, node);
-        TypedEntityData.of(entity.getType(), node.entityNbt()).loadInto(entity);
+        Display entity = createDisplay(level, attachment);
+        TypedEntityData.of(entity.getType(), attachment.entityNbt()).loadInto(entity);
         ((DisplayAccessor) entity).emote$setPosRotInterpolationDuration(positionRotationInterpolationTicks(rotationDeadzone));
         entity.setPos(root.position());
         entity.setDeltaMovement(0.0D, 0.0D, 0.0D);
@@ -241,21 +233,21 @@ public final class PlaybackEntityController {
         entity.setXRot(0.0F);
         entity.addTag(RUNTIME_TAG);
 
-        DisplayData content = applyRuntimeData(entity, requirePreparedData(nodeId, preparedData));
-        NodeInstance instance = new NodeInstance(nodeId, node, entity, content);
+        DisplayData content = applyRuntimeData(entity, requirePreparedData(nodeId + "/" + attachmentId, preparedData));
+        AttachmentInstance instance = new AttachmentInstance(attachmentId, attachment, entity, content);
         TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, entity.registryAccess());
         entity.saveWithoutId(output);
         instance.setInitialEntityData(output.buildResult());
         return instance;
     }
 
-    private Display createDisplay(ServerLevel level, EmoteAnimation.Node node) {
-        Display display = switch (node) {
-            case EmoteAnimation.ItemNode ignored -> EntityTypes.ITEM_DISPLAY.create(level, EntitySpawnReason.COMMAND);
-            case EmoteAnimation.BlockNode ignored -> EntityTypes.BLOCK_DISPLAY.create(level, EntitySpawnReason.COMMAND);
-            case EmoteAnimation.TextNode ignored -> EntityTypes.TEXT_DISPLAY.create(level, EntitySpawnReason.COMMAND);
-            case EmoteAnimation.AnchorNode ignored ->
-                throw new IllegalArgumentException("Anchor nodes do not have display entities");
+    private Display createDisplay(ServerLevel level, EmoteAnimation.Attachment attachment) {
+        Display display = switch (attachment) {
+            case EmoteAnimation.ItemAttachment ignored -> EntityTypes.ITEM_DISPLAY.create(level, EntitySpawnReason.COMMAND);
+            case EmoteAnimation.SkinAttachment ignored -> EntityTypes.ITEM_DISPLAY.create(level, EntitySpawnReason.COMMAND);
+            case EmoteAnimation.BlockAttachment ignored -> EntityTypes.BLOCK_DISPLAY.create(level, EntitySpawnReason.COMMAND);
+            case EmoteAnimation.TextAttachment ignored -> EntityTypes.TEXT_DISPLAY.create(level, EntitySpawnReason.COMMAND);
+            default -> throw new IllegalArgumentException("Attachment does not provide a display entity");
         };
         if (display == null) {
             throw new IllegalStateException("Failed to create display entity");
@@ -274,9 +266,10 @@ public final class PlaybackEntityController {
         return switch (preparedData) {
             case DisplayData.Item(ItemStack itemStack, var itemDisplay) -> {
                 ItemDisplayAccessor accessor = (ItemDisplayAccessor) entity;
-                accessor.emote$setItemStack(itemStack);
+                ItemStack instanceStack = itemStack.copy();
+                accessor.emote$setItemStack(instanceStack);
                 accessor.emote$setItemTransform(itemDisplay);
-                yield preparedData;
+                yield new DisplayData.Item(instanceStack, itemDisplay);
             }
             case DisplayData.Block(var blockState) -> {
                 ((BlockDisplayAccessor) entity).emote$setBlockState(blockState);
@@ -318,7 +311,7 @@ public final class PlaybackEntityController {
     }
 
     private void removeEntities(ServerLevel level, Collection<NodeInstance> nodes) {
-        for (NodeInstance node : nodes) {
+        for (AttachmentInstance node : nodes.stream().flatMap(n -> n.attachments().values().stream()).toList()) {
             if (node.entity() != null && !node.entity().isRemoved()) {
                 node.entity().kill(level);
             }

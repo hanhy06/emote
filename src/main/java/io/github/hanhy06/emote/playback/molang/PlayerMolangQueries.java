@@ -11,6 +11,8 @@ import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemUseAnimation;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 import static io.github.hanhy06.emote.playback.molang.MolangQueries.*;
@@ -82,18 +84,14 @@ public final class PlayerMolangQueries {
                 itemQueryValue(player.getItemBySlot(EquipmentSlot.LEGS)),
                 itemQueryValue(player.getItemBySlot(EquipmentSlot.FEET))
             );
-            setScoreboardQuery(session, objectiveName -> scoreboardValue(player, objectiveName));
+            var scoreboard = player.level().getScoreboard();
+            Map<String, Double> scores = new HashMap<>();
+            for (var objective : scoreboard.getObjectives()) {
+                var score = scoreboard.getPlayerScoreInfo(player, objective);
+                scores.put(objective.getName(), score == null ? 0.0D : (double) score.value());
+            }
+            setScoreboardQuery(session, objectiveName -> scores.getOrDefault(objectiveName, 0.0D));
         };
-    }
-
-    private static double scoreboardValue(ServerPlayer player, String objectiveName) {
-        var scoreboard = player.level().getScoreboard();
-        var objective = scoreboard.getObjective(objectiveName);
-        if (objective == null) {
-            return 0.0D;
-        }
-        var score = scoreboard.getPlayerScoreInfo(player, objective);
-        return score == null ? 0.0D : score.value();
     }
 
     private static ItemQueryValue itemQueryValue(ItemStack item) {

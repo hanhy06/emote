@@ -4,9 +4,7 @@ import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.api.PlaybackPlacement;
 import io.github.hanhy06.emote.content.EmoteCatalog;
-import io.github.hanhy06.emote.content.PlayableEmote;
 import io.github.hanhy06.emote.content.PreparedEmote;
-import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.playback.molang.EntityMolangQueries;
 import io.github.hanhy06.emote.playback.runtime.RootTransform;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
@@ -25,14 +23,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.random.RandomGenerator;
 
 public final class EntityPlaybackManager {
     private final PlaybackEngine engine;
     private final EmoteCatalog catalog;
     private final PlayerSkinManager skins;
     private final Map<UUID, Entry> markers = new HashMap<>();
-    private final RandomGenerator random = RandomGenerator.getDefault();
     private long catalogRevision;
     private long skinRevision;
     private boolean running;
@@ -90,8 +86,8 @@ public final class EntityPlaybackManager {
     }
 
     private void start(Entry entry, long tick) {
-        PlayableEmote definition = this.catalog.find(entry.settings.emoteId());
-        if (definition == null) {
+        PreparedEmote emote = this.catalog.find(entry.settings.emoteId());
+        if (emote == null) {
             entry.blocked = true;
             EmoteMod.LOGGER.warn("Marker {} references unknown emote {}", entry.marker.getUUID(), entry.settings.emoteId());
             if (entry.session != null && this.catalog.find(entry.session.emoteId()) == null) {
@@ -99,10 +95,6 @@ public final class EntityPlaybackManager {
             }
             return;
         }
-        PreparedEmote emote = switch (definition) {
-            case PreparedEmote prepared -> prepared;
-            case PreparedSequence sequence -> sequence.compile(this.random);
-        };
         var preparation = this.skins.prepareNamedSkin(entry.settings.skinName(), emote.skinBindings());
         if (preparation.preparing()) {
             entry.nextAttempt = tick + 20;
@@ -145,7 +137,7 @@ public final class EntityPlaybackManager {
         Marker marker = entry.marker;
         ServerLevel level = (ServerLevel) marker.level();
         var result = this.engine.start(new PlaybackEngine.Request(level, RootTransform.create(marker.position(), marker.getYRot()),
-            emote, definition.id(), Map.of("actor", marker), EntityMolangQueries.forEntity(marker),
+            emote, emote.id(), Map.of("actor", marker), EntityMolangQueries.forEntity(marker),
             EmoteMod.SERVER.createCommandSourceStack().withEntity(marker).withLevel(level)
                 .withPosition(marker.position()).withRotation(marker.getRotationVector()),
             preparation.textures(), lifecycle, PlaybackPlacement.Mode.ACTOR), entry.session);
@@ -156,7 +148,7 @@ public final class EntityPlaybackManager {
                 return;
             }
             entry.blocked = true;
-            EmoteMod.LOGGER.warn("Failed to start marker {} emote {}: {}", marker.getUUID(), definition.id(), failure.message());
+            EmoteMod.LOGGER.warn("Failed to start marker {} emote {}: {}", marker.getUUID(), emote.id(), failure.message());
         }
     }
 

@@ -2,13 +2,13 @@ package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.api.EmoteCallbacks;
 import io.github.hanhy06.emote.api.Registration;
-import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import io.github.hanhy06.emote.api.EmoteCallback;
 
 public final class CallbackRegistry {
     private final ConcurrentHashMap<Identifier, RegisteredCallbacks> registrations = new ConcurrentHashMap<>();
@@ -21,9 +21,9 @@ public final class CallbackRegistry {
         return registration;
     }
 
-    public List<Binding> resolve(List<EmoteAnimation.Callback> definitions) {
+    public List<Binding> resolve(List<EmoteCallback> definitions) {
         List<Binding> bindings = new ArrayList<>();
-        for (EmoteAnimation.Callback definition : definitions) {
+        for (EmoteCallback definition : definitions) {
             RegisteredCallbacks registration = this.registrations.get(definition.name());
             if (registration == null) throw new IllegalArgumentException("Unknown emote callback: " + definition.name());
             bindings.add(new Binding(registration.callbacks, definition.payload()));

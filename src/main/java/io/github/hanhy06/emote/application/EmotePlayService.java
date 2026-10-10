@@ -4,10 +4,10 @@ import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaySource;
 import io.github.hanhy06.emote.api.PlaybackPlacement;
 import io.github.hanhy06.emote.content.EmoteCatalog;
-import io.github.hanhy06.emote.content.PlayableEmote;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import io.github.hanhy06.emote.content.PreparedEmote;
 
 public class EmotePlayService {
     private final EmoteCatalog emoteCatalog;
@@ -50,7 +50,7 @@ public class EmotePlayService {
     }
 
     public PlayResult play(ServerPlayer player, String id, PlaySource source, PlaybackPlacement placement) {
-        PlayableEmote emote = this.emoteCatalog.find(id);
+        PreparedEmote emote = this.emoteCatalog.find(id);
         if (emote == null) {
             return PlayResult.failure("That emote does not exist.");
         }
@@ -78,11 +78,11 @@ public class EmotePlayService {
 
     @FunctionalInterface
     interface PlaybackStarter {
-        PlayResult start(ServerPlayer player, PlayableEmote emote, PlaybackPlacement placement);
+        PlayResult start(ServerPlayer player, PreparedEmote emote, PlaybackPlacement placement);
     }
 
     @FunctionalInterface
     interface PlayEventDispatcher {
-        Component beforePlay(ServerPlayer player, PlayableEmote emote, PlaySource source);
+        Component beforePlay(ServerPlayer player, PreparedEmote emote, PlaySource source);
     }
 }

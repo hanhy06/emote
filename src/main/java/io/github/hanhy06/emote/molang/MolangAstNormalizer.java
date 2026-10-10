@@ -30,7 +30,11 @@ final class MolangAstNormalizer {
         }
         if (expression instanceof CallExpression call) {
             List<Expression> arguments = call.arguments().stream().map(MolangAstNormalizer::normalize).toList();
-            return new CallExpression(normalize(call.function()), arguments);
+            Expression function = normalize(call.function());
+            if (function instanceof UnaryExpression unary && unary.op() != UnaryExpression.Op.RETURN) {
+                return normalize(new UnaryExpression(unary.op(), new CallExpression(unary.expression(), arguments)));
+            }
+            return new CallExpression(function, arguments);
         }
         if (expression instanceof ExecutionScopeExpression scope) {
             return new ExecutionScopeExpression(normalize(scope.expressions()));

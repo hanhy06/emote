@@ -2,21 +2,20 @@ package io.github.hanhy06.emote.api.sequence;
 
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
-import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.Nullable;
-
 
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import io.github.hanhy06.emote.api.EmoteCallback;
 
 public record EmoteSequence(
     Identifier id,
     EmoteMetadata metadata,
     Settings settings,
     List<Step> steps,
-    List<EmoteAnimation.Callback> callbacks
+    List<EmoteCallback> callbacks
 ) {
     public enum Control {
         CONTINUE(Identifier.parse("emote:continue")),

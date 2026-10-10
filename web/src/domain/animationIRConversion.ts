@@ -1,9 +1,69 @@
-import { orderedNodeIdsIR, type AnimationIR, type ClipIR, type ScalarIR } from "./animationIR";
+import { orderedNodeIdsIR, type Animation, type AnimationIR, type ClipIR, type ScalarIR, type TimeValueIR } from "./animationIR";
+import { formatMinecraftTime, parseAnimationSeconds, parseMinecraftTime, sourceSecondsTime } from "../format/time";
 import { evaluatePoseIR } from "./animationIRPose";
+import type { SequenceStep } from "./emoteDefinition";
 export function scalarIR(value: number | string): ScalarIR {
-  if (typeof value === "number") return value;
+  if (typeof value !== "string") return value as ScalarIR;
   const numeric = Number(value.trim());
   return Number.isFinite(numeric) ? numeric : { molang: value };
+}
+
+export function sourceDelayIR(value: number | string): TimeValueIR {
+  const scalar = scalarIR(value);
+  return typeof scalar === "number" ? formatMinecraftTime(parseMinecraftTime(sourceSecondsTime(scalar))) : scalar as TimeValueIR;
+}
+
+export function normalizeSequenceTimes(sequence: { cooldown: string; steps?: SequenceStep[] }): void {
+  sequence.cooldown = formatMinecraftTime(parseMinecraftTime(sequence.cooldown));
+  for (const step of sequence.steps ?? []) {
+    if ("wait" in step) step.wait = formatMinecraftTime(parseMinecraftTime(step.wait, 1));
+    else if (step.transition !== undefined) step.transition = formatMinecraftTime(parseMinecraftTime(step.transition));
+  }
+}
+
+export function normalizeAnimationTimesIR(animation: AnimationIR | Animation): void {
+  if (animation.settings?.cooldown !== undefined) animation.settings.cooldown = formatMinecraftTime(parseMinecraftTime(animation.settings.cooldown));
+  if (animation.settings?.display_interpolation_ticks !== undefined) {
+    animation.settings.display_interpolation_ticks = parseMinecraftTime(`${animation.settings.display_interpolation_ticks}t`);
+  }
+  const clip = "clip" in animation ? animation.clip : animation.animation;
+  clip.duration = formatMinecraftTime(parseMinecraftTime(clip.duration, 1));
+  if (clip.playback) {
+    if (clip.playback.loop_start !== undefined) clip.playback.loop_start = formatMinecraftTime(parseMinecraftTime(clip.playback.loop_start));
+    for (const field of ["start_delay", "loop_delay"] as const) {
+      const value = clip.playback[field];
+      if (typeof value === "string") clip.playback[field] = formatMinecraftTime(parseMinecraftTime(value));
+    }
+  }
+  for (const track of clip.tracks) {
+    if (track.driver.type === "state") {
+      const keys = [...track.driver.keys].sort((first, second) => parseAnimationSeconds(first.time) - parseAnimationSeconds(second.time))
+        .map((key) => ({ ...key, time: formatMinecraftTime(parseMinecraftTime(key.time)) }));
+      track.driver.keys = track.channel === "visible" ? [...new Map(keys.map((key) => [key.time, key])).values()] : keys;
+      continue;
+    }
+    if (track.driver.type !== "curve") continue;
+    const curve = track.driver;
+    const source = curve.keys.map((key, index) => ({ key, index, seconds: parseAnimationSeconds(key.time), tick: parseMinecraftTime(key.time) }))
+      .sort((first, second) => first.seconds - second.seconds);
+    const retained = [...new Map(source.map((entry) => [entry.tick, entry])).values()];
+    const keys = retained.map(({ key, tick }) => ({ ...key, time: formatMinecraftTime(tick) }));
+    curve.segments = retained.slice(0, -1).map((left, index) => {
+      const segment = { ...curve.segments[left.index] };
+      if (segment.interpolation === "catmull_rom") {
+        const previous = retained[Math.max(0, index - 1)];
+        const following = retained[Math.min(retained.length - 1, index + 2)];
+        if (previous.index !== Math.max(0, left.index - 1)) segment.previous = previous.key.post ?? previous.key.value;
+        if (following.index !== Math.min(source.length - 1, left.index + 2)) segment.following = following.key.pre ?? following.key.value;
+      }
+      return segment;
+    });
+    curve.keys = keys;
+  }
+  for (const events of Object.values(clip.events ?? {})) {
+    events.sort((first, second) => parseAnimationSeconds(first.time ?? "0t") - parseAnimationSeconds(second.time ?? "0t"));
+    for (const event of events) if (event.time !== undefined) event.time = formatMinecraftTime(parseMinecraftTime(event.time));
+  }
 }
 
 export function removeTinyStaticNodes(ir: AnimationIR, events: NonNullable<AnimationIR["animation"]["events"]>): AnimationIR {
@@ -17,7 +77,7 @@ export function removeTinyStaticNodes(ir: AnimationIR, events: NonNullable<Anima
       const first = values[0];
       if (!first || values.some((v) => v.some((axis, index) => typeof axis !== "number" || typeof first[index] !== "number" || Math.abs(axis - first[index]) > 1e-10))) return false;
       const base = node.transform?.find((op) => op.id === t.target.operation)?.value;
-      return t.driver.before === "first_pre" || t.driver.keys[0].time === 0 || Boolean(base && first.every((axis, index) => typeof axis === "number" && Math.abs(axis - base[index]) <= 1e-10));
+      return t.driver.before === "first_pre" || parseAnimationSeconds(t.driver.keys[0].time) === 0 || Boolean(base && first.every((axis, index) => typeof axis === "number" && Math.abs(axis - base[index]) <= 1e-10));
     });
     if (constant) staticNodes.add(id);
   }

@@ -6,13 +6,13 @@ import net.minecraft.resources.Identifier;
 import java.nio.file.Path;
 import java.util.Objects;
 
-public record LoadedSequence(Path sourcePath, EmoteSequence sequence) {
+public record LoadedSequence(Path sourcePath, EmoteSequence model) {
     public LoadedSequence {
         Objects.requireNonNull(sourcePath, "sourcePath");
-        Objects.requireNonNull(sequence, "sequence");
+        Objects.requireNonNull(model, "model");
     }
 
     public Identifier id() {
-        return this.sequence.id();
+        return this.model.id();
     }
 }

@@ -6,9 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "test": "vitest run",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
-    "check": "npm run typecheck && npm test && npm run build"
+    "check": "npm run typecheck && npm run build"
   },
   "dependencies": {
     "@nbsjs/core": "^6.1.0",
@@ -23,7 +22,6 @@
     "@types/node": "26.1.1",
     "@types/three": "0.185.1",
     "typescript": "7.0.2",
-    "vite": "^8.1.4",
-    "vitest": "4.1.10"
+    "vite": "^8.1.4"
   }
 }

@@ -79,7 +79,7 @@ public final class StressTestPacketLoad {
             return;
         }
 
-        for (PlaybackNodes.NodeInstance node : nodes.nodes().values()) {
+        for (PlaybackNodes.AttachmentInstance node : nodes.attachments().toList()) {
             Entity entity = node.entity();
             if (entity == null || current.entities.containsKey(entity)) {
                 continue;
@@ -107,7 +107,7 @@ public final class StressTestPacketLoad {
             return;
         }
 
-        for (PlaybackNodes.NodeInstance node : nodes.nodes().values()) {
+        for (PlaybackNodes.AttachmentInstance node : nodes.attachments().toList()) {
             Entity entity = node.entity();
             if (entity != null && current.entities.remove(entity) != null) {
                 current.encodeForAll(new ClientboundRemoveEntitiesPacket(entity.getId()));
@@ -135,7 +135,7 @@ public final class StressTestPacketLoad {
             return;
         }
 
-        for (PlaybackNodes.NodeInstance node : nodes.nodes().values()) {
+        for (PlaybackNodes.AttachmentInstance node : nodes.attachments().toList()) {
             Entity entity = node.entity();
             if (entity == null) {
                 continue;

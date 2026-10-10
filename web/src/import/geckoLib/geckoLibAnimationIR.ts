@@ -1,5 +1,6 @@
 import type { AnimationIR, NodeIR, TimelineEventIR } from "../../domain/animationIR";
-import { scalarIR } from "../../domain/animationIRConversion";
+import { sourceDelayIR } from "../../domain/animationIRConversion";
+import { sourceSecondsTime } from "../../format/time";
 import type { ImportedNode } from "../../domain/conversionSeed";
 import { matrix4ToRowMajor } from "../../format/matrix";
 import type { BbAnimation, BbAnimator } from "../common/blockbenchCubeSchema";
@@ -7,6 +8,8 @@ import type { BoneEntry } from "../common/blockbenchCubeModel";
 import { affineMolang, type MolangScalar, type MolangVector } from "../common/molangVector";
 import { importedNodeIR, blockbenchCurveIR } from "../common/blockbenchAnimationIR";
 import { PLAYER_RENDER_SCALE } from "../common/blockbenchCubeModel";
+import { PLAYER_ROTATION_QUERY_VALUE_NAMES } from "../../format/molang/queryCatalog";
+import { rewriteMolangIdentifiers } from "../../format/molang/sourceTransformer";
 
 export interface GeckoLibAnimationSource {
   animation: BbAnimation;
@@ -23,8 +26,8 @@ export function createGeckoLibAnimationIR(source: GeckoLibAnimationSource, bones
   };
   const ir: AnimationIR = {
     id: "emote:imported", metadata: { name: source.animation.name, description: `${source.animation.name} emote.` }, nodes,
-    animation: { duration: Math.max(0.05, source.animation.length, ...Object.values(source.animation.animators).flatMap((a) => (a.keyframes ?? []).map((f) => f.time))),
-      playback: { mode: source.playbackMode, start_delay: scalarIR(source.animation.start_delay || 0), loop_delay: scalarIR(source.animation.loop_delay || 0) },
+    animation: { duration: sourceSecondsTime(typeof source.animation.length === "number" ? Math.max(0.05, source.animation.length, ...Object.values(source.animation.animators).flatMap((a) => (a.keyframes ?? []).map((f) => f.time))) : source.animation.length),
+      playback: { mode: source.playbackMode, start_delay: sourceDelayIR(source.animation.start_delay || 0), loop_delay: sourceDelayIR(source.animation.loop_delay || 0) },
       tracks: [], events: { start: [], timeline: source.events, loop: [], stop: [] } },
   };
   for (const bone of bones) {
@@ -57,6 +60,10 @@ export function createGeckoLibAnimationIR(source: GeckoLibAnimationSource, bones
     if (!animator) continue;
     for (const channel of ["position", "rotation", "scale"] as const) {
       const convert = (values: MolangVector): MolangVector => {
+        values = values.map((value) => typeof value === "string" ? rewriteMolangIdentifiers(value, (identifier) => {
+          const match = /^(?:q|query)\.([A-Za-z_][A-Za-z0-9_]*)$/i.exec(identifier);
+          return match && PLAYER_ROTATION_QUERY_VALUE_NAMES.has(match[1].toLowerCase()) ? `-(${identifier})` : undefined;
+        }) : value) as MolangVector;
         if (channel === "position") return values.map((v, axis) => affineMolang(v, affineMolang(source.blendWeight, 1 / 16, 0), position[axis])) as MolangVector;
         if (channel === "rotation") return values.map((v, axis) => affineMolang(v, source.blendWeight, rotation[axis])) as MolangVector;
         return values.map((v) => affineMolang(v, source.blendWeight, affineMolang(source.blendWeight, -1, 1))) as MolangVector;

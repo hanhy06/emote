@@ -1,12 +1,12 @@
 package io.github.hanhy06.emote.application;
 
 import io.github.hanhy06.emote.content.EmoteCatalog;
-import io.github.hanhy06.emote.content.PlayableEmote;
 import io.github.hanhy06.emote.util.EmoteTags;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.*;
 import java.util.function.Predicate;
+import io.github.hanhy06.emote.content.PreparedEmote;
 
 public class EmoteQueryService {
     private final EmoteCatalog emoteCatalog;
@@ -24,7 +24,7 @@ public class EmoteQueryService {
     public List<EmoteSummary> getAll(ServerPlayer player) {
         return this.emoteCatalog.emotes().stream()
             .filter(emote -> this.visibilityChecker.isVisible(player, emote))
-            .sorted(Comparator.comparing(PlayableEmote::name).thenComparing(PlayableEmote::id))
+            .sorted(Comparator.comparing(PreparedEmote::name).thenComparing(PreparedEmote::id))
             .map(emote -> new EmoteSummary(emote.id(), emote.name(), emote.description(), emote.tags()))
             .toList();
     }
@@ -59,16 +59,16 @@ public class EmoteQueryService {
     }
 
     public List<String> getAllIds() {
-        return collectPlayIds(PlayableEmote::standalone);
+        return collectPlayIds(PreparedEmote::standalone);
     }
 
     public List<String> getPlayableIds(ServerPlayer player) {
         return collectPlayIds(emote -> this.visibilityChecker.isVisible(player, emote));
     }
 
-    private List<String> collectPlayIds(Predicate<PlayableEmote> filter) {
+    private List<String> collectPlayIds(Predicate<PreparedEmote> filter) {
         List<String> ids = new java.util.ArrayList<>();
-        for (PlayableEmote emote : this.emoteCatalog.emotes()) {
+        for (PreparedEmote emote : this.emoteCatalog.emotes()) {
             if (filter.test(emote)) {
                 ids.add(emote.id());
             }
@@ -124,6 +124,6 @@ public class EmoteQueryService {
 
     @FunctionalInterface
     interface VisibilityChecker {
-        boolean isVisible(ServerPlayer player, PlayableEmote emote);
+        boolean isVisible(ServerPlayer player, PreparedEmote emote);
     }
 }

@@ -9,19 +9,19 @@ public class EmoteCatalog {
     public static final int MAX_EMOTE_COUNT = 512;
 
     private final Map<String, ApiEntry> apiEmotes = new HashMap<>();
-    private final List<Consumer<List<PlayableEmote>>> listeners = new ArrayList<>();
+    private final List<Consumer<List<PreparedEmote>>> listeners = new ArrayList<>();
     private final Deque<ListenerNotification> pendingNotifications = new ArrayDeque<>();
 
     private volatile RegistryState state = RegistryState.empty();
-    private Map<String, PlayableEmote> fileEmotes = Map.of();
+    private Map<String, PreparedEmote> fileEmotes = Map.of();
     private boolean dispatchingNotifications;
 
-    public int replace(Collection<? extends PlayableEmote> emotes) {
-        List<PlayableEmote> sorted = new ArrayList<>(emotes);
-        sorted.sort(Comparator.comparing(PlayableEmote::id));
+    public int replace(Collection<? extends PreparedEmote> emotes) {
+        List<PreparedEmote> sorted = new ArrayList<>(emotes);
+        sorted.sort(Comparator.comparing(PreparedEmote::id));
 
-        LinkedHashMap<String, PlayableEmote> byId = new LinkedHashMap<>();
-        for (PlayableEmote definition : sorted) {
+        LinkedHashMap<String, PreparedEmote> byId = new LinkedHashMap<>();
+        for (PreparedEmote definition : sorted) {
             if (byId.putIfAbsent(definition.id(), definition) != null) {
                 throw new IllegalArgumentException("Duplicate emote id: " + definition.id());
             }
@@ -39,7 +39,7 @@ public class EmoteCatalog {
         return ignoredCount;
     }
 
-    public UUID register(PlayableEmote emote) {
+    public UUID register(PreparedEmote emote) {
         Objects.requireNonNull(emote, "emote");
 
         UUID registrationId;
@@ -100,23 +100,23 @@ public class EmoteCatalog {
         return removedCount;
     }
 
-    public List<PreparedEmote> animations() {
+    public List<PreparedAnimation> animations() {
         return this.state.animations();
     }
 
-    public List<PlayableEmote> emotes() {
+    public List<PreparedEmote> emotes() {
         return this.state.emotes();
     }
 
-    public List<PlayableEmote> fileEmotes() {
+    public List<PreparedEmote> fileEmotes() {
         return this.state.fileEmotes();
     }
 
-    public PlayableEmote find(String id) {
+    public PreparedEmote find(String id) {
         return this.state.emotesById().get(id);
     }
 
-    public PlayableEmote findFileEmote(String id) {
+    public PreparedEmote findFileEmote(String id) {
         return this.state.fileEmotesById().get(id);
     }
 
@@ -124,8 +124,8 @@ public class EmoteCatalog {
         return this.state.emotes().size();
     }
 
-    public void addListener(Consumer<List<PlayableEmote>> listener) {
-        Consumer<List<PlayableEmote>> validatedListener = Objects.requireNonNull(listener, "listener");
+    public void addListener(Consumer<List<PreparedEmote>> listener) {
+        Consumer<List<PreparedEmote>> validatedListener = Objects.requireNonNull(listener, "listener");
 
         boolean shouldDispatch;
         synchronized (this) {
@@ -136,37 +136,37 @@ public class EmoteCatalog {
     }
 
     private void rebuildState() {
-        List<PlayableEmote> apiList = this.apiEmotes.values().stream()
+        List<PreparedEmote> apiList = this.apiEmotes.values().stream()
             .map(ApiEntry::emote)
-            .sorted(Comparator.comparing(PlayableEmote::id))
+            .sorted(Comparator.comparing(PreparedEmote::id))
             .toList();
-        List<PlayableEmote> fileList = this.fileEmotes.values().stream()
+        List<PreparedEmote> fileList = this.fileEmotes.values().stream()
             .filter(definition -> !this.apiEmotes.containsKey(definition.id()))
-            .sorted(Comparator.comparing(PlayableEmote::id))
+            .sorted(Comparator.comparing(PreparedEmote::id))
             .limit(MAX_EMOTE_COUNT - apiList.size())
             .toList();
-        List<PlayableEmote> combined = new ArrayList<>(apiList.size() + fileList.size());
+        List<PreparedEmote> combined = new ArrayList<>(apiList.size() + fileList.size());
         combined.addAll(apiList);
         combined.addAll(fileList);
-        combined.sort(Comparator.comparing(PlayableEmote::id));
+        combined.sort(Comparator.comparing(PreparedEmote::id));
 
-        Map<String, PreparedEmote> animations = new HashMap<>();
-        for (PlayableEmote definition : this.fileEmotes.values()) {
-            if (definition instanceof PreparedEmote animation) animations.put(animation.id(), animation);
+        Map<String, PreparedAnimation> animations = new HashMap<>();
+        for (PreparedEmote definition : this.fileEmotes.values()) {
+            if (definition instanceof PreparedAnimation animation) animations.put(animation.id(), animation);
         }
         for (ApiEntry entry : this.apiEmotes.values()) {
-            if (entry.emote() instanceof PreparedEmote animation) animations.put(animation.id(), animation);
+            if (entry.emote() instanceof PreparedAnimation animation) animations.put(animation.id(), animation);
         }
         boolean removedSequence = false;
         for (int index = 0; index < combined.size(); index++) {
-            PlayableEmote definition = combined.get(index);
+            PreparedEmote definition = combined.get(index);
             ApiEntry entry = this.apiEmotes.get(definition.id());
             if (entry == null || !(definition instanceof PreparedSequence sequence)) continue;
             try {
-                PreparedSequence resolved = PreparedSequence.resolve(new LoadedSequence(sequence.sourcePath(), sequence.source()), animations);
+                PreparedSequence resolved = PreparedSequence.prepare(new LoadedSequence(sequence.sourcePath(), sequence.model()), animations);
                 this.apiEmotes.put(definition.id(), new ApiEntry(entry.registrationId(), resolved));
                 combined.set(index, resolved);
-            } catch (IllegalArgumentException exception) {
+            } catch (io.github.hanhy06.emote.api.EmoteLoadException exception) {
                 this.apiEmotes.remove(definition.id());
                 removedSequence = true;
             }
@@ -176,24 +176,24 @@ public class EmoteCatalog {
             return;
         }
 
-        LinkedHashMap<String, PlayableEmote> emotesById = new LinkedHashMap<>();
-        for (PlayableEmote definition : combined) {
+        LinkedHashMap<String, PreparedEmote> emotesById = new LinkedHashMap<>();
+        for (PreparedEmote definition : combined) {
             emotesById.put(definition.id(), definition);
         }
-        LinkedHashMap<String, PlayableEmote> fileEmotesById = new LinkedHashMap<>();
-        for (PlayableEmote definition : fileList) {
+        LinkedHashMap<String, PreparedEmote> fileEmotesById = new LinkedHashMap<>();
+        for (PreparedEmote definition : fileList) {
             fileEmotesById.put(definition.id(), definition);
         }
         this.state = new RegistryState(
             Map.copyOf(emotesById),
             Map.copyOf(fileEmotesById),
             List.copyOf(combined),
-            combined.stream().filter(PreparedEmote.class::isInstance).map(PreparedEmote.class::cast).toList(),
+            combined.stream().filter(PreparedAnimation.class::isInstance).map(PreparedAnimation.class::cast).toList(),
             List.copyOf(fileList)
         );
     }
 
-    private boolean enqueueNotification(Collection<Consumer<List<PlayableEmote>>> listeners) {
+    private boolean enqueueNotification(Collection<Consumer<List<PreparedEmote>>> listeners) {
         if (listeners.isEmpty()) {
             return false;
         }
@@ -220,7 +220,7 @@ public class EmoteCatalog {
                 }
             }
 
-            for (Consumer<List<PlayableEmote>> listener : notification.listeners()) {
+            for (Consumer<List<PreparedEmote>> listener : notification.listeners()) {
                 try {
                     listener.accept(notification.emotes());
                 } catch (RuntimeException exception) {
@@ -231,20 +231,20 @@ public class EmoteCatalog {
     }
 
     private record ListenerNotification(
-        List<Consumer<List<PlayableEmote>>> listeners,
-        List<PlayableEmote> emotes
+        List<Consumer<List<PreparedEmote>>> listeners,
+        List<PreparedEmote> emotes
     ) {
     }
 
-    private record ApiEntry(UUID registrationId, PlayableEmote emote) {
+    private record ApiEntry(UUID registrationId, PreparedEmote emote) {
     }
 
     private record RegistryState(
-        Map<String, PlayableEmote> emotesById,
-        Map<String, PlayableEmote> fileEmotesById,
-        List<PlayableEmote> emotes,
-        List<PreparedEmote> animations,
-        List<PlayableEmote> fileEmotes
+        Map<String, PreparedEmote> emotesById,
+        Map<String, PreparedEmote> fileEmotesById,
+        List<PreparedEmote> emotes,
+        List<PreparedAnimation> animations,
+        List<PreparedEmote> fileEmotes
     ) {
         private static RegistryState empty() {
             return new RegistryState(Map.of(), Map.of(), List.of(), List.of(), List.of());

@@ -1,26 +1,32 @@
 package io.github.hanhy06.emote.api.animation;
 
-import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
-import net.minecraft.world.phys.Vec3;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
+import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import io.github.hanhy06.emote.api.EmoteCallback;
 
-public record EmoteAnimation(
-    Identifier id,
-    EmoteMetadata metadata,
-    Settings settings,
-    MolangPrograms molang,
-    Map<String, Node> nodes,
-    Timeline timeline,
-    List<Callback> callbacks
-) {
+public record EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings settings, MolangPrograms molang,
+                             Map<String, Node> nodes, Timeline timeline, List<EmoteCallback> callbacks,
+                             String targetMinecraftVersion, JsonObject resources, JsonObject source) {
+    public static final int SCHEMA_VERSION = 5;
+    public static final Set<String> RUNTIME_NBT_FIELDS = Set.of("id", "UUID", "Pos", "Motion", "Rotation", "Passengers", "Tags",
+        "transformation", "interpolation_duration", "start_interpolation", "teleport_duration");
+
+    public EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings settings, MolangPrograms molang,
+                          Map<String, Node> nodes, Timeline timeline, List<EmoteCallback> callbacks) {
+        this(id, metadata, settings, molang, nodes, timeline, callbacks, null, new JsonObject(), new JsonObject());
+    }
+
     public EmoteAnimation {
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(metadata, "metadata");
@@ -29,383 +35,119 @@ public record EmoteAnimation(
         nodes = Map.copyOf(nodes);
         Objects.requireNonNull(timeline, "timeline");
         callbacks = List.copyOf(callbacks);
+        Objects.requireNonNull(resources, "resources");
+        Objects.requireNonNull(source, "source");
     }
 
-    public record Callback(Identifier name, String payload) {
-        public Callback {
-            Objects.requireNonNull(name, "name");
-            Objects.requireNonNull(payload, "payload");
-        }
+    public record MolangPrograms(String initialize, String update) {
+        public static MolangPrograms empty() { return new MolangPrograms(null, null); }
     }
-
-    public record MolangPrograms(String initialize, String tick) {
-        public static MolangPrograms empty() {
-            return new MolangPrograms(null, null);
-        }
-    }
-
-    public record Settings(
-        boolean standalone,
-        int cooldownTicks,
-        float rotationDeadzone,
-        int displayInterpolationTicks,
-        EmotePlayerBehavior player,
-        PlaybackSettings playback
-    ) {
+    public record Settings(boolean standalone, int cooldown, float rotationDeadzone, int displayInterpolationTicks,
+                           EmotePlayerBehavior player, PlaybackSettings playback) {
         public Settings {
-            if (cooldownTicks < 0) {
-                throw new IllegalArgumentException("cooldown must not be negative");
-            }
-            if (!Float.isFinite(rotationDeadzone) || rotationDeadzone < 0.0F || rotationDeadzone > 180.0F) {
-                throw new IllegalArgumentException("rotation deadzone must be finite and between 0 and 180 degrees");
-            }
-            if (displayInterpolationTicks < 0) {
-                throw new IllegalArgumentException("display interpolation must not be negative");
-            }
-            Objects.requireNonNull(player, "player");
-            Objects.requireNonNull(playback, "playback");
+            if (cooldown < 0) throw new IllegalArgumentException("Invalid cooldown");
+            if (!Float.isFinite(rotationDeadzone) || rotationDeadzone < 0 || rotationDeadzone > 180) throw new IllegalArgumentException("Invalid rotation deadzone");
+            if (displayInterpolationTicks < 0) throw new IllegalArgumentException("Invalid display interpolation");
+            Objects.requireNonNull(player); Objects.requireNonNull(playback);
         }
     }
-
-    public record PlaybackSettings(LoopMode mode, int loopStartTicks, int loopDelayTicks) {
+    public record PlaybackSettings(LoopMode mode, int loopStart, ScalarValue startDelay, ScalarValue loopDelay) {
+        public PlaybackSettings(LoopMode mode, int loopStart, int loopDelay) {
+            this(mode, loopStart, new ConstantValue(0), new ConstantValue(loopDelay));
+        }
         public PlaybackSettings {
-            Objects.requireNonNull(mode, "mode");
-            if (loopStartTicks < 0) {
-                throw new IllegalArgumentException("loop start must not be negative");
-            }
-            if (loopDelayTicks < 0) {
-                throw new IllegalArgumentException("loop delay must not be negative");
-            }
-            if (mode != LoopMode.LOOP && loopStartTicks != 0) {
-                throw new IllegalArgumentException("loop start must be zero unless playback mode is loop");
-            }
-            if ((mode == LoopMode.ONCE || mode == LoopMode.HOLD) && loopDelayTicks != 0) {
-                throw new IllegalArgumentException("loop delay must be zero when playback mode is once or hold");
+            Objects.requireNonNull(mode); Objects.requireNonNull(startDelay); Objects.requireNonNull(loopDelay);
+            if (loopStart < 0 || mode != LoopMode.LOOP && loopStart != 0) throw new IllegalArgumentException("Invalid loop start");
+            for (ScalarValue delay : List.of(startDelay, loopDelay)) {
+                if (delay instanceof ConstantValue c && (c.value() < 0 || c.value() > Integer.MAX_VALUE || c.value() != Math.rint(c.value()))) throw new IllegalArgumentException("Delay must be a non-negative integer tick count");
             }
         }
     }
-
-    public sealed interface Node permits ItemNode, BlockNode, TextNode, AnchorNode {
-        String parentId();
-
-        LocalTransform transform();
-
-        default boolean visible() {
-            return true;
+    public record Node(String name, String parentId, Inheritance inherit, boolean visible,
+                       List<Operation> transform, Map<String, Attachment> attachments, JsonObject source) {
+        public Node(String parentId, List<Operation> transform, Map<String, Attachment> attachments) {
+            this(null, parentId, Inheritance.DEFAULT, true, transform, attachments, new JsonObject());
         }
-
-        default CompoundTag entityNbt() {
-            return new CompoundTag();
+        public Node {
+            Objects.requireNonNull(inherit); transform = List.copyOf(transform); attachments = Map.copyOf(attachments);
+            Objects.requireNonNull(source);
         }
     }
-
-    public record ItemNode(
-        boolean visible,
-        String parentId,
-        LocalTransform transform,
-        CompoundTag entityNbt,
-        CompoundTag itemStackNbt,
-        String itemDisplay,
-        Skin skin
-    ) implements Node {
-        public ItemNode {
-            Objects.requireNonNull(transform, "transform");
-            entityNbt = copy(entityNbt);
-            itemStackNbt = copy(itemStackNbt);
-            Objects.requireNonNull(itemDisplay, "itemDisplay");
-        }
+    public record Inheritance(RotationInheritance rotation, boolean scale, boolean visibility) {
+        public static final Inheritance DEFAULT = new Inheritance(RotationInheritance.PARENT, true, true);
     }
-
-    public record BlockNode(
-        boolean visible,
-        String parentId,
-        LocalTransform transform,
-        CompoundTag entityNbt,
-        CompoundTag blockStateNbt
-    ) implements Node {
-        public BlockNode {
-            Objects.requireNonNull(transform, "transform");
-            entityNbt = copy(entityNbt);
-            blockStateNbt = copy(blockStateNbt);
-        }
+    public enum RotationInheritance { PARENT, ENTITY }
+    public enum OperationType { TRANSLATE, ROTATE_EULER, ROTATE_QUATERNION, SCALE, MATRIX }
+    public enum RotationOrder { XYZ, XZY, YXZ, YZX, ZXY, ZYX }
+    public record Operation(String id, OperationType op, RotationOrder order, List<Double> value) {
+        public Operation { Objects.requireNonNull(id); Objects.requireNonNull(op); value = List.copyOf(value); }
     }
-
-    public record TextNode(
-        boolean visible,
-        String parentId,
-        LocalTransform transform,
-        CompoundTag entityNbt,
-        JsonElement text
-    ) implements Node {
-        public TextNode {
-            Objects.requireNonNull(transform, "transform");
-            entityNbt = copy(entityNbt);
-            text = Objects.requireNonNull(text, "text").deepCopy();
-        }
-
-        @Override
-        public JsonElement text() {
-            return this.text.deepCopy();
-        }
+    public sealed interface Attachment permits ItemAttachment, BlockAttachment, TextAttachment, SkinAttachment, ExternalAttachment {
+        boolean visible();
+        default CompoundTag entityNbt() { return new CompoundTag(); }
     }
-
-    public record AnchorNode(
-        String parentId,
-        LocalTransform transform
-    ) implements Node {
-        public AnchorNode {
-            Objects.requireNonNull(transform, "transform");
-        }
-    }
-
-    public record LocalTransform(Vec3 position, Vec3 rotation, Vec3 scale) {
-        public static final LocalTransform IDENTITY = new LocalTransform(Vec3.ZERO, Vec3.ZERO, new Vec3(1.0D, 1.0D, 1.0D));
-
-        public LocalTransform {
-            Objects.requireNonNull(position, "position");
-            Objects.requireNonNull(rotation, "rotation");
-            Objects.requireNonNull(scale, "scale");
-        }
-
-    }
-
-    public record Skin(PlayerSkinPart part, int order) {
-        public Skin {
-            Objects.requireNonNull(part, "part");
-            if (order < 0) {
-                throw new IllegalArgumentException("skin order must not be negative");
-            }
-        }
-    }
-
-    public record Timeline(
-        int durationTicks,
-        Map<String, NodeTracks> tracks,
-        Events events
-    ) {
+    public record ItemAttachment(boolean visible, CompoundTag entityNbt, CompoundTag itemStackNbt, String itemDisplay) implements Attachment {}
+    public record BlockAttachment(boolean visible, CompoundTag entityNbt, CompoundTag blockStateNbt) implements Attachment {}
+    public record TextAttachment(boolean visible, CompoundTag entityNbt, JsonElement text) implements Attachment {}
+    public record SkinAttachment(boolean visible, PlayerSkinPart part, double from, double to) implements Attachment {}
+    public record ExternalAttachment(boolean visible, Identifier key, JsonElement data) implements Attachment {}
+    public record Timeline(int duration, Map<String, Track> tracks, Events events, String clock) {
+        public Timeline(int duration, Map<String, Track> tracks, Events events) { this(duration, tracks, events, null); }
         public Timeline {
-            tracks = Map.copyOf(tracks);
-            Objects.requireNonNull(events, "events");
+            if (duration <= 0) throw new IllegalArgumentException("Invalid duration");
+            tracks = Map.copyOf(tracks); Objects.requireNonNull(events);
         }
     }
-
-    public record NodeTracks(
-        List<VectorKeyframe> position,
-        List<VectorKeyframe> rotation,
-        List<VectorKeyframe> scale,
-        List<VisibilityKeyframe> visible,
-        List<NbtKeyframe> nbt
-    ) {
-        public NodeTracks {
-            position = List.copyOf(position);
-            rotation = List.copyOf(rotation);
-            scale = List.copyOf(scale);
-            visible = List.copyOf(visible);
-            nbt = nbt.stream().map(frame -> new NbtKeyframe(frame.tick(), frame.value())).toList();
-        }
+    public record Target(String node, String operation, String attachment) {}
+    public enum Channel { VALUE, VISIBLE, NBT }
+    public record Track(Target target, Channel channel, Driver driver) {}
+    public enum DriverType { EXPRESSION, CURVE, STATE }
+    public record Driver(DriverType type, Value value, List<Keyframe> keys, List<Segment> segments, boolean firstPre) {
+        public Driver { keys = List.copyOf(keys); segments = List.copyOf(segments); }
     }
-
-    public record VectorKeyframe(
-        int tick,
-        VectorValue pre,
-        VectorValue post,
-        Interpolation interpolation,
-        Easing easing
-    ) {
-        public VectorKeyframe {
-            Objects.requireNonNull(pre, "pre");
-            Objects.requireNonNull(post, "post");
-            Objects.requireNonNull(interpolation, "interpolation");
-            Objects.requireNonNull(easing, "easing");
-        }
+    public record Keyframe(int time, Value pre, Value post) {}
+    public enum Interpolation { STEP, LINEAR, SLERP, CATMULL_ROM, HERMITE, BEZIER }
+    public record Segment(Interpolation interpolation, Easing easing, double tension, VectorValue previous,
+                          VectorValue following, VectorValue outTangent, VectorValue inTangent, List<BezierHandle> handles) {
+        public Segment { handles = List.copyOf(handles); }
     }
-
-    public record VectorValue(ScalarValue x, ScalarValue y, ScalarValue z) {
-        public VectorValue {
-            Objects.requireNonNull(x, "x");
-            Objects.requireNonNull(y, "y");
-            Objects.requireNonNull(z, "z");
-        }
+    public record BezierHandle(double outTime, ScalarValue outValue, double inTime, ScalarValue inValue) {}
+    public record Easing(String kernel, String direction, double parameter) {}
+    public sealed interface Value permits VectorValue, VisibilityValue, NbtValue {}
+    public record VectorValue(List<ScalarValue> components) implements Value {
+        public VectorValue { components = List.copyOf(components); }
     }
-
-    public sealed interface ScalarValue permits ConstantValue, MolangValue {
-    }
-
+    public sealed interface ScalarValue permits ConstantValue, MolangValue {}
     public record ConstantValue(double value) implements ScalarValue {
-        public ConstantValue {
-            if (!Double.isFinite(value)) {
-                throw new IllegalArgumentException("constant value must be finite");
-            }
-        }
+        public ConstantValue { if (!Double.isFinite(value)) throw new IllegalArgumentException("Non-finite value"); }
     }
-
-    public record MolangValue(String source, String path) implements ScalarValue {
-        public MolangValue {
-            Objects.requireNonNull(source, "source");
-            Objects.requireNonNull(path, "path");
-        }
+    public record MolangValue(String source, String path) implements ScalarValue {}
+    public sealed interface VisibilityValue extends Value permits ConstantVisibility, MolangVisibility {}
+    public record ConstantVisibility(boolean value) implements VisibilityValue {}
+    public record MolangVisibility(String source, String path) implements VisibilityValue {}
+    public sealed interface NbtValue extends Value permits FixedNbtValue, MolangNbtValue {}
+    public record FixedNbtValue(CompoundTag value, List<String> remove) implements NbtValue {
+        public FixedNbtValue { remove = List.copyOf(remove); }
     }
-
-    public record VisibilityKeyframe(int tick, VisibilityValue value) {
-        public VisibilityKeyframe {
-            Objects.requireNonNull(value, "value");
-        }
+    public record MolangNbtValue(String source, String path, List<String> remove) implements NbtValue {
+        public MolangNbtValue { remove = List.copyOf(remove); }
     }
-
-    public record NbtKeyframe(int tick, NbtValue value) {
-        public NbtKeyframe {
-            Objects.requireNonNull(value, "value");
-        }
-
-        public NbtKeyframe(int tick, CompoundTag value) {
-            this(tick, new FixedNbtValue(value));
-        }
+    public enum LoopMode { ONCE, HOLD, LOOP, SERVER_SYNC }
+    public record Events(List<Event> start, List<TimelineEvent> timeline, List<Event> loop, List<Event> stop) {
+        public Events { start = List.copyOf(start); timeline = List.copyOf(timeline); loop = List.copyOf(loop); stop = List.copyOf(stop); }
+        public static Events empty() { return new Events(List.of(), List.of(), List.of(), List.of()); }
     }
-
-    public sealed interface NbtValue permits FixedNbtValue, MolangNbtValue {
+    public record Event(CommandSource source, CommandOrigin origin, List<String> commands, Identifier externalKey, JsonElement data) {
+        public Event(CommandSource source, CommandOrigin origin, List<String> commands) { this(source, origin, commands, null, null); }
+        public Event { commands = List.copyOf(commands); }
     }
-
-    public record FixedNbtValue(CompoundTag value) implements NbtValue {
-        public FixedNbtValue {
-            value = copy(value);
-        }
-
-        @Override
-        public CompoundTag value() {
-            return this.value.copy();
-        }
-
+    public record TimelineEvent(int time, Direction direction, Event event) {}
+    public enum Direction { FORWARD, BACKWARD, BOTH }
+    public record CommandSource(SourceType type, String node, String attachment) {
+        public CommandSource(SourceType type, String node) { this(type, node, null); }
     }
+    public enum SourceType { PLAYER, SERVER, NODE }
+    public record CommandOrigin(OriginType type, String node, Vec3 offset) {}
+    public enum OriginType { ROOT, NODE }
 
-    public record MolangNbtValue(String source, String path) implements NbtValue {
-        public MolangNbtValue {
-            Objects.requireNonNull(source, "source");
-            Objects.requireNonNull(path, "path");
-        }
-    }
-
-    public sealed interface VisibilityValue permits ConstantVisibility, MolangVisibility {
-    }
-
-    public record ConstantVisibility(boolean value) implements VisibilityValue {
-    }
-
-    public record MolangVisibility(String source, String path) implements VisibilityValue {
-        public MolangVisibility {
-            Objects.requireNonNull(source, "source");
-            Objects.requireNonNull(path, "path");
-        }
-    }
-
-    public enum Interpolation {
-        STEP,
-        LINEAR
-    }
-
-    public enum Easing {
-        LINEAR,
-        EASE_IN_SINE,
-        EASE_OUT_SINE,
-        EASE_IN_OUT_SINE,
-        EASE_IN_QUAD,
-        EASE_OUT_QUAD,
-        EASE_IN_OUT_QUAD,
-        EASE_IN_CUBIC,
-        EASE_OUT_CUBIC,
-        EASE_IN_OUT_CUBIC,
-        EASE_IN_QUART,
-        EASE_OUT_QUART,
-        EASE_IN_OUT_QUART,
-        EASE_IN_QUINT,
-        EASE_OUT_QUINT,
-        EASE_IN_OUT_QUINT,
-        EASE_IN_EXPO,
-        EASE_OUT_EXPO,
-        EASE_IN_OUT_EXPO,
-        EASE_IN_CIRC,
-        EASE_OUT_CIRC,
-        EASE_IN_OUT_CIRC,
-        EASE_IN_BACK,
-        EASE_OUT_BACK,
-        EASE_IN_OUT_BACK,
-        EASE_IN_ELASTIC,
-        EASE_OUT_ELASTIC,
-        EASE_IN_OUT_ELASTIC,
-        EASE_IN_BOUNCE,
-        EASE_OUT_BOUNCE,
-        EASE_IN_OUT_BOUNCE
-    }
-
-    public enum LoopMode {
-        ONCE,
-        HOLD,
-        LOOP,
-        SERVER_SYNC
-    }
-
-    public record Events(
-        List<Event> start,
-        List<TimelineEvent> timeline,
-        List<Event> loop,
-        List<Event> stop
-    ) {
-        public Events {
-            start = List.copyOf(start);
-            timeline = List.copyOf(timeline);
-            loop = List.copyOf(loop);
-            stop = List.copyOf(stop);
-        }
-
-        public static Events empty() {
-            return new Events(List.of(), List.of(), List.of(), List.of());
-        }
-    }
-
-    public record Event(CommandSource source, CommandOrigin origin, List<String> commands) {
-        public Event {
-            Objects.requireNonNull(source, "source");
-            Objects.requireNonNull(origin, "origin");
-            commands = List.copyOf(commands);
-        }
-    }
-
-    public record TimelineEvent(int tick, CommandSource source, CommandOrigin origin, List<String> commands) {
-        public TimelineEvent {
-            Objects.requireNonNull(source, "source");
-            Objects.requireNonNull(origin, "origin");
-            commands = List.copyOf(commands);
-        }
-
-        public Event event() {
-            return new Event(this.source, this.origin, this.commands);
-        }
-    }
-
-    public record CommandSource(SourceType type, String node) {
-        public CommandSource {
-            Objects.requireNonNull(type, "type");
-        }
-    }
-
-    public enum SourceType {
-        PLAYER,
-        SERVER,
-        NODE
-    }
-
-    public record CommandOrigin(OriginType type, String node, Vec3 offset) {
-        public CommandOrigin {
-            Objects.requireNonNull(type, "type");
-            Objects.requireNonNull(offset, "offset");
-        }
-    }
-
-    public enum OriginType {
-        ROOT,
-        NODE
-    }
-
-    private static CompoundTag copy(CompoundTag tag) {
-        return Objects.requireNonNull(tag, "tag").copy();
-    }
 }

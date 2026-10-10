@@ -1,7 +1,6 @@
 package io.github.hanhy06.emote.content.loader;
 
 import io.github.hanhy06.emote.EmoteMod;
-import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.content.LoadedSequence;
 import io.github.hanhy06.emote.content.LoadedAnimation;
 
@@ -11,31 +10,25 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Stream;
+import io.github.hanhy06.emote.api.EmoteLoadException;
 
 public final class EmoteDirectoryLoader {
     private final AnimationJsonParser animationParser;
     private final SequenceJsonParser sequenceParser;
-    private final AnimationContentResolver contentResolver;
 
     public EmoteDirectoryLoader() {
-        this(new AnimationJsonParser(), new SequenceJsonParser(), new AnimationContentResolver());
+        this(new AnimationJsonParser(), new SequenceJsonParser());
     }
 
     EmoteDirectoryLoader(
         AnimationJsonParser animationParser,
-        SequenceJsonParser sequenceParser,
-        AnimationContentResolver contentResolver
+        SequenceJsonParser sequenceParser
     ) {
         this.animationParser = animationParser;
         this.sequenceParser = sequenceParser;
-        this.contentResolver = contentResolver;
     }
 
     public LoadResult load(Path directory) {
-        return load(directory, this.contentResolver::resolve);
-    }
-
-    LoadResult load(Path directory, AnimationResolver resolver) {
         List<LoadedAnimation> candidates = new ArrayList<>();
         List<LoadedSequence> sequenceCandidates = new ArrayList<>();
         List<Path> detectedFiles = findJsonFiles(directory);
@@ -43,14 +36,14 @@ public final class EmoteDirectoryLoader {
             try {
                 EmoteJsonDocument document = EmoteJsonDocument.read(path);
                 switch (document.type()) {
-                    case "animation" -> candidates.add(resolver.resolve(this.animationParser.parse(document)));
+                    case "animation" -> candidates.add(this.animationParser.parse(document));
                     case "sequence" -> sequenceCandidates.add(this.sequenceParser.parse(document));
                     default -> throw document.error(
                         "$.type",
                         "unsupported emote file type: " + document.type()
                     );
                 }
-            } catch (EmoteAnimationLoadException exception) {
+            } catch (EmoteLoadException exception) {
                 EmoteMod.LOGGER.warn("Ignoring invalid emote file: {}", exception.getMessage());
             }
         }
@@ -84,7 +77,7 @@ public final class EmoteDirectoryLoader {
     ) {
         Map<String, List<Path>> pathsById = new LinkedHashMap<>();
         for (LoadedAnimation candidate : candidates) {
-            pathsById.computeIfAbsent(candidate.animation().id().toString(), ignored -> new ArrayList<>())
+            pathsById.computeIfAbsent(candidate.model().id().toString(), ignored -> new ArrayList<>())
                 .add(candidate.sourcePath());
         }
         for (LoadedSequence candidate : sequenceCandidates) {
@@ -97,8 +90,8 @@ public final class EmoteDirectoryLoader {
             .map(Map.Entry::getKey)
             .collect(java.util.stream.Collectors.toUnmodifiableSet());
         List<LoadedAnimation> loaded = candidates.stream()
-            .filter(candidate -> !duplicateIds.contains(candidate.animation().id().toString()))
-            .sorted(Comparator.comparing(candidate -> candidate.animation().id().toString()))
+            .filter(candidate -> !duplicateIds.contains(candidate.model().id().toString()))
+            .sorted(Comparator.comparing(candidate -> candidate.model().id().toString()))
             .toList();
         List<LoadedSequence> sequences = sequenceCandidates.stream()
             .filter(candidate -> !duplicateIds.contains(candidate.id().toString()))
@@ -117,8 +110,4 @@ public final class EmoteDirectoryLoader {
         }
     }
 
-    @FunctionalInterface
-    interface AnimationResolver {
-        LoadedAnimation resolve(LoadedAnimation loaded) throws EmoteAnimationLoadException;
-    }
 }

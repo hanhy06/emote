@@ -19,10 +19,10 @@ import io.github.hanhy06.emote.playback.timeline.EventCommandExecutor;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 import java.util.*;
+import io.github.hanhy06.emote.content.PreparedAnimation;
 
 public final class PlaybackEngine implements ConfigListener {
     private final Map<UUID, ActivePlayback> activePlaybacks = new HashMap<>();
@@ -82,17 +82,17 @@ public final class PlaybackEngine implements ConfigListener {
             return new StartResult.Failure(FailureReason.START_REJECTED, "Cannot replace an emote from its own callback.");
         }
         int projected = projectedDisplayEntityCount(activeDisplayEntityCount(),
-            replacedSession == null ? 0 : replacedSession.nodes().displayEntityCount(), emote.displayNodeCount());
+            replacedSession == null ? 0 : replacedSession.nodes().displayEntityCount(), emote.displayEntityCount());
         if (exceedsDisplayEntityLimit(projected, this.maxActiveDisplayEntities)) {
             return new StartResult.Failure(FailureReason.DISPLAY_LIMIT, "Too many emotes are active right now. Try again shortly.");
         }
+        PlaybackPlayer timeline;
         List<CallbackRegistry.Binding> bindings;
-        Map<PreparedEmote, List<CallbackRegistry.Binding>> segmentBindings = new HashMap<>();
+        Map<PreparedAnimation, List<CallbackRegistry.Binding>> segmentBindings = new HashMap<>();
         try {
-            bindings = this.callbackRegistry.resolve(emote.model().callbacks());
-            for (var segment : emote.playbackSegments()) {
-                segmentBindings.computeIfAbsent(segment.animation(), animation -> this.callbackRegistry.resolve(animation.model().callbacks()));
-            }
+            timeline = new PlaybackPlayer(emote, request.queries());
+            bindings = this.callbackRegistry.resolve(emote.callbacks());
+            for (var animation : timeline.selectedAnimations()) segmentBindings.put(animation, this.callbackRegistry.resolve(animation.callbacks()));
         } catch (IllegalArgumentException exception) {
             return new StartResult.Failure(FailureReason.START_REJECTED, exception.getMessage());
         }
@@ -101,12 +101,12 @@ public final class PlaybackEngine implements ConfigListener {
         PlaybackSession session = null;
         try {
             nodes = this.entityController.create(request.level(), request.root(), emote);
-            PlaybackPlayer timeline = new PlaybackPlayer(emote, new EntityTimelineTarget(emote, nodes, this.entityController), request.queries());
+            EntityTimelineTarget target = new EntityTimelineTarget(emote, nodes, this.entityController);
             timeline.bindEvents(new EventCommandExecutor(request.level(), request.commandSource(), nodes, timeline));
-            if (emote.model().settings().playback().mode() == EmoteAnimation.LoopMode.SERVER_SYNC) {
-                timeline.startSynchronized(EmoteMod.SERVER.overworld().getGameTime());
+            if (emote.loopMode() == EmoteAnimation.LoopMode.SERVER_SYNC) {
+                timeline.startSynchronized(target, EmoteMod.SERVER.overworld().getGameTime());
             } else {
-                timeline.start();
+                timeline.start(target);
             }
             if (request.skin() != null) this.entityController.applySkin(nodes, emote.skinBindings(), request.skin());
             timeline.deferInitialVisibility();

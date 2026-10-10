@@ -3,7 +3,6 @@ import type { BlockStateData, DisplayNbtPatch, ItemStackData } from "../../domai
 import type { Matrix16 } from "../../domain/matrix";
 import { readBlockState, readDisplayNbt, readItemStack } from "../../format/minecraftData";
 import { asMatrix16, IDENTITY_MATRIX } from "../../format/matrix";
-import { requireAnimationDurationTicks } from "../../format/time";
 import {
   findMatchingSnbtDelimiter,
   omitSnbtFields,
@@ -270,7 +269,7 @@ function readAnimations(
           });
         }
       }
-      const durationTicks = requireAnimationDurationTicks(frames.length * TICKS_PER_BD_FRAME, `${name} duration`);
+      const durationTicks = frames.length * TICKS_PER_BD_FRAME;
       droppedCamera ||= animationDroppedCamera;
       return [{
         name,
@@ -320,7 +319,6 @@ function readMatrix(raw: string | null, label: string): Matrix16 {
   if (!raw?.startsWith("[") || !raw.endsWith("]")) throw new Error(`${label} must be an SNBT list.`);
   return asMatrix16(splitSnbtTopLevel(raw.slice(1, -1)).map((value) => {
     const parsed = Number(value.replace(/[bBsSlLfFdD]$/, ""));
-    if (!Number.isFinite(parsed)) throw new Error(`${label} contains an invalid number: ${value}`);
     return parsed;
   }), label);
 }
@@ -346,7 +344,6 @@ function readIntegerField(compound: string, name: string, fallback: number, sign
   const raw = readSnbtRawField(compound, name);
   if (raw == null) return fallback;
   const value = Number(raw.replace(/[bBsSlL]$/, ""));
-  if (!Number.isInteger(value) || (!signed && value < 0)) throw new Error(`${name} must be ${signed ? "an integer" : "a non-negative integer"}.`);
   return value;
 }
 

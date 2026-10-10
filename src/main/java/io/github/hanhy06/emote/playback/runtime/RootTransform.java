@@ -1,20 +1,16 @@
 package io.github.hanhy06.emote.playback.runtime;
 
 import com.mojang.math.Transformation;
-import io.github.hanhy06.emote.content.PreparedEmote;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
-import org.joml.Quaternionf;
-import org.joml.Vector3f;
 
-public record RootTransform(Vec3 position, float yaw, Matrix4f rotationMatrix, Quaternionf rotation) {
+public record RootTransform(Vec3 position, float yaw, Matrix4f rotationMatrix) {
     private static final float MODEL_FORWARD_YAW_OFFSET = 180.0F;
 
     public RootTransform {
         rotationMatrix = new Matrix4f(rotationMatrix);
-        rotation = new Quaternionf(rotation);
     }
 
     public static RootTransform create(Vec3 position, float yaw) {
@@ -22,8 +18,7 @@ public record RootTransform(Vec3 position, float yaw, Matrix4f rotationMatrix, Q
         return new RootTransform(
             position,
             yaw,
-            new Matrix4f().rotateY(rotationRadians),
-            new Quaternionf().rotationY(rotationRadians)
+            new Matrix4f().rotateY(rotationRadians)
         );
     }
 
@@ -31,29 +26,8 @@ public record RootTransform(Vec3 position, float yaw, Matrix4f rotationMatrix, Q
         return new Matrix4f(this.rotationMatrix).mul(nodeMatrix);
     }
 
-    public Transformation displayTransformation(PreparedEmote.PreparedTransform transform) {
-        if (transform.preservesMatrix()) {
-            return new Transformation(new Matrix4f(this.rotationMatrix).mul(transform.localMatrix()));
-        }
-        return new Transformation(
-            this.rotation.transform(transform.translation(), new Vector3f()),
-            new Quaternionf(this.rotation).mul(transform.leftRotation()),
-            new Vector3f(transform.scale()),
-            new Quaternionf(transform.rightRotation())
-        );
-    }
-
-    public Transformation displayTransformation(Matrix4fc matrix, boolean preserveMatrix) {
-        if (preserveMatrix) {
-            return new Transformation(new Matrix4f(this.rotationMatrix).mul(matrix));
-        }
-        Transformation transform = new Transformation(matrix);
-        return new Transformation(
-            this.rotation.transform(transform.translation(), new Vector3f()),
-            new Quaternionf(this.rotation).mul(transform.leftRotation()),
-            new Vector3f(transform.scale()),
-            new Quaternionf(transform.rightRotation())
-        );
+    public Transformation displayTransformation(Matrix4fc matrix) {
+        return new Transformation(displayMatrix(matrix));
     }
 
     public float relativeYaw(float currentYaw) {

@@ -1,6 +1,7 @@
 import type { EmoteCallback, EmoteMetadata, EmotePlayerBehavior } from "./emoteDefinition";
 
 export type ScalarIR = number | { molang: string };
+export type TimeValueIR = string | { molang: string };
 export type ValueIR = readonly ScalarIR[];
 export type VisibilityIR = boolean | { molang: string };
 export type RotationOrderIR = "XYZ" | "XZY" | "YXZ" | "YZX" | "ZXY" | "ZYX";
@@ -54,7 +55,7 @@ export interface SegmentIR {
   handles?: { out: { time: number; value: ScalarIR }; in: { time: number; value: ScalarIR } }[];
 }
 
-export type CurveKeyIR = { time: number } & ({ value: ValueIR; pre?: never; post?: never } | { pre: ValueIR; post: ValueIR; value?: never });
+export type CurveKeyIR = { time: string } & ({ value: ValueIR; pre?: never; post?: never } | { pre: ValueIR; post: ValueIR; value?: never });
 export interface CurveIR {
   type: "curve";
   before?: "base" | "first_pre";
@@ -66,7 +67,7 @@ export interface NbtPatchIR {
   remove?: string[];
 }
 export type DriverIR = CurveIR | { type: "expression"; value: ValueIR | VisibilityIR }
-  | { type: "state"; keys: { time: number; value: VisibilityIR | NbtPatchIR }[] };
+  | { type: "state"; keys: { time: string; value: VisibilityIR | NbtPatchIR }[] };
 export interface TrackIR {
   target: { node: string; operation?: string; attachment?: string };
   channel: "value" | "visible" | "nbt";
@@ -74,7 +75,7 @@ export interface TrackIR {
 }
 
 export interface EventIR {
-  time?: number;
+  time?: string;
   direction?: "forward" | "backward" | "both";
   source: { type: "server" | "player" } | { type: "node"; node: string; attachment: string };
   origin: { type: "root"; offset?: readonly [number, number, number] } | { type: "node"; node: string; offset?: readonly [number, number, number] };
@@ -82,13 +83,13 @@ export interface EventIR {
 }
 
 export interface TimelineEventIR extends EventIR {
-  time: number;
+  time: string;
 }
 
 export interface ClipIR {
-  duration: number;
+  duration: string;
   clock?: { type: "elapsed" } | { type: "molang"; expression: string };
-  playback?: { mode?: "once" | "hold" | "loop" | "server_sync"; loop_start?: number; start_delay?: ScalarIR; loop_delay?: ScalarIR };
+  playback?: { mode?: "once" | "hold" | "loop" | "server_sync"; loop_start?: string; start_delay?: TimeValueIR; loop_delay?: TimeValueIR };
   programs?: { initialize?: string; update?: string };
   tracks: TrackIR[];
   events?: { start?: EventIR[]; timeline?: TimelineEventIR[]; loop?: EventIR[]; stop?: EventIR[] };
@@ -100,7 +101,7 @@ export interface AnimationIR {
   target_minecraft_version?: string;
   settings?: {
     standalone?: boolean;
-    cooldown?: number;
+    cooldown?: string;
     rotation_deadzone?: number;
     display_interpolation_ticks?: number;
     player?: EmotePlayerBehavior;

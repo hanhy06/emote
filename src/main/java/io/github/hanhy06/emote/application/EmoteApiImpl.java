@@ -3,13 +3,10 @@ package io.github.hanhy06.emote.application;
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.*;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.api.sequence.EmoteSequence;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.LoadedAnimation;
-import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.content.PreparedSequence;
-import io.github.hanhy06.emote.content.loader.AnimationContentResolver;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
@@ -24,6 +21,8 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import io.github.hanhy06.emote.api.EmoteLoadException;
+import io.github.hanhy06.emote.content.PreparedAnimation;
 
 public final class EmoteApiImpl extends EmoteApi {
     private final EmoteCatalog emoteCatalog;
@@ -32,7 +31,6 @@ public final class EmoteApiImpl extends EmoteApi {
     private final PlaybackEngine engine;
     private final ApiEventDispatcher events;
     private final Runnable changeNotifier;
-    private final AnimationContentResolver contentResolver;
 
     public EmoteApiImpl(
         EmoteCatalog emoteCatalog,
@@ -40,8 +38,7 @@ public final class EmoteApiImpl extends EmoteApi {
         PlayerPlaybackManager playerPlaybackManager,
         PlaybackEngine engine,
         ApiEventDispatcher events,
-        Runnable changeNotifier,
-        AnimationContentResolver contentResolver
+        Runnable changeNotifier
     ) {
         this.emoteCatalog = Objects.requireNonNull(emoteCatalog, "emoteCatalog");
         this.playService = Objects.requireNonNull(playService, "playService");
@@ -49,7 +46,6 @@ public final class EmoteApiImpl extends EmoteApi {
         this.engine = Objects.requireNonNull(engine, "engine");
         this.events = Objects.requireNonNull(events, "events");
         this.changeNotifier = Objects.requireNonNull(changeNotifier, "changeNotifier");
-        this.contentResolver = Objects.requireNonNull(contentResolver, "contentResolver");
     }
 
     @Override
@@ -89,30 +85,30 @@ public final class EmoteApiImpl extends EmoteApi {
     }
 
     @Override
-    public boolean setTick(UUID sessionId, int tick) {
+    public boolean setTick(UUID sessionId, int time) {
         Objects.requireNonNull(sessionId, "sessionId");
         requireServerThread();
-        if (tick < 0) throw new IllegalArgumentException("Tick must not be negative");
+        if (time < 0) throw new IllegalArgumentException("Tick must be non-negative");
         PlaybackSession session = this.engine.findSession(sessionId);
-        return session != null && session.setTick(tick);
+        return session != null && session.setTick(time);
     }
 
     @Override
-    public boolean setAnimationTick(UUID sessionId, int tick) {
+    public boolean setAnimationTick(UUID sessionId, int time) {
         Objects.requireNonNull(sessionId, "sessionId");
         requireServerThread();
-        if (tick < 0) throw new IllegalArgumentException("Tick must not be negative");
+        if (time < 0) throw new IllegalArgumentException("Tick must be non-negative");
         PlaybackSession session = this.engine.findSession(sessionId);
-        return session != null && session.setAnimationTick(tick);
+        return session != null && session.setAnimationTick(time);
     }
 
     @Override
-    public boolean setStep(UUID sessionId, int stepIndex, int repeatIndex, int tick) {
+    public boolean setStep(UUID sessionId, int stepIndex, int repeatIndex, int time) {
         Objects.requireNonNull(sessionId, "sessionId");
         requireServerThread();
-        if (stepIndex < 0 || repeatIndex < 0 || tick < 0) throw new IllegalArgumentException("Step, repeat and tick must not be negative");
+        if (stepIndex < 0 || repeatIndex < 0 || time < 0) throw new IllegalArgumentException("Step, repeat and tick must not be negative");
         PlaybackSession session = this.engine.findSession(sessionId);
-        return session != null && session.setStep(stepIndex, repeatIndex, tick);
+        return session != null && session.setStep(stepIndex, repeatIndex, time);
     }
 
     @Override
@@ -125,27 +121,26 @@ public final class EmoteApiImpl extends EmoteApi {
     }
 
     @Override
-    public Registration register(EmoteAnimation animation) throws EmoteAnimationLoadException {
+    public Registration register(EmoteAnimation animation) throws EmoteLoadException {
         Objects.requireNonNull(animation, "animation");
         requireServerThread();
         Path sourcePath = Path.of("api", animation.id().getNamespace(), animation.id().getPath() + ".json");
         LoadedAnimation loaded = new LoadedAnimation(
             sourcePath,
-            "api:" + animation.id(),
             animation
         );
-        PreparedEmote emote = PreparedEmote.from(this.contentResolver.resolve(loaded));
+        PreparedAnimation emote = PreparedAnimation.prepare(loaded);
         UUID registrationId = this.emoteCatalog.register(emote);
         this.changeNotifier.run();
         return new ApiRegistration(animation.id(), registrationId);
     }
 
     @Override
-    public Registration register(EmoteSequence sequence) {
+    public Registration register(EmoteSequence sequence) throws EmoteLoadException {
         Objects.requireNonNull(sequence, "sequence");
         requireServerThread();
-        var animations = this.emoteCatalog.animations().stream().collect(Collectors.toMap(PreparedEmote::id, Function.identity()));
-        PreparedSequence prepared = PreparedSequence.resolve(sequence, animations);
+        var animations = this.emoteCatalog.animations().stream().collect(Collectors.toMap(PreparedAnimation::id, Function.identity()));
+        PreparedSequence prepared = PreparedSequence.prepare(sequence, animations);
         UUID registrationId = this.emoteCatalog.register(prepared);
         this.changeNotifier.run();
         return new ApiRegistration(sequence.id(), registrationId);

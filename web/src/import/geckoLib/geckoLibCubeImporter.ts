@@ -1,3 +1,4 @@
+import { sourceSecondsTime, parseAnimationSeconds } from "../../format/time";
 import { itemModelResourcePath, type GeneratedResource } from "../../domain/generatedResource";
 import { Matrix4 } from "three";
 import { importedNodeHints } from "../../domain/conversionSeed";
@@ -212,8 +213,6 @@ function resolveGeckoLibAnimationSource(
 ): GeckoLibAnimationSource {
   const loop = animation.loop ?? "once";
   const playbackMode = loop === "hold_on_last_frame" ? "hold" : loop;
-  if (playbackMode !== "once" && playbackMode !== "hold" && playbackMode !== "loop") throw new Error(`${FORMAT_LABEL} animation ${animation.name} has unsupported loop mode ${loop}.`);
-  if (!Number.isFinite(animation.length) || animation.length < 0) throw new Error(`${FORMAT_LABEL} animation ${animation.name} has an invalid length.`);
   const blendWeight = animation.blend_weight === undefined || animation.blend_weight === "" ? 1 : molangScalar(animation.blend_weight);
   for (const property of ["start_delay", "loop_delay"] as const) {
     const value = animation[property];
@@ -226,7 +225,7 @@ function resolveGeckoLibAnimationSource(
     animationIndex: index,
     animators: boneAnimators,
     blendWeight,
-    playbackMode,
+    playbackMode: playbackMode as GeckoLibAnimationSource["playbackMode"],
     events: effectEvents,
   };
 }
@@ -269,7 +268,6 @@ function importEffectEvents(
     for (const [keyframeIndex, keyframe] of (animator.keyframes ?? []).entries()) {
       const time = keyframe.time;
       const sourcePath = `animations[${animationIndex}].animators.${animatorId}.keyframes[${keyframeIndex}]`;
-      if (time < 0) throw new ConversionError(`invalid_${DIAGNOSTIC_PREFIX}_event`, `${FORMAT_LABEL} effect keyframe time must not be negative.`, sourcePath);
       if (!["sound", "particle", "timeline"].includes(keyframe.channel)) {
         diagnostics.push({ severity: "warning", code: `${DIAGNOSTIC_PREFIX}_effect_ignored`, message: `${animation.name} at ${time * 20}t: an unsupported effect was omitted.`, sourcePath });
         continue;
@@ -305,7 +303,7 @@ function importEffectEvents(
       }
     }
   }
-  return events.sort((first, second) => first.time - second.time);
+  return events.sort((first, second) => parseAnimationSeconds(first.time) - parseAnimationSeconds(second.time));
 }
 
 function effectOrigin(locator: string | undefined, bones: BoneEntry[]): EventIR["origin"] {
@@ -320,7 +318,7 @@ function effectOrigin(locator: string | undefined, bones: BoneEntry[]): EventIR[
 }
 
 function appendTimelineEvent(events: TimelineEventIR[], time: number, event: EventIR): void {
-  events.push({ ...event, time });
+  events.push({ ...event, time: sourceSecondsTime(time) });
 }
 
 function collectBoneAnimatorDiagnostics(animation: BbAnimation, animationIndex: number, bone: BoneEntry, animator: BbAnimator | undefined, diagnostics: ImportDiagnostic[]): void {

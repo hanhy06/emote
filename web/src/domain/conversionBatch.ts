@@ -5,7 +5,7 @@ import type { GeneratedResource } from "./generatedResource";
 import type { ConversionAnimation, ConversionDocument, SkinCandidate } from "./conversionDocument";
 import type { NodeIR } from "./animationIR";
 import { remapClipIR } from "./animationIRConversion";
-import { isSequenceControlId, type ImportedSequence, type SequenceAnimationStep, type SequenceStep } from "./emoteDefinition";
+import type { ImportedSequence } from "./emoteDefinition";
 
 export function combineConversionDocuments(documents: readonly ConversionDocument[], importedSequences: readonly ImportedSequence[] = []): ConversionDocument {
   if (documents.length === 0) throw new ConversionError("empty_import", "No animation projects were imported.");
@@ -68,15 +68,7 @@ function applyImportedSequence(document: ConversionDocument, sequence: ImportedS
   for (const animation of document.animations) {
     const id = animation.sourceReferenceId;
     if (!id) continue;
-    if (animationIds.has(id)) throw new ConversionError("duplicate_source_animation_id", `Multiple imported animations use the same id: ${id}`, id);
     animationIds.add(id);
-  }
-  if (animationIds.has(sequence.id)) {
-    throw new ConversionError("duplicate_emote_id", `Animation and sequence use the same id: ${sequence.id}`, sequence.id);
-  }
-  for (const id of sequenceAnimationReferences(sequence.steps)) {
-    if (isSequenceControlId(id)) continue;
-    if (!animationIds.has(id)) throw new ConversionError("missing_sequence_animation", `Sequence references an animation that was not opened: ${id}`, id);
   }
   const separator = sequence.id.indexOf(":");
   return {
@@ -96,14 +88,6 @@ function applyImportedSequence(document: ConversionDocument, sequence: ImportedS
       callbacks: sequence.callbacks?.map((callback) => ({ ...callback })),
     },
   };
-}
-
-function sequenceAnimationReferences(steps: readonly SequenceStep[]): string[] {
-  return steps.flatMap((step) => "wait" in step ? [] : animationStepReferences(step));
-}
-
-function animationStepReferences(step: SequenceAnimationStep): string[] {
-  return typeof step.emote === "string" ? [step.emote] : step.emote.map((choice) => choice.id);
 }
 
 function uniqueAnimationId(namespace: string, sourceId: string, usedIds: Set<string>): string {

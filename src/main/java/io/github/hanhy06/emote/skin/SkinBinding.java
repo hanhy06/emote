@@ -6,10 +6,12 @@ import java.util.Objects;
 
 public record SkinBinding(
     String nodeId,
+    String attachmentId,
     PlayerSkinRegion region
 ) {
     public SkinBinding {
         Objects.requireNonNull(nodeId, "nodeId");
+        Objects.requireNonNull(attachmentId, "attachmentId");
         Objects.requireNonNull(region, "region");
     }
 }

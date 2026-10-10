@@ -1,12 +1,11 @@
 import { compileConversionAnimationArtifact } from "../compiler/animationCompiler";
 import type { ConversionDocument } from "../domain/conversionDocument";
-import { formatMinecraftTime, parseMinecraftTime } from "../format/time";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { serializeAnimation } from "../format/animation";
 import { EMOTE_SCHEMA_VERSION } from "../format/emote";
 import type { ExportResult } from "./types";
 import { isSequenceControlId, type SequenceAnimationStep, type SequenceStep } from "../domain/emoteDefinition";
-import { ConversionError } from "../foundation/diagnostics";
+import { normalizeSequenceTimes } from "../domain/animationIRConversion";
 
 export async function createDocumentAnimationDownload(document: ConversionDocument, animationIndex: number): Promise<ExportResult[]> {
   const compiled = compileAnimationFile(document, animationIndex);
@@ -64,7 +63,8 @@ function compileAnimationFiles(document: ConversionDocument, includeSequence: bo
     };
   });
   if (includeSequence) {
-    const sequenceOutput = document.sequence;
+    const sequenceOutput = structuredClone(document.sequence);
+    normalizeSequenceTimes(sequenceOutput);
     const outputIdBySourceId = new Map(document.animations.flatMap((entry, index) => entry.sourceReferenceId
       ? [[entry.sourceReferenceId, animations[index].id] as const] : []));
     const baseSequenceId = `${sanitizeNamespace(sequenceOutput.namespace)}:${sanitizeResourcePath(sequenceOutput.idPath ?? sequenceOutput.displayName)}`;
@@ -78,7 +78,7 @@ function compileAnimationFiles(document: ConversionDocument, includeSequence: bo
       id: sequenceId,
       ...(sequenceOutput.callbacks?.length ? { callbacks: sequenceOutput.callbacks.map((callback) => ({ ...callback })) } : {}),
       metadata: { ...sequenceOutput.additionalMetadata, name: sequenceOutput.displayName, description: sequenceOutput.description },
-      settings: { cooldown: formatMinecraftTime(parseMinecraftTime(sequenceOutput.cooldown)), player: sequenceOutput.player },
+      settings: { cooldown: sequenceOutput.cooldown, player: sequenceOutput.player },
       steps: sequenceOutput.steps
         ? sequenceOutput.steps.map((step) => remapSequenceStep(step, outputIdBySourceId))
         : animations.map((animation) => ({ emote: animation.id })),
@@ -114,9 +114,9 @@ function animationFileNames(animationIds: readonly string[]): string[] {
 
 function remapSequenceStep(step: SequenceStep, outputIdBySourceId: ReadonlyMap<string, string>): Record<string, unknown> {
   if ("wait" in step) return { wait: step.wait };
-  const emote = typeof step.emote === "string"
-    ? requireRemappedAnimationId(step.emote, outputIdBySourceId)
-    : flattenSequenceChoices(step, outputIdBySourceId);
+  const emote = Array.isArray(step.emote)
+    ? flattenSequenceChoices(step, outputIdBySourceId)
+    : requireRemappedAnimationId(step.emote, outputIdBySourceId);
   return {
     emote,
     ...(step.repeat === undefined ? {} : { repeat: step.repeat }),
@@ -135,8 +135,7 @@ function flattenSequenceChoices(step: SequenceAnimationStep, outputIdBySourceId:
 function requireRemappedAnimationId(sourceId: string, outputIdBySourceId: ReadonlyMap<string, string>): string {
   if (isSequenceControlId(sourceId)) return sourceId;
   const outputId = outputIdBySourceId.get(sourceId);
-  if (!outputId) throw new ConversionError("missing_sequence_animation", `Sequence references an animation that is not in the document: ${sourceId}`, sourceId);
-  return outputId;
+  return outputId ?? sourceId;
 }
 
 export function emoteFileName(id: string): string {

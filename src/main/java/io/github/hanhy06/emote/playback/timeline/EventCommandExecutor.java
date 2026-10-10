@@ -2,7 +2,6 @@ package io.github.hanhy06.emote.playback.timeline;
 
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.playback.PlaybackPlayer;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 import io.github.hanhy06.emote.playback.runtime.RootTransform;
@@ -36,9 +35,10 @@ public final class EventCommandExecutor implements PlaybackPlayer.EventExecutor 
     }
 
     @Override
-    public void execute(PreparedEmote.PreparedEvent preparedEvent) {
+    public void execute(PlaybackPlayer.EventOccurrence preparedEvent) {
         EmoteAnimation.Event event = preparedEvent.event();
-        Vec3 origin = resolveOrigin(event.origin());
+        if (event.externalKey() != null) throw new IllegalStateException("No resolver for external action " + event.externalKey());
+        Vec3 origin = resolveOrigin(event.origin(), this.nodes, this.timeline);
         if (!event.commands().isEmpty()) {
             CommandSourceStack source = createSource(event.source())
                 .withPosition(origin)
@@ -60,7 +60,7 @@ public final class EventCommandExecutor implements PlaybackPlayer.EventExecutor 
             }
             case SERVER -> EmoteMod.SERVER.createCommandSourceStack().withLevel(this.level);
             case NODE -> {
-                Entity entity = requiredEntity(source.node());
+                Entity entity = requiredEntity(source.node(), source.attachment());
                 yield EmoteMod.SERVER.createCommandSourceStack()
                     .withLevel(this.level)
                     .withEntity(entity)
@@ -69,16 +69,16 @@ public final class EventCommandExecutor implements PlaybackPlayer.EventExecutor 
         };
     }
 
-    private Vec3 resolveOrigin(EmoteAnimation.CommandOrigin origin) {
-        RootTransform root = this.nodes.root();
+    static Vec3 resolveOrigin(EmoteAnimation.CommandOrigin origin, PlaybackNodes nodes, PlaybackPlayer timeline) {
+        RootTransform root = nodes.root();
         Matrix4fc displayMatrix;
         if (origin.type() == EmoteAnimation.OriginType.ROOT) {
             displayMatrix = root.rotationMatrix();
         } else {
-            PlaybackNodes.NodeInstance node = requiredNode(origin.node());
-            displayMatrix = this.timeline.currentTransformation(origin.node()).getMatrix();
+            if (!nodes.nodes().containsKey(origin.node())) throw new IllegalStateException("Command references missing playback node: " + origin.node());
+            displayMatrix = timeline.currentTransformation(origin.node()).getMatrix();
         }
-        Matrix4fc matrix = root.worldMatrix(this.nodes.orientationYaw(), displayMatrix);
+        Matrix4fc matrix = root.worldMatrix(nodes.orientationYaw(), displayMatrix);
         Vector3f position = matrix.transformPosition(new Vector3f(
             (float) origin.offset().x(),
             (float) origin.offset().y(),
@@ -87,12 +87,13 @@ public final class EventCommandExecutor implements PlaybackPlayer.EventExecutor 
         return root.position().add(position.x, position.y, position.z);
     }
 
-    private Entity requiredEntity(String nodeId) {
+    private Entity requiredEntity(String nodeId, String attachmentId) {
         PlaybackNodes.NodeInstance node = requiredNode(nodeId);
-        if (node.entity() == null || node.entity().isRemoved()) {
+        var attachment = node.attachments().get(attachmentId);
+        if (attachment == null || attachment.entity() == null || attachment.entity().isRemoved()) {
             throw new IllegalStateException("Command source node entity is unavailable: " + nodeId);
         }
-        return node.entity();
+        return attachment.entity();
     }
 
     private PlaybackNodes.NodeInstance requiredNode(String nodeId) {

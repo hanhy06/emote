@@ -169,12 +169,10 @@ function isSupportedAnimationPacket(id: number, version: number): boolean {
 function readLegacyAnimationV1(reader: BinaryReader): PalAnimation {
   const beginTick = reader.readInt32();
   const sourceEndTick = Math.max(reader.readInt32(), beginTick + 1);
-  if (sourceEndTick <= 0) throw new Error("Emotecraft legacy end tick must be greater than zero.");
   const stopTick = reader.readInt32();
   const looped = reader.readUint8() !== 0;
   const encodedReturnTick = reader.readInt32();
   const returnTick = Math.max(0, encodedReturnTick - 1);
-  if (looped && returnTick > sourceEndTick) throw new Error("Emotecraft legacy return tick exceeds the end tick.");
   const easeBefore = reader.readUint8() !== 0;
   reader.readUint8(); // Removed NSFW flag.
   const keyframeSize = reader.readUint8();
@@ -251,9 +249,7 @@ function readLegacyKeyframes(
   let lastTick = 0;
   for (let index = 0; index < count; index++) {
     const tick = reader.readInt32();
-    if (tick < lastTick) throw new Error("Emotecraft legacy keyframe ticks are not ordered.");
     const value = (reader.readFloat32() - (options.defaultValue ?? 0)) * (options.modelPixels ? 16 : 1) * (options.negate ? -1 : 1);
-    if (!Number.isFinite(value)) throw new Error("Emotecraft legacy keyframe value is not finite.");
     const easing = EASINGS[reader.readUint8()] ?? "linear";
     reader.skip(keyframeSize - 9);
     frames.push({ startTick: lastTick, endTick: tick, start: frames.at(-1)?.end ?? (easeBefore ? value : 0), end: value, easing, easingArgs: [] });
@@ -286,7 +282,6 @@ function readAnimationV6(reader: BinaryReader): PalAnimation {
   const hold = (flags & 2) !== 0;
   const playerAnimator = (flags & 4) !== 0;
   const lengthTicks = reader.readFloat32();
-  if (!Number.isFinite(lengthTicks) || lengthTicks < 0) throw new Error(`Invalid Emotecraft animation length ${lengthTicks}.`);
   const loopStartTick = shouldLoop && !hold ? reader.readFloat32() : 0;
   const beginTick = (flags & 32) !== 0 ? reader.readFloat32() : undefined;
   const endTick = (flags & 64) !== 0 ? reader.readFloat32() : undefined;
@@ -337,7 +332,6 @@ function readKeyframes(reader: BinaryReader, startsFromDefault: boolean, scale: 
     const easing = EASINGS[combined >>> 4] ?? "linear";
     const end = (flags & 1) !== 0 ? reader.readFloat32() : readExpressionProgram(reader);
     const length = (flags & 4) !== 0 ? 0 : (flags & 8) !== 0 ? 1 : reader.readFloat32();
-    if (!Number.isFinite(length) || length < 0) throw new Error(`Invalid Emotecraft keyframe length ${length}.`);
     const easingArgs = (flags & 2) !== 0 ? reader.readList(() => readExpressions(reader)) : [];
     const start = result.length > 0 ? result[result.length - 1].end : startsFromDefault ? (scale ? 1 : 0) : end;
     result.push({ startTick: elapsed, endTick: elapsed + length, start, end, easing, easingArgs });

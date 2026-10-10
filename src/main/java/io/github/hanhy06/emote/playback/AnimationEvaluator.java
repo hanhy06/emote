@@ -1,479 +1,343 @@
 package io.github.hanhy06.emote.playback;
 
-import net.minecraft.world.phys.Vec3;
-import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.content.PreparedEmote;
-import io.github.hanhy06.emote.content.PreparedAnimationTimeline;
 import io.github.hanhy06.emote.molang.MolangEngine;
 import io.github.hanhy06.emote.playback.molang.MolangQuerySource;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.TagParser;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
+import org.joml.Quaterniond;
 import org.joml.Quaternionf;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
-import static io.github.hanhy06.emote.content.PreparedAnimationTimeline.*;
+import io.github.hanhy06.emote.content.PreparedAnimation;
 
 final class AnimationEvaluator {
-    private static final Set<String> RUNTIME_OWNED_NBT_FIELDS = Set.of(
-        "id", "UUID", "Pos", "Motion", "Rotation", "Tags", "Passengers",
-        "transformation", "interpolation_duration", "start_interpolation", "teleport_duration"
-    );
-    private final PreparedEmote animation;
-    private final PreparedAnimationTimeline timeline;
+    private final PreparedAnimation animation;
     private final MolangQuerySource querySource;
-    private final NodeState[] nodes;
-    private final Map<String, Integer> nodeIndexes;
-    private final Matrix4f localMatrix = new Matrix4f();
-    private final Quaternionf rotation = new Quaternionf();
-    private final Quaternionf endRotation = new Quaternionf();
-    private final double[] position = new double[3];
-    private final double[] rotationVector = new double[3];
-    private final double[] scale = new double[3];
-    private final double[] endVector = new double[3];
-
+    private final List<String> nodeIds;
+    private final Map<String, Matrix4f> matrices = new LinkedHashMap<>();
+    private final Map<String, Quaternionf> orientations = new HashMap<>();
+    private final Map<String, Boolean> visibility = new HashMap<>();
+    private final Map<String, Map<String, Track>> tracks = new HashMap<>();
+    private final Map<String, Track> nodeVisibilityTracks = new HashMap<>();
+    private final Map<String, Map<String, Track>> attachmentVisibilityTracks = new HashMap<>();
+    private final Map<String, Map<String, Boolean>> attachmentVisibility = new HashMap<>();
+    private final Map<String, Map<String, Track>> nbtTracks = new HashMap<>();
+    private final Map<String, Map<String, CompoundTag>> nbt = new HashMap<>();
+    private final Map<String, Map<String, Set<String>>> nbtRemoved = new HashMap<>();
+    private final Map<String, CompoundTag> nbtCaptures = new HashMap<>();
+    private int nbtCycle;
     private MolangEngine.Session session;
+    private long lifeTime;
 
-    AnimationEvaluator(PreparedEmote animation, MolangQuerySource querySource) {
+    AnimationEvaluator(PreparedAnimation animation, MolangQuerySource querySource) {
         this.animation = animation;
-        this.timeline = animation.preparedTimeline();
         this.querySource = querySource;
-        this.nodes = new NodeState[this.timeline.nodeOrder().size()];
-        Map<String, Integer> indexes = new HashMap<>();
-        EmoteAnimation source = animation.model();
-        for (int index = 0; index < this.nodes.length; index++) {
-            String nodeId = this.timeline.nodeOrder().get(index);
-            Node node = source.nodes().get(nodeId);
-            Integer parentIndex = node.parentId() == null ? null : indexes.get(node.parentId());
-            if (node.parentId() != null && parentIndex == null) {
-                throw new IllegalStateException("Parent node was not prepared before child: " + nodeId);
+        this.nodeIds = animation.nodeOrder();
+        for (var id : this.nodeIds) this.matrices.put(id, new Matrix4f());
+        for (var track : animation.model().timeline().tracks().values()) {
+            String node = track.target().node();
+            if (track.channel() == Channel.VALUE) {
+                this.tracks.computeIfAbsent(node, ignored -> new HashMap<>()).put(track.target().operation(), track);
+            } else if (track.channel() == Channel.NBT) {
+                this.nbtTracks.computeIfAbsent(node, ignored -> new HashMap<>()).put(track.target().attachment(), track);
+            } else if (track.target().attachment() == null) {
+                this.nodeVisibilityTracks.put(node, track);
+            } else {
+                this.attachmentVisibilityTracks.computeIfAbsent(node, ignored -> new HashMap<>()).put(track.target().attachment(), track);
             }
-            this.nodes[index] = new NodeState(
-                nodeId,
-                node,
-                this.timeline.tracks().get(nodeId),
-                parentIndex == null ? -1 : parentIndex
-            );
-            indexes.put(nodeId, index);
         }
-        this.nodeIndexes = Map.copyOf(indexes);
     }
 
-    void beginCycle(int tick, int loopCount) {
+    void initialize(int loopCount, long lifeTime) {
+        if (this.session != null) return;
         this.session = MolangEngine.INSTANCE.createSession();
-        setQueries(tick, loopCount, 0.0D);
-        if (this.timeline.initialize() != null) {
-            this.session.evaluate(this.timeline.initialize());
-        }
-        for (NodeState node : this.nodes) node.resetCursors(tick);
-        evaluate(tick, loopCount, 0.0D, this.timeline.tick() != null);
-    }
-
-    void rewindLoop(int tick, int loopCount) {
-        for (NodeState node : this.nodes) node.resetCursors(tick);
-        evaluate(tick, loopCount, 0.0D, this.timeline.tick() != null);
-    }
-
-    void setTick(int tick, int loopCount) {
-        for (NodeState node : this.nodes) node.resetCursors(tick);
-        evaluate(tick, loopCount, 0.0D, false);
-    }
-
-    void evaluate(int tick, int loopCount) {
-        evaluate(tick, loopCount, 0.05D, this.timeline.tick() != null);
-    }
-
-    int nodeCount() {
-        return this.nodes.length;
-    }
-
-    int displayInterpolationTicks() {
-        return this.animation.model().settings().displayInterpolationTicks();
-    }
-
-    String nodeId(int index) {
-        return this.nodes[index].id;
-    }
-
-    Matrix4fc matrix(int index) {
-        return this.nodes[index].worldMatrix;
-    }
-
-    Matrix4fc matrix(String nodeId) {
-        Integer index = this.nodeIndexes.get(nodeId);
-        return index == null ? null : this.nodes[index].worldMatrix;
-    }
-
-    boolean preservesMatrix(int index) {
-        return this.nodes[index].node instanceof AnchorNode;
-    }
-
-    boolean preservesMatrix(String nodeId) {
-        Integer index = this.nodeIndexes.get(nodeId);
-        return index != null && preservesMatrix(index);
-    }
-
-    boolean visible(int index) {
-        return this.nodes[index].visible;
-    }
-
-    CompoundTag nbt(int index) {
-        NodeState state = this.nodes[index];
-        if (!state.nbtChanged) {
-            return null;
-        }
-        state.nbtChanged = false;
-        return state.nbtState.copy();
-    }
-
-    private void evaluate(int tick, int loopCount, double deltaTime, boolean runTick) {
-        setQueries(tick, loopCount, deltaTime);
-        if (runTick) {
-            this.session.evaluate(this.timeline.tick());
-        }
-
-        for (NodeState state : this.nodes) {
-            CompiledNodeTracks tracks = state.tracks;
-            LocalTransform defaults = state.node.transform();
-            if (state.staticLocalMatrix == null) {
-                state.positionCursor = vector(
-                    tracks == null ? List.of() : tracks.position(),
-                    state.positionCursor,
-                    tick,
-                    defaults.position(),
-                    this.position
-                );
-                state.scaleCursor = vector(
-                    tracks == null ? List.of() : tracks.scale(),
-                    state.scaleCursor,
-                    tick,
-                    defaults.scale(),
-                    this.scale
-                );
-                state.rotationCursor = rotation(
-                    tracks == null ? List.of() : tracks.rotation(),
-                    state.rotationCursor,
-                    tick,
-                    defaults.rotation(),
-                    this.rotation
-                );
-                this.localMatrix.identity()
-                    .translate((float) this.position[0], (float) this.position[1], (float) this.position[2])
-                    .rotate(this.rotation)
-                    .scale((float) this.scale[0], (float) this.scale[1], (float) this.scale[2]);
-            } else {
-                this.localMatrix.set(state.staticLocalMatrix);
-            }
-            if (state.parentIndex < 0) {
-                state.worldMatrix.set(this.localMatrix);
-            } else {
-                state.worldMatrix.set(this.nodes[state.parentIndex].worldMatrix).mul(this.localMatrix);
-            }
-            state.visibilityCursor = visible(state, tick);
-            evaluateNbt(state, tick);
+        this.nbtCycle = loopCount;
+        prepareFrame(0, loopCount, 0, lifeTime);
+        if (this.animation.model().molang().initialize() != null) {
+            this.session.evaluate(this.animation.expression("$.animation.programs.initialize"));
         }
     }
 
-    private void setQueries(int tick, int loopCount, double deltaTime) {
-        double animationTime = tick / 20.0D;
-        this.session.setQuery("anim_time", animationTime);
-        this.session.setQuery("anim_time_ticks", tick);
-        this.session.setQuery("anim_length", this.animation.durationTicks() / 20.0D);
-        this.session.setQuery("delta_time", deltaTime);
-        this.session.setQuery("loop_count", loopCount);
-        this.session.setQuery("key_frame_lerp_time", 0.0D);
-        this.session.setQuery("life_time", animationTime);
+    void prepareFrame(int time, int loopCount, int deltaTime, long lifeTime) {
+        setFrameQueries(time, loopCount, deltaTime, lifeTime);
         this.querySource.apply(this.session);
     }
 
-    private int vector(List<CompiledVectorKeyframe> frames, int currentIndex, int tick, Vec3 defaults, double[] target) {
-        if (frames.isEmpty()) {
-            target[0] = defaults.x();
-            target[1] = defaults.y();
-            target[2] = defaults.z();
-            return 0;
-        }
-        currentIndex = advanceCursor(frames, currentIndex, tick);
-        CompiledVectorKeyframe current = frames.get(currentIndex);
-        CompiledVectorKeyframe next = currentIndex + 1 < frames.size() ? frames.get(currentIndex + 1) : null;
-        double progress = progress(current, next, tick);
-        this.session.setQuery("key_frame_lerp_time", progress);
-        current.post().evaluate(this.session, target);
-        if (next == null || current.interpolation() == Interpolation.STEP) {
-            return currentIndex;
-        }
-        next.pre().evaluate(this.session, this.endVector);
-        progress = easing(current.easing(), progress);
-        target[0] = lerp(target[0], this.endVector[0], progress);
-        target[1] = lerp(target[1], this.endVector[1], progress);
-        target[2] = lerp(target[2], this.endVector[2], progress);
-        return currentIndex;
+    int nextTime(int previousTime, int loopCount, int deltaTime, long lifeTime) {
+        prepareFrame(previousTime, loopCount, deltaTime, lifeTime);
+        if (this.animation.model().timeline().clock() == null) return Math.addExact(previousTime, deltaTime);
+        double time = this.session.evaluate(this.animation.expression("$.animation.clock.expression")) * 20;
+        if (!Double.isFinite(time) || time > Integer.MAX_VALUE) throw new IllegalStateException("$.animation.clock.expression produced an invalid tick count");
+        return (int) Math.round(Math.max(0, time));
     }
 
-    private int rotation(
-        List<CompiledVectorKeyframe> frames,
-        int currentIndex,
-        int tick,
-        Vec3 defaults,
-        Quaternionf target
-    ) {
-        if (frames.isEmpty()) {
-            target.rotationXYZ(
-                (float) Math.toRadians(defaults.x()),
-                (float) Math.toRadians(defaults.y()),
-                (float) Math.toRadians(defaults.z())
-            );
-            return 0;
+    int delay(ScalarValue delay, int time, int loopCount, int deltaTime, long lifeTime) {
+        setFrameQueries(time, loopCount, deltaTime, lifeTime);
+        double value = switch (delay) {
+            case ConstantValue constant -> constant.value();
+            case MolangValue molang -> this.session.evaluate(this.animation.expression(molang.path())) * 20;
+        };
+        if (!Double.isFinite(value) || value < 0 || value > Integer.MAX_VALUE) {
+            String path = delay instanceof MolangValue molang ? molang.path() : "$.animation.playback";
+            throw new IllegalStateException(path + " must evaluate to a finite non-negative delay");
         }
-        currentIndex = advanceCursor(frames, currentIndex, tick);
-        CompiledVectorKeyframe current = frames.get(currentIndex);
-        CompiledVectorKeyframe next = currentIndex + 1 < frames.size() ? frames.get(currentIndex + 1) : null;
-        double progress = progress(current, next, tick);
-        this.session.setQuery("key_frame_lerp_time", progress);
-        current.post().evaluate(this.session, this.rotationVector);
-        quaternion(this.rotationVector, target);
-        if (next == null || current.interpolation() == Interpolation.STEP) {
-            return currentIndex;
-        }
-        next.pre().evaluate(this.session, this.endVector);
-        quaternion(this.endVector, this.endRotation);
-        target.slerp(this.endRotation, (float) easing(current.easing(), progress));
-        return currentIndex;
+        return (int) Math.round(value);
     }
 
-    private int visible(NodeState state, int tick) {
-        if (state.node instanceof AnchorNode) {
-            state.visible = true;
-            return 0;
-        }
-        CompiledNodeTracks tracks = state.tracks;
-        if (tracks == null || tracks.visible().isEmpty()) {
-            state.visible = state.node.visible();
-            return 0;
-        }
-        int currentIndex = advanceVisibilityCursor(tracks.visible(), state.visibilityCursor, tick);
-        CompiledVisibilityKeyframe current = tracks.visible().get(currentIndex);
-        this.session.setQuery("key_frame_lerp_time", 0.0D);
-        state.visible = current.value().evaluate(this.session) != 0.0D;
-        return currentIndex;
+    int nodeCount() { return this.nodeIds.size(); }
+    int displayInterpolationTicks() { return this.animation.model().settings().displayInterpolationTicks(); }
+    String nodeId(int index) { return this.nodeIds.get(index); }
+    Matrix4fc matrix(int index) { return this.matrices.get(nodeId(index)); }
+    Matrix4fc matrix(String id) { return this.matrices.get(id); }
+    boolean visible(int index) { return this.visibility.get(nodeId(index)); }
+    Map<String, Boolean> attachmentVisibility(int index) { return this.attachmentVisibility.get(nodeId(index)); }
+    Map<String, CompoundTag> nbt(int index) { return this.nbt.getOrDefault(nodeId(index), Map.of()); }
+    Set<String> nbtRemoved(int index, String attachmentId) { return this.nbtRemoved.get(nodeId(index)).get(attachmentId); }
+
+    private void setFrameQueries(int time, int loopCount, int deltaTime, long lifeTime) {
+        this.lifeTime = lifeTime;
+        this.session.setQuery("anim_time", time / 20.0);
+        this.session.setQuery("anim_time_ticks", time);
+        this.session.setQuery("anim_length", this.animation.model().timeline().duration() / 20.0);
+        this.session.setQuery("delta_time", deltaTime / 20.0);
+        this.session.setQuery("loop_count", loopCount);
+        this.session.setQuery("key_frame_lerp_time", 0);
+        this.session.setQuery("life_time", lifeTime / 20.0);
     }
 
-    private int advanceCursor(List<CompiledVectorKeyframe> frames, int currentIndex, int tick) {
-        while (currentIndex + 1 < frames.size() && frames.get(currentIndex + 1).tick() <= tick) {
-            currentIndex++;
-        }
-        return currentIndex;
+    void evaluateFrame(int time, int loopCount, int deltaTime, long lifeTime, boolean update) {
+        evaluateFrame(time, loopCount, deltaTime, lifeTime, update, true);
     }
 
-    private int advanceVisibilityCursor(List<CompiledVisibilityKeyframe> frames, int currentIndex, int tick) {
-        while (currentIndex + 1 < frames.size() && frames.get(currentIndex + 1).tick() <= tick) {
-            currentIndex++;
+    void evaluateFrame(int time, int loopCount, int deltaTime, long lifeTime, boolean update, boolean captureNbt) {
+        time = Math.min(time, this.animation.model().timeline().duration());
+        setFrameQueries(time, loopCount, deltaTime, lifeTime);
+        if (update && this.animation.model().molang().update() != null) {
+            this.session.evaluate(this.animation.expression("$.animation.programs.update"));
         }
-        return currentIndex;
-    }
-
-    private void evaluateNbt(NodeState state, int tick) {
-        List<CompiledNbtKeyframe> frames = state.tracks == null ? List.of() : state.tracks.nbt();
-        while (state.nbtCursor + 1 < frames.size() && frames.get(state.nbtCursor + 1).tick() <= tick) {
-            CompiledNbtKeyframe frame = frames.get(++state.nbtCursor);
-            this.session.setQuery("key_frame_lerp_time", 0.0D);
-            CompoundTag patch = frame.evaluate(this.session);
-            validateNbtPatch(state, frame, patch);
-            state.nbtState.merge(patch);
-            state.nbtChanged = true;
+        if (this.nbtTracks.isEmpty() || this.animation.loopMode() == LoopMode.SERVER_SYNC) this.nbtCycle = loopCount;
+        while (captureNbt && this.nbtCycle < loopCount) {
+            setFrameQueries(this.animation.model().timeline().duration(), this.nbtCycle, deltaTime, lifeTime);
+            evaluateNbt(this.animation.model().timeline().duration());
+            this.nbtCaptures.clear();
+            this.nbtCycle++;
+            setFrameQueries(this.animation.model().settings().playback().loopStart(), this.nbtCycle, deltaTime, lifeTime);
+            evaluateNbt(this.animation.model().settings().playback().loopStart());
         }
-    }
-
-    private void validateNbtPatch(NodeState state, CompiledNbtKeyframe frame, CompoundTag patch) {
-        String path = frame.path() == null ? "NBT keyframe at " + frame.tick() + "t" : frame.path();
-        for (String field : RUNTIME_OWNED_NBT_FIELDS) {
-            if (patch.contains(field)) throw new IllegalStateException(path + " must not modify runtime-owned field " + field);
-        }
-        Set<String> fields = Set.copyOf(patch.keySet());
-        if (state.nbtCursor == 0) {
-            if (state.nbtInitialFields == null) state.nbtInitialFields = fields;
-            else if (!state.nbtInitialFields.equals(fields)) {
-                throw new IllegalStateException(path + " must declare the same fields on every cycle");
+        setFrameQueries(time, loopCount, deltaTime, lifeTime);
+        for (String id : this.nodeIds) {
+            Node node = this.animation.model().nodes().get(id);
+            Matrix4f local = new Matrix4f();
+            Quaternionf orientation = new Quaternionf();
+            for (Operation operation : node.transform()) {
+                Track track = this.tracks.getOrDefault(id, Map.of()).get(operation.id());
+                double[] value = sample(track == null ? null : track.driver(), time, operation.value());
+                local.mul(PreparedAnimation.operationMatrix(operation, value));
+                if (operation.op() == OperationType.ROTATE_EULER || operation.op() == OperationType.ROTATE_QUATERNION) {
+                    orientation.mul(PreparedAnimation.operationRotation(operation, value)).normalize();
+                }
             }
-        } else if (!state.nbtInitialFields.containsAll(fields)) {
-            throw new IllegalStateException(path + " must only modify fields declared by the 0t keyframe");
+            Matrix4f world = this.matrices.get(id);
+            if (node.parentId() == null) world.set(local);
+            else {
+                Matrix4f parent = this.matrices.get(node.parentId());
+                Quaternionf parentOrientation = this.orientations.get(node.parentId());
+                if (node.inherit().rotation() == RotationInheritance.PARENT && node.inherit().scale()) {
+                    world.set(parent).mul(local);
+                } else {
+                    Matrix4f inherited = new Matrix4f();
+                    if (node.inherit().rotation() == RotationInheritance.PARENT) inherited.rotation(parentOrientation);
+                    if (node.inherit().scale()) {
+                        Matrix4f residual = new Matrix4f().rotation(parentOrientation).invert()
+                            .mul(new Matrix4f(parent).setTranslation(0, 0, 0));
+                        inherited.mul(residual);
+                    }
+                    world.set(inherited.setTranslation(parent.m30(), parent.m31(), parent.m32())).mul(local);
+                }
+                if (node.inherit().rotation() == RotationInheritance.PARENT) orientation.premul(parentOrientation).normalize();
+            }
+            if (!world.isFinite()) throw new IllegalStateException("Node " + id + " produced a non-finite transform");
+            this.orientations.put(id, orientation);
+            boolean visible = sampleVisibility(this.nodeVisibilityTracks.get(id), time, node.visible());
+            if (node.parentId() != null && node.inherit().visibility()) visible &= this.visibility.get(node.parentId());
+            this.visibility.put(id, visible);
+            Map<String, Boolean> attachments = this.attachmentVisibility.computeIfAbsent(id, ignored -> new LinkedHashMap<>());
+            for (var attachment : node.attachments().entrySet().stream().sorted(Map.Entry.comparingByKey()).toList()) {
+                attachments.put(attachment.getKey(), sampleVisibility(
+                    this.attachmentVisibilityTracks.getOrDefault(id, Map.of()).get(attachment.getKey()), time, attachment.getValue().visible()));
+            }
+        }
+        if (captureNbt) evaluateNbt(time);
+    }
+
+    private void evaluateNbt(double time) {
+        this.session.setQuery("key_frame_lerp_time", 0);
+        for (String nodeId : this.nodeIds) {
+            Map<String, Track> tracks = this.nbtTracks.getOrDefault(nodeId, Map.of());
+            Map<String, CompoundTag> states = this.nbt.computeIfAbsent(nodeId, ignored -> new LinkedHashMap<>());
+            Map<String, Set<String>> removedStates = this.nbtRemoved.computeIfAbsent(nodeId, ignored -> new HashMap<>());
+            for (String attachmentId : tracks.keySet().stream().sorted().toList()) {
+                CompoundTag state = new CompoundTag();
+                Set<String> removed = new HashSet<>();
+                for (Keyframe key : tracks.get(attachmentId).driver().keys()) {
+                    if (key.time() > time) break;
+                    NbtValue patch = (NbtValue) key.post();
+                    List<String> remove = patch instanceof FixedNbtValue fixed ? fixed.remove() : ((MolangNbtValue) patch).remove();
+                    remove.forEach(state::remove);
+                    removed.addAll(remove);
+                    CompoundTag merge;
+                    if (patch instanceof FixedNbtValue fixed) merge = fixed.value();
+                    else {
+                        MolangNbtValue molang = (MolangNbtValue) patch;
+                        merge = this.nbtCaptures.get(molang.path());
+                        if (merge == null) {
+                            try {
+                                merge = TagParser.parseCompoundFully(this.session.evaluateString(this.animation.expression(molang.path())));
+                            } catch (Exception exception) {
+                                throw new IllegalStateException(molang.path() + " must return valid compound SNBT", exception);
+                            }
+                            for (String field : merge.keySet()) {
+                                if (RUNTIME_NBT_FIELDS.contains(field)) throw new IllegalStateException(molang.path() + ": runtime-owned field " + field);
+                            }
+                            this.nbtCaptures.put(molang.path(), merge);
+                        }
+                    }
+                    state.merge(merge);
+                }
+                states.put(attachmentId, state);
+                removedStates.put(attachmentId, removed);
+            }
         }
     }
 
-    private double progress(CompiledVectorKeyframe current, CompiledVectorKeyframe next, int tick) {
-        if (next == null) return 0.0D;
-        return Math.clamp((double) (tick - current.tick()) / (next.tick() - current.tick()), 0.0D, 1.0D);
-    }
-
-    private void quaternion(double[] degrees, Quaternionf target) {
-        target.rotationXYZ(
-            (float) Math.toRadians(degrees[0]),
-            (float) Math.toRadians(degrees[1]),
-            (float) Math.toRadians(degrees[2])
-        );
-    }
-
-    private double easing(Easing easing, double value) {
-        return switch (easing) {
-            case LINEAR -> value;
-            case EASE_IN_SINE -> in(EasingKind.SINE, value);
-            case EASE_OUT_SINE -> out(EasingKind.SINE, value);
-            case EASE_IN_OUT_SINE -> inOut(EasingKind.SINE, value);
-            case EASE_IN_QUAD -> in(EasingKind.QUAD, value);
-            case EASE_OUT_QUAD -> out(EasingKind.QUAD, value);
-            case EASE_IN_OUT_QUAD -> inOut(EasingKind.QUAD, value);
-            case EASE_IN_CUBIC -> in(EasingKind.CUBIC, value);
-            case EASE_OUT_CUBIC -> out(EasingKind.CUBIC, value);
-            case EASE_IN_OUT_CUBIC -> inOut(EasingKind.CUBIC, value);
-            case EASE_IN_QUART -> in(EasingKind.QUART, value);
-            case EASE_OUT_QUART -> out(EasingKind.QUART, value);
-            case EASE_IN_OUT_QUART -> inOut(EasingKind.QUART, value);
-            case EASE_IN_QUINT -> in(EasingKind.QUINT, value);
-            case EASE_OUT_QUINT -> out(EasingKind.QUINT, value);
-            case EASE_IN_OUT_QUINT -> inOut(EasingKind.QUINT, value);
-            case EASE_IN_EXPO -> in(EasingKind.EXPO, value);
-            case EASE_OUT_EXPO -> out(EasingKind.EXPO, value);
-            case EASE_IN_OUT_EXPO -> inOut(EasingKind.EXPO, value);
-            case EASE_IN_CIRC -> in(EasingKind.CIRC, value);
-            case EASE_OUT_CIRC -> out(EasingKind.CIRC, value);
-            case EASE_IN_OUT_CIRC -> inOut(EasingKind.CIRC, value);
-            case EASE_IN_BACK -> in(EasingKind.BACK, value);
-            case EASE_OUT_BACK -> out(EasingKind.BACK, value);
-            case EASE_IN_OUT_BACK -> inOut(EasingKind.BACK, value);
-            case EASE_IN_ELASTIC -> in(EasingKind.ELASTIC, value);
-            case EASE_OUT_ELASTIC -> out(EasingKind.ELASTIC, value);
-            case EASE_IN_OUT_ELASTIC -> inOut(EasingKind.ELASTIC, value);
-            case EASE_IN_BOUNCE -> in(EasingKind.BOUNCE, value);
-            case EASE_OUT_BOUNCE -> out(EasingKind.BOUNCE, value);
-            case EASE_IN_OUT_BOUNCE -> inOut(EasingKind.BOUNCE, value);
-        };
-    }
-
-    private double in(EasingKind kind, double value) {
-        return switch (kind) {
-            case SINE -> 1.0D - Math.cos(Math.PI * value / 2.0D);
-            case QUAD -> value * value;
-            case CUBIC -> value * value * value;
-            case QUART -> Math.pow(value, 4.0D);
-            case QUINT -> Math.pow(value, 5.0D);
-            case EXPO -> value == 0.0D ? 0.0D : Math.pow(2.0D, 10.0D * (value - 1.0D));
-            case CIRC -> 1.0D - Math.sqrt(1.0D - value * value);
-            case BACK -> value * value * ((1.70158D + 1.0D) * value - 1.70158D);
-            case ELASTIC -> 1.0D - Math.pow(Math.cos(Math.PI * value / 2.0D), 3.0D) * Math.cos(Math.PI * value);
-            case BOUNCE -> Math.min(
-                Math.min(121.0D / 16.0D * value * value, 121.0D / 8.0D * Math.pow(value - 6.0D / 11.0D, 2.0D) + 0.5D),
-                Math.min(
-                    121.0D / 4.0D * Math.pow(value - 9.0D / 11.0D, 2.0D) + 0.75D,
-                    121.0D / 2.0D * Math.pow(value - 10.5D / 11.0D, 2.0D) + 0.875D
-                )
-            );
-        };
-    }
-
-    private double out(EasingKind kind, double value) {
-        return 1.0D - in(kind, 1.0D - value);
-    }
-
-    private double inOut(EasingKind kind, double value) {
-        return value < 0.5D ? in(kind, value * 2.0D) / 2.0D : 1.0D - in(kind, (1.0D - value) * 2.0D) / 2.0D;
-    }
-
-    private double lerp(double start, double end, double progress) {
-        return start + (end - start) * progress;
-    }
-
-    private static int findVectorCursor(List<CompiledVectorKeyframe> frames, int tick) {
-        int low = 1;
-        int high = frames.size();
-        while (low < high) {
-            int middle = (low + high) >>> 1;
-            if (frames.get(middle).tick() <= tick) low = middle + 1;
-            else high = middle;
-        }
-        return Math.max(0, low - 1);
-    }
-
-    private static int findVisibilityCursor(List<CompiledVisibilityKeyframe> frames, int tick) {
-        int low = 1;
-        int high = frames.size();
-        while (low < high) {
-            int middle = (low + high) >>> 1;
-            if (frames.get(middle).tick() <= tick) low = middle + 1;
-            else high = middle;
-        }
-        return Math.max(0, low - 1);
-    }
-
-    private static final class NodeState {
-        private final String id;
-        private final Node node;
-        private final CompiledNodeTracks tracks;
-        private final int parentIndex;
-        private final Matrix4f staticLocalMatrix;
-        private final Matrix4f worldMatrix = new Matrix4f();
-
-        private int positionCursor;
-        private int rotationCursor;
-        private int scaleCursor;
-        private int visibilityCursor;
-        private int nbtCursor = -1;
-        private CompoundTag nbtState = new CompoundTag();
-        private Set<String> nbtInitialFields;
-        private boolean nbtChanged;
-        private boolean visible;
-
-        private NodeState(String id, Node node, CompiledNodeTracks tracks, int parentIndex) {
-            this.id = id;
-            this.node = node;
-            this.tracks = tracks;
-            this.parentIndex = parentIndex;
-            boolean staticTransform = tracks == null
-                || tracks.position().isEmpty() && tracks.rotation().isEmpty() && tracks.scale().isEmpty();
-            if (staticTransform) {
-                LocalTransform transform = node.transform();
-                this.staticLocalMatrix = new Matrix4f()
-                    .translate((float) transform.position().x(), (float) transform.position().y(), (float) transform.position().z())
-                    .rotate(new Quaternionf().rotationXYZ(
-                        (float) Math.toRadians(transform.rotation().x()),
-                        (float) Math.toRadians(transform.rotation().y()),
-                        (float) Math.toRadians(transform.rotation().z())
-                    ))
-                    .scale((float) transform.scale().x(), (float) transform.scale().y(), (float) transform.scale().z());
+    private boolean sampleVisibility(Track track, double time, boolean base) {
+        if (track == null) return base;
+        Driver driver = track.driver();
+        VisibilityValue value;
+        if (driver.type() == DriverType.EXPRESSION) value = (VisibilityValue) driver.value();
+        else {
+            List<Keyframe> keys = driver.keys();
+            if (time < keys.getFirst().time()) {
+                if (!driver.firstPre()) return base;
+                value = (VisibilityValue) keys.getFirst().pre();
             } else {
-                this.staticLocalMatrix = null;
+                int index = 0;
+                while (index + 1 < keys.size() && keys.get(index + 1).time() <= time) index++;
+                value = (VisibilityValue) keys.get(index).post();
             }
         }
-
-        private void resetCursors(int tick) {
-            this.positionCursor = this.tracks == null || this.tracks.position().isEmpty()
-                ? 0 : findVectorCursor(this.tracks.position(), tick);
-            this.rotationCursor = this.tracks == null || this.tracks.rotation().isEmpty()
-                ? 0 : findVectorCursor(this.tracks.rotation(), tick);
-            this.scaleCursor = this.tracks == null || this.tracks.scale().isEmpty()
-                ? 0 : findVectorCursor(this.tracks.scale(), tick);
-            this.visibilityCursor = this.tracks == null || this.tracks.visible().isEmpty()
-                ? 0 : findVisibilityCursor(this.tracks.visible(), tick);
-            this.nbtCursor = -1;
-            this.nbtState = new CompoundTag();
-            this.nbtChanged = false;
-        }
+        return switch (value) {
+            case ConstantVisibility constant -> constant.value();
+            case MolangVisibility molang -> scalar(new MolangValue(molang.source(), molang.path()), 0) != 0;
+        };
     }
 
-    private enum EasingKind {
-        SINE,
-        QUAD,
-        CUBIC,
-        QUART,
-        QUINT,
-        EXPO,
-        CIRC,
-        BACK,
-        ELASTIC,
-        BOUNCE
+    private double[] sample(Driver driver, double time, List<Double> base) {
+        if (driver == null) return base.stream().mapToDouble(Double::doubleValue).toArray();
+        if (driver.type() == DriverType.EXPRESSION) return vector((VectorValue) driver.value(), 0);
+        List<Keyframe> keys = driver.keys();
+        if (time < keys.getFirst().time()) return driver.firstPre() ? vector((VectorValue) keys.getFirst().pre(), 0) : base.stream().mapToDouble(Double::doubleValue).toArray();
+        int index = 0;
+        while (index + 1 < keys.size() && keys.get(index + 1).time() <= time) index++;
+        Keyframe left = keys.get(index);
+        if (time == left.time() || index == keys.size() - 1) return vector((VectorValue) left.post(), 1);
+        Keyframe right = keys.get(index + 1);
+        double progress = (time - left.time()) / (right.time() - left.time());
+        double[] start = vector((VectorValue) left.post(), progress);
+        Segment segment = driver.segments().get(index);
+        if (segment.interpolation() == Interpolation.STEP) return start;
+        double[] end = vector((VectorValue) right.pre(), progress);
+        double t = easing(segment.easing(), progress);
+        if (segment.interpolation() == Interpolation.SLERP) {
+            Quaterniond rotation = new Quaterniond(start[0], start[1], start[2], start[3]).normalize()
+                .slerp(new Quaterniond(end[0], end[1], end[2], end[3]).normalize(), t).normalize();
+            return new double[]{rotation.x, rotation.y, rotation.z, rotation.w};
+        }
+        double[] previous = segment.previous() == null ? start : vector(segment.previous(), progress);
+        double[] following = segment.following() == null ? end : vector(segment.following(), progress);
+        double[] out = segment.outTangent() == null ? null : vector(segment.outTangent(), progress);
+        double[] in = segment.inTangent() == null ? null : vector(segment.inTangent(), progress);
+        double duration = (right.time() - left.time()) / 20.0;
+        double[] result = new double[start.length];
+        for (int i = 0; i < start.length; i++) {
+            double a = start[i], b = end[i];
+            result[i] = switch (segment.interpolation()) {
+                case LINEAR -> a + (b - a) * t;
+                case CATMULL_ROM, HERMITE -> {
+                    double m0 = segment.interpolation() == Interpolation.HERMITE ? out[i] * duration : segment.tension() * (b - previous[i]);
+                    double m1 = segment.interpolation() == Interpolation.HERMITE ? in[i] * duration : segment.tension() * (following[i] - a);
+                    double t2 = t * t, t3 = t2 * t;
+                    yield (2 * t3 - 3 * t2 + 1) * a + (t3 - 2 * t2 + t) * m0
+                        + (-2 * t3 + 3 * t2) * b + (t3 - t2) * m1;
+                }
+                case BEZIER -> {
+                    BezierHandle handle = segment.handles().get(i);
+                    double h1 = scalar(handle.outValue(), progress), h2 = scalar(handle.inValue(), progress);
+                    double low = 0, high = 1;
+                    for (int iteration = 0; iteration < 48; iteration++) {
+                        double k = (low + high) / 2;
+                        if (cubic(0, handle.outTime(), handle.inTime(), 1, k) < t) low = k;
+                        else high = k;
+                    }
+                    yield cubic(a, h1, h2, b, (low + high) / 2);
+                }
+                default -> throw new IllegalStateException("Unexpected interpolation " + segment.interpolation());
+            };
+        }
+        return result;
+    }
+
+    private static double cubic(double a, double b, double c, double d, double t) {
+        double s = 1 - t;
+        return s * s * s * a + 3 * s * s * t * b + 3 * s * t * t * c + t * t * t * d;
+    }
+
+    private static double easing(Easing easing, double u) {
+        if (easing == null || easing.kernel().equals("linear")) return u;
+        return switch (easing.direction()) {
+            case "in" -> easingBase(easing, u);
+            case "out" -> 1 - easingBase(easing, 1 - u);
+            case "in_out" -> u < 0.5 ? easingBase(easing, 2 * u) / 2 : 1 - easingBase(easing, 2 - 2 * u) / 2;
+            default -> throw new IllegalStateException("Unexpected easing direction " + easing.direction());
+        };
+    }
+
+    private static double easingBase(Easing easing, double u) {
+        double parameter = easing.parameter();
+        return switch (easing.kernel()) {
+            case "power" -> Math.pow(u, parameter);
+            case "sine" -> 1 - Math.cos(Math.PI * u / 2);
+            case "expo" -> u == 0 ? 0 : Math.pow(2, 10 * (u - 1));
+            case "circ" -> 1 - Math.sqrt(1 - u * u);
+            case "back" -> u * u * ((parameter + 1) * u - parameter);
+            case "blockbench_elastic" -> 1 - Math.pow(Math.cos(Math.PI * u / 2), 3) * Math.cos(Math.PI * parameter * u);
+            case "blockbench_bounce" -> Math.min(Math.min(121.0 / 16 * u * u, 121.0 / 4 * parameter * Math.pow(u - 6.0 / 11, 2) + 1 - parameter),
+                Math.min(121 * parameter * parameter * Math.pow(u - 9.0 / 11, 2) + 1 - parameter * parameter,
+                    484 * parameter * parameter * parameter * Math.pow(u - 10.5 / 11, 2) + 1 - parameter * parameter * parameter));
+            case "steps" -> Math.floor(u * parameter) / parameter;
+            default -> throw new IllegalStateException("Unexpected easing kernel " + easing.kernel());
+        };
+    }
+
+    private double[] vector(VectorValue value, double progress) {
+        double[] result = new double[value.components().size()];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = scalar(value.components().get(i), progress);
+        }
+        return result;
+    }
+
+    private double scalar(ScalarValue value, double progress) {
+        this.session.setQuery("key_frame_lerp_time", progress);
+        double result = switch (value) {
+            case ConstantValue constant -> constant.value();
+            case MolangValue molang -> this.session.evaluate(this.animation.expression(molang.path()));
+        };
+        if (!Double.isFinite(result)) throw new IllegalStateException("Transform component evaluated to a non-finite value");
+        return result;
     }
 }

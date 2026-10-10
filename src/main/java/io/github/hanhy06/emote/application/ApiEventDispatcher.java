@@ -2,7 +2,6 @@ package io.github.hanhy06.emote.application;
 
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.*;
-import io.github.hanhy06.emote.content.PlayableEmote;
 import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
@@ -13,6 +12,7 @@ import net.minecraft.server.level.ServerPlayer;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
+import io.github.hanhy06.emote.content.PreparedEmote;
 
 public final class ApiEventDispatcher implements PlaybackEngine.Lifecycle {
     private final CopyOnWriteArrayList<EmotePlayListener> playListeners = new CopyOnWriteArrayList<>();
@@ -27,7 +27,7 @@ public final class ApiEventDispatcher implements PlaybackEngine.Lifecycle {
         return register(this.playbackListeners, Objects.requireNonNull(listener, "listener"));
     }
 
-    public Component beforePlay(ServerPlayer player, PlayableEmote emote, PlaySource source) {
+    public Component beforePlay(ServerPlayer player, PreparedEmote emote, PlaySource source) {
         EmotePlayEvent event = new EmotePlayEvent(player, toInfo(emote), source);
         for (EmotePlayListener listener : this.playListeners) {
             try {
@@ -91,15 +91,15 @@ public final class ApiEventDispatcher implements PlaybackEngine.Lifecycle {
         }
     }
 
-    public static EmoteInfo toInfo(PlayableEmote emote) {
+    public static EmoteInfo toInfo(PreparedEmote emote) {
         return new EmoteInfo(
             Identifier.parse(emote.id()),
             emote instanceof PreparedSequence ? EmoteInfo.Kind.SEQUENCE : EmoteInfo.Kind.ANIMATION,
             emote.standalone(),
             emote.metadata(),
             emote.playerBehavior(),
-            emote instanceof PreparedSequence sequence ? sequence.fixedDurationTicks() : Integer.valueOf(emote.durationTicks()),
-            emote.cooldownTicks(),
+            emote.duration(),
+            emote.cooldown(),
             emote.loopMode()
         );
     }

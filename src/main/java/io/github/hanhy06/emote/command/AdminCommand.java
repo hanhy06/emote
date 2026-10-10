@@ -7,7 +7,6 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.content.EmoteCatalog;
-import io.github.hanhy06.emote.content.PlayableEmote;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.server.ReloadResult;
@@ -27,6 +26,7 @@ import net.minecraft.server.level.ServerPlayer;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import io.github.hanhy06.emote.content.PreparedEmote;
 
 public final class AdminCommand {
     private final EmoteCatalog emoteCatalog;
@@ -175,7 +175,7 @@ public final class AdminCommand {
             .requires(this.permissionService.requireManage())
             .then(Commands.argument("id", IdentifierArgument.id())
                 .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
-                    this.emoteCatalog.fileEmotes().stream().map(PlayableEmote::id),
+                    this.emoteCatalog.fileEmotes().stream().map(PreparedEmote::id),
                     builder
                 ))
                 .executes(context -> setEnabled(
@@ -218,7 +218,7 @@ public final class AdminCommand {
     }
 
     private int list(CommandSourceStack source) {
-        List<PlayableEmote> emotes = this.emoteCatalog.emotes();
+        List<PreparedEmote> emotes = this.emoteCatalog.emotes();
         if (emotes.isEmpty()) {
             source.sendSuccess(() -> Component.literal("No emotes are loaded."), false);
             return 0;
@@ -230,11 +230,11 @@ public final class AdminCommand {
             false
         );
 
-        for (PlayableEmote emote : emotes) {
+        for (PreparedEmote emote : emotes) {
             source.sendSystemMessage(createListEntry(
                 emote.id(),
                 emote.metadata(),
-                emote.durationTicks(),
+                emote.duration(),
                 emote.standalone()
             ));
         }
@@ -245,13 +245,13 @@ public final class AdminCommand {
     static Component createListEntry(
         String id,
         EmoteMetadata metadata,
-        int durationTicks,
+        @org.jspecify.annotations.Nullable Integer duration,
         boolean standalone
     ) {
         var entry = Component.literal("\n• " + metadata.name()).withStyle(ChatFormatting.WHITE)
             .append(Component.literal("  " + metadata.description()).withStyle(ChatFormatting.GRAY))
             .append(Component.literal("\n  " + id).withStyle(ChatFormatting.AQUA))
-            .append(Component.literal(String.format(Locale.ROOT, " · %.1f seconds", durationTicks / 20.0D))
+            .append(Component.literal(duration == null ? " · duration unknown" : String.format(Locale.ROOT, " · %.1f seconds", duration / 20.0))
                 .withStyle(ChatFormatting.GRAY));
         if (!standalone) {
             entry.append(Component.literal(" · Sequence only").withStyle(ChatFormatting.GRAY));
@@ -312,7 +312,7 @@ public final class AdminCommand {
                 continue;
             }
 
-            PlayableEmote emote = this.emoteCatalog.find(session.emoteId());
+            PreparedEmote emote = this.emoteCatalog.find(session.emoteId());
             String displayName = emote == null ? session.emoteId() : emote.name();
             source.sendSuccess(
                 () -> Component.literal("Stopped " + displayName + " for " + player.getName().getString() + "."),

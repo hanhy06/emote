@@ -12,7 +12,7 @@ public record PlaybackInfo(
     Identifier emoteId,
     PlaybackState state,
     long elapsedTicks,
-    int timelineTick,
+    int tick,
     PlaybackPosition position,
     PlaybackPlacement placement
 ) {

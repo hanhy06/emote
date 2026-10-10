@@ -5,6 +5,9 @@ import { ConversionError } from "../foundation/diagnostics";
 import { isRecord } from "../format/runtimeValue";
 import { EMOTE_SCHEMA_VERSION } from "../format/emote";
 import { parseInputJson, parseInputJsonc } from "./common/inputCache";
+import type { AjProject } from "./animatedJava/animatedJavaProjectSchema";
+import type { GeckoLibBbmodelProject } from "./geckoLib/geckoLibBbmodelSchema";
+import type { BedrockAnimationDocument } from "./bedrockAnimation/bedrockAnimationSchema";
 
 export const INPUT_FORMATS: Record<ImportSource, { extension: string; label: string }> = {
   emote_sequence: { extension: "json", label: "Emote sequence JSON" },
@@ -73,16 +76,20 @@ export async function readInput(format: ImportSource, input: ImportInput): Promi
       return importBdDatapack(readBdDatapackSource(input), input.name);
     }
     case "animated_java_blueprint": {
-      const [{ importAnimatedJavaProject }, { requireAnimatedJavaProject }] = await Promise.all([import("./animatedJava/animatedJavaProjectImporter"), import("./animatedJava/animatedJavaProjectSchema")]);
-      return importAnimatedJavaProject(input, requireAnimatedJavaProject(parseInputJson(input)));
+      const { importAnimatedJavaProject } = await import("./animatedJava/animatedJavaProjectImporter");
+      const project = parseInputJson(input) as AjProject;
+      return importAnimatedJavaProject(input, { ...project, groups: project.groups ?? [], elements: project.elements.map((element) => {
+        const visibility = (element as { visibility?: unknown }).visibility;
+        return visibility === "true" || visibility === "false" ? { ...element, visibility: visibility === "true" } : element;
+      }) });
     }
     case "geckolib_bbmodel": {
-      const [{ importGeckoLibProject }, { requireGeckoLibBbmodelProject }] = await Promise.all([import("./geckoLib/geckoLibCubeImporter"), import("./geckoLib/geckoLibBbmodelSchema")]);
-      return importGeckoLibProject(requireGeckoLibBbmodelProject(parseInputJson(input)), input.name);
+      const { importGeckoLibProject } = await import("./geckoLib/geckoLibCubeImporter");
+      return importGeckoLibProject(parseInputJson(input) as GeckoLibBbmodelProject, input.name);
     }
     case "bedrock_animation_json": {
-      const [{ importBedrockAnimationDocument }, { requireBedrockAnimationDocument }] = await Promise.all([import("./bedrockAnimation/bedrockAnimationImporter"), import("./bedrockAnimation/bedrockAnimationSchema")]);
-      return importBedrockAnimationDocument(requireBedrockAnimationDocument(parseInputJsonc(input)), input.name);
+      const { importBedrockAnimationDocument } = await import("./bedrockAnimation/bedrockAnimationImporter");
+      return importBedrockAnimationDocument(parseInputJsonc(input) as BedrockAnimationDocument, input.name);
     }
     case "emotecraft_binary": {
       const [{ importEmotecraftFile }, { decodeLatestEmotecraft }] = await Promise.all([import("./emotecraft/emotecraftImporter"), import("./emotecraft/emotecraftBinary")]);

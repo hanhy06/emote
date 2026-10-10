@@ -1,3 +1,4 @@
+import { sourceSecondsTime } from "../../format/time";
 import { fromArrayBuffer } from "@nbsjs/core";
 import type { ImportDiagnostic } from "../../domain/conversionSeed";
 import type { TimelineEventIR } from "../../domain/animationIR";
@@ -82,7 +83,7 @@ export function convertEmotecraftSong(bytes: Uint8Array, durationTicks: number):
 
   const events = [...commandsByTime.entries()]
     .sort(([first], [second]) => first - second)
-    .map(([time, commands]) => ({ time, source: { type: "player" as const }, origin: { type: "root" as const }, action: { type: "commands" as const, commands } }));
+    .map(([time, commands]) => ({ time: sourceSecondsTime(time), source: { type: "player" as const }, origin: { type: "root" as const }, action: { type: "commands" as const, commands } }));
   return { events, diagnostics };
 }
 

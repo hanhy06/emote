@@ -4,9 +4,6 @@ import io.github.hanhy06.emote.application.*;
 import io.github.hanhy06.emote.command.*;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.content.EmoteCatalog;
-import io.github.hanhy06.emote.content.PreparedEmote;
-import io.github.hanhy06.emote.content.PreparedSequence;
-import io.github.hanhy06.emote.content.loader.AnimationContentResolver;
 import io.github.hanhy06.emote.content.loader.EmoteDirectoryLoader;
 import io.github.hanhy06.emote.network.PlaybackStateSyncService;
 import io.github.hanhy06.emote.network.WheelSyncService;
@@ -60,10 +57,7 @@ public class EmoteMod implements ModInitializer {
         PlayerSkinManager skins = new PlayerSkinManager(
             new SkinBakeCoordinator(accounts, skinBaker, minecraftSkins, skinCache, accountQueue, mineSkin)
         );
-        catalog.addListener(emotes -> skins.setModelBindings(emotes.stream().flatMap(emote -> switch (emote) {
-            case PreparedEmote animation -> animation.skinBindings().stream();
-            case PreparedSequence sequence -> sequence.layoutAnchor().skinBindings().stream();
-        }).toList()));
+        catalog.addListener(emotes -> skins.setModelBindings(emotes.stream().flatMap(emote -> emote.skinBindings().stream()).toList()));
 
         PlaybackEngine engine = new PlaybackEngine();
         PlayerPlaybackManager playback = new PlayerPlaybackManager(engine, skins);
@@ -84,8 +78,7 @@ public class EmoteMod implements ModInitializer {
             playback,
             engine,
             apiEvents,
-            wheelSync::syncAll,
-            new AnimationContentResolver()
+            wheelSync::syncAll
         );
         engine.setStateListener(apiEvents);
         ExampleCallbacks.registerAll(api);

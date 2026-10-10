@@ -6,7 +6,6 @@ import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.config.JsonFileStore;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
-import io.github.hanhy06.emote.skin.model.PlayerSkinSegment;
 import io.github.hanhy06.emote.util.Sha256;
 import net.fabricmc.loader.api.FabricLoader;
 
@@ -490,14 +489,14 @@ public final class SkinCache {
         List<Map.Entry<PlayerSkinRegion, String>> textureEntries = new ArrayList<>(textureUrlMap.entrySet());
         textureEntries.sort(Comparator
             .comparing((Map.Entry<PlayerSkinRegion, String> entry) -> entry.getKey().skinPart().ordinal())
-            .thenComparing(entry -> entry.getKey().skinSegment().startY())
-            .thenComparing(entry -> entry.getKey().skinSegment().endY()));
+            .thenComparing(entry -> entry.getKey().from())
+            .thenComparing(entry -> entry.getKey().to()));
 
         for (Map.Entry<PlayerSkinRegion, String> textureEntry : textureEntries) {
             JsonObject textureJson = new JsonObject();
             textureJson.addProperty("skin_part", textureEntry.getKey().skinPart().id());
-            textureJson.addProperty("segment_start_y", textureEntry.getKey().skinSegment().startY());
-            textureJson.addProperty("segment_end_y", textureEntry.getKey().skinSegment().endY());
+            textureJson.addProperty("region_from", textureEntry.getKey().from());
+            textureJson.addProperty("region_to", textureEntry.getKey().to());
             textureJson.addProperty("texture_url", textureEntry.getValue());
             texturesJson.add(textureJson);
         }
@@ -518,14 +517,14 @@ public final class SkinCache {
 
         JsonObject textureJson = textureElement.getAsJsonObject();
         PlayerSkinPart skinPart = PlayerSkinPart.fromId(readString(textureJson, "skin_part"));
-        Integer segmentStart = readInt(textureJson, "segment_start_y");
-        Integer segmentEnd = readInt(textureJson, "segment_end_y");
+        Double segmentStart = readDouble(textureJson, "region_from");
+        Double segmentEnd = readDouble(textureJson, "region_to");
         if (skinPart == null || segmentStart == null || segmentEnd == null) {
             return null;
         }
 
         try {
-            return new PlayerSkinRegion(skinPart, new PlayerSkinSegment(segmentStart, segmentEnd));
+            return new PlayerSkinRegion(skinPart, segmentStart, segmentEnd);
         } catch (IllegalArgumentException ignored) {
             return null;
         }
@@ -547,6 +546,11 @@ public final class SkinCache {
 
         String value = element.getAsString().trim();
         return value.isEmpty() ? null : value;
+    }
+
+    private Double readDouble(JsonObject object, String key) {
+        JsonElement element = object.get(key);
+        return element == null || element.isJsonNull() ? null : element.getAsDouble();
     }
 
     private Integer readInt(JsonObject object, String key) {

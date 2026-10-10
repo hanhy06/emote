@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.skin;
 
 import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
-import io.github.hanhy06.emote.skin.model.PlayerSkinSegment;
+import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -71,9 +71,9 @@ public final class PlayerSkinBaker {
 
     public byte[] bake(
         PreparedSkin preparedSkin,
-        PlayerSkinPart skinPart,
-        PlayerSkinSegment skinSegment
+        PlayerSkinRegion region
     ) throws IOException {
+        PlayerSkinPart skinPart = region.skinPart();
         BufferedImage bakingImage = preparedSkin.imageFor(skinPart);
         BufferedImage outputImage = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
         FaceMap baseFaces = PARTS.get(skinPart).base();
@@ -81,17 +81,17 @@ public final class PlayerSkinBaker {
 
         drawFace(outputImage, bakingImage, baseFaces.top(), BASE_TOP);
         drawFace(outputImage, bakingImage, baseFaces.bottom(), BASE_BOTTOM);
-        drawFace(outputImage, bakingImage, createSegment(baseFaces.right(), skinSegment), BASE_RIGHT);
-        drawFace(outputImage, bakingImage, createSegment(baseFaces.front(), skinSegment), BASE_FRONT);
-        drawFace(outputImage, bakingImage, createSegment(baseFaces.left(), skinSegment), BASE_LEFT);
-        drawFace(outputImage, bakingImage, createSegment(baseFaces.back(), skinSegment), BASE_BACK);
+        drawFace(outputImage, bakingImage, createSegment(baseFaces.right(), region), BASE_RIGHT);
+        drawFace(outputImage, bakingImage, createSegment(baseFaces.front(), region), BASE_FRONT);
+        drawFace(outputImage, bakingImage, createSegment(baseFaces.left(), region), BASE_LEFT);
+        drawFace(outputImage, bakingImage, createSegment(baseFaces.back(), region), BASE_BACK);
 
         drawFace(outputImage, bakingImage, overlayFaces.top(), OVERLAY_TOP);
         drawFace(outputImage, bakingImage, overlayFaces.bottom(), OVERLAY_BOTTOM);
-        drawFace(outputImage, bakingImage, createSegment(overlayFaces.right(), skinSegment), OVERLAY_RIGHT);
-        drawFace(outputImage, bakingImage, createSegment(overlayFaces.front(), skinSegment), OVERLAY_FRONT);
-        drawFace(outputImage, bakingImage, createSegment(overlayFaces.left(), skinSegment), OVERLAY_LEFT);
-        drawFace(outputImage, bakingImage, createSegment(overlayFaces.back(), skinSegment), OVERLAY_BACK);
+        drawFace(outputImage, bakingImage, createSegment(overlayFaces.right(), region), OVERLAY_RIGHT);
+        drawFace(outputImage, bakingImage, createSegment(overlayFaces.front(), region), OVERLAY_FRONT);
+        drawFace(outputImage, bakingImage, createSegment(overlayFaces.left(), region), OVERLAY_LEFT);
+        drawFace(outputImage, bakingImage, createSegment(overlayFaces.back(), region), OVERLAY_BACK);
 
         return writePng(outputImage);
     }
@@ -177,9 +177,9 @@ public final class PlayerSkinBaker {
         return outputStream.toByteArray();
     }
 
-    private FaceRect createSegment(FaceRect faceRect, PlayerSkinSegment skinSegment) {
-        int startOffset = faceRect.height() * skinSegment.startY() / PlayerSkinSegment.SIDE_FACE_HEIGHT;
-        int endOffset = faceRect.height() * skinSegment.endY() / PlayerSkinSegment.SIDE_FACE_HEIGHT;
+    private FaceRect createSegment(FaceRect faceRect, PlayerSkinRegion region) {
+        int startOffset = Math.min(faceRect.height() - 1, (int) Math.floor(faceRect.height() * region.from()));
+        int endOffset = (int) Math.floor(faceRect.height() * region.to());
         if (endOffset <= startOffset) {
             endOffset = Math.min(faceRect.height(), startOffset + 1);
         }

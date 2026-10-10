@@ -1,7 +1,7 @@
 import type { ConversionIssue } from "../foundation/diagnostics";
 import type { PlayerSkinPart } from "./player";
 import { orderedNodeIdsIR, type Animation, type AnimationIR, type AttachmentIR, type IR, type NodeIR, type TimelineEventIR, type TransformOperationIR } from "./animationIR";
-import { remapClipIR, removeTinyStaticNodes } from "./animationIRConversion";
+import { normalizeAnimationTimesIR, normalizeSequenceTimes, remapClipIR, removeTinyStaticNodes } from "./animationIRConversion";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
 import { parseAnimationSeconds, parseMinecraftTime } from "../format/time";
@@ -58,11 +58,11 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
   const namespace = project.suggestedNamespace ?? "emote";
   const animations = project.animations.map((animation): ConversionAnimation => {
     const ir = structuredClone(animation.ir);
-    ir.id = `${sanitizeNamespace(namespace)}:${sanitizeResourcePath(animation.id)}`;
+    if (project.source !== "emote_json") ir.id = `${sanitizeNamespace(namespace)}:${sanitizeResourcePath(animation.id)}`;
     if (project.source !== "emote_json") ir.metadata = animation.suggestedMetadata ?? { ...additionalMetadata, name: animation.name, description: `${animation.name} emote.` };
     ir.settings = {
       standalone: project.suggestedStandalone ?? true,
-      cooldown: parseAnimationSeconds(project.suggestedCooldown ?? "0t"),
+      cooldown: project.suggestedCooldown ?? "0t",
       rotation_deadzone: project.suggestedRotationDeadzone ?? 50,
       display_interpolation_ticks: parseMinecraftTime(project.suggestedDisplayInterpolation ?? "1t"),
       player: structuredClone(project.suggestedPlayer), ...ir.settings,
@@ -73,6 +73,7 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
       loop: ir.animation.events?.loop ?? [],
       stop: ir.animation.events?.stop ?? [],
     };
+    normalizeAnimationTimesIR(ir);
     removeTinyStaticNodes(ir, ir.animation.events);
     const ids = new Map<string, string>();
     for (const sourceId of orderedNodeIdsIR(ir.nodes)) {
@@ -122,6 +123,7 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
       additionalMetadata, cooldown: project.suggestedCooldown ?? "0t", player: project.suggestedPlayer },
     diagnostics: project.diagnostics, resources: project.resources,
   };
+  normalizeSequenceTimes(document.sequence);
   for (const part of [...new Set(Object.values(suggestions).map((suggestion) => suggestion.part))]) {
     const groupIds = [...new Set(Object.entries(suggestions).filter(([, suggestion]) => suggestion.part === part)
       .sort(([, first], [, second]) => first.order - second.order).map(([id]) => skinCandidates[id].groupId))];
@@ -235,10 +237,12 @@ export function replaceDocumentAnimationTimelineEvents(document: ConversionDocum
   const animation = document.animations[animationIndex];
   if (!animation) return document;
   return updateDocumentAnimation(document, animationIndex, { ...animation,
-    clip: { ...animation.clip, events: { ...animation.clip.events, timeline: structuredClone(events).sort((first, second) => first.time - second.time) } } });
+    clip: { ...animation.clip, events: { ...animation.clip.events, timeline: structuredClone(events).sort((first, second) => parseAnimationSeconds(first.time) - parseAnimationSeconds(second.time)) } } });
 }
 
 export function updateDocumentAnimation(document: ConversionDocument, animationIndex: number, animation: Animation): ConversionDocument {
   if (!document.animations[animationIndex]) return document;
-  return { ...document, animations: document.animations.map((entry, index) => index === animationIndex ? { ...entry, ...animation } : entry) };
+  const normalized = structuredClone(animation);
+  normalizeAnimationTimesIR(normalized);
+  return { ...document, animations: document.animations.map((entry, index) => index === animationIndex ? { ...entry, ...normalized } : entry) };
 }

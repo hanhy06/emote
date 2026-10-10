@@ -5,11 +5,11 @@ import io.github.hanhy06.emote.api.PlaySource;
 import io.github.hanhy06.emote.config.AccessConfig;
 import io.github.hanhy06.emote.config.AccessConfigListener;
 import io.github.hanhy06.emote.content.EmoteCatalog;
-import io.github.hanhy06.emote.content.PlayableEmote;
 import io.github.hanhy06.emote.permission.PermissionService;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.*;
+import io.github.hanhy06.emote.content.PreparedEmote;
 
 public final class PlaybackPolicyService implements AccessConfigListener {
     private static final String DEFAULT_PERMISSION = "emote.default";
@@ -50,12 +50,12 @@ public final class PlaybackPolicyService implements AccessConfigListener {
         rebuildPermissionIndex();
     }
 
-    void onEmoteCatalogChanged(List<? extends PlayableEmote> emotes) {
-        this.emoteIds = emotes.stream().map(PlayableEmote::id).toList();
+    void onEmoteCatalogChanged(List<? extends PreparedEmote> emotes) {
+        this.emoteIds = emotes.stream().map(PreparedEmote::id).toList();
         rebuildPermissionIndex();
     }
 
-    Decision evaluate(ServerPlayer player, PlayableEmote emote, PlaySource source) {
+    Decision evaluate(ServerPlayer player, PreparedEmote emote, PlaySource source) {
         Objects.requireNonNull(emote, "emote");
         Objects.requireNonNull(source, "source");
 
@@ -70,16 +70,17 @@ public final class PlaybackPolicyService implements AccessConfigListener {
         if (permission != null && !permission.allowed()) {
             return Decision.denied("You do not have permission to use this emote.");
         }
-        if (!rules.checkCooldown() || emote.cooldownTicks() <= 0) {
+        if (!rules.checkCooldown() || emote.cooldown() <= 0) {
             return Decision.allowed();
         }
 
         if (permission == null) {
             permission = resolvePermission(player, emote.id());
         }
+        int baseCooldownTicks = emote.cooldown();
         int cooldownTicks = permission.cooldown()
-            .map(modifier -> modifier.apply(emote.cooldownTicks()))
-            .orElse(emote.cooldownTicks());
+            .map(modifier -> modifier.apply(baseCooldownTicks))
+            .orElse(baseCooldownTicks);
         if (cooldownTicks <= 0) {
             return Decision.allowed();
         }
@@ -110,7 +111,7 @@ public final class PlaybackPolicyService implements AccessConfigListener {
         }
     }
 
-    public boolean isVisibleForCommand(ServerPlayer player, PlayableEmote emote) {
+    public boolean isVisibleForCommand(ServerPlayer player, PreparedEmote emote) {
         Rules rules = rulesFor(player, PlaySource.COMMAND);
         return (!rules.checkStandalone() || emote.standalone())
             && (!rules.checkDisabled() || !this.disabled.contains(emote.id()))
@@ -194,9 +195,6 @@ public final class PlaybackPolicyService implements AccessConfigListener {
             return this.rejection == null;
         }
 
-        int cooldownTicks() {
-            return this.cooldownReservation == null ? 0 : this.cooldownReservation.durationTicks();
-        }
     }
 
     private record Rules(

@@ -1,3 +1,4 @@
+import { sourceSecondsTime, parseAnimationSeconds } from "../../format/time";
 import { importedNodeHints } from "../../domain/conversionSeed";
 import { referencedItemModelResources } from "../../domain/generatedResource";
 import type { BlockStateData, ItemStackData } from "../../domain/minecraftData";
@@ -13,11 +14,10 @@ import { PLAYER_RENDER_SCALE } from "../common/blockbenchCubeModel";
 import { normalizeBlockbenchName } from "../common/blockbenchCubeSkin";
 import { createAnimatedJavaAnimationIR, type ProjectNodeStateFrame } from "./animatedJavaAnimationIR";
 import type { EventIR, TimelineEventIR } from "../../domain/animationIR";
-import type { ImportedAnimation, ImportedNode, ImportedProject, ImportDiagnostic } from "../../domain/conversionSeed";
+import type { ImportedNode, ImportedProject, ImportDiagnostic } from "../../domain/conversionSeed";
 import type {
   AjProject,
   AjProjectAnimation,
-  AjProjectElement,
   AjProjectDisplayElement,
   AjProjectGroup,
   AjProjectLocator,
@@ -25,8 +25,6 @@ import type {
   AjProjectKeyframe,
   ProjectTransformGraph,
 } from "./animatedJavaProjectSchema";
-
-type ProjectAnimation = Omit<ImportedAnimation, "ir">;
 
 type ProjectNodeBindings = ReadonlyMap<string, readonly string[]>;
 
@@ -40,9 +38,6 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
   if (!["animated-java:format/blueprint", "animated_java_blueprint"].includes(project.meta.format)) {
     throw new Error(`Unsupported Animated Java project format: ${project.meta.format}`);
   }
-  if (!project.meta.format_version.startsWith("1.")) {
-    throw new Error(`Unsupported Animated Java project version: ${project.meta.format_version}`);
-  }
   const sourceStem = input.name.replace(/\.ajblueprint$/i, "").trim() || project.name?.trim() || "Animated Java";
   if (project.animations.length === 0 && project.animationDiagnostics?.length) {
     throw new ConversionError("no_importable_animations", `No Animated Java animations could be imported. ${project.animationDiagnostics.map((issue) => issue.message).join(" ")}`);
@@ -55,8 +50,8 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
   const logicalElements = project.elements.filter((element) => !["cube", "locator", "camera"].includes(element.type) && !isDirectDisplay(element.type));
   const locatorElements = project.elements.filter((element): element is AjProjectLocator => element.type === "camera");
   const nodes: Record<string, ImportedNode> = { ...(cubeContent?.nodes ?? {}) };
-  const outputNodeIdsBySourceUuid = new Map<string, readonly string[]>(cubeContent?.nodeIdsBySourceUuid);
-  const bindOutputNode = (sourceId: string, nodeId: string) => outputNodeIdsBySourceUuid.set(sourceId, [...(outputNodeIdsBySourceUuid.get(sourceId) ?? []), nodeId]);
+  const nodeBindings = new Map<string, readonly string[]>(cubeContent?.nodeIdsBySourceUuid);
+  const bindOutputNode = (sourceId: string, nodeId: string) => nodeBindings.set(sourceId, [...(nodeBindings.get(sourceId) ?? []), nodeId]);
   for (const element of displayElements) {
     const node = importProjectElement(element);
     addProjectNode(nodes, element.uuid, node);
@@ -66,7 +61,6 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
     addProjectNode(nodes, element.uuid, importProjectAnchor(element));
     bindOutputNode(element.uuid, element.uuid);
   }
-  const nodeBindings = outputNodeIdsBySourceUuid;
   for (const element of logicalElements) {
     if (nodes[element.uuid] || nodeBindings.get(element.uuid)?.includes(element.uuid)) throw new ConversionError("animated_java_node_collision", `Animated Java project produces more than one node named ${element.uuid}.`, `elements.${element.uuid}`);
     bindOutputNode(element.uuid, element.uuid);
@@ -80,15 +74,14 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
     const sourceIndex = project.animationSourceIndices?.[index] ?? index;
     const animationDiagnostics: ImportDiagnostic[] = [];
     try {
-      if (!Number.isFinite(animation.length) || animation.length < 0) throw new Error(`Animated Java animation ${animation.name} has an invalid length.`);
       const effects = projectEffectEvents(animation, cubeContent, animationDiagnostics, sourceIndex);
-      const display = importProjectAnimation(animation, sourceIndex, [...displayElements, ...logicalElements]);
-      if (cubeContent) display.name = animation.name;
+      for (const element of [...displayElements, ...logicalElements]) {
+      }
       const state = resolveAnimatedJavaAnimationState(effects, animation, project, nodes, transformGraph, nodeBindings, animationDiagnostics, sourceIndex);
       const ir = createAnimatedJavaAnimationIR(animation, project, transformGraph, nodes, sceneScale, state.nodeFrames, cubeContent);
       ir.animation.events = { start: state.startEvents, timeline: state.timelineEvents, loop: [], stop: [] };
       diagnostics.push(...animationDiagnostics);
-      return [{ ...display, ir }];
+      return [{ ir, id: sanitizeResourcePath(animation.name, `animation_${sourceIndex + 1}`), name: cubeContent ? animation.name : prettify(animation.name) }];
     } catch (reason) {
       diagnostics.push(skippedAnimationIssue(animation.name, `animations[${sourceIndex}]`, reason));
       return [];
@@ -156,8 +149,7 @@ function resolveAnimatedJavaAnimationState(
   diagnostics: ImportDiagnostic[],
   animationIndex: number,
 ): AnimatedJavaAnimationState {
-  const timeline = [...effects, ...nativeFunctionEvents(source, diagnostics, animationIndex)]
-    .sort((first, second) => first.time - second.time);
+  const timeline = [...effects, ...nativeFunctionEvents(source, diagnostics, animationIndex)];
   const start = nativeStartEvents(project, nodes, graph, bindings);
   const variants = nativeVariants(project);
   const stateFrames: ProjectNodeStateFrame[] = [];
@@ -165,10 +157,6 @@ function resolveAnimatedJavaAnimationState(
     for (const [keyframeIndex, frame] of (animator.keyframes ?? []).entries()) {
       if (frame.channel === "visibility") {
         const value = frame.data_points.at(-1)?.x;
-        if (value === undefined) {
-          const element = project.elements.find((element) => element.uuid === animatorId && !["cube", "locator", "camera"].includes(element.type));
-          if (element) throw new ConversionError("invalid_animated_java_visibility", `Animated Java visibility keyframe for ${element.name} has no value.`);
-        }
         if (value !== undefined) {
           const visible = typeof value === "number" ? value !== 0 : value === "true" || value === "1" ? true : value === "false" || value === "0" ? false : value;
           for (const nodeId of projectOutputNodeIds(animatorId, graph, bindings)) stateFrames.push({ nodeId, time: frame.time, visible });
@@ -192,11 +180,11 @@ function resolveAnimatedJavaAnimationState(
         });
         collectVariantFrames(stateFrames, project, graph, bindings, variantId, variant, frame.time);
         const onApply = stringField(variant, "on_apply_function") ?? stringField(variant, "onApplyFunction");
-        if (onApply) timeline.push({ time: frame.time, source: { type: "player" }, origin: { type: "root" }, action: { type: "commands", commands: functionCommands(onApply) } });
+        if (onApply) timeline.push({ time: sourceSecondsTime(frame.time), source: { type: "player" }, origin: { type: "root" }, action: { type: "commands", commands: functionCommands(onApply) } });
       }
     }
   }
-  return { startEvents: start, timelineEvents: timeline.sort((first, second) => first.time - second.time), nodeFrames: stateFrames };
+  return { startEvents: start, timelineEvents: timeline.sort((first, second) => parseAnimationSeconds(first.time) - parseAnimationSeconds(second.time)), nodeFrames: stateFrames };
 }
 
 function nativeStartEvents(project: AjProject, nodes: Record<string, ImportedNode>, graph: ProjectTransformGraph, bindings: ProjectNodeBindings): EventIR[] {
@@ -285,7 +273,6 @@ function projectEffectEvents(source: AjProjectAnimation, cubes: AnimatedJavaCube
         if (frame.channel !== "function" && frame.channel !== "commands") diagnostics.push({ severity: "warning", code: "animated_java_effect_ignored", message: `${source.name} at ${frame.time * 20}t: an unsupported effect was omitted.`, sourcePath: path });
         continue;
       }
-      if (frame.time < 0) throw new ConversionError("invalid_animated_java_event", "Animated Java effect keyframe time must not be negative.", path);
       for (const point of frame.data_points) {
         const data = point as Record<string, unknown>;
         const locator = normalizeBlockbenchName(stringField(data, "locator"));
@@ -300,20 +287,20 @@ function projectEffectEvents(source: AjProjectAnimation, cubes: AnimatedJavaCube
           continue;
         }
         if (locator && !node) diagnostics.push({ severity: "warning", code: "animated_java_effect_origin_approximated", message: `${source.name} at ${frame.time * 20}t: effect locator could not be resolved; the root position is used. Review and edit the event.`, sourcePath: path });
-        if (frame.channel === "sound" && effect) events.push({ time: frame.time, source: { type: "player" }, origin, action: { type: "commands", commands: [`playsound ${effect} master @s ~ ~ ~`] } });
+        if (frame.channel === "sound" && effect) events.push({ time: sourceSecondsTime(frame.time), source: { type: "player" }, origin, action: { type: "commands", commands: [`playsound ${effect} master @s ~ ~ ~`] } });
         else if (frame.channel === "particle" && effect) {
-          events.push({ time: frame.time, source: { type: "server" }, origin, action: { type: "commands", commands: [`particle ${effect} ~ ~ ~`] } });
+          events.push({ time: sourceSecondsTime(frame.time), source: { type: "server" }, origin, action: { type: "commands", commands: [`particle ${effect} ~ ~ ~`] } });
           if (script) diagnostics.push({ severity: "warning", code: "animated_java_particle_script_ignored", message: `${source.name} at ${frame.time * 20}t: particle pre-effect script was omitted. Review and edit the event.`, sourcePath: path });
         } else if (frame.channel === "timeline") {
           const lines = (script ?? "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
           const commands = lines.map((line) => line.replace(/^\//, "").trim()).filter(Boolean);
-          if (commands.length) events.push({ time: frame.time, source: { type: "player" }, origin, action: { type: "commands", commands } });
+          if (commands.length) events.push({ time: sourceSecondsTime(frame.time), source: { type: "player" }, origin, action: { type: "commands", commands } });
           if (lines.some((line) => !line.startsWith("/"))) diagnostics.push({ severity: "warning", code: "animated_java_instruction_approximated", message: `${source.name} at ${frame.time * 20}t: uninterpreted instructions were kept as commands; behavior may differ. Review and edit them.`, sourcePath: path });
         }
       }
     }
   }
-  return events.sort((first, second) => first.time - second.time);
+  return events.sort((first, second) => parseAnimationSeconds(first.time) - parseAnimationSeconds(second.time));
 }
 
 function nativeFunctionEvents(source: AjProjectAnimation, diagnostics: ImportDiagnostic[], animationIndex: number): TimelineEventIR[] {
@@ -328,7 +315,7 @@ function nativeFunctionEvents(source: AjProjectAnimation, diagnostics: ImportDia
         if (commands.length === 0) continue;
         if (point.execute_condition?.trim()) diagnostics.push({ severity: "warning", code: "animated_java_execute_condition_ignored", message: `${source.name} at ${frame.time * 20}t: execution condition was omitted. Review and edit the event.`, sourcePath });
         if (point.repeat) diagnostics.push({ severity: "warning", code: "animated_java_repeating_function_ignored", message: `${source.name} at ${frame.time * 20}t: repeating function behavior was converted to a single timeline event. Review and edit the event.`, sourcePath });
-        result.push({ time: frame.time, source: { type: "player" }, origin: { type: "root" }, action: { type: "commands", commands } });
+        result.push({ time: sourceSecondsTime(frame.time), source: { type: "player" }, origin: { type: "root" }, action: { type: "commands", commands } });
       }
     }
   }
@@ -490,35 +477,6 @@ function importProjectElement(element: AjProjectDisplayElement): ImportedNode {
     ...(entityNbt ? { entityNbt } : {}),
     text: element.text ?? { text: element.name },
   };
-}
-
-function importProjectAnimation(
-  animation: AjProjectAnimation,
-  animationIndex: number,
-  elements: AjProjectElement[],
-): ProjectAnimation {
-  for (const element of elements) {
-    validateProjectKeyframes(animation.animators[element.uuid]?.keyframes ?? [], animationIndex, element.uuid);
-  }
-  return {
-    id: sanitizeResourcePath(animation.name, `animation_${animationIndex + 1}`),
-    name: prettify(animation.name),
-  };
-}
-
-function validateProjectKeyframes(keyframes: AjProjectKeyframe[], animationIndex: number, animatorId: string): void {
-  for (const [index, keyframe] of keyframes.entries()) {
-    if (!["position", "rotation", "scale", "visibility"].includes(keyframe.channel)) {
-      throw new ConversionError(
-        "unsupported_animated_java_channel",
-        `Animated Java project uses unsupported channel ${keyframe.channel}.`,
-        `animations[${animationIndex}].animators.${animatorId}.keyframes[${index}]`,
-      );
-    }
-    if (keyframe.channel !== "visibility" && (keyframe.data_points.length < 1 || keyframe.data_points.length > 2)) {
-      throw new ConversionError("unsupported_animated_java_keyframe", "Animated Java transform keyframes must contain one value or a pre/post pair.", `animations[${animationIndex}].animators.${animatorId}.keyframes[${index}]`);
-    }
-  }
 }
 
 export function itemArgumentToData(value: string): ItemStackData {

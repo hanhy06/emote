@@ -337,7 +337,6 @@ export function App() {
               }}
               callbacks={selectedAnimation.callbacks}
               tick={previewTick}
-              duration={selectedAnimation.clip.duration}
               disabled={busy}
               onLifecycleChange={changeLifecycleEvents}
               onTimelineChange={changeTimelineEvents}

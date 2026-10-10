@@ -6,7 +6,6 @@ import io.github.hanhy06.emote.application.EmoteQueryService;
 import io.github.hanhy06.emote.application.EmoteSummary;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.content.EmoteCatalog;
-import io.github.hanhy06.emote.content.PlayableEmote;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
 import net.minecraft.core.Holder;
@@ -25,6 +24,7 @@ import net.minecraft.server.level.ServerPlayer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import io.github.hanhy06.emote.content.PreparedEmote;
 
 public final class EmoteMenu {
     private static final int SMALL_BUTTON_WIDTH = 150;
@@ -215,7 +215,7 @@ public final class EmoteMenu {
     }
 
     private String createActivePlaybackText(PlaybackSession session) {
-        PlayableEmote emote = this.emoteCatalog.find(session.emoteId());
+        PreparedEmote emote = this.emoteCatalog.find(session.emoteId());
         String displayName = emote == null
             ? session.emoteId()
             : emote.name();

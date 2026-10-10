@@ -1,3 +1,4 @@
+import { parseAnimationSeconds } from "../format/time";
 import { documentPartAssignments, documentPartOrders, type ConversionAnimation, type ConversionDocument } from "../domain/conversionDocument";
 import { evaluatePoseIR } from "../domain/animationIRPose";
 import type { PreviewAvailability } from "../domain/previewProjection";
@@ -40,11 +41,11 @@ export function createPreviewModel(document: ConversionDocument, animation: Conv
   };
   let time = 0, elapsed = 0;
   const delay = animation?.clip.playback?.start_delay;
-  const startDelay = delay === undefined ? 0 : Math.max(0, evaluate(delay, 0));
-  const durationTicks = animation ? Math.ceil((animation.clip.duration + startDelay) * 20) : 0;
+  const startDelay = delay === undefined ? 0 : Math.max(0, typeof delay === "string" ? parseAnimationSeconds(delay) : evaluate(delay, 0));
+  const durationTicks = animation ? Math.ceil((parseAnimationSeconds(animation.clip.duration) + startDelay) * 20) : 0;
   const tick = previewFrameIndex === 0 ? null : Math.min(previewFrameIndex - 1, durationTicks);
   elapsed = (tick ?? 0) / 20;
-  time = Math.min(animation?.clip.duration ?? 0, Math.max(0, elapsed - startDelay));
+  time = Math.min(animation ? parseAnimationSeconds(animation.clip.duration) : 0, Math.max(0, elapsed - startDelay));
   const parts: PreviewPart[] = [];
   let availability: PreviewAvailability | null = animation ? { status: "full" } : null;
   if (animation) {

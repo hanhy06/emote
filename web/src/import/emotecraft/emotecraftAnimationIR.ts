@@ -135,7 +135,7 @@ export function createEmotecraftAnimationIR(animation: PalAnimation, name: strin
     imported[id] = { type: "anchor", binding: { sourceNodeId: name } };
   }
   const ir: AnimationIR = { id: `emote:${sanitizeResourcePath(name)}`, metadata: { name, description: `${name} emote.` }, nodes,
-    animation: { duration, playback: { mode: animation.loop === "loop_from_tick" ? "loop" : animation.loop, loop_start: animation.loop === "loop_from_tick" ? animation.loopStartTick / 20 : 0 }, tracks },
+    animation: { duration: `${duration}s`, playback: { mode: animation.loop === "loop_from_tick" ? "loop" : animation.loop, loop_start: `${animation.loop === "loop_from_tick" ? animation.loopStartTick : 0}t` }, tracks },
     source: { uuid: animation.uuid, format: animation.format, begin_tick: animation.beginTick, end_tick: animation.endTick, effects: structuredClone(animation.effects) } };
   return { ir, imported };
 }
@@ -151,7 +151,7 @@ function channelDriver(frames: readonly PalKeyframe[], animation: PalAnimation, 
   const keys: CurveKeyIR[] = [];
   const segments: SegmentIR[] = [];
   const put = (tick: number, value: ScalarIR, segment?: SegmentIR) => {
-    const time = tick / 20;
+    const time = `${tick}t`;
     if (keys.at(-1)?.time === time) {
       const previous = keys.at(-1)!;
       keys[keys.length - 1] = { time, pre: previous.pre ?? previous.value!, post: [value] };

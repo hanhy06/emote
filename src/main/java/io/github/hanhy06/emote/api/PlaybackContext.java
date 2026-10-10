@@ -21,7 +21,7 @@ public interface PlaybackContext {
     boolean setAnimationTick(int tick);
     boolean setStep(int stepIndex, int repeatIndex, int tick);
     Optional<Entity> getActor(String name);
-    Optional<Entity> getNodeEntity(String nodeId);
+    Optional<Entity> getNodeEntity(String nodeId, String attachmentId);
     Optional<Vec3> getNodeWorldPosition(String nodeId);
     Vec3 getRootPosition();
     Optional<PlaybackStopReason> getStopReason();

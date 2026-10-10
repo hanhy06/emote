@@ -1,5 +1,6 @@
+import { sourceSecondsTime } from "../../format/time";
 import type { AnimationIR, NodeIR } from "../../domain/animationIR";
-import { scalarIR } from "../../domain/animationIRConversion";
+import { sourceDelayIR } from "../../domain/animationIRConversion";
 import type { ImportedNode } from "../../domain/conversionSeed";
 import type { DisplayNbtPatch } from "../../domain/minecraftData";
 import { writeDisplayNbt } from "../../format/minecraftData";
@@ -21,14 +22,12 @@ export interface ProjectNodeStateFrame {
 
 export function createAnimatedJavaAnimationIR(source: AjProjectAnimation, project: AjProject, hierarchy: ProjectTransformGraph, imported: Record<string, ImportedNode>, scale: number, states: readonly ProjectNodeStateFrame[], cubes?: AnimatedJavaCubes): AnimationIR {
   const playbackMode = source.loop === "hold_on_last_frame" ? "hold" : source.loop;
-  if (playbackMode !== "once" && playbackMode !== "hold" && playbackMode !== "loop") throw new Error(`Animated Java animation ${source.name} has unsupported loop mode ${source.loop}.`);
   const ir: AnimationIR = {
     id: "emote:imported", metadata: { name: source.name, description: `${source.name} emote.` },
     nodes: { scene: { transform: [{ id: "scale", op: "scale", value: [scale, scale, scale] }] } },
-    animation: { duration: Math.max(0.05, source.length), tracks: [] },
+    animation: { duration: sourceSecondsTime(typeof source.length === "number" ? Math.max(0.05, source.length, ...Object.values(source.animators).flatMap((a) => (a.keyframes ?? []).map((f) => f.time))) : source.length), tracks: [] },
   };
-  ir.animation.duration = Math.max(ir.animation.duration, source.length, ...Object.values(source.animators).flatMap((a) => (a.keyframes ?? []).map((f) => f.time)));
-  ir.animation.playback = { mode: playbackMode, start_delay: scalarIR(source.start_delay || 0), loop_delay: scalarIR(source.loop_delay || 0) };
+  ir.animation.playback = { mode: playbackMode as "once" | "hold" | "loop", start_delay: sourceDelayIR(source.start_delay || 0), loop_delay: sourceDelayIR(source.loop_delay || 0) };
   const weight = molangScalar(source.blend_weight || 1);
   const groupWeight = source.blend_weight === undefined || source.blend_weight === "" ? 1 : molangScalar(source.blend_weight);
   for (const [uuid, group] of hierarchy.groups) {
@@ -110,7 +109,7 @@ export function createAnimatedJavaAnimationIR(source: AjProjectAnimation, projec
     }] as const])).values()].sort((a, b) => a.time - b.time);
     if (visible.length) {
       if (visible[0].time !== 0) visible.unshift({ time: 0, value: node.visible ?? true });
-      ir.animation.tracks.push({ target: { node: id }, channel: "visible", driver: { type: "state", keys: visible } });
+      ir.animation.tracks.push({ target: { node: id }, channel: "visible", driver: { type: "state", keys: visible.map((frame) => ({ ...frame, time: sourceSecondsTime(frame.time) })) } });
     }
     const nbt = frames.flatMap((frame) => frame.nbt ? [{ time: frame.time, value: frame.nbt }] : []).sort((a, b) => a.time - b.time);
     if (nbt.length && node.attachments?.display) {
@@ -118,7 +117,7 @@ export function createAnimatedJavaAnimationIR(source: AjProjectAnimation, projec
       if (nbt[0].time === 0) nbt[0] = initial;
       else nbt.unshift(initial);
       ir.animation.tracks.push({ target: { node: id, attachment: "display" }, channel: "nbt", driver: {
-        type: "state", keys: nbt.map((frame) => ({ time: frame.time, value: { merge: writeDisplayNbt(frame.value, profile) } })),
+        type: "state", keys: nbt.map((frame) => ({ time: sourceSecondsTime(frame.time), value: { merge: writeDisplayNbt(frame.value, profile) } })),
       } });
     }
   }

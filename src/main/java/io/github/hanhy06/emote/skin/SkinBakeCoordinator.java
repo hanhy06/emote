@@ -254,7 +254,7 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
                 }
 
                 for (PlayerSkinRegion region : missing) {
-                    byte[] png = this.baker.bake(prepared, region.skinPart(), region.skinSegment());
+                    byte[] png = this.baker.bake(prepared, region);
                     String url = texture(png, source.slimModel(), bake.generation).get();
                     synchronized (this) {
                         if (!isCurrent(key, bake)) {

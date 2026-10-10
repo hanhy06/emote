@@ -1,7 +1,6 @@
 package io.github.hanhy06.emote.api;
 
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.api.sequence.EmoteSequence;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
@@ -10,6 +9,7 @@ import net.minecraft.world.phys.Vec3;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import io.github.hanhy06.emote.api.EmoteLoadException;
 
 public abstract class EmoteApi {
     public static volatile EmoteApi INSTANCE;
@@ -49,9 +49,9 @@ public abstract class EmoteApi {
 
     public abstract Optional<Vec3> getNodeWorldPosition(UUID sessionId, String nodeId);
 
-    public abstract Registration register(EmoteAnimation animation) throws EmoteAnimationLoadException;
+    public abstract Registration register(EmoteAnimation animation) throws EmoteLoadException;
 
-    public abstract Registration register(EmoteSequence sequence);
+    public abstract Registration register(EmoteSequence sequence) throws EmoteLoadException;
 
     public abstract Optional<EmoteInfo> get(Identifier emoteId);
 

@@ -6,6 +6,7 @@ import { minecraftVersionProfile } from "../../format/minecraftVersionProfiles";
 import { writeBlockState, writeItemStack } from "../../format/minecraftData";
 import type { BbKeyframe } from "./blockbenchCubeSchema";
 import { affineMolang, molangScalar, type MolangVector } from "./molangVector";
+import { sourceSecondsTime } from "../../format/time";
 
 export function importedNodeIR(node: ImportedNode, parent?: string): NodeIR {
   const profile = minecraftVersionProfile("26.3");
@@ -24,15 +25,13 @@ export function blockbenchCurveIR(frames: readonly BbKeyframe[], transform: (val
     if (grouped.at(-1)?.[0].time === frame.time) grouped.at(-1)!.push(frame);
     else grouped.push([frame]);
   }
-  for (const group of grouped) if (group.length > 2) throw new Error(`Cannot represent ${group.length} distinct keys at ${group[0].time}s as one pre/post pair.`);
   const values = (frame: BbKeyframe, post: boolean, delta?: readonly number[]): ValueIR => {
     const point = frame.data_points[post ? frame.data_points.length - 1 : 0];
-    if (!point || point.x === undefined || point.y === undefined || point.z === undefined || frame.data_points.length > 2) throw new Error("Transform keyframe requires one vector or a pre/post pair.");
-    const vector = [point.x, point.y, point.z].map((value, axis) => affineMolang(molangScalar(value), 1, delta?.[axis] ?? 0)) as MolangVector;
+    const vector = [point?.x, point?.y, point?.z].map((value, axis) => affineMolang(molangScalar(value!), 1, delta?.[axis] ?? 0)) as MolangVector;
     return transform(vector).map(scalarIR);
   };
-  const keys: CurveKeyIR[] = grouped.map((group) => group.length === 1 && group[0].data_points.length === 1 ? { time: group[0].time, value: values(group[0], true) }
-    : { time: group[0].time, pre: values(group[0], false), post: values(group.at(-1)!, true) });
+  const keys: CurveKeyIR[] = grouped.map((group) => group.length === 1 && group[0].data_points.length === 1 ? { time: sourceSecondsTime(group[0].time), value: values(group[0], true) }
+    : { time: sourceSecondsTime(group[0].time), pre: values(group[0], false), post: values(group.at(-1)!, true) });
   const segments: SegmentIR[] = grouped.slice(0, -1).map((group, index) => {
     const left = group.at(-1)!, right = grouped[index + 1][0];
     if (left.interpolation === "step") return { interpolation: "step" };

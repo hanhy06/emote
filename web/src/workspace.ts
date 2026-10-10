@@ -1,3 +1,4 @@
+import { parseAnimationSeconds } from "./format/time";
 import {
   assignDocumentSkinOrder,
   assignDocumentSkinPart,
@@ -143,8 +144,8 @@ export function eventReviewLocations(document: ConversionDocument | null): { own
     const events = animation.clip.events;
     const locations: string[] = [];
     if (events?.start?.some((event) => event.action.type === "commands" && event.action.commands.length > 0)) locations.push("start");
-    const times = [...new Set(events?.timeline?.filter((event) => event.action.type === "commands" && event.action.commands.length > 0).map((event) => event.time) ?? [])].sort((first, second) => first - second);
-    if (times.length) locations.push(`frames: ${times.map((time) => `${Number((time * TICKS_PER_SECOND).toPrecision(12))}t`).join(", ")}`);
+    const times = [...new Set(events?.timeline?.filter((event) => event.action.type === "commands" && event.action.commands.length > 0).map((event) => event.time) ?? [])].sort((first, second) => parseAnimationSeconds(first) - parseAnimationSeconds(second));
+    if (times.length) locations.push(`frames: ${times.map((time) => `${Number((parseAnimationSeconds(time) * TICKS_PER_SECOND).toPrecision(12))}t`).join(", ")}`);
     for (const phase of ["loop", "stop"] as const) {
       if (events?.[phase]?.some((event) => event.action.type === "commands" && event.action.commands.length > 0)) locations.push(phase);
     }

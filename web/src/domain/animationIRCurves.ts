@@ -1,3 +1,4 @@
+import { parseAnimationSeconds } from "../format/time";
 import { Quaternion } from "three";
 import type { CurveIR, EasingIR, ScalarIR, SegmentIR, ValueIR } from "./animationIR";
 
@@ -30,14 +31,14 @@ export function easingIR(easing: EasingIR | undefined, u: number): number {
 export function sampleCurveIR(curve: CurveIR, time: number, base: readonly number[], evaluate: ScalarEvaluatorIR): number[] {
   const vector = (value: ValueIR, u: number) => value.map((scalar, axis) => evaluate(scalar, u, base[axis]));
   const first = curve.keys[0];
-  if (time < first.time) return curve.before === "first_pre" ? vector(first.pre ?? first.value!, 0) : [...base];
+  if (time < parseAnimationSeconds(first.time)) return curve.before === "first_pre" ? vector(first.pre ?? first.value!, 0) : [...base];
   let index = 0;
-  while (index + 1 < curve.keys.length && curve.keys[index + 1].time <= time) index++;
+  while (index + 1 < curve.keys.length && parseAnimationSeconds(curve.keys[index + 1].time) <= time) index++;
   const left = curve.keys[index];
-  if (time === left.time || index === curve.keys.length - 1) return vector(left.post ?? left.value!, 1);
+  if (time === parseAnimationSeconds(left.time) || index === curve.keys.length - 1) return vector(left.post ?? left.value!, 1);
   const right = curve.keys[index + 1];
-  const duration = right.time - left.time;
-  const u = (time - left.time) / duration;
+  const duration = parseAnimationSeconds(right.time) - parseAnimationSeconds(left.time);
+  const u = (time - parseAnimationSeconds(left.time)) / duration;
   const start = vector(left.post ?? left.value!, u);
   const segment = curve.segments[index];
   if (segment.interpolation === "step") return start;

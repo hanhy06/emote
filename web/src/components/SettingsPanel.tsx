@@ -1,10 +1,9 @@
 import { useState } from "preact/hooks";
-import type { Animation, ScalarIR } from "../domain/animationIR";
+import type { Animation, TimeValueIR } from "../domain/animationIR";
 import { AdditionalMetadataEditor } from "./AdditionalMetadataEditor";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
 import { createDefaultPlayerBehavior } from "../domain/emoteDefinition";
-import { sanitizeNamespace } from "../format/resourceLocation";
-import { parseAnimationSeconds, parseMinecraftTime } from "../format/time";
+import { formatMinecraftTime, parseMinecraftTime } from "../format/time";
 
 const STOP_CONDITION_OPTIONS = [
   ["jump", "Stop on jump"], ["submerge", "Stop when submerged"], ["ride", "Stop on mount"],
@@ -38,18 +37,23 @@ export function SettingsPanel({ animation, minecraftVersion, disabled, onChange,
       next[field] = { value, error: reason instanceof Error ? reason.message : String(reason) };
     }
     setDrafts(next);
-    onValidityChange(Object.keys(next).length === 0);
+    onValidityChange(Object.values(next).every((draft) => !draft.error));
+  }
+
+  function editDraft(field: string, value: string) {
+    setDrafts({ ...drafts, [field]: { value, error: "" } });
   }
 
   function updateTime(field: "cooldown" | "display_interpolation_ticks" | "loop_start" | "loop_delay", text: string) {
     commit(field, text, () => {
-      let value: ScalarIR;
+      let value: TimeValueIR | number;
       if (field === "loop_delay" && text.trim().startsWith("{")) {
         const expression = JSON.parse(text) as { molang?: unknown };
-        if (typeof expression.molang !== "string" || !expression.molang.trim()) throw new Error("Loop delay requires a time or a Molang object.");
-        value = { molang: expression.molang };
-      } else value = field === "display_interpolation_ticks" ? parseMinecraftTime(text) : parseAnimationSeconds(text);
-      if (field === "loop_start" && (value as number) >= animation.clip.duration) throw new Error("Loop start must be before the animation end.");
+        value = expression as TimeValueIR;
+      } else {
+        const ticks = parseMinecraftTime(text);
+        value = field === "display_interpolation_ticks" ? ticks : formatMinecraftTime(ticks);
+      }
       return field === "loop_start" || field === "loop_delay"
         ? { ...animation, clip: { ...animation.clip, playback: { ...playback, [field]: value } } }
         : { ...animation, settings: { ...settings, [field]: value } };
@@ -60,7 +64,7 @@ export function SettingsPanel({ animation, minecraftVersion, disabled, onChange,
     onChange({ ...animation, settings: { ...settings, player: { ...player, stop_conditions: { ...player.stop_conditions, [key]: value } } } });
   }
 
-  const timeText = (field: string, value: ScalarIR | undefined, unit = "s") => drafts[field]?.value ?? (typeof value === "object" ? JSON.stringify(value) : `${value ?? 0}${unit}`);
+  const timeText = (field: string, value: TimeValueIR | number | undefined, unit = "s") => drafts[field]?.value ?? (typeof value === "object" ? JSON.stringify(value) : typeof value === "number" ? `${value}${unit}` : value === undefined ? `0${unit}` : value);
 
   return (
     <section className="export settings-page">
@@ -77,27 +81,28 @@ export function SettingsPanel({ animation, minecraftVersion, disabled, onChange,
       <section className="settings-section" aria-labelledby="metadata-heading">
         <h3 id="metadata-heading">Metadata</h3>
         <div className="fields">
-          <label>Namespace<input value={drafts.namespace?.value ?? namespace} disabled={disabled} onChange={(event) => {
+          <label>Namespace<input value={drafts.namespace?.value ?? namespace} disabled={disabled} onInput={(event) => editDraft("namespace", event.currentTarget.value)} onBlur={(event) => {
             const value = event.currentTarget.value;
             commit("namespace", value, () => {
-              if (!value.trim()) throw new Error("Namespace must not be empty.");
-              return { ...animation, id: `${sanitizeNamespace(value)}:${animation.id.slice(animation.id.indexOf(":") + 1)}` };
+              return { ...animation, id: `${value}:${animation.id.slice(animation.id.indexOf(":") + 1)}` };
             });
           }} /></label>
-          <label>Display name<input value={drafts.name?.value ?? animation.metadata.name} disabled={disabled} onChange={(event) => {
+          <label>Display name<input value={drafts.name?.value ?? animation.metadata.name} disabled={disabled} onInput={(event) => editDraft("name", event.currentTarget.value)} onBlur={(event) => {
             const value = event.currentTarget.value;
             commit("name", value, () => {
-              if (!value.trim()) throw new Error("Display name must not be empty.");
               return { ...animation, metadata: { ...animation.metadata, name: value } };
             });
           }} /></label>
-          <label>Description<input value={animation.metadata.description} disabled={disabled} onChange={(event) => onChange({ ...animation, metadata: { ...animation.metadata, description: event.currentTarget.value } })} /></label>
+          <label>Description<input value={drafts.description?.value ?? animation.metadata.description} disabled={disabled} onInput={(event) => editDraft("description", event.currentTarget.value)} onBlur={(event) => {
+            const value = event.currentTarget.value;
+            commit("description", value, () => ({ ...animation, metadata: { ...animation.metadata, description: value } }));
+          }} /></label>
         </div>
       </section>
       <AdditionalMetadataEditor value={additionalMetadata} disabled={disabled} onChange={(metadata) => onChange({ ...animation, metadata: { ...metadata, name: animation.metadata.name, description: animation.metadata.description } })} />
       <section className="playback-behavior" aria-labelledby="playback-behavior-heading">
         <h3 id="playback-behavior-heading">Settings</h3>
-        <p>Time accepts d, s, t, or bare ticks. Animation time is stored in seconds; display interpolation uses ticks.</p>
+        <p>Time accepts d, s, t, or bare ticks. Times are rounded to whole ticks by the converter.</p>
         <div className="fields settings-selectors">
           <div className="playback-settings-group">
             <label>Playback mode<select value={mode} disabled={disabled} onChange={(event) => {
@@ -106,26 +111,38 @@ export function SettingsPanel({ animation, minecraftVersion, disabled, onChange,
               if (nextMode !== "loop") delete nextDrafts.loop_start;
               if (nextMode === "once" || nextMode === "hold") delete nextDrafts.loop_delay;
               setDrafts(nextDrafts);
-              onValidityChange(Object.keys(nextDrafts).length === 0);
-              onChange({ ...animation, clip: { ...animation.clip, playback: { ...playback, mode: nextMode, loop_start: nextMode === "loop" ? playback.loop_start ?? 0 : 0,
-                loop_delay: nextMode === "once" || nextMode === "hold" ? 0 : playback.loop_delay ?? 0 } } });
+              onValidityChange(Object.values(nextDrafts).every((draft) => !draft.error));
+              onChange({ ...animation, clip: { ...animation.clip, playback: { ...playback, mode: nextMode, loop_start: nextMode === "loop" ? playback.loop_start ?? "0t" : "0t",
+                loop_delay: nextMode === "once" || nextMode === "hold" ? "0t" : playback.loop_delay ?? "0t" } } });
             }}>
               <option value="once">Play once</option><option value="hold">Hold last frame</option><option value="loop">Loop</option><option value="server_sync">Server-synchronized loop</option>
             </select></label>
-            <label>Loop start<input value={timeText("loop_start", playback.loop_start)} disabled={disabled || mode !== "loop"} onChange={(event) => updateTime("loop_start", event.currentTarget.value)} /></label>
-            <label>Loop delay<input value={timeText("loop_delay", playback.loop_delay)} disabled={disabled || mode === "once" || mode === "hold"} onChange={(event) => updateTime("loop_delay", event.currentTarget.value)} /></label>
+            <label>Loop start<input value={timeText("loop_start", playback.loop_start)} disabled={disabled || mode !== "loop"} onInput={(event) => editDraft("loop_start", event.currentTarget.value)} onBlur={(event) => updateTime("loop_start", event.currentTarget.value)} /></label>
+            <label>Loop delay<input value={timeText("loop_delay", playback.loop_delay)} disabled={disabled || mode === "once" || mode === "hold"} onInput={(event) => editDraft("loop_delay", event.currentTarget.value)} onBlur={(event) => updateTime("loop_delay", event.currentTarget.value)} /></label>
           </div>
-          <label>Cooldown<input value={timeText("cooldown", settings.cooldown)} disabled={disabled} onChange={(event) => updateTime("cooldown", event.currentTarget.value)} /></label>
-          <label>Movement distance<input type="number" min="0" step="0.05" value={player.stop_conditions.movement_distance} disabled={disabled} onChange={(event) => updatePlayerStopCondition("movement_distance", Number(event.currentTarget.value))} /></label>
-          <label>Rotation deadzone<input type="number" min="0" max="180" step="1" value={settings.rotation_deadzone ?? 50} disabled={disabled} onChange={(event) => onChange({ ...animation, settings: { ...settings, rotation_deadzone: Number(event.currentTarget.value) } })} /></label>
-          <label>Display interpolation<input value={timeText("display_interpolation_ticks", settings.display_interpolation_ticks ?? 1, "t")} disabled={disabled} onChange={(event) => updateTime("display_interpolation_ticks", event.currentTarget.value)} /></label>
+          <label>Cooldown<input value={timeText("cooldown", settings.cooldown)} disabled={disabled} onInput={(event) => editDraft("cooldown", event.currentTarget.value)} onBlur={(event) => updateTime("cooldown", event.currentTarget.value)} /></label>
+          <label>Movement distance<input type="number" min="0" step="0.05" value={drafts.movement_distance?.value ?? player.stop_conditions.movement_distance} disabled={disabled} onInput={(event) => editDraft("movement_distance", event.currentTarget.value)} onBlur={(event) => {
+            const text = event.currentTarget.value;
+            commit("movement_distance", text, () => {
+              const value = text.trim() ? Number(text) : text as unknown as number;
+              return { ...animation, settings: { ...settings, player: { ...player, stop_conditions: { ...player.stop_conditions, movement_distance: value } } } };
+            });
+          }} /></label>
+          <label>Rotation deadzone<input type="number" min="0" max="180" step="1" value={drafts.rotation_deadzone?.value ?? settings.rotation_deadzone ?? 50} disabled={disabled} onInput={(event) => editDraft("rotation_deadzone", event.currentTarget.value)} onBlur={(event) => {
+            const text = event.currentTarget.value;
+            commit("rotation_deadzone", text, () => {
+              const value = Number(text);
+              return { ...animation, settings: { ...settings, rotation_deadzone: value } };
+            });
+          }} /></label>
+          <label>Display interpolation<input value={timeText("display_interpolation_ticks", settings.display_interpolation_ticks ?? 1, "t")} disabled={disabled} onInput={(event) => editDraft("display_interpolation_ticks", event.currentTarget.value)} onBlur={(event) => updateTime("display_interpolation_ticks", event.currentTarget.value)} /></label>
         </div>
         <div className="fields settings-toggles">
           <label className="checkbox"><input type="checkbox" checked={settings.standalone ?? true} disabled={disabled} onChange={(event) => onChange({ ...animation, settings: { ...settings, standalone: event.currentTarget.checked } })} />Standalone animation</label>
           <label className="checkbox"><input type="checkbox" checked={player.hidden} disabled={disabled} onChange={(event) => onChange({ ...animation, settings: { ...settings, player: { ...player, hidden: event.currentTarget.checked } } })} />Hide original player</label>
           {STOP_CONDITION_OPTIONS.map(([condition, label]) => <label className="checkbox" key={condition}><input type="checkbox" checked={player.stop_conditions[condition]} disabled={disabled} onChange={(event) => updatePlayerStopCondition(condition, event.currentTarget.checked)} />{label}</label>)}
         </div>
-        {Object.entries(drafts).map(([field, draft]) => <p className="error" role="alert" key={field}>{field}: {draft.error}</p>)}
+        {Object.entries(drafts).filter(([, draft]) => draft.error).map(([field, draft]) => <p className="error" role="alert" key={field}>{field}: {draft.error}</p>)}
       </section>
     </section>
   );

@@ -1,6 +1,7 @@
+import { sourceSecondsTime } from "../../format/time";
 import { importedNodeHints } from "../../domain/conversionSeed";
 import type { AnimationIR, CurveIR, TrackIR } from "../../domain/animationIR";
-import type { ImportedAnimation, ImportedNode, ImportedProject } from "../../domain/conversionSeed";
+import type { ImportedNode, ImportedProject } from "../../domain/conversionSeed";
 import { createDefaultPlayerBehavior } from "../../domain/emoteDefinition";
 import { sanitizeResourcePath } from "../../format/resourceLocation";
 import { writeDisplayNbt } from "../../format/minecraftData";
@@ -20,13 +21,11 @@ export function importBdDatapack(source: BdDatapackSource, sourceName: string): 
     suggestedPlayer: createDefaultPlayerBehavior(),
     suggestedNamespace: source.namespace,
     nodeHints: importedNodeHints(nodes),
-    animations: source.animations.map((animation): ImportedAnimation => {
-      return {
-        id: sanitizeResourcePath(animation.name, "default"),
-        name: prettify(animation.name),
-        ir: createBdAnimationIR(animation, nodes, source.displays),
-      };
-    }),
+    animations: source.animations.map((animation) => ({
+      id: sanitizeResourcePath(animation.name, "default"),
+      name: prettify(animation.name),
+      ir: createBdAnimationIR(animation, nodes, source.displays),
+    })),
     diagnostics: [...source.diagnostics, ...source.displays.filter((display) => display.type === "anchor").map((display) => ({ severity: "warning" as const, code: "bd_datapack_logical_node", message: `${display.tag} is preserved as a logical node; geometry is unavailable.` })), ...(source.droppedCamera ? [{
       severity: "warning",
       code: "bd_datapack_camera_ignored",
@@ -77,7 +76,7 @@ function createBdAnimationIR(animation: BdDatapackSource["animations"][number], 
     };
 
     if (sourceTransforms.length && !initial) tracks.push({ target: { node: id, operation: "matrix" }, channel: "value", driver: {
-      type: "curve", before: "base", keys: sourceTransforms.map((frame) => ({ time: frame.tick / 20, value: frame.matrix })),
+      type: "curve", before: "base", keys: sourceTransforms.map((frame) => ({ time: `${frame.tick}t`, value: frame.matrix })),
       segments: sourceTransforms.slice(1).map(() => ({ interpolation: "step" })),
     } });
     if (initial) {
@@ -109,7 +108,7 @@ function createBdAnimationIR(animation: BdDatapackSource["animations"][number], 
       if (frames.at(-1)!.time < limit) put(limit, at(limit), at(limit), "step");
       for (const channel of ["position", "left_rotation", "scale", "right_rotation"] as const) {
         const driver: CurveIR = { type: "curve", before: "base",
-          keys: frames.map((frame) => ({ time: frame.time, pre: frame.pre[channel], post: frame.post[channel] })),
+          keys: frames.map((frame) => ({ time: sourceSecondsTime(frame.time), pre: frame.pre[channel], post: frame.post[channel] })),
           segments: frames.slice(0, -1).map((frame) => ({ interpolation: frame.interpolation === "step" ? "step" : channel.endsWith("rotation") ? "slerp" : "linear" })),
         };
         tracks.push({ target: { node: id, operation: channel }, channel: "value", driver });
@@ -123,7 +122,7 @@ function createBdAnimationIR(animation: BdDatapackSource["animations"][number], 
       const initialFrame = { tick: 0, value: initialNbt };
       if (frames[0].tick === 0) frames[0] = initialFrame;
       else frames.unshift(initialFrame);
-      tracks.push({ target: { node: id, attachment: "display" }, channel: "nbt", driver: { type: "state", keys: frames.map((frame) => ({ time: frame.tick / 20, value: { merge: writeDisplayNbt(frame.value, profile) } })) } });
+      tracks.push({ target: { node: id, attachment: "display" }, channel: "nbt", driver: { type: "state", keys: frames.map((frame) => ({ time: `${frame.tick}t`, value: { merge: writeDisplayNbt(frame.value, profile) } })) } });
     }
   }
 
@@ -132,8 +131,8 @@ function createBdAnimationIR(animation: BdDatapackSource["animations"][number], 
     metadata: { name, description: `${name} emote.` },
     nodes,
     source: { unresolved_commands: structuredClone(animation.unresolvedCommands) },
-    animation: { duration: animation.durationTicks / 20, playback: { mode: "loop", loop_start: 0, loop_delay: 0 }, tracks,
-      events: { timeline: animation.unresolvedCommands.map((event) => ({ time: event.tick / 20, source: { type: "player" }, origin: { type: "root" }, action: { type: "commands", commands: [event.command.replace(/^\//, "")] } })) },
+    animation: { duration: `${animation.durationTicks}t`, playback: { mode: "loop", loop_start: "0t", loop_delay: "0t" }, tracks,
+      events: { timeline: animation.unresolvedCommands.map((event) => ({ time: `${event.tick}t`, source: { type: "player" }, origin: { type: "root" }, action: { type: "commands", commands: [event.command.replace(/^\//, "")] } })) },
     },
   };
 }

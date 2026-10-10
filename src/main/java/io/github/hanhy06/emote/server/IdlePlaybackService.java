@@ -8,7 +8,6 @@ import io.github.hanhy06.emote.application.PlaybackPolicyService;
 import io.github.hanhy06.emote.config.AccessConfig;
 import io.github.hanhy06.emote.config.AccessConfigListener;
 import io.github.hanhy06.emote.content.EmoteCatalog;
-import io.github.hanhy06.emote.content.PlayableEmote;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.util.WeightedChoiceSelector;
 import net.minecraft.server.level.ServerPlayer;
@@ -19,6 +18,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 import java.util.random.RandomGenerator;
+import io.github.hanhy06.emote.content.PreparedEmote;
 
 public final class IdlePlaybackService implements AccessConfigListener {
     static final int CHECK_INTERVAL_TICKS = 10;
@@ -47,7 +47,7 @@ public final class IdlePlaybackService implements AccessConfigListener {
             playbackPolicy::findIdleSettings,
             (player, id) -> playService.play(player, id, PlaySource.IDLE),
             player -> playerPlaybackManager.findActive(player.getUUID()) != null,
-            () -> emoteCatalog.emotes().stream().map(PlayableEmote::id).toList(),
+            () -> emoteCatalog.emotes().stream().map(PreparedEmote::id).toList(),
             Util::getMillis,
             RandomGenerator.getDefault()
         );

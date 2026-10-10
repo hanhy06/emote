@@ -14,6 +14,9 @@ public interface ItemDisplayAccessor {
     @Invoker("setItemStack")
     void emote$setItemStack(ItemStack itemStack);
 
+    @Invoker("getItemTransform")
+    ItemDisplayContext emote$getItemTransform();
+
     @Invoker("setItemTransform")
     void emote$setItemTransform(ItemDisplayContext context);
 }

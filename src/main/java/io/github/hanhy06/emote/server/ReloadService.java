@@ -25,6 +25,7 @@ public final class ReloadService {
     private final ConfigManager configManager;
     private final EmoteCatalog emoteCatalog;
     private final LoadResultLoader directoryLoader;
+    private final Supplier<net.minecraft.core.HolderLookup.Provider> registries;
     private final PlaybackStopper playbackStopper;
     private final Runnable wheelSynchronizer;
     private final Supplier<PolymerResourcePackDistributor.BuildResult> resourcePackBuilder;
@@ -43,6 +44,7 @@ public final class ReloadService {
             configManager,
             emoteCatalog,
             directoryLoader::load,
+            () -> EmoteMod.SERVER.registryAccess(),
             playbackEngine::stopAll,
             wheelSyncService::syncAll,
             resourcePackBuilder,
@@ -54,6 +56,7 @@ public final class ReloadService {
         ConfigManager configManager,
         EmoteCatalog emoteCatalog,
         LoadResultLoader directoryLoader,
+        Supplier<net.minecraft.core.HolderLookup.Provider> registries,
         PlaybackStopper playbackStopper,
         Runnable wheelSynchronizer,
         Supplier<PolymerResourcePackDistributor.BuildResult> resourcePackBuilder,
@@ -62,6 +65,7 @@ public final class ReloadService {
         this.configManager = configManager;
         this.emoteCatalog = emoteCatalog;
         this.directoryLoader = directoryLoader;
+        this.registries = registries;
         this.playbackStopper = playbackStopper;
         this.wheelSynchronizer = wheelSynchronizer;
         this.resourcePackBuilder = resourcePackBuilder;
@@ -122,14 +126,14 @@ public final class ReloadService {
             .filter(Objects::nonNull)
             .toList();
         var animationsById = emotes.stream().collect(Collectors.toMap(
-            PreparedEmote::id,
+            PreparedAnimation::id,
             Function.identity()
         ));
         var sequences = contents.sequences().stream()
-            .map(sequence -> resolveSequence(sequence, animationsById))
+            .map(sequence -> prepareSequence(sequence, animationsById))
             .filter(Objects::nonNull)
             .toList();
-        List<PlayableEmote> definitions = new ArrayList<>(emotes);
+        List<PreparedEmote> definitions = new ArrayList<>(emotes);
         definitions.addAll(sequences);
         return new PreparedRegistry(contents.detectedFileCount(), definitions);
     }
@@ -146,22 +150,22 @@ public final class ReloadService {
         return new ReloadStats(prepared.detectedFileCount(), this.emoteCatalog.fileEmotes().size(), ReloadResult.Failure.NONE);
     }
 
-    private PreparedEmote prepareAnimation(LoadedAnimation animation) {
+    private PreparedAnimation prepareAnimation(LoadedAnimation animation) {
         try {
-            return PreparedEmote.from(animation);
-        } catch (IllegalArgumentException exception) {
+            return PreparedAnimation.prepare(animation, this.registries.get());
+        } catch (io.github.hanhy06.emote.api.EmoteLoadException exception) {
             EmoteMod.LOGGER.warn("Ignoring invalid emote animation {}: {}", animation.sourcePath(), exception.getMessage());
             return null;
         }
     }
 
-    private PreparedSequence resolveSequence(
+    private PreparedSequence prepareSequence(
         LoadedSequence sequence,
-        Map<String, PreparedEmote> animationsById
+        Map<String, PreparedAnimation> animationsById
     ) {
         try {
-            return PreparedSequence.resolve(sequence, animationsById);
-        } catch (IllegalArgumentException exception) {
+            return PreparedSequence.prepare(sequence, animationsById);
+        } catch (io.github.hanhy06.emote.api.EmoteLoadException exception) {
             EmoteMod.LOGGER.warn("Ignoring invalid emote sequence {}: {}", sequence.sourcePath(), exception.getMessage());
             return null;
         }
@@ -183,7 +187,7 @@ public final class ReloadService {
         }
     }
 
-    private record PreparedRegistry(int detectedFileCount, List<PlayableEmote> definitions) {
+    private record PreparedRegistry(int detectedFileCount, List<PreparedEmote> definitions) {
         private PreparedRegistry {
             definitions = List.copyOf(definitions);
         }
