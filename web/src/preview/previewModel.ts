@@ -1,10 +1,9 @@
 import { parseAnimationSeconds } from "../format/time";
 import { skinPartAssignments, skinPartOrders, type ConversionAnimation, type ConversionDocument } from "../domain/conversionDocument";
 import { evaluatePose } from "../domain/animationIRPose";
-import type { PreviewAvailability } from "../domain/previewProjection";
 import type { PlayerSkinPart } from "../domain/player";
 import { matrix4ToRowMajor } from "../format/matrix";
-import { MolangBakeEvaluator } from "./molangEvaluator";
+import { PreviewMolangEvaluator } from "./molangEvaluator";
 
 export interface PreviewPart {
   nodeId: string;
@@ -12,6 +11,11 @@ export interface PreviewPart {
   matrix: readonly number[];
   conversionMatrix?: readonly number[];
 }
+
+export type PreviewAvailability =
+  | { status: "full" }
+  | { status: "approximate"; reason: string }
+  | { status: "unavailable"; reason: string };
 
 export interface PreviewModel {
   tick: number | null;
@@ -28,12 +32,10 @@ export function createPreviewModel(document: ConversionDocument, animation: Conv
   const candidates = Object.entries(document.skinCandidates).filter(([id]) => nodeIds.has(id));
   const reasons = new Set<string>();
   const approximate = (reason: string) => { reasons.add(reason); };
-  const evaluator = new MolangBakeEvaluator({ rejectNondeterministic: true, error: {
-    code: "animation_preview", previewUnavailable: true, message: (expression) => `Expression uses its base component: ${expression}`,
-  } });
+  const evaluator = new PreviewMolangEvaluator();
   const evaluate = (value: number | { molang: string }, progress: number, base = 0): number => {
     try {
-      return evaluator.evaluate(typeof value === "number" ? value : value.molang, { animationTime: time, keyframeLerpTime: progress, lifeTime: elapsed }, "preview");
+      return evaluator.evaluate(typeof value === "number" ? value : value.molang, { animationTime: time, keyframeLerpTime: progress, lifeTime: elapsed });
     } catch (reason) {
       approximate(reason instanceof Error ? reason.message : String(reason));
       return base;

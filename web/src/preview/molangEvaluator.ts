@@ -3,32 +3,19 @@ import { TICKS_PER_SECOND } from "../format/time";
 import { ConversionError, PreviewUnavailableError } from "../foundation/diagnostics";
 import { PREVIEW_RUNTIME_QUERY_VALUES, previewRuntimeQueryFunction, usesRuntimeMolangState } from "../format/molang/runtimeAnalysis";
 
-export interface MolangBakeContext {
+export interface PreviewMolangContext {
   animationTime: number;
   keyframeLerpTime: number;
   lifeTime?: number;
-  deltaTime?: number;
-}
-
-export interface MolangBakeError {
-  code: string;
-  previewUnavailable?: boolean;
-  message(expression: string, path: string): string;
-  nondeterministicMessage?(expression: string, path: string): string;
-}
-
-export interface MolangBakeOptions {
-  error: MolangBakeError;
-  rejectNondeterministic?: boolean;
 }
 
 const NUMERIC_LITERAL = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/;
 const NONDETERMINISTIC_FUNCTION = /math\.(?:random|random_integer|die_roll|die_roll_integer)\b/i;
 
-export class MolangBakeEvaluator {
+export class PreviewMolangEvaluator {
   private readonly parser = new MolangParser();
 
-  constructor(private readonly options: MolangBakeOptions) {
+  constructor() {
     this.parser.variableHandler = (key, _variables, args) => {
       if (args) {
         const value = previewRuntimeQueryFunction(key);
@@ -38,25 +25,18 @@ export class MolangBakeEvaluator {
     };
   }
 
-  evaluate(expression: string | number, context: MolangBakeContext, path: string): number {
-    if (typeof expression === "number") return this.requireFinite(expression, expression, path);
-    if (NUMERIC_LITERAL.test(expression.trim())) return this.requireFinite(Number(expression), expression, path);
-    if (this.options.error.previewUnavailable && usesRuntimeMolangState(expression)) {
-      throw this.error(this.options.error.message(expression, path), path);
-    }
-    if (this.options.rejectNondeterministic && NONDETERMINISTIC_FUNCTION.test(expression)) {
-      const message = this.options.error.nondeterministicMessage?.(expression, path)
-        ?? this.options.error.message(expression, path);
-      throw this.error(message, path);
-    }
+  evaluate(expression: string | number, context: PreviewMolangContext): number {
+    if (typeof expression === "number") return this.requireFinite(expression, expression);
+    if (NUMERIC_LITERAL.test(expression.trim())) return this.requireFinite(Number(expression), expression);
+    if (usesRuntimeMolangState(expression) || NONDETERMINISTIC_FUNCTION.test(expression)) throw this.error(expression);
 
     try {
       const variables: Record<string, number> = {
         ...PREVIEW_RUNTIME_QUERY_VALUES,
         "query.anim_time": context.animationTime,
         "q.anim_time": context.animationTime,
-        "query.delta_time": context.deltaTime ?? 1 / TICKS_PER_SECOND,
-        "q.delta_time": context.deltaTime ?? 1 / TICKS_PER_SECOND,
+        "query.delta_time": 1 / TICKS_PER_SECOND,
+        "q.delta_time": 1 / TICKS_PER_SECOND,
         "query.key_frame_lerp_time": context.keyframeLerpTime,
         "q.key_frame_lerp_time": context.keyframeLerpTime,
         "global.key_frame_lerp_time": context.keyframeLerpTime,
@@ -65,20 +45,19 @@ export class MolangBakeEvaluator {
         variables["query.life_time"] = context.lifeTime;
         variables["q.life_time"] = context.lifeTime;
       }
-      return this.requireFinite(this.parser.parse(expression, variables), expression, path);
+      return this.requireFinite(this.parser.parse(expression, variables), expression);
     } catch (error) {
       if (error instanceof ConversionError) throw error;
-      throw this.error(this.options.error.message(expression, path), path, error);
+      throw this.error(expression, error);
     }
   }
 
-  private requireFinite(value: number, expression: string | number, path: string): number {
+  private requireFinite(value: number, expression: string | number): number {
     if (Number.isFinite(value)) return value;
-    throw this.error(this.options.error.message(String(expression), path), path, new Error("result is not finite"));
+    throw this.error(expression, new Error("result is not finite"));
   }
 
-  private error(message: string, path: string, cause?: unknown): ConversionError {
-    const ErrorType = this.options.error.previewUnavailable ? PreviewUnavailableError : ConversionError;
-    return new ErrorType(this.options.error.code, message, path, cause === undefined ? undefined : { cause });
+  private error(expression: string | number, cause?: unknown): PreviewUnavailableError {
+    return new PreviewUnavailableError("animation_preview", `Expression uses its base component: ${expression}`, "preview", cause === undefined ? undefined : { cause });
   }
 }
