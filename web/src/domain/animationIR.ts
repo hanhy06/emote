@@ -103,7 +103,6 @@ export interface AnimationIR {
     standalone?: boolean;
     cooldown?: string;
     rotation_deadzone?: number;
-    display_interpolation_ticks?: number;
     player?: EmotePlayerBehavior;
   };
   callbacks?: EmoteCallback[];

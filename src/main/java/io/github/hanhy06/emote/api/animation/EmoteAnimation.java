@@ -42,12 +42,11 @@ public record EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings set
     public record MolangPrograms(String initialize, String update) {
         public static MolangPrograms empty() { return new MolangPrograms(null, null); }
     }
-    public record Settings(boolean standalone, int cooldownTicks, float rotationDeadzone, int displayInterpolationTicks,
+    public record Settings(boolean standalone, int cooldownTicks, float rotationDeadzone,
                            EmotePlayerBehavior playerBehavior, PlaybackSettings playback) {
         public Settings {
             if (cooldownTicks < 0) throw new IllegalArgumentException("Invalid cooldown");
             if (!Float.isFinite(rotationDeadzone) || rotationDeadzone < 0 || rotationDeadzone > 180) throw new IllegalArgumentException("Invalid rotation deadzone");
-            if (displayInterpolationTicks < 0) throw new IllegalArgumentException("Invalid display interpolation");
             Objects.requireNonNull(playerBehavior); Objects.requireNonNull(playback);
         }
     }

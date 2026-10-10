@@ -4,7 +4,7 @@ import { orderedNodeIds, type AnimationEntryIR, type AnimationIR, type Attachmen
 import { normalizeAnimationTimes, normalizeSequenceTimes, remapClip, removeTinyStaticNodes } from "./animationIRConversion";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
-import { parseAnimationSeconds, parseMinecraftTime } from "../format/time";
+import { parseAnimationSeconds } from "../format/time";
 import type { GeneratedResource } from "./generatedResource";
 import type { EmoteCallback, EmotePlayerBehavior, SequenceStep } from "./emoteDefinition";
 import type { ImportedProject, ImportedSkinPart, InputFormat } from "./conversionSeed";
@@ -63,9 +63,9 @@ export function createConversionDocument(project: ImportedProject, formatLabel: 
       standalone: project.suggestedStandalone ?? true,
       cooldown: project.suggestedCooldown ?? "0t",
       rotation_deadzone: project.suggestedRotationDeadzone ?? 50,
-      display_interpolation_ticks: parseMinecraftTime(project.suggestedDisplayInterpolation ?? "1t"),
       player: structuredClone(project.suggestedPlayer), ...ir.settings,
     };
+    Reflect.deleteProperty(ir.settings, "display_interpolation_ticks");
     ir.animation.events = {
       start: ir.animation.events?.start ?? [],
       timeline: ir.animation.events?.timeline ?? [],

@@ -22,7 +22,7 @@ export function importAnimation(value: unknown, sourceName: string): ImportedPro
     source: "emote_json", sourceName, suggestedMetadata: ir.metadata, suggestedMinecraftVersion: ir.target_minecraft_version,
     suggestedNamespace: ir.id?.split(":")[0], suggestedPlayer: ir.settings?.player ?? createDefaultPlayerBehavior(),
     suggestedStandalone: ir.settings?.standalone ?? true, suggestedCooldown: ir.settings?.cooldown, suggestedRotationDeadzone: ir.settings?.rotation_deadzone ?? 50,
-    suggestedDisplayInterpolation: `${ir.settings?.display_interpolation_ticks ?? 1}t`, nodeHints, resources: new Map(), diagnostics: [],
+    nodeHints, resources: new Map(), diagnostics: [],
     animations: [{ ir, id: ir.id?.split(":")[1], sourceReferenceId: ir.id, name: ir.metadata.name,
     }],
   };

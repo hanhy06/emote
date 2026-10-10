@@ -19,7 +19,6 @@ export interface ImportedProject {
   suggestedStandalone?: boolean;
   suggestedCooldown?: string;
   suggestedRotationDeadzone?: number;
-  suggestedDisplayInterpolation?: string;
   nodeHints: Record<string, ImportedNodeHint>;
   animations: ImportedAnimation[];
   diagnostics: ConversionIssue[];

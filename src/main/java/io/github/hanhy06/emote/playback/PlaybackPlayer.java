@@ -321,7 +321,7 @@ public final class PlaybackPlayer {
 
     private void applyAnimationPose(int deltaTicks, boolean update) {
         this.evaluator.evaluateFrame(this.currentTick, this.loopCount, deltaTicks, this.lifetimeTicks, update);
-        applyEvaluator(deltaTicks == 0 ? 0 : this.evaluator.displayInterpolationTicks());
+        applyEvaluator(deltaTicks == 0 ? 0 : 1);
     }
 
     private void executeAnimationFrame(int previousTick, int previousLoop, PlaybackPhase previousPhase) {

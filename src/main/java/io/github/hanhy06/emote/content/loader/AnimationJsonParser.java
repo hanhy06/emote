@@ -39,10 +39,8 @@ public final class AnimationJsonParser {
         JsonObject settings = object(root, "settings", "$", d);
         int cooldownTicks = settings.has("cooldown") ? d.requireTime(settings, "cooldown", "$.settings", 0) : 0;
         double deadzone = number(settings, "rotation_deadzone", 50, "$.settings", d);
-        int interpolation = settings.has("display_interpolation_ticks") ? d.requireInt(settings, "display_interpolation_ticks", "$.settings") : 1;
         if (cooldownTicks < 0) throw d.error("$.settings.cooldown", "must not be negative");
         if (deadzone < 0 || deadzone > 180) throw d.error("$.settings.rotation_deadzone", "must be between 0 and 180");
-        if (interpolation < 0) throw d.error("$.settings.display_interpolation_ticks", "must not be negative");
         EmotePlayerBehavior playerBehavior = animationPlayer(object(settings, "player", "$.settings", d), d);
         JsonObject programs = object(clip, "programs", "$.animation", d);
         MolangPrograms molang = new MolangPrograms(program(programs, "initialize", "$.animation.programs", d), program(programs, "update", "$.animation.programs", d));
@@ -55,7 +53,7 @@ public final class AnimationJsonParser {
         Events events = events(object(clip, "events", "$.animation", d), nodes, durationTicks, d);
         return new LoadedAnimation(d.sourcePath(), new EmoteAnimation(id,
             d.metadata(),
-            new Settings(bool(settings, "standalone", true, "$.settings", d), cooldownTicks, (float) deadzone, interpolation, playerBehavior,
+            new Settings(bool(settings, "standalone", true, "$.settings", d), cooldownTicks, (float) deadzone, playerBehavior,
                 new PlaybackSettings(mode, loopStartTick, startDelay, loopDelay)),
             molang, nodes, new Clip(durationTicks, tracks, events, expression), d.callbacks(),
             root.has("target_minecraft_version") ? d.requireString(root, "target_minecraft_version", "$") : null,

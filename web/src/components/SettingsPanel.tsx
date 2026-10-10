@@ -44,19 +44,16 @@ export function SettingsPanel({ animation, minecraftVersion, disabled, onChange,
     setDrafts({ ...drafts, [field]: { value, error: "" } });
   }
 
-  function updateTime(field: "cooldown" | "display_interpolation_ticks" | "loop_start" | "loop_delay", text: string) {
+  function updateTime(field: "cooldown" | "loop_start" | "loop_delay", text: string) {
     commit(field, text, () => {
-      let value: TimeValueIR | number;
       if (field === "loop_delay" && text.trim().startsWith("{")) {
-        const expression = JSON.parse(text) as { molang?: unknown };
-        value = expression as TimeValueIR;
-      } else {
-        const ticks = parseMinecraftTime(text);
-        value = field === "display_interpolation_ticks" ? ticks : formatMinecraftTime(ticks);
+        const expression = JSON.parse(text) as TimeValueIR;
+        return { ...animation, clip: { ...animation.clip, playback: { ...playback, loop_delay: expression } } };
       }
-      return field === "loop_start" || field === "loop_delay"
-        ? { ...animation, clip: { ...animation.clip, playback: { ...playback, [field]: value } } }
-        : { ...animation, settings: { ...settings, [field]: value } };
+      const value = formatMinecraftTime(parseMinecraftTime(text));
+      return field === "cooldown"
+        ? { ...animation, settings: { ...settings, cooldown: value } }
+        : { ...animation, clip: { ...animation.clip, playback: { ...playback, [field]: value } } };
     });
   }
 
@@ -64,7 +61,7 @@ export function SettingsPanel({ animation, minecraftVersion, disabled, onChange,
     onChange({ ...animation, settings: { ...settings, player: { ...player, stop_conditions: { ...player.stop_conditions, [key]: value } } } });
   }
 
-  const timeText = (field: string, value: TimeValueIR | number | undefined, unit = "s") => drafts[field]?.value ?? (typeof value === "object" ? JSON.stringify(value) : typeof value === "number" ? `${value}${unit}` : value === undefined ? `0${unit}` : value);
+  const timeText = (field: string, value: TimeValueIR | undefined) => drafts[field]?.value ?? (typeof value === "object" ? JSON.stringify(value) : value ?? "0s");
 
   return (
     <section className="export settings-page">
@@ -135,7 +132,6 @@ export function SettingsPanel({ animation, minecraftVersion, disabled, onChange,
               return { ...animation, settings: { ...settings, rotation_deadzone: value } };
             });
           }} /></label>
-          <label>Display interpolation<input value={timeText("display_interpolation_ticks", settings.display_interpolation_ticks ?? 1, "t")} disabled={disabled} onInput={(event) => editDraft("display_interpolation_ticks", event.currentTarget.value)} onBlur={(event) => updateTime("display_interpolation_ticks", event.currentTarget.value)} /></label>
         </div>
         <div className="fields settings-toggles">
           <label className="checkbox"><input type="checkbox" checked={settings.standalone ?? true} disabled={disabled} onChange={(event) => onChange({ ...animation, settings: { ...settings, standalone: event.currentTarget.checked } })} />Standalone animation</label>

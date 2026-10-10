@@ -23,9 +23,6 @@ export function normalizeSequenceTimes(sequence: { cooldown: string; steps?: Seq
 
 export function normalizeAnimationTimes(animation: AnimationIR | AnimationEntryIR): void {
   if (animation.settings?.cooldown !== undefined) animation.settings.cooldown = formatMinecraftTime(parseMinecraftTime(animation.settings.cooldown));
-  if (animation.settings?.display_interpolation_ticks !== undefined) {
-    animation.settings.display_interpolation_ticks = parseMinecraftTime(`${animation.settings.display_interpolation_ticks}t`);
-  }
   const clip = "clip" in animation ? animation.clip : animation.animation;
   clip.duration = formatMinecraftTime(parseMinecraftTime(clip.duration, 1));
   if (clip.playback) {

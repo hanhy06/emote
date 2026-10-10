@@ -44,15 +44,9 @@ Animation files are limited to 8 MiB, and timelines are limited to 10 minutes.
 
 ### Display interpolation
 
-`display_interpolation` sets how many ticks the client uses to display changes in a display part's position, rotation, or scale.
+During normal animation playback, the client interpolates display transformations over 1 tick. Initial placement and seeking apply the pose immediately. Sequence transitions keep their separate immediate application behavior.
 
-| Value | Behavior |
-|---|---|
-| `0t` | Applies changes immediately. |
-| `1t` | Interpolates over 1 tick. Used when the setting is omitted. |
-| `2t`, etc. | Interpolates over the specified duration. Negative values are not allowed. |
-
-Timeline evaluation and command events still run on server ticks. This setting is separate from interpolation of the emote's overall position and direction.
+The playback engine controls this duration internally. Molang expressions and easing still determine the animation's poses on server ticks. Display interpolation is separate from interpolation of the emote's overall position and direction.
 
 ### Player visibility and stop conditions
 

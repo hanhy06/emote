@@ -88,7 +88,6 @@ final class AnimationEvaluator {
     }
 
     int nodeCount() { return this.nodeIds.size(); }
-    int displayInterpolationTicks() { return this.animation.model().settings().displayInterpolationTicks(); }
     String nodeId(int index) { return this.nodeIds.get(index); }
     Matrix4fc matrix(int index) { return this.matrices.get(nodeId(index)); }
     boolean visible(int index) { return this.visibility.get(nodeId(index)); }

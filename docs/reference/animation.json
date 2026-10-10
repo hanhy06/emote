@@ -12,7 +12,6 @@
     "standalone": true,
     "cooldown": 0,
     "rotation_deadzone": 50,
-    "display_interpolation_ticks": 1,
     "player": {
       "hidden": false,
       "stop_conditions": {
