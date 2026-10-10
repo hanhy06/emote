@@ -20,7 +20,7 @@ import org.jspecify.annotations.Nullable;
 import io.github.hanhy06.emote.molang.MolangEngine;
 import io.github.hanhy06.emote.molang.MolangQueryCatalog;
 import io.github.hanhy06.emote.skin.SkinBinding;
-import io.github.hanhy06.emote.skin.SkinBindingCompiler;
+import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 import org.joml.Quaterniond;
@@ -29,7 +29,6 @@ import java.nio.file.Path;
 import java.util.*;
 
 public final class PreparedAnimation implements PreparedEmote {
-    private static final SkinBindingCompiler SKIN_BINDING_COMPILER = new SkinBindingCompiler();
     private final List<SkinBinding> skinBindings;
     private final EmoteAnimation model;
     private final List<String> nodeOrder;
@@ -42,7 +41,7 @@ public final class PreparedAnimation implements PreparedEmote {
     private PreparedAnimation(LoadedAnimation source, Map<String, Map<String, DisplayData>> displayContents) {
         this.sourcePath = source.sourcePath();
         this.model = source.model();
-        this.skinBindings = List.copyOf(SKIN_BINDING_COMPILER.compile(this.model));
+        this.skinBindings = compileSkinBindings(this.model);
         this.nodeOrder = nodeOrder(this.model.nodes());
         this.expressions = compileExpressions(this.model);
         Map<String, Matrix4f> matrices = new HashMap<>();
@@ -70,6 +69,18 @@ public final class PreparedAnimation implements PreparedEmote {
             String detail = message != null && message.startsWith("$.") && separator >= 0 ? message.substring(separator + 1) : message;
             throw new EmoteLoadException(loaded.sourcePath(), path, detail, exception);
         }
+    }
+
+    private static List<SkinBinding> compileSkinBindings(EmoteAnimation animation) {
+        List<SkinBinding> bindings = new ArrayList<>();
+        animation.nodes().entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(node ->
+            node.getValue().attachments().entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(attachment -> {
+                if (attachment.getValue() instanceof EmoteAnimation.SkinAttachment skin) {
+                    bindings.add(new SkinBinding(node.getKey(), attachment.getKey(),
+                        new PlayerSkinRegion(skin.part(), skin.from(), skin.to())));
+                }
+            }));
+        return List.copyOf(bindings);
     }
 
     private static Map<String, Map<String, DisplayData>> resolveDisplayContents(LoadedAnimation loaded, HolderLookup.Provider registries) throws EmoteLoadException {
