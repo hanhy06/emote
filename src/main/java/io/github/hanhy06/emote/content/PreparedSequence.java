@@ -130,12 +130,11 @@ public final class PreparedSequence implements PreparedEmote {
             var playback = animation.settings().playback();
             if (animation.clip().clock() != null || !(playback.startDelay() instanceof EmoteAnimation.ConstantValue start)
                 || !(playback.loopDelay() instanceof EmoteAnimation.ConstantValue delay)) return null;
-            for (int repeat = 0; repeat < animationStep.repeat(); repeat++) {
-                if (previousPose) durationTicks += animationStep.transitionTicks();
-                durationTicks += (long) start.value() + animation.clip().durationTicks();
-                if (repeat + 1 < animationStep.repeat() && playback.mode() == EmoteAnimation.PlaybackMode.LOOP) durationTicks += (long) delay.value();
-                previousPose = true;
-            }
+            long repeat = animationStep.repeat();
+            durationTicks += repeat * ((long) start.value() + animation.clip().durationTicks());
+            durationTicks += (previousPose ? repeat : repeat - 1) * animationStep.transitionTicks();
+            if (playback.mode() == EmoteAnimation.PlaybackMode.LOOP) durationTicks += (repeat - 1) * (long) delay.value();
+            previousPose = true;
         }
         return Math.toIntExact(durationTicks);
     }
