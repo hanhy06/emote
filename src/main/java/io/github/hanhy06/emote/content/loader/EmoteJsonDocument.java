@@ -1,6 +1,9 @@
 package io.github.hanhy06.emote.content.loader;
 
 import com.google.gson.*;
+import io.github.hanhy06.emote.api.EmoteCallback;
+import io.github.hanhy06.emote.api.EmoteMetadata;
+import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation.Node;
 import io.github.hanhy06.emote.util.MinecraftTime;
 import net.minecraft.resources.Identifier;
@@ -9,6 +12,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import io.github.hanhy06.emote.api.EmoteLoadException;
@@ -69,6 +75,56 @@ final class EmoteJsonDocument {
 
     String type() {
         return this.root.get("type").getAsString();
+    }
+
+    EmoteMetadata metadata() throws EmoteLoadException {
+        JsonObject object = requireObject(this.root, "metadata", "$");
+        String name = requireString(object, "name", "$.metadata");
+        if (name.isBlank()) {
+            throw error("$.metadata.name", "must not be blank");
+        }
+        String description = requireString(object, "description", "$.metadata");
+        LinkedHashMap<String, JsonElement> additional = new LinkedHashMap<>();
+        object.entrySet().stream()
+            .filter(entry -> !entry.getKey().equals("name") && !entry.getKey().equals("description"))
+            .forEach(entry -> additional.put(entry.getKey(), entry.getValue()));
+        return new EmoteMetadata(name, description, additional);
+    }
+
+    List<EmoteCallback> callbacks() throws EmoteLoadException {
+        JsonArray array = optionalArray(this.root, "callbacks", "$");
+        if (array == null) return List.of();
+        List<EmoteCallback> callbacks = new ArrayList<>();
+        for (int index = 0; index < array.size(); index++) {
+            String path = "$.callbacks[" + index + "]";
+            JsonObject callback = requireObject(array.get(index), path);
+            Identifier name = requireIdentifier(requireString(callback, "name", path), path + ".name");
+            String payload = callback.has("payload") ? requireString(callback, "payload", path) : "";
+            callbacks.add(new EmoteCallback(name, payload));
+        }
+        return List.copyOf(callbacks);
+    }
+
+    EmotePlayerBehavior requirePlayer(JsonObject object, String path) throws EmoteLoadException {
+        boolean hidden = requireBoolean(object, "hidden", path);
+        JsonObject stopObject = requireObject(object, "stop_conditions", path);
+        String stopPath = path + ".stop_conditions";
+        double movementDistance = requireFiniteDouble(
+            requireElement(stopObject, "movement_distance", stopPath),
+            stopPath + ".movement_distance"
+        );
+        if (movementDistance < 0.0D) {
+            throw error(stopPath + ".movement_distance", "must not be negative");
+        }
+        return new EmotePlayerBehavior(hidden, new EmotePlayerBehavior.StopConditions(
+            movementDistance,
+            requireBoolean(stopObject, "jump", stopPath),
+            requireBoolean(stopObject, "submerge", stopPath),
+            requireBoolean(stopObject, "ride", stopPath),
+            requireBoolean(stopObject, "damage", stopPath),
+            requireBoolean(stopObject, "attack", stopPath),
+            requireBoolean(stopObject, "game_mode_change", stopPath)
+        ));
     }
 
     JsonObject requireObject(JsonObject object, String key, String path) throws EmoteLoadException {

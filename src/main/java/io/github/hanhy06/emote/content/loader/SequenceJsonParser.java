@@ -28,22 +28,21 @@ public final class SequenceJsonParser {
         }
         document.requireExactInt(root, "schema_version", "$", SCHEMA_VERSION);
         Identifier id = document.requireIdentifier(document.requireString(root, "id", "$"), "$.id");
-        EmoteMetadata metadata = AnimationJsonParser.parseMetadata(document.requireObject(root, "metadata", "$"), document);
+        EmoteMetadata metadata = document.metadata();
         if (root.has("participants") && !root.get("participants").isJsonNull()) {
             throw document.error("$.participants", "two-player matching is no longer supported");
         }
         JsonObject settingsObject = document.requireObject(root, "settings", "$");
         int cooldownTicks = document.requireTime(settingsObject, "cooldown", "$.settings", 0);
-        EmotePlayerBehavior player = AnimationJsonParser.parsePlayer(
+        EmotePlayerBehavior player = document.requirePlayer(
             document.requireObject(settingsObject, "player", "$.settings"),
-            "$.settings.player",
-            document
+            "$.settings.player"
         );
         EmoteSequence.Settings settings = new EmoteSequence.Settings(cooldownTicks, player);
 
         List<EmoteSequence.Step> steps = parseSteps(document.requireArray(root, "steps", "$"), "$.steps", document);
         try {
-            return new LoadedSequence(document.sourcePath(), new EmoteSequence(id, metadata, settings, steps, AnimationJsonParser.parseCallbacks(root, document)));
+            return new LoadedSequence(document.sourcePath(), new EmoteSequence(id, metadata, settings, steps, document.callbacks()));
         } catch (IllegalArgumentException | NullPointerException exception) {
             throw document.error("$.steps", exception.getMessage(), exception);
         }

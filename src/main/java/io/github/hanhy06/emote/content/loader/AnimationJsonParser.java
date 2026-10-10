@@ -1,7 +1,6 @@
 package io.github.hanhy06.emote.content.loader;
 
 import com.google.gson.*;
-import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.LoadedAnimation;
@@ -15,7 +14,6 @@ import java.nio.file.Path;
 import java.util.*;
 
 import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
-import io.github.hanhy06.emote.api.EmoteCallback;
 import io.github.hanhy06.emote.api.EmoteLoadException;
 
 public final class AnimationJsonParser {
@@ -56,65 +54,13 @@ public final class AnimationJsonParser {
         Map<String, Track> tracks = tracks(d.requireArray(clip, "tracks", "$.animation"), nodes, durationTicks, d);
         Events events = events(object(clip, "events", "$.animation", d), nodes, durationTicks, d);
         return new LoadedAnimation(d.sourcePath(), new EmoteAnimation(id,
-            parseMetadata(d.requireObject(root, "metadata", "$"), d),
+            d.metadata(),
             new Settings(bool(settings, "standalone", true, "$.settings", d), cooldownTicks, (float) deadzone, interpolation, playerBehavior,
                 new PlaybackSettings(mode, loopStartTick, startDelay, loopDelay)),
-            molang, nodes, new Clip(durationTicks, tracks, events, expression), parseCallbacks(root, d),
+            molang, nodes, new Clip(durationTicks, tracks, events, expression), d.callbacks(),
             root.has("target_minecraft_version") ? d.requireString(root, "target_minecraft_version", "$") : null,
             object(root, "resources", "$", d), object(root, "source", "$", d)));
     }
-
-    static List<EmoteCallback> parseCallbacks(JsonObject root, EmoteJsonDocument document) throws EmoteLoadException {
-        JsonArray array = document.optionalArray(root, "callbacks", "$");
-        if (array == null) return List.of();
-        List<EmoteCallback> callbacks = new ArrayList<>();
-        for (int index = 0; index < array.size(); index++) {
-            String path = "$.callbacks[" + index + "]";
-            JsonObject callback = document.requireObject(array.get(index), path);
-            Identifier name = document.requireIdentifier(document.requireString(callback, "name", path), path + ".name");
-            String payload = callback.has("payload") ? document.requireString(callback, "payload", path) : "";
-            callbacks.add(new EmoteCallback(name, payload));
-        }
-        return List.copyOf(callbacks);
-    }
-
-    static EmoteMetadata parseMetadata(JsonObject object, EmoteJsonDocument document)
-        throws EmoteLoadException {
-        String name = document.requireString(object, "name", "$.metadata");
-        if (name.isBlank()) {
-            throw document.error("$.metadata.name", "must not be blank");
-        }
-        String description = document.requireString(object, "description", "$.metadata");
-        LinkedHashMap<String, JsonElement> additional = new LinkedHashMap<>();
-        object.entrySet().stream()
-            .filter(entry -> !entry.getKey().equals("name") && !entry.getKey().equals("description"))
-            .forEach(entry -> additional.put(entry.getKey(), entry.getValue()));
-        return new EmoteMetadata(name, description, additional);
-    }
-
-    static EmotePlayerBehavior parsePlayer(JsonObject object, String path, EmoteJsonDocument document)
-        throws EmoteLoadException {
-        boolean hidden = document.requireBoolean(object, "hidden", path);
-        JsonObject stopObject = document.requireObject(object, "stop_conditions", path);
-        String stopPath = path + ".stop_conditions";
-        double movementDistance = document.requireFiniteDouble(
-            document.requireElement(stopObject, "movement_distance", stopPath),
-            stopPath + ".movement_distance"
-        );
-        if (movementDistance < 0.0D) {
-            throw document.error(stopPath + ".movement_distance", "must not be negative");
-        }
-        return new EmotePlayerBehavior(hidden, new EmotePlayerBehavior.StopConditions(
-            movementDistance,
-            document.requireBoolean(stopObject, "jump", stopPath),
-            document.requireBoolean(stopObject, "submerge", stopPath),
-            document.requireBoolean(stopObject, "ride", stopPath),
-            document.requireBoolean(stopObject, "damage", stopPath),
-            document.requireBoolean(stopObject, "attack", stopPath),
-            document.requireBoolean(stopObject, "game_mode_change", stopPath)
-        ));
-    }
-
 
     private EmotePlayerBehavior animationPlayer(JsonObject player, EmoteJsonDocument d) throws EmoteLoadException {
         JsonObject stop = object(player, "stop_conditions", "$.settings.player", d);
