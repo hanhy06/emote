@@ -1,4 +1,4 @@
-import type { ImportDiagnostic } from "../../domain/conversionSeed";
+import type { ConversionIssue } from "../../foundation/diagnostics";
 
 export interface BlockbenchCubeProject {
   name?: string;
@@ -9,7 +9,7 @@ export interface BlockbenchCubeProject {
   textures: BbTexture[];
   animations: BbAnimation[];
   animationSourceIndices?: number[];
-  animationDiagnostics?: ImportDiagnostic[];
+  animationDiagnostics?: ConversionIssue[];
 }
 
 

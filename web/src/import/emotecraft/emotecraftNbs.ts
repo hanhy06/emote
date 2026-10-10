@@ -1,6 +1,6 @@
 import { sourceSecondsTime } from "../../format/time";
 import { fromArrayBuffer } from "@nbsjs/core";
-import type { ImportDiagnostic } from "../../domain/conversionSeed";
+import type { ConversionIssue } from "../../foundation/diagnostics";
 import type { TimelineEventIR } from "../../domain/animationIR";
 
 const MINECRAFT_INSTRUMENTS = [
@@ -11,7 +11,7 @@ const MINECRAFT_INSTRUMENTS = [
 
 export interface EmotecraftSongConversion {
   events: TimelineEventIR[];
-  diagnostics: ImportDiagnostic[];
+  diagnostics: ConversionIssue[];
 }
 
 export function convertEmotecraftSong(bytes: Uint8Array, durationTicks: number): EmotecraftSongConversion {
@@ -59,7 +59,7 @@ export function convertEmotecraftSong(bytes: Uint8Array, durationTicks: number):
     }
   }
 
-  const diagnostics: ImportDiagnostic[] = [];
+  const diagnostics: ConversionIssue[] = [];
   if (ignoredCustomNotes > 0) diagnostics.push({
     severity: "warning",
     code: "emotecraft_song_custom_instruments_ignored",

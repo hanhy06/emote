@@ -121,16 +121,16 @@ export function App() {
     if (!session) return;
 
     await runExport(async () => {
-      const { createDocumentAnimationDownload } = await import("./export/projectExporter");
-      return createDocumentAnimationDownload(session.document, index);
+      const { exportAnimation } = await import("./export/projectExporter");
+      return exportAnimation(session.document, index);
     }, "Conversion failed.", "Creating animation file");
   }
 
   async function handleAnimationBundle(includeSequence: boolean) {
     if (!session) return;
     await runExport(async () => {
-      const { createDocumentAnimationBundleDownload } = await import("./export/projectExporter");
-      return createDocumentAnimationBundleDownload(session.document, includeSequence);
+      const { exportAnimations } = await import("./export/projectExporter");
+      return exportAnimations(session.document, includeSequence);
     }, "File export failed.", includeSequence ? "Creating sequence files" : "Creating animation files");
   }
 
@@ -236,7 +236,7 @@ export function App() {
               </select>
             </label>
             <dl>
-              <div><dt>Format</dt><dd>{project.origin.adapterLabel}</dd></div>
+              <div><dt>Format</dt><dd>{project.origin.formatLabel}</dd></div>
               <div><dt>Nodes</dt><dd>{Object.keys(project.nodes).length}</dd></div>
               <div><dt>Animations</dt><dd>{project.animations.length}</dd></div>
             </dl>

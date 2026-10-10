@@ -1,4 +1,4 @@
-import { compileConversionAnimationArtifact } from "../compiler/animationCompiler";
+import { compileAnimation } from "../compiler/animationCompiler";
 import type { ConversionDocument } from "../domain/conversionDocument";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { serializeAnimation } from "../format/animation";
@@ -7,21 +7,21 @@ import type { ExportResult } from "./types";
 import { isSequenceControlId, type SequenceAnimationStep, type SequenceStep } from "../domain/emoteDefinition";
 import { normalizeSequenceTimes } from "../domain/animationIRConversion";
 
-export async function createDocumentAnimationDownload(document: ConversionDocument, animationIndex: number): Promise<ExportResult[]> {
+export async function exportAnimation(document: ConversionDocument, animationIndex: number): Promise<ExportResult[]> {
   const compiled = compileAnimationFile(document, animationIndex);
   const files = [compiled.file];
   if (compiled.generatedResourceReferences.size > 0) {
-    const { exportDocumentResourceBundle } = await import("./resourceBundleExporter");
-    files.push(exportDocumentResourceBundle(document, compiled.generatedResourceReferences));
+    const { exportResourceBundle } = await import("./resourceBundleExporter");
+    files.push(exportResourceBundle(document, compiled.generatedResourceReferences));
   }
   return files;
 }
 
-export async function createDocumentAnimationBundleDownload(document: ConversionDocument, includeSequence: boolean): Promise<ExportResult[]> {
+export async function exportAnimations(document: ConversionDocument, includeSequence: boolean): Promise<ExportResult[]> {
   const compiled = compileAnimationFiles(document, includeSequence);
   if (compiled.generatedResourceReferences.size === 0) return compiled.files;
-  const { exportDocumentResourceBundle } = await import("./resourceBundleExporter");
-  return [...compiled.files, exportDocumentResourceBundle(document, compiled.generatedResourceReferences)];
+  const { exportResourceBundle } = await import("./resourceBundleExporter");
+  return [...compiled.files, exportResourceBundle(document, compiled.generatedResourceReferences)];
 }
 
 interface CompiledAnimationFile {
@@ -35,7 +35,7 @@ interface CompiledAnimationFiles {
 }
 
 function compileAnimationFile(document: ConversionDocument, animationIndex: number): CompiledAnimationFile {
-  const compiled = compileConversionAnimationArtifact(document, animationIndex);
+  const compiled = compileAnimation(document, animationIndex);
   const animation = compiled.animation;
   return {
     generatedResourceReferences: compiled.generatedResourceReferences,
@@ -48,7 +48,7 @@ function compileAnimationFile(document: ConversionDocument, animationIndex: numb
 
 function compileAnimationFiles(document: ConversionDocument, includeSequence: boolean): CompiledAnimationFiles {
   if (document.animations.length === 0) throw new Error("The project does not contain animations.");
-  const compiled = document.animations.map((_, index) => compileConversionAnimationArtifact(
+  const compiled = document.animations.map((_, index) => compileAnimation(
     document,
     index,
     includeSequence ? false : undefined,
@@ -67,7 +67,7 @@ function compileAnimationFiles(document: ConversionDocument, includeSequence: bo
     normalizeSequenceTimes(sequenceOutput);
     const outputIdBySourceId = new Map(document.animations.flatMap((entry, index) => entry.sourceReferenceId
       ? [[entry.sourceReferenceId, animations[index].id] as const] : []));
-    const baseSequenceId = `${sanitizeNamespace(sequenceOutput.namespace)}:${sanitizeResourcePath(sequenceOutput.idPath ?? sequenceOutput.displayName)}`;
+    const baseSequenceId = `${sanitizeNamespace(sequenceOutput.namespace)}:${sanitizeResourcePath(sequenceOutput.idPath ?? sequenceOutput.name)}`;
     let sequenceId = baseSequenceId;
     let suffix = 1;
     while (animations.some((animation) => animation.id === sequenceId)) sequenceId = `${baseSequenceId}.${suffix++}`;
@@ -77,7 +77,7 @@ function compileAnimationFiles(document: ConversionDocument, includeSequence: bo
       target_minecraft_version: document.targetMinecraftVersion,
       id: sequenceId,
       ...(sequenceOutput.callbacks?.length ? { callbacks: sequenceOutput.callbacks.map((callback) => ({ ...callback })) } : {}),
-      metadata: { ...sequenceOutput.additionalMetadata, name: sequenceOutput.displayName, description: sequenceOutput.description },
+      metadata: { ...sequenceOutput.additionalMetadata, name: sequenceOutput.name, description: sequenceOutput.description },
       settings: { cooldown: sequenceOutput.cooldown, player: sequenceOutput.player },
       steps: sequenceOutput.steps
         ? sequenceOutput.steps.map((step) => remapSequenceStep(step, outputIdBySourceId))

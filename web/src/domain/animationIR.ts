@@ -2,7 +2,7 @@ import type { EmoteCallback, EmoteMetadata, EmotePlayerBehavior } from "./emoteD
 
 export type ScalarIR = number | { molang: string };
 export type TimeValueIR = string | { molang: string };
-export type ValueIR = readonly ScalarIR[];
+export type VectorValueIR = readonly ScalarIR[];
 export type VisibilityIR = boolean | { molang: string };
 export type RotationOrderIR = "XYZ" | "XZY" | "YXZ" | "YZX" | "ZXY" | "ZYX";
 
@@ -48,14 +48,14 @@ export interface SegmentIR {
   interpolation: "step" | "linear" | "slerp" | "catmull_rom" | "hermite" | "bezier";
   easing?: EasingIR;
   tension?: number;
-  previous?: ValueIR;
-  following?: ValueIR;
-  out_tangent?: ValueIR;
-  in_tangent?: ValueIR;
+  previous?: VectorValueIR;
+  following?: VectorValueIR;
+  out_tangent?: VectorValueIR;
+  in_tangent?: VectorValueIR;
   handles?: { out: { time: number; value: ScalarIR }; in: { time: number; value: ScalarIR } }[];
 }
 
-export type CurveKeyIR = { time: string } & ({ value: ValueIR; pre?: never; post?: never } | { pre: ValueIR; post: ValueIR; value?: never });
+export type CurveKeyIR = { time: string } & ({ value: VectorValueIR; pre?: never; post?: never } | { pre: VectorValueIR; post: VectorValueIR; value?: never });
 export interface CurveIR {
   type: "curve";
   before?: "base" | "first_pre";
@@ -66,7 +66,7 @@ export interface NbtPatchIR {
   merge: string | { molang: string };
   remove?: string[];
 }
-export type DriverIR = CurveIR | { type: "expression"; value: ValueIR | VisibilityIR }
+export type DriverIR = CurveIR | { type: "expression"; value: VectorValueIR | VisibilityIR }
   | { type: "state"; keys: { time: string; value: VisibilityIR | NbtPatchIR }[] };
 export interface TrackIR {
   target: { node: string; operation?: string; attachment?: string };
@@ -113,18 +113,18 @@ export interface AnimationIR {
   source?: Record<string, unknown>;
 }
 
-export interface Animation extends Omit<AnimationIR, "nodes" | "animation" | "target_minecraft_version"> {
+export interface AnimationEntryIR extends Omit<AnimationIR, "nodes" | "animation" | "target_minecraft_version"> {
   nodeIds: string[];
   clip: ClipIR;
 }
 
-export interface IR {
+export interface AnimationSetIR {
   nodes: Record<string, NodeIR>;
-  animations: Animation[];
+  animations: AnimationEntryIR[];
   targetMinecraftVersion: string;
 }
 
-export function orderedNodeIdsIR(nodes: Record<string, NodeIR>): string[] {
+export function orderedNodeIds(nodes: Record<string, NodeIR>): string[] {
   const result: string[] = [];
   const pending = new Set(Object.keys(nodes));
   while (pending.size) {

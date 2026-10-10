@@ -1,6 +1,6 @@
 import { parseAnimationSeconds } from "../format/time";
-import { documentPartAssignments, documentPartOrders, type ConversionAnimation, type ConversionDocument } from "../domain/conversionDocument";
-import { evaluatePoseIR } from "../domain/animationIRPose";
+import { skinPartAssignments, skinPartOrders, type ConversionAnimation, type ConversionDocument } from "../domain/conversionDocument";
+import { evaluatePose } from "../domain/animationIRPose";
 import type { PreviewAvailability } from "../domain/previewProjection";
 import type { PlayerSkinPart } from "../domain/player";
 import { matrix4ToRowMajor } from "../format/matrix";
@@ -52,7 +52,7 @@ export function createPreviewModel(document: ConversionDocument, animation: Conv
     if (animation.clip.clock?.type === "molang") approximate("Runtime animation clock is approximated with elapsed time.");
     if (animation.clip.programs?.initialize || animation.clip.programs?.update) approximate("Runtime programs are preserved; dependent expressions use their base components.");
     try {
-      const poses = evaluatePoseIR({ ...animation, nodes: Object.fromEntries(animation.nodeIds.map((id) => [id, document.nodes[id]])),
+      const poses = evaluatePose({ ...animation, nodes: Object.fromEntries(animation.nodeIds.map((id) => [id, document.nodes[id]])),
         animation: tick === null || elapsed < startDelay ? { ...animation.clip, tracks: [] } : animation.clip }, time, evaluate, approximate);
       const groups = new Map<string, number>();
       for (const [id, candidate] of candidates) {
@@ -69,7 +69,7 @@ export function createPreviewModel(document: ConversionDocument, animation: Conv
     }
   }
   return { tick, durationTicks, availability, parts,
-    assignments: Object.fromEntries(Object.entries(documentPartAssignments(document)).filter(([id]) => nodeIds.has(id))),
-    orders: Object.fromEntries(Object.entries(documentPartOrders(document)).filter(([id]) => nodeIds.has(id))),
+    assignments: Object.fromEntries(Object.entries(skinPartAssignments(document)).filter(([id]) => nodeIds.has(id))),
+    orders: Object.fromEntries(Object.entries(skinPartOrders(document)).filter(([id]) => nodeIds.has(id))),
     hasReviewNodes: candidates.length > 0 };
 }

@@ -1,13 +1,13 @@
 import type { ConversionIssue } from "../foundation/diagnostics";
 import type { PlayerSkinPart } from "./player";
-import { orderedNodeIdsIR, type Animation, type AnimationIR, type AttachmentIR, type IR, type NodeIR, type TimelineEventIR, type TransformOperationIR } from "./animationIR";
-import { normalizeAnimationTimesIR, normalizeSequenceTimes, remapClipIR, removeTinyStaticNodes } from "./animationIRConversion";
+import { orderedNodeIds, type AnimationEntryIR, type AnimationIR, type AttachmentIR, type AnimationSetIR, type NodeIR, type TimelineEventIR, type TransformOperationIR } from "./animationIR";
+import { normalizeAnimationTimes, normalizeSequenceTimes, remapClip, removeTinyStaticNodes } from "./animationIRConversion";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
 import { parseAnimationSeconds, parseMinecraftTime } from "../format/time";
 import type { GeneratedResource } from "./generatedResource";
 import type { EmoteCallback, EmotePlayerBehavior, SequenceStep } from "./emoteDefinition";
-import type { ImportedProject, ImportedSkinPart, ImportSource } from "./conversionSeed";
+import type { ImportedProject, ImportedSkinPart, InputFormat } from "./conversionSeed";
 
 export const DEFAULT_TARGET_MINECRAFT_VERSION = "26.3";
 
@@ -19,7 +19,7 @@ export interface SkinCandidate {
   fittingOperation?: TransformOperationIR;
 }
 
-export interface ConversionAnimation extends Animation {
+export interface ConversionAnimation extends AnimationEntryIR {
   sourceName: string;
   sourceReferenceId?: string;
 }
@@ -30,7 +30,7 @@ export interface SequenceOutputSettings {
   callbacks?: EmoteCallback[];
   namespace: string;
   idPath?: string;
-  displayName: string;
+  name: string;
   description: string;
   additionalMetadata: Record<string, unknown>;
   cooldown: string;
@@ -39,8 +39,8 @@ export interface SequenceOutputSettings {
   steps?: SequenceStep[];
 }
 
-export interface ConversionDocument extends IR {
-  origin: { source: ImportSource; sourceName: string; adapterLabel: string; minecraftVersion?: string };
+export interface ConversionDocument extends AnimationSetIR {
+  origin: { source: InputFormat; sourceName: string; formatLabel: string; minecraftVersion?: string };
   animations: ConversionAnimation[];
   skinCandidates: Record<string, SkinCandidate>;
   sequence: SequenceOutputSettings;
@@ -48,7 +48,7 @@ export interface ConversionDocument extends IR {
   resources: Map<string, GeneratedResource>;
 }
 
-export function createConversionDocument(project: ImportedProject, adapterLabel: string): ConversionDocument {
+export function createConversionDocument(project: ImportedProject, formatLabel: string): ConversionDocument {
   const nodes: Record<string, NodeIR> = {};
   const skinCandidates: Record<string, SkinCandidate> = {};
   const suggestions: Record<string, ImportedSkinPart> = {};
@@ -73,10 +73,10 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
       loop: ir.animation.events?.loop ?? [],
       stop: ir.animation.events?.stop ?? [],
     };
-    normalizeAnimationTimesIR(ir);
+    normalizeAnimationTimes(ir);
     removeTinyStaticNodes(ir, ir.animation.events);
     const ids = new Map<string, string>();
-    for (const sourceId of orderedNodeIdsIR(ir.nodes)) {
+    for (const sourceId of orderedNodeIds(ir.nodes)) {
       const sourceNode = ir.nodes[sourceId];
       const importedId = typeof sourceNode.source?.editor_node_id === "string" ? sourceNode.source.editor_node_id : sourceId;
       const node = structuredClone(sourceNode);
@@ -110,16 +110,16 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
       ids.set(sourceId, id);
     }
     const { nodes: _nodes, animation: sourceClip, target_minecraft_version: _version, ...fields } = ir;
-    const clip = remapClipIR(sourceClip, (id) => ids.get(id) ?? id);
+    const clip = remapClip(sourceClip, (id) => ids.get(id) ?? id);
     return { ...fields, clip, nodeIds: [...ids.values()], sourceName: animation.name,
       sourceReferenceId: animation.sourceReferenceId };
   });
   let document: ConversionDocument = {
-    origin: { source: project.source, sourceName: project.sourceName, adapterLabel, ...(project.suggestedMinecraftVersion ? { minecraftVersion: project.suggestedMinecraftVersion } : {}) },
+    origin: { source: project.source, sourceName: project.sourceName, formatLabel, ...(project.suggestedMinecraftVersion ? { minecraftVersion: project.suggestedMinecraftVersion } : {}) },
     targetMinecraftVersion: project.suggestedMinecraftVersion && Object.hasOwn(MINECRAFT_VERSION_PROFILES, project.suggestedMinecraftVersion)
       ? project.suggestedMinecraftVersion : DEFAULT_TARGET_MINECRAFT_VERSION,
     nodes, skinCandidates, animations,
-    sequence: { namespace, displayName: project.suggestedMetadata.name, description: project.suggestedMetadata.description,
+    sequence: { namespace, name: project.suggestedMetadata.name, description: project.suggestedMetadata.description,
       additionalMetadata, cooldown: project.suggestedCooldown ?? "0t", player: project.suggestedPlayer },
     diagnostics: project.diagnostics, resources: project.resources,
   };
@@ -132,14 +132,14 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
   return document;
 }
 
-export function documentPartAssignments(document: ConversionDocument): Record<string, PlayerSkinPart | null> {
+export function skinPartAssignments(document: ConversionDocument): Record<string, PlayerSkinPart | null> {
   return Object.fromEntries(Object.entries(document.skinCandidates).map(([id, candidate]) => {
     const attachment = document.nodes[id].attachments?.[candidate.attachmentId];
     return [id, attachment?.type === "player_skin" ? attachment.part : null];
   }));
 }
 
-export function documentPartOrders(document: ConversionDocument): Record<string, number | null> {
+export function skinPartOrders(document: ConversionDocument): Record<string, number | null> {
   return Object.fromEntries(Object.entries(document.skinCandidates).map(([id, candidate]) => {
     const attachment = document.nodes[id].attachments?.[candidate.attachmentId];
     if (attachment?.type !== "player_skin") return [id, null];
@@ -147,7 +147,7 @@ export function documentPartOrders(document: ConversionDocument): Record<string,
   }));
 }
 
-export function assignDocumentSkinPart(document: ConversionDocument, selectedNodeIds: ReadonlySet<string>, part: PlayerSkinPart | null): ConversionDocument {
+export function assignSkinPart(document: ConversionDocument, selectedNodeIds: ReadonlySet<string>, part: PlayerSkinPart | null): ConversionDocument {
   const groups = new Set([...selectedNodeIds].flatMap((id) => document.skinCandidates[id] ? [document.skinCandidates[id].groupId] : []));
   if (!groups.size) return document;
   const scenes = new Set([...selectedNodeIds].flatMap((id) => document.skinCandidates[id] ? [document.skinCandidates[id].sceneId] : []));
@@ -180,11 +180,11 @@ export function assignDocumentSkinPart(document: ConversionDocument, selectedNod
   return result;
 }
 
-export function assignDocumentSkinOrder(document: ConversionDocument, selectedNodeIds: ReadonlySet<string>, order: number): ConversionDocument {
+export function assignSkinOrder(document: ConversionDocument, selectedNodeIds: ReadonlySet<string>, order: number): ConversionDocument {
   const selected = new Set([...selectedNodeIds].flatMap((id) => document.skinCandidates[id] ? [document.skinCandidates[id].groupId] : []));
   const scenes = new Set([...selectedNodeIds].flatMap((id) => document.skinCandidates[id] ? [document.skinCandidates[id].sceneId] : []));
   let result = document;
-  for (const scene of scenes) for (const part of [...new Set(Object.values(documentPartAssignments(document)).filter((part): part is PlayerSkinPart => part !== null))]) {
+  for (const scene of scenes) for (const part of [...new Set(Object.values(skinPartAssignments(document)).filter((part): part is PlayerSkinPart => part !== null))]) {
     const groups = orderedSkinGroups(document, part, scene);
     const moved = groups.filter((id) => selected.has(id));
     if (!moved.length) continue;
@@ -224,25 +224,25 @@ function applySkinGroups(document: ConversionDocument, part: PlayerSkinPart, gro
   return { ...document, nodes };
 }
 
-export function updateDocumentAnimationLifecycleEvents(document: ConversionDocument, animationIndex: number,
+export function updateLifecycleEvents(document: ConversionDocument, animationIndex: number,
   events: Pick<ConversionAnimationEvents, "start" | "loop" | "stop"> & { callbacks: EmoteCallback[] }): ConversionDocument {
   const animation = document.animations[animationIndex];
   if (!animation) return document;
   const { callbacks, ...commandEvents } = events;
-  return updateDocumentAnimation(document, animationIndex, { ...animation, callbacks: structuredClone(callbacks),
+  return updateAnimation(document, animationIndex, { ...animation, callbacks: structuredClone(callbacks),
     clip: { ...animation.clip, events: { ...structuredClone(commandEvents), timeline: structuredClone(animation.clip.events?.timeline ?? []) } } });
 }
 
-export function replaceDocumentAnimationTimelineEvents(document: ConversionDocument, animationIndex: number, events: TimelineEventIR[]): ConversionDocument {
+export function replaceTimelineEvents(document: ConversionDocument, animationIndex: number, events: TimelineEventIR[]): ConversionDocument {
   const animation = document.animations[animationIndex];
   if (!animation) return document;
-  return updateDocumentAnimation(document, animationIndex, { ...animation,
+  return updateAnimation(document, animationIndex, { ...animation,
     clip: { ...animation.clip, events: { ...animation.clip.events, timeline: structuredClone(events).sort((first, second) => parseAnimationSeconds(first.time) - parseAnimationSeconds(second.time)) } } });
 }
 
-export function updateDocumentAnimation(document: ConversionDocument, animationIndex: number, animation: Animation): ConversionDocument {
+export function updateAnimation(document: ConversionDocument, animationIndex: number, animation: AnimationEntryIR): ConversionDocument {
   if (!document.animations[animationIndex]) return document;
   const normalized = structuredClone(animation);
-  normalizeAnimationTimesIR(normalized);
+  normalizeAnimationTimes(normalized);
   return { ...document, animations: document.animations.map((entry, index) => index === animationIndex ? { ...entry, ...normalized } : entry) };
 }

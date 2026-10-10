@@ -1,6 +1,7 @@
 import { formatMinecraftTime, parseAnimationSeconds, TICKS_PER_SECOND } from "../../format/time";
 import { importedNodeHints } from "../../domain/conversionSeed";
-import type { ImportedProject, ImportDiagnostic } from "../../domain/conversionSeed";
+import type { ImportedProject } from "../../domain/conversionSeed";
+import type { ConversionIssue } from "../../foundation/diagnostics";
 import type { TimelineEventIR } from "../../domain/animationIR";
 import { createDefaultPlayerBehavior } from "../../domain/emoteDefinition";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
@@ -10,7 +11,7 @@ import { createEmotecraftAnimationIR } from "./emotecraftAnimationIR";
 
 export function importEmotecraftFile(file: EmotecraftFile, sourceName: string): ImportedProject {
   const name = file.metadata.name?.trim() || sourceName.replace(/\.emotecraft$/i, "").trim() || "Emotecraft Emote";
-  const diagnostics: ImportDiagnostic[] = [];
+  const diagnostics: ConversionIssue[] = [];
   const { ir, imported: nodes } = createEmotecraftAnimationIR(file.animation, name, diagnostics);
   const effects = file.animation.effects;
   const timeline: TimelineEventIR[] = [];

@@ -1,10 +1,10 @@
 import { parseAnimationSeconds } from "../format/time";
 import { Quaternion } from "three";
-import type { CurveIR, EasingIR, ScalarIR, SegmentIR, ValueIR } from "./animationIR";
+import type { CurveIR, EasingIR, ScalarIR, SegmentIR, VectorValueIR } from "./animationIR";
 
 export type ScalarEvaluatorIR = (value: ScalarIR, progress: number, base?: number) => number;
 
-export function easingIR(easing: EasingIR | undefined, u: number): number {
+export function evaluateEasing(easing: EasingIR | undefined, u: number): number {
   if (!easing || easing.kernel === "linear") return u;
   const f = (x: number): number => {
     switch (easing.kernel) {
@@ -28,8 +28,8 @@ export function easingIR(easing: EasingIR | undefined, u: number): number {
   return f(u);
 }
 
-export function sampleCurveIR(curve: CurveIR, time: number, base: readonly number[], evaluate: ScalarEvaluatorIR): number[] {
-  const vector = (value: ValueIR, u: number) => value.map((scalar, axis) => evaluate(scalar, u, base[axis]));
+export function sampleCurve(curve: CurveIR, time: number, base: readonly number[], evaluate: ScalarEvaluatorIR): number[] {
+  const vector = (value: VectorValueIR, u: number) => value.map((scalar, axis) => evaluate(scalar, u, base[axis]));
   const first = curve.keys[0];
   if (time < parseAnimationSeconds(first.time)) return curve.before === "first_pre" ? vector(first.pre ?? first.value!, 0) : [...base];
   let index = 0;
@@ -43,7 +43,7 @@ export function sampleCurveIR(curve: CurveIR, time: number, base: readonly numbe
   const segment = curve.segments[index];
   if (segment.interpolation === "step") return start;
   const end = vector(right.pre ?? right.value!, u);
-  const t = easingIR(segment.easing, u);
+  const t = evaluateEasing(segment.easing, u);
   if (segment.interpolation === "slerp") {
     return new Quaternion(...start as [number, number, number, number]).normalize()
       .slerp(new Quaternion(...end as [number, number, number, number]).normalize(), t).toArray();

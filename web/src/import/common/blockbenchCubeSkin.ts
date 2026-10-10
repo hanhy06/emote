@@ -2,6 +2,7 @@ import { Matrix4, Vector3 } from "three";
 import type { Matrix16 } from "../../domain/matrix";
 import { matrix4ToRowMajor } from "../../format/matrix";
 import type { ImportedSkinPart } from "../../domain/conversionSeed";
+import type { PlayerSkinPart } from "../../domain/player";
 import type { BbCube } from "./blockbenchCubeSchema";
 import type { BoneEntry } from "./blockbenchCubeModel";
 import {
@@ -11,7 +12,6 @@ import {
   inferHumanoidPart,
   isStandardHumanoidPartSize,
   sliceVerticalUv,
-  type HumanoidPart,
 } from "./humanoidPlayerRig";
 
 const HIDDEN_ACCESSORY_BONES = new Set(["leftitem", "rightitem", "cape"]);
@@ -25,7 +25,7 @@ interface SplitSkinCube {
 interface SkinCubeSource {
   bone: BoneEntry;
   cube: BbCube;
-  part: HumanoidPart;
+  part: PlayerSkinPart;
 }
 
 export interface PreparedCubeModels {
@@ -205,7 +205,7 @@ function sliceVerticalFaceUvs(faces: BbCube["faces"], startRatio: number, endRat
   return slicedFaces;
 }
 
-function findLowerJointBone(bone: BoneEntry, cube: BbCube, part: HumanoidPart, bones: BoneEntry[]): BoneEntry | undefined {
+function findLowerJointBone(bone: BoneEntry, cube: BbCube, part: PlayerSkinPart, bones: BoneEntry[]): BoneEntry | undefined {
   if (part === "head") return undefined;
   const names = part === "body"
     ? ["lowerbody", "abdomen"]

@@ -1,11 +1,11 @@
 import type { TargetedEvent, TargetedMouseEvent } from "preact";
 import { useEffect, useRef } from "preact/hooks";
 import type { PreviewPart } from "../preview/previewModel";
+import type { PlayerSkinPart } from "../domain/player";
 import {
   SKIN_PARTS,
   type PartAssignments,
   type PartOrders,
-  type SkinPartId,
 } from "../preview/skinParts";
 
 interface AssignmentPanelProps {
@@ -14,7 +14,7 @@ interface AssignmentPanelProps {
   orders: PartOrders;
   selectedNodeIds: ReadonlySet<string>;
   hasSelectedAssignment: boolean;
-  onAssignPart: (skinPart: SkinPartId | null) => void;
+  onAssignPart: (skinPart: PlayerSkinPart | null) => void;
   onAssignOrder: (order: number) => void;
   onSelectNode: (nodeId: string, additive: boolean) => void;
 }
@@ -142,7 +142,7 @@ export function AssignmentPanel({
   );
 }
 
-function assignmentLabel(assignment: SkinPartId | null | undefined, order: number | null | undefined): string {
+function assignmentLabel(assignment: PlayerSkinPart | null | undefined, order: number | null | undefined): string {
   const label = SKIN_PARTS.find((part) => part.id === assignment)?.label ?? "Unassigned";
   return assignment && order != null ? `${label} · ${order}` : label;
 }

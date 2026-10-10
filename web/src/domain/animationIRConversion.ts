@@ -1,6 +1,6 @@
-import { orderedNodeIdsIR, type Animation, type AnimationIR, type ClipIR, type ScalarIR, type TimeValueIR } from "./animationIR";
+import { orderedNodeIds, type AnimationEntryIR, type AnimationIR, type ClipIR, type ScalarIR, type TimeValueIR } from "./animationIR";
 import { formatMinecraftTime, parseAnimationSeconds, parseMinecraftTime, sourceSecondsTime } from "../format/time";
-import { evaluatePoseIR } from "./animationIRPose";
+import { evaluatePose } from "./animationIRPose";
 import type { SequenceStep } from "./emoteDefinition";
 export function scalarIR(value: number | string): ScalarIR {
   if (typeof value !== "string") return value as ScalarIR;
@@ -21,7 +21,7 @@ export function normalizeSequenceTimes(sequence: { cooldown: string; steps?: Seq
   }
 }
 
-export function normalizeAnimationTimesIR(animation: AnimationIR | Animation): void {
+export function normalizeAnimationTimes(animation: AnimationIR | AnimationEntryIR): void {
   if (animation.settings?.cooldown !== undefined) animation.settings.cooldown = formatMinecraftTime(parseMinecraftTime(animation.settings.cooldown));
   if (animation.settings?.display_interpolation_ticks !== undefined) {
     animation.settings.display_interpolation_ticks = parseMinecraftTime(`${animation.settings.display_interpolation_ticks}t`);
@@ -68,7 +68,7 @@ export function normalizeAnimationTimesIR(animation: AnimationIR | Animation): v
 
 export function removeTinyStaticNodes(ir: AnimationIR, events: NonNullable<AnimationIR["animation"]["events"]>): AnimationIR {
   const staticNodes = new Set<string>();
-  for (const id of orderedNodeIdsIR(ir.nodes)) {
+  for (const id of orderedNodeIds(ir.nodes)) {
     const node = ir.nodes[id];
     if (node.parent && !staticNodes.has(node.parent)) continue;
     const constant = ir.animation.tracks.filter((t) => t.target.node === id && t.channel === "value").every((t) => {
@@ -81,7 +81,7 @@ export function removeTinyStaticNodes(ir: AnimationIR, events: NonNullable<Anima
     });
     if (constant) staticNodes.add(id);
   }
-  const poses = evaluatePoseIR(ir, 0, (value) => typeof value === "number" ? value : 0);
+  const poses = evaluatePose(ir, 0, (value) => typeof value === "number" ? value : 0);
   const candidates = new Set([...staticNodes].filter((id) => {
     if (!ir.nodes[id].attachments) return false;
     const matrix = poses[id].matrix.elements;
@@ -101,14 +101,14 @@ export function removeTinyStaticNodes(ir: AnimationIR, events: NonNullable<Anima
   for (const id of candidates) {
     for (let current: string | undefined = id; current && !protectedNodes.has(current); current = ir.nodes[current]?.parent) removable.add(current);
   }
-  for (const id of orderedNodeIdsIR(ir.nodes)) if (ir.nodes[id].parent && removable.has(ir.nodes[id].parent!)) removable.add(id);
+  for (const id of orderedNodeIds(ir.nodes)) if (ir.nodes[id].parent && removable.has(ir.nodes[id].parent!)) removable.add(id);
   if (!removable.size || removable.size === Object.keys(ir.nodes).length) return ir;
   ir.nodes = Object.fromEntries(Object.entries(ir.nodes).filter(([id]) => !removable.has(id)));
   ir.animation.tracks = ir.animation.tracks.filter((track) => !removable.has(track.target.node));
   return ir;
 }
 
-export function remapClipIR(source: ClipIR, nodeId: (id: string) => string): ClipIR {
+export function remapClip(source: ClipIR, nodeId: (id: string) => string): ClipIR {
   const clip = structuredClone(source);
   for (const t of clip.tracks) t.target.node = nodeId(t.target.node);
   for (const phase of Object.values(clip.events ?? {})) for (const e of phase ?? []) {

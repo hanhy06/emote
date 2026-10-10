@@ -8,7 +8,7 @@ import type { AnimationJson } from "../format/animation";
 import { EMOTE_SCHEMA_VERSION } from "../format/emote";
 import { ConversionError } from "../foundation/diagnostics";
 
-export function compileConversionAnimationArtifact(document: ConversionDocument, index: number, standalone?: boolean): { animation: AnimationJson; generatedResourceReferences: ReadonlySet<string> } {
+export function compileAnimation(document: ConversionDocument, index: number, standalone?: boolean): { animation: AnimationJson; generatedResourceReferences: ReadonlySet<string> } {
   const entry = document.animations[index];
   if (!entry) throw new ConversionError("unknown_animation", `Animation ${index + 1} does not exist.`);
   const nodeIds = new Set(entry.nodeIds);

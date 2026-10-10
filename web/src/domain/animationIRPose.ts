@@ -1,7 +1,7 @@
 import { parseAnimationSeconds } from "../format/time";
 import { Euler, Matrix4, Quaternion, Vector3 } from "three";
-import { orderedNodeIdsIR, type AnimationIR, type DriverIR, type ScalarIR, type TrackIR, type VisibilityIR } from "./animationIR";
-import { sampleCurveIR, type ScalarEvaluatorIR } from "./animationIRCurves";
+import { orderedNodeIds, type AnimationIR, type DriverIR, type ScalarIR, type TrackIR, type VisibilityIR } from "./animationIR";
+import { sampleCurve, type ScalarEvaluatorIR } from "./animationIRCurves";
 
 export interface NodePoseIR {
   matrix: Matrix4;
@@ -10,13 +10,13 @@ export interface NodePoseIR {
   attachments: Record<string, boolean>;
 }
 
-export function evaluatePoseIR(animation: AnimationIR, time: number, evaluate: ScalarEvaluatorIR, onApproximation?: (reason: string) => void): Record<string, NodePoseIR> {
+export function evaluatePose(animation: AnimationIR, time: number, evaluate: ScalarEvaluatorIR, onApproximation?: (reason: string) => void): Record<string, NodePoseIR> {
   const result: Record<string, NodePoseIR> = {};
   const tracks = new Map(animation.animation.tracks.map((track) => [JSON.stringify([track.target.node, track.target.operation, track.target.attachment, track.channel]), track]));
   const find = (node: string, channel: TrackIR["channel"], operation?: string, attachment?: string) => tracks.get(JSON.stringify([node, operation, attachment, channel]))?.driver;
   const value = (driver: DriverIR | undefined, base: readonly number[]): number[] => {
     if (!driver) return [...base];
-    if (driver.type === "curve") return sampleCurveIR(driver, time, base, evaluate);
+    if (driver.type === "curve") return sampleCurve(driver, time, base, evaluate);
     if (driver.type !== "expression" || !Array.isArray(driver.value)) throw new Error("Transform requires an expression vector or curve.");
     return (driver.value as readonly ScalarIR[]).map((scalar, axis) => evaluate(scalar, 0, base[axis]));
   };
@@ -31,7 +31,7 @@ export function evaluatePoseIR(animation: AnimationIR, time: number, evaluate: S
     } else throw new Error("Visibility requires an expression or state driver.");
     return typeof raw === "boolean" ? raw : evaluate(raw, 0, base ? 1 : 0) !== 0;
   };
-  for (const id of orderedNodeIdsIR(animation.nodes)) {
+  for (const id of orderedNodeIds(animation.nodes)) {
     const node = animation.nodes[id];
     const local = new Matrix4();
     const rotation = new Quaternion();

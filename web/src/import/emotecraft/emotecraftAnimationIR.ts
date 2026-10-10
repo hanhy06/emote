@@ -1,7 +1,8 @@
 import type { AnimationIR, CurveIR, CurveKeyIR, DriverIR, NodeIR, ScalarIR, SegmentIR, TrackIR } from "../../domain/animationIR";
 import { blockbenchEasingIR } from "../../domain/animationIRCurves";
 import { scalarIR } from "../../domain/animationIRConversion";
-import type { ImportedNode, ImportDiagnostic } from "../../domain/conversionSeed";
+import type { ImportedNode } from "../../domain/conversionSeed";
+import type { ConversionIssue } from "../../foundation/diagnostics";
 import { sanitizeResourcePath } from "../../format/resourceLocation";
 import { affineMolang } from "../common/molangVector";
 import { importedNodeIR } from "../common/blockbenchAnimationIR";
@@ -9,7 +10,7 @@ import { rewriteMolangIdentifiers } from "../../format/molang/sourceTransformer"
 import type { PalAnimation, PalExpression, PalKeyframe } from "./emotecraftBinary";
 import { createEmotecraftNodes, createEmotecraftSlices, EMOTECRAFT_PIVOTS, EMOTECRAFT_PLAYER_PARTS, EMOTECRAFT_RENDER_SCALE } from "./emotecraftPlayerRig";
 
-export function createEmotecraftAnimationIR(animation: PalAnimation, name: string, diagnostics: ImportDiagnostic[]): { ir: AnimationIR; imported: Record<string, ImportedNode> } {
+export function createEmotecraftAnimationIR(animation: PalAnimation, name: string, diagnostics: ConversionIssue[]): { ir: AnimationIR; imported: Record<string, ImportedNode> } {
   const duration = Math.max(0.05, animation.lengthTicks / 20);
   if (!Number.isFinite(duration) || duration > 600) throw new Error(`${name} duration must be within (0, 600] seconds.`);
   const nodes: Record<string, NodeIR> = { scene: { transform: [{ id: "scale", op: "scale", value: [EMOTECRAFT_RENDER_SCALE, EMOTECRAFT_RENDER_SCALE, EMOTECRAFT_RENDER_SCALE] }] } };

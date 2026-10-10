@@ -14,8 +14,7 @@ import {
 } from "../../format/snbt";
 import type { ImportInput } from "../input";
 import { cachedInputValue } from "../common/inputCache";
-import type { ImportDiagnostic } from "../../domain/conversionSeed";
-import { skippedAnimationIssue } from "../../foundation/diagnostics";
+import { skippedAnimationIssue, type ConversionIssue } from "../../foundation/diagnostics";
 
 const decoder = new TextDecoder();
 const TICKS_PER_BD_FRAME = 2;
@@ -74,7 +73,7 @@ export interface BdDatapackSource {
   displays: BdSourceDisplay[];
   animations: BdSourceAnimation[];
   droppedCamera: boolean;
-  diagnostics: ImportDiagnostic[];
+  diagnostics: ConversionIssue[];
 }
 
 export function readBdDatapackSource(input: ImportInput): BdDatapackSource {
@@ -192,7 +191,7 @@ function readAnimations(
   }
   const displayByTag = new Map(displays.map((display) => [display.tag, display]));
   let droppedCamera = false;
-  const diagnostics: ImportDiagnostic[] = [];
+  const diagnostics: ConversionIssue[] = [];
   const animations = [...grouped.entries()].sort(([first], [second]) => first.localeCompare(second)).flatMap(([name, frames]) => {
     try {
       let animationDroppedCamera = false;

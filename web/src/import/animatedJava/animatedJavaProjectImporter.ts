@@ -8,13 +8,13 @@ import { normalizeResourceLocation, sanitizeResourcePath } from "../../format/re
 import { isRecord } from "../../format/runtimeValue";
 import { parseSnbtCompound, serializeSnbtCompound, serializeSnbtString, splitSnbtPair, splitSnbtTopLevel } from "../../format/snbt";
 import type { ImportInput } from "../input";
-import { ConversionError, skippedAnimationIssue } from "../../foundation/diagnostics";
+import { ConversionError, skippedAnimationIssue, type ConversionIssue } from "../../foundation/diagnostics";
 import { importAnimatedJavaCubes, writeReferencedAnimatedJavaCubeResources, type AnimatedJavaCubes } from "./animatedJavaCubes";
 import { PLAYER_RENDER_SCALE } from "../common/blockbenchCubeModel";
 import { normalizeBlockbenchName } from "../common/blockbenchCubeSkin";
 import { createAnimatedJavaAnimationIR, type ProjectNodeStateFrame } from "./animatedJavaAnimationIR";
 import type { EventIR, TimelineEventIR } from "../../domain/animationIR";
-import type { ImportedNode, ImportedProject, ImportDiagnostic } from "../../domain/conversionSeed";
+import type { ImportedNode, ImportedProject } from "../../domain/conversionSeed";
 import type {
   AjProject,
   AjProjectAnimation,
@@ -68,11 +68,11 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
   applyGroupDefaultConfigs(nodes, project, transformGraph, nodeBindings);
   if (Object.keys(nodes).length === 0 && logicalElements.length === 0) throw new Error("Animated Java project does not contain importable nodes.");
 
-  const diagnostics: ImportDiagnostic[] = [...(project.animationDiagnostics ?? [])];
+  const diagnostics: ConversionIssue[] = [...(project.animationDiagnostics ?? [])];
   appendProjectCapabilityDiagnostics(project, diagnostics);
   const animations = sourceAnimations.flatMap((animation, index) => {
     const sourceIndex = project.animationSourceIndices?.[index] ?? index;
-    const animationDiagnostics: ImportDiagnostic[] = [];
+    const animationDiagnostics: ConversionIssue[] = [];
     try {
       const effects = projectEffectEvents(animation, cubeContent, animationDiagnostics, sourceIndex);
       for (const element of [...displayElements, ...logicalElements]) {
@@ -146,7 +146,7 @@ function resolveAnimatedJavaAnimationState(
   nodes: Record<string, ImportedNode>,
   graph: ProjectTransformGraph,
   bindings: ProjectNodeBindings,
-  diagnostics: ImportDiagnostic[],
+  diagnostics: ConversionIssue[],
   animationIndex: number,
 ): AnimatedJavaAnimationState {
   const timeline = [...effects, ...nativeFunctionEvents(source, diagnostics, animationIndex)];
@@ -205,7 +205,7 @@ function nativeStartEvents(project: AjProject, nodes: Record<string, ImportedNod
   return events;
 }
 
-function appendProjectCapabilityDiagnostics(project: AjProject, diagnostics: ImportDiagnostic[]): void {
+function appendProjectCapabilityDiagnostics(project: AjProject, diagnostics: ConversionIssue[]): void {
   if (project.elements.some((element) => element.type === "camera")) diagnostics.push({ severity: "warning", code: "animated_java_camera_ignored", message: "Animated Java camera control was omitted; camera transforms remain as logical nodes.", sourcePath: "elements" });
   const supported = new Set(["cube", "locator", "camera", "animated_java:vanilla_block_display", "animated_java:vanilla_item_display", "animated_java:vanilla_text_display", "animated_java:text_display"]);
   for (const element of project.elements) {
@@ -238,7 +238,7 @@ function appendProjectCapabilityDiagnostics(project: AjProject, diagnostics: Imp
   }
 }
 
-function collectContinuousFunctionDiagnostics(value: unknown, path: string, diagnostics: ImportDiagnostic[]): void {
+function collectContinuousFunctionDiagnostics(value: unknown, path: string, diagnostics: ConversionIssue[]): void {
   if (Array.isArray(value)) {
     value.forEach((entry, index) => collectContinuousFunctionDiagnostics(entry, `${path}[${index}]`, diagnostics));
     return;
@@ -263,7 +263,7 @@ function stringField(record: Record<string, unknown>, key: string): string | und
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
-function projectEffectEvents(source: AjProjectAnimation, cubes: AnimatedJavaCubes | undefined, diagnostics: ImportDiagnostic[], animationIndex: number): TimelineEventIR[] {
+function projectEffectEvents(source: AjProjectAnimation, cubes: AnimatedJavaCubes | undefined, diagnostics: ConversionIssue[], animationIndex: number): TimelineEventIR[] {
   const events: TimelineEventIR[] = [];
   for (const [animatorId, animator] of Object.entries(source.animators)) {
     if (animatorId !== "effects" && animator.type !== "effect") continue;
@@ -303,7 +303,7 @@ function projectEffectEvents(source: AjProjectAnimation, cubes: AnimatedJavaCube
   return events.sort((first, second) => parseAnimationSeconds(first.time) - parseAnimationSeconds(second.time));
 }
 
-function nativeFunctionEvents(source: AjProjectAnimation, diagnostics: ImportDiagnostic[], animationIndex: number): TimelineEventIR[] {
+function nativeFunctionEvents(source: AjProjectAnimation, diagnostics: ConversionIssue[], animationIndex: number): TimelineEventIR[] {
   const result: TimelineEventIR[] = [];
   for (const [animatorId, animator] of Object.entries(source.animators)) {
     for (const [keyframeIndex, frame] of (animator.keyframes ?? []).entries()) {

@@ -4,7 +4,7 @@ import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
 import type { GeneratedResource } from "./generatedResource";
 import type { ConversionAnimation, ConversionDocument, SkinCandidate } from "./conversionDocument";
 import type { NodeIR } from "./animationIR";
-import { remapClipIR } from "./animationIRConversion";
+import { remapClip } from "./animationIRConversion";
 import type { ImportedSequence } from "./emoteDefinition";
 
 export function combineConversionDocuments(documents: readonly ConversionDocument[], importedSequences: readonly ImportedSequence[] = []): ConversionDocument {
@@ -39,7 +39,7 @@ export function combineConversionDocuments(documents: readonly ConversionDocumen
         ...animation,
         id: `${animation.id.slice(0, separator)}:${id}`,
         nodeIds: animation.nodeIds.map(nodeId),
-        clip: remapClipIR(animation.clip, nodeId),
+        clip: remapClip(animation.clip, nodeId),
       };
     }));
     if (index > 0) mergeResources(resources, document.resources);
@@ -51,7 +51,7 @@ export function combineConversionDocuments(documents: readonly ConversionDocumen
     origin: {
       ...first.origin,
       sourceName: documents.map((document) => document.origin.sourceName).join(", "),
-      adapterLabel: [...new Set(documents.map((document) => document.origin.adapterLabel))].join(", "),
+      formatLabel: [...new Set(documents.map((document) => document.origin.formatLabel))].join(", "),
     },
     nodes,
     skinCandidates,
@@ -78,7 +78,7 @@ function applyImportedSequence(document: ConversionDocument, sequence: ImportedS
     sequence: {
       namespace: sequence.id.slice(0, separator),
       idPath: sequence.id.slice(separator + 1),
-      displayName: sequence.metadata.name,
+      name: sequence.metadata.name,
       description: sequence.metadata.description,
       additionalMetadata: Object.fromEntries(Object.entries(sequence.metadata).filter(([key]) => key !== "name" && key !== "description")),
       cooldown: sequence.cooldown,

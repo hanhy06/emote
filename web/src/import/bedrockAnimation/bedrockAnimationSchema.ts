@@ -1,4 +1,4 @@
-import type { ImportDiagnostic } from "../../domain/conversionSeed";
+import type { ConversionIssue } from "../../foundation/diagnostics";
 import { isRecord } from "../../format/runtimeValue";
 
 export type BedrockExpression = number | string;
@@ -8,7 +8,7 @@ export type BedrockLoop = boolean | "hold_on_last_frame";
 export interface BedrockAnimationDocument {
   format_version: "1.8.0";
   animations: Record<string, BedrockAnimation>;
-  animationDiagnostics?: ImportDiagnostic[];
+  animationDiagnostics?: ConversionIssue[];
 }
 
 export interface BedrockAnimation {

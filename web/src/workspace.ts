@@ -1,16 +1,16 @@
 import { parseAnimationSeconds } from "./format/time";
 import {
-  assignDocumentSkinOrder,
-  assignDocumentSkinPart,
-  documentPartAssignments,
-  replaceDocumentAnimationTimelineEvents,
-  updateDocumentAnimationLifecycleEvents,
-  updateDocumentAnimation,
+  assignSkinOrder,
+  assignSkinPart,
+  skinPartAssignments,
+  replaceTimelineEvents,
+  updateLifecycleEvents,
+  updateAnimation,
   type ConversionDocument,
 } from "./domain/conversionDocument";
 import type { EmoteCallback } from "./domain/emoteDefinition";
 import type { PlayerSkinPart } from "./domain/player";
-import type { Animation, EventIR, TimelineEventIR } from "./domain/animationIR";
+import type { AnimationEntryIR, EventIR, TimelineEventIR } from "./domain/animationIR";
 import { selectNode, selectNodes } from "./preview/skinParts";
 import { TICKS_PER_SECOND } from "./format/time";
 
@@ -47,7 +47,7 @@ export type WorkspaceAction =
   | { type: "nodes_selected"; nodeIds: readonly string[]; additive: boolean }
   | { type: "skin_part_assigned"; part: PlayerSkinPart | null }
   | { type: "skin_order_assigned"; order: number }
-  | { type: "animation_changed"; ir: Animation }
+  | { type: "animation_changed"; ir: AnimationEntryIR }
   | { type: "minecraft_version_changed"; version: string }
   | { type: "lifecycle_events_changed"; events: { callbacks: EmoteCallback[]; start: EventIR[]; loop: EventIR[]; stop: EventIR[] } }
   | { type: "timeline_events_changed"; events: TimelineEventIR[] };
@@ -97,17 +97,17 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
     case "skin_part_assigned":
       return updateSession(state, (session) => ({
         ...session,
-        document: assignDocumentSkinPart(session.document, session.selectedNodeIds, action.part),
+        document: assignSkinPart(session.document, session.selectedNodeIds, action.part),
       }));
     case "skin_order_assigned":
       return updateSession(state, (session) => ({
         ...session,
-        document: assignDocumentSkinOrder(session.document, session.selectedNodeIds, action.order),
+        document: assignSkinOrder(session.document, session.selectedNodeIds, action.order),
       }));
     case "animation_changed":
       return updateSession(state, (session) => ({
         ...session,
-        document: updateDocumentAnimation(session.document, session.animationIndex, action.ir),
+        document: updateAnimation(session.document, session.animationIndex, action.ir),
       }));
     case "minecraft_version_changed":
       return updateSession(state, (session) => ({
@@ -117,18 +117,18 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
     case "lifecycle_events_changed":
       return updateSession(state, (session) => ({
         ...session,
-        document: updateDocumentAnimationLifecycleEvents(session.document, session.animationIndex, action.events),
+        document: updateLifecycleEvents(session.document, session.animationIndex, action.events),
       }));
     case "timeline_events_changed":
       return updateSession(state, (session) => ({
         ...session,
-        document: replaceDocumentAnimationTimelineEvents(session.document, session.animationIndex, action.events),
+        document: replaceTimelineEvents(session.document, session.animationIndex, action.events),
       }));
   }
 }
 
 export function assignmentSummary(document: ConversionDocument): string {
-  const assignments = documentPartAssignments(document);
+  const assignments = skinPartAssignments(document);
   const groups = [...new Set(Object.values(document.skinCandidates).map((candidate) => candidate.groupId))];
   const assigned = groups.filter((group) => Object.entries(document.skinCandidates).filter(([, candidate]) => candidate.groupId === group).every(([id]) => assignments[id])).length;
   const skin = groups.length
@@ -152,7 +152,7 @@ export function eventReviewLocations(document: ConversionDocument | null): { own
     if (animation.callbacks?.length) locations.push("callbacks");
     if (locations.length) review.push({ owner: `Animation ${animation.id}`, locations });
   }
-  if (document.sequence.callbacks?.length) review.push({ owner: `Sequence ${document.sequence.displayName}`, locations: ["callbacks"] });
+  if (document.sequence.callbacks?.length) review.push({ owner: `Sequence ${document.sequence.name}`, locations: ["callbacks"] });
   return review;
 }
 

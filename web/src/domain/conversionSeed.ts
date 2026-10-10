@@ -7,10 +7,10 @@ import type { ConversionIssue } from "../foundation/diagnostics";
 import { normalizeResourceLocation } from "../format/resourceLocation";
 import type { AnimationIR } from "./animationIR";
 
-export type ImportSource = "bd_datapack" | "animated_java_blueprint" | "geckolib_bbmodel" | "bedrock_animation_json" | "emotecraft_binary" | "emote_json" | "emote_sequence";
+export type InputFormat = "bd_datapack" | "animated_java_blueprint" | "geckolib_bbmodel" | "bedrock_animation_json" | "emotecraft_binary" | "emote_json" | "emote_sequence";
 
 export interface ImportedProject {
-  source: ImportSource;
+  source: InputFormat;
   sourceName: string;
   suggestedMetadata: EmoteMetadata;
   suggestedPlayer: EmotePlayerBehavior;
@@ -22,7 +22,7 @@ export interface ImportedProject {
   suggestedDisplayInterpolation?: string;
   nodeHints: Record<string, ImportedNodeHint>;
   animations: ImportedAnimation[];
-  diagnostics: ImportDiagnostic[];
+  diagnostics: ConversionIssue[];
   resources: Map<string, GeneratedResource>;
 }
 
@@ -79,5 +79,3 @@ export function importedNodeHints(nodes: Record<string, ImportedNode>): Record<s
     } : {}),
   }]));
 }
-
-export type ImportDiagnostic = ConversionIssue;

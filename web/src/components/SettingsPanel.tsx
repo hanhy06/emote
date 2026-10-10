@@ -1,5 +1,5 @@
 import { useState } from "preact/hooks";
-import type { Animation, TimeValueIR } from "../domain/animationIR";
+import type { AnimationEntryIR, TimeValueIR } from "../domain/animationIR";
 import { AdditionalMetadataEditor } from "./AdditionalMetadataEditor";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
 import { createDefaultPlayerBehavior } from "../domain/emoteDefinition";
@@ -11,10 +11,10 @@ const STOP_CONDITION_OPTIONS = [
 ] as const;
 
 interface SettingsPanelProps {
-  animation: Animation;
+  animation: AnimationEntryIR;
   minecraftVersion: string;
   disabled: boolean;
-  onChange: (animation: Animation) => void;
+  onChange: (animation: AnimationEntryIR) => void;
   onValidityChange: (valid: boolean) => void;
   onMinecraftVersionChange: (minecraftVersion: string) => void;
 }
@@ -28,7 +28,7 @@ export function SettingsPanel({ animation, minecraftVersion, disabled, onChange,
   const namespace = animation.id.split(":")[0];
   const additionalMetadata = Object.fromEntries(Object.entries(animation.metadata).filter(([key]) => key !== "name" && key !== "description"));
 
-  function commit(field: string, value: string, edit: () => Animation) {
+  function commit(field: string, value: string, edit: () => AnimationEntryIR) {
     const next = { ...drafts };
     try {
       onChange(edit());

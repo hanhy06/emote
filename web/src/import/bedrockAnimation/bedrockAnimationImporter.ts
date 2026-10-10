@@ -1,8 +1,8 @@
 import { createDefaultPlayerBehavior } from "../../domain/emoteDefinition";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { importedNodeHints } from "../../domain/conversionSeed";
-import type { ImportedAnimation, ImportedNode, ImportedProject, ImportDiagnostic } from "../../domain/conversionSeed";
-import { skippedAnimationIssue } from "../../foundation/diagnostics";
+import type { ImportedAnimation, ImportedNode, ImportedProject } from "../../domain/conversionSeed";
+import { skippedAnimationIssue, type ConversionIssue } from "../../foundation/diagnostics";
 import type { BedrockAnimation, BedrockAnimationDocument } from "./bedrockAnimationSchema";
 import {
   createBedrockPlayerNodes,
@@ -13,7 +13,7 @@ import { createBedrockAnimationIR } from "./bedrockAnimationIR";
 
 export function importBedrockAnimationDocument(document: BedrockAnimationDocument, sourceName: string): ImportedProject {
   const sourceStem = sourceName.replace(/\.json$/i, "").trim() || "Bedrock Animation";
-  const diagnostics: ImportDiagnostic[] = [...(document.animationDiagnostics ?? [])];
+  const diagnostics: ConversionIssue[] = [...(document.animationDiagnostics ?? [])];
   const nodes = createBedrockPlayerNodes();
   const nodeIds = new Set(Object.keys(nodes));
   const unknownBoneIds: Record<string, string> = {};
@@ -28,7 +28,7 @@ export function importBedrockAnimationDocument(document: BedrockAnimationDocumen
     }
   }
   const animations = Object.entries(document.animations).flatMap(([name, animation], index) => {
-    const animationDiagnostics: ImportDiagnostic[] = [];
+    const animationDiagnostics: ConversionIssue[] = [];
     try {
       collectAnimationDiagnostics(name, animation, animationDiagnostics);
       const imported = importAnimation(name, animation, index, animationDiagnostics, nodes, unknownBoneIds);
@@ -57,7 +57,7 @@ export function importBedrockAnimationDocument(document: BedrockAnimationDocumen
   };
 }
 
-function importAnimation(name: string, animation: BedrockAnimation, index: number, diagnostics: ImportDiagnostic[], nodes: Record<string, ImportedNode>, unknownBoneIds: Record<string, string>): ImportedAnimation {
+function importAnimation(name: string, animation: BedrockAnimation, index: number, diagnostics: ConversionIssue[], nodes: Record<string, ImportedNode>, unknownBoneIds: Record<string, string>): ImportedAnimation {
   return {
     ir: createBedrockAnimationIR(animation, name, nodes, unknownBoneIds, diagnostics),
     id: sanitizeResourcePath(name, `animation_${index + 1}`),
@@ -65,7 +65,7 @@ function importAnimation(name: string, animation: BedrockAnimation, index: numbe
   };
 }
 
-function collectAnimationDiagnostics(name: string, animation: BedrockAnimation, diagnostics: ImportDiagnostic[]): void {
+function collectAnimationDiagnostics(name: string, animation: BedrockAnimation, diagnostics: ConversionIssue[]): void {
   const ignored = [
     [animation.override_previous_animation, "override_previous_animation"],
   ] as const;

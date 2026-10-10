@@ -1,4 +1,4 @@
-import type { CurveIR, CurveKeyIR, NodeIR, ScalarIR, SegmentIR, ValueIR } from "../../domain/animationIR";
+import type { CurveIR, CurveKeyIR, NodeIR, ScalarIR, SegmentIR, VectorValueIR } from "../../domain/animationIR";
 import { scalarIR } from "../../domain/animationIRConversion";
 import { blockbenchEasingIR } from "../../domain/animationIRCurves";
 import type { ImportedNode } from "../../domain/conversionSeed";
@@ -25,7 +25,7 @@ export function blockbenchCurveIR(frames: readonly BbKeyframe[], transform: (val
     if (grouped.at(-1)?.[0].time === frame.time) grouped.at(-1)!.push(frame);
     else grouped.push([frame]);
   }
-  const values = (frame: BbKeyframe, post: boolean, delta?: readonly number[]): ValueIR => {
+  const values = (frame: BbKeyframe, post: boolean, delta?: readonly number[]): VectorValueIR => {
     const point = frame.data_points[post ? frame.data_points.length - 1 : 0];
     const vector = [point?.x, point?.y, point?.z].map((value, axis) => affineMolang(molangScalar(value!), 1, delta?.[axis] ?? 0)) as MolangVector;
     return transform(vector).map(scalarIR);

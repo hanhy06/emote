@@ -9,8 +9,7 @@ export const SKIN_PARTS = [
   { id: "right_leg", label: "Right Leg", color: "#74ca86" },
 ] as const;
 
-export type SkinPartId = PlayerSkinPart;
-export type PartAssignments = Record<string, SkinPartId | null>;
+export type PartAssignments = Record<string, PlayerSkinPart | null>;
 export type PartOrders = Record<string, number | null>;
 
 export function selectNode(current: ReadonlySet<string>, nodeId: string, additive: boolean): Set<string> {

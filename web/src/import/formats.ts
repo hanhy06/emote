@@ -1,4 +1,4 @@
-import type { ImportedProject, ImportSource } from "../domain/conversionSeed";
+import type { ImportedProject, InputFormat } from "../domain/conversionSeed";
 import type { ImportedSequence } from "../domain/emoteDefinition";
 import type { ImportInput } from "./input";
 import { ConversionError } from "../foundation/diagnostics";
@@ -9,7 +9,7 @@ import type { AjProject } from "./animatedJava/animatedJavaProjectSchema";
 import type { GeckoLibBbmodelProject } from "./geckoLib/geckoLibBbmodelSchema";
 import type { BedrockAnimationDocument } from "./bedrockAnimation/bedrockAnimationSchema";
 
-export const INPUT_FORMATS: Record<ImportSource, { extension: string; label: string }> = {
+export const INPUT_FORMATS: Record<InputFormat, { extension: string; label: string }> = {
   emote_sequence: { extension: "json", label: "Emote sequence JSON" },
   bd_datapack: { extension: "zip", label: "BD Engine datapack" },
   animated_java_blueprint: { extension: "ajblueprint", label: "Animated Java project" },
@@ -19,13 +19,13 @@ export const INPUT_FORMATS: Record<ImportSource, { extension: string; label: str
   emote_json: { extension: "json", label: "Emote animation JSON" },
 };
 
-export async function detectInputFormat(input: ImportInput): Promise<ImportSource> {
-  const formats = Object.keys(INPUT_FORMATS) as ImportSource[];
+export async function detectInputFormat(input: ImportInput): Promise<InputFormat> {
+  const formats = Object.keys(INPUT_FORMATS) as InputFormat[];
   const extension = input.name.toLowerCase().split(".").at(-1);
   const hints = formats.filter((format) => INPUT_FORMATS[format].extension === extension);
-  const probe = async (candidates: ImportSource[]) => {
+  const probe = async (candidates: InputFormat[]) => {
     const matches = await Promise.all(candidates.map(async (format) => await matchesInputFormat(input, format) ? format : null));
-    return matches.filter((format): format is ImportSource => format !== null);
+    return matches.filter((format): format is InputFormat => format !== null);
   };
   let matches = await probe(hints.length ? hints : formats);
   if (matches.length === 0 && hints.length) matches = await probe(formats.filter((format) => !hints.includes(format)));
@@ -34,7 +34,7 @@ export async function detectInputFormat(input: ImportInput): Promise<ImportSourc
   return matches[0];
 }
 
-async function matchesInputFormat(input: ImportInput, format: ImportSource): Promise<boolean> {
+async function matchesInputFormat(input: ImportInput, format: InputFormat): Promise<boolean> {
   try {
     switch (format) {
       case "emote_sequence": {
@@ -53,7 +53,7 @@ async function matchesInputFormat(input: ImportInput, format: ImportSource): Pro
       case "bedrock_animation_json":
         return (await import("./bedrockAnimation/bedrockAnimationSchema")).isBedrockAnimationDocument(parseInputJsonc(input));
       case "emotecraft_binary":
-        return (await import("./emotecraft/emotecraftBinary")).probeLatestEmotecraft(input.bytes);
+        return (await import("./emotecraft/emotecraftBinary")).probeEmotecraft(input.bytes);
       case "emote_json": {
         const value = parseInputJson(input);
         return isRecord(value) && value.type === "animation" && value.schema_version === EMOTE_SCHEMA_VERSION && isRecord(value.nodes) && isRecord(value.animation);
@@ -65,12 +65,12 @@ async function matchesInputFormat(input: ImportInput, format: ImportSource): Pro
 }
 
 export function readInput(format: "emote_sequence", input: ImportInput): Promise<ImportedSequence>;
-export function readInput(format: Exclude<ImportSource, "emote_sequence">, input: ImportInput): Promise<ImportedProject>;
-export function readInput(format: ImportSource, input: ImportInput): Promise<ImportedProject | ImportedSequence>;
-export async function readInput(format: ImportSource, input: ImportInput): Promise<ImportedProject | ImportedSequence> {
+export function readInput(format: Exclude<InputFormat, "emote_sequence">, input: ImportInput): Promise<ImportedProject>;
+export function readInput(format: InputFormat, input: ImportInput): Promise<ImportedProject | ImportedSequence>;
+export async function readInput(format: InputFormat, input: ImportInput): Promise<ImportedProject | ImportedSequence> {
   switch (format) {
     case "emote_sequence":
-      return (await import("./emoteJson/sequenceJsonConverter")).importSequence(input);
+      return (await import("./emoteJson/sequenceImporter")).importSequence(input);
     case "bd_datapack": {
       const [{ importBdDatapack }, { readBdDatapackSource }] = await Promise.all([import("./bdDatapack/bdDatapackImporter"), import("./bdDatapack/bdDatapackSource")]);
       return importBdDatapack(readBdDatapackSource(input), input.name);
@@ -84,7 +84,7 @@ export async function readInput(format: ImportSource, input: ImportInput): Promi
       }) });
     }
     case "geckolib_bbmodel": {
-      const { importGeckoLibProject } = await import("./geckoLib/geckoLibCubeImporter");
+      const { importGeckoLibProject } = await import("./geckoLib/geckoLibImporter");
       return importGeckoLibProject(parseInputJson(input) as GeckoLibBbmodelProject, input.name);
     }
     case "bedrock_animation_json": {
@@ -92,8 +92,8 @@ export async function readInput(format: ImportSource, input: ImportInput): Promi
       return importBedrockAnimationDocument(parseInputJsonc(input) as BedrockAnimationDocument, input.name);
     }
     case "emotecraft_binary": {
-      const [{ importEmotecraftFile }, { decodeLatestEmotecraft }] = await Promise.all([import("./emotecraft/emotecraftImporter"), import("./emotecraft/emotecraftBinary")]);
-      return importEmotecraftFile(decodeLatestEmotecraft(input.bytes), input.name);
+      const [{ importEmotecraftFile }, { decodeEmotecraft }] = await Promise.all([import("./emotecraft/emotecraftImporter"), import("./emotecraft/emotecraftBinary")]);
+      return importEmotecraftFile(decodeEmotecraft(input.bytes), input.name);
     }
     case "emote_json":
       return (await import("./emoteJson/animationImporter")).importAnimation(parseInputJson(input), input.name);

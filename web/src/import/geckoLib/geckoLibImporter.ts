@@ -6,8 +6,8 @@ import type { EventIR, TimelineEventIR } from "../../domain/animationIR";
 import { composeDegreesTransform } from "../../format/matrix";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { serializeSnbtString } from "../../format/snbt";
-import { ConversionError, skippedAnimationIssue } from "../../foundation/diagnostics";
-import type { ImportedAnimation, ImportedNode, ImportedProject, ImportDiagnostic } from "../../domain/conversionSeed";
+import { ConversionError, skippedAnimationIssue, type ConversionIssue } from "../../foundation/diagnostics";
+import type { ImportedAnimation, ImportedNode, ImportedProject } from "../../domain/conversionSeed";
 import { createDefaultPlayerBehavior } from "../../domain/emoteDefinition";
 import {
   type BbAnimation,
@@ -50,7 +50,7 @@ export function importGeckoLibProject(project: GeckoLibBbmodelProject, sourceNam
   if (bones.length === 0) throw new Error(`${FORMAT_LABEL} cube project does not contain bones.`);
   if (bones.some((bone) => bone.cubes.length > 0)) writeEmbeddedTextures(project.textures, namespace, projectPath, resources);
   const { playableCubesByBone, skinAssignments } = prepareCubeModels(bones);
-  const diagnostics: ImportDiagnostic[] = [...(project.animationDiagnostics ?? [])];
+  const diagnostics: ConversionIssue[] = [...(project.animationDiagnostics ?? [])];
   const nodes: Record<string, ImportedNode> = {};
   const nodeIds = new Set(bones.map((bone) => bone.id));
   for (const bone of bones) {
@@ -108,7 +108,7 @@ export function importGeckoLibProject(project: GeckoLibBbmodelProject, sourceNam
   const animations: ImportedAnimation[] = [];
   for (const [index, animation] of project.animations.entries()) {
     const sourceIndex = project.animationSourceIndices?.[index] ?? index;
-    const animationDiagnostics: ImportDiagnostic[] = [];
+    const animationDiagnostics: ConversionIssue[] = [];
     try {
       const imported = importAnimation(animation, sourceIndex, bones, nodes, animationDiagnostics);
       animations.push(imported);
@@ -194,7 +194,7 @@ function importAnimation(
   index: number,
   bones: BoneEntry[],
   nodes: Record<string, ImportedNode>,
-  diagnostics: ImportDiagnostic[],
+  diagnostics: ConversionIssue[],
 ): ImportedAnimation {
   const source = resolveGeckoLibAnimationSource(animation, index, bones, diagnostics);
   for (const bone of bones) collectBoneAnimatorDiagnostics(animation, index, bone, source.animators.get(bone.uuid), diagnostics);
@@ -209,7 +209,7 @@ function resolveGeckoLibAnimationSource(
   animation: BbAnimation,
   index: number,
   bones: BoneEntry[],
-  diagnostics: ImportDiagnostic[],
+  diagnostics: ConversionIssue[],
 ): GeckoLibAnimationSource {
   const loop = animation.loop ?? "once";
   const playbackMode = loop === "hold_on_last_frame" ? "hold" : loop;
@@ -230,7 +230,7 @@ function resolveGeckoLibAnimationSource(
   };
 }
 
-function resolveBoneAnimators(animation: BbAnimation, animationIndex: number, bones: BoneEntry[], diagnostics: ImportDiagnostic[]): Map<string, BbAnimator> {
+function resolveBoneAnimators(animation: BbAnimation, animationIndex: number, bones: BoneEntry[], diagnostics: ConversionIssue[]): Map<string, BbAnimator> {
   const result = new Map<string, BbAnimator>();
   const boneByUuid = new Map(bones.map((bone) => [bone.uuid, bone]));
   for (const [animatorId, animator] of Object.entries(animation.animators)) {
@@ -260,7 +260,7 @@ function importEffectEvents(
   animation: BbAnimation,
   animationIndex: number,
   bones: BoneEntry[],
-  diagnostics: ImportDiagnostic[],
+  diagnostics: ConversionIssue[],
 ): TimelineEventIR[] {
   const events: TimelineEventIR[] = [];
   for (const [animatorId, animator] of Object.entries(animation.animators)) {
@@ -321,7 +321,7 @@ function appendTimelineEvent(events: TimelineEventIR[], time: number, event: Eve
   events.push({ ...event, time: sourceSecondsTime(time) });
 }
 
-function collectBoneAnimatorDiagnostics(animation: BbAnimation, animationIndex: number, bone: BoneEntry, animator: BbAnimator | undefined, diagnostics: ImportDiagnostic[]): void {
+function collectBoneAnimatorDiagnostics(animation: BbAnimation, animationIndex: number, bone: BoneEntry, animator: BbAnimator | undefined, diagnostics: ConversionIssue[]): void {
   for (const [keyframeIndex, keyframe] of (animator?.keyframes ?? []).entries()) {
     if (!["position", "rotation", "scale"].includes(keyframe.channel)) {
       diagnostics.push({ severity: "warning", code: `${DIAGNOSTIC_PREFIX}_channel_ignored`, message: `${animation.name} at ${keyframe.time * 20}t: an unsupported bone channel was omitted.`, sourcePath: `animations[${animationIndex}].animators.${bone.uuid}.keyframes[${keyframeIndex}].channel` });

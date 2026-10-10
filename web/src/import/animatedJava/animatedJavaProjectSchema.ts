@@ -1,4 +1,4 @@
-import type { ImportDiagnostic } from "../../domain/conversionSeed";
+import type { ConversionIssue } from "../../foundation/diagnostics";
 
 export type AjProjectExpression = string | number;
 
@@ -21,7 +21,7 @@ export interface AjProject {
   collections?: unknown[];
   animations: AjProjectAnimation[];
   animationSourceIndices?: number[];
-  animationDiagnostics?: ImportDiagnostic[];
+  animationDiagnostics?: ConversionIssue[];
   animation_controllers?: unknown[];
 }
 

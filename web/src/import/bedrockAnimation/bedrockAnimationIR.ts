@@ -1,7 +1,8 @@
 import { sourceSecondsTime, parseAnimationSeconds } from "../../format/time";
-import type { AnimationIR, CurveIR, DriverIR, NodeIR, TimelineEventIR, ValueIR } from "../../domain/animationIR";
+import type { AnimationIR, CurveIR, DriverIR, NodeIR, TimelineEventIR, VectorValueIR } from "../../domain/animationIR";
 import { scalarIR, sourceDelayIR } from "../../domain/animationIRConversion";
-import type { ImportedNode, ImportDiagnostic } from "../../domain/conversionSeed";
+import type { ImportedNode } from "../../domain/conversionSeed";
+import type { ConversionIssue } from "../../foundation/diagnostics";
 import { importedNodeIR } from "../common/blockbenchAnimationIR";
 import { affineMolang, molangScalar, negateMolang, type MolangVector } from "../common/molangVector";
 import type { BedrockAnimation, BedrockChannel, BedrockExpression, BedrockKeyframe, BedrockKeyframeValue, BedrockVector } from "./bedrockAnimationSchema";
@@ -9,7 +10,7 @@ import { BEDROCK_PLAYER_BONES, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_SLICE
 import { bedrockPositionToCanonical, bedrockRotationToCanonical } from "./coordinateSpace";
 import { isRecord } from "../../format/runtimeValue";
 
-export function createBedrockAnimationIR(animation: BedrockAnimation, name: string, imported: Record<string, ImportedNode>, unknownBoneIds: Record<string, string>, diagnostics: ImportDiagnostic[]): AnimationIR {
+export function createBedrockAnimationIR(animation: BedrockAnimation, name: string, imported: Record<string, ImportedNode>, unknownBoneIds: Record<string, string>, diagnostics: ConversionIssue[]): AnimationIR {
   const sourceDuration = bedrockAnimationDurationSeconds(animation);
   const assumedDuration = sourceDuration === 0 && bedrockAnimationUsesTime(animation);
   if (assumedDuration) diagnostics.push({
@@ -53,7 +54,7 @@ export function createBedrockAnimationIR(animation: BedrockAnimation, name: stri
     if (!source) continue;
     for (const channel of ["position", "rotation", "scale"] as const) {
       const c = source[channel]; if (c === undefined) continue;
-      const transform = (v: MolangVector): ValueIR => {
+      const transform = (v: MolangVector): VectorValueIR => {
         if (channel === "position") return bedrockPositionToCanonical(v, negateMolang).map((v, axis) => scalarIR(affineMolang(v, affineMolang(blend, 1 / 16, 0), position[axis])));
         if (channel === "rotation") return bedrockRotationToCanonical(v, negateMolang).map((v) => scalarIR(affineMolang(v, blend, 0)));
         return v.map((v) => scalarIR(affineMolang(v, blend, affineMolang(blend, -1, 1))));

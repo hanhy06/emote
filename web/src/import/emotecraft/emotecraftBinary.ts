@@ -85,7 +85,7 @@ const EASINGS: Readonly<Record<number, string>> = {
   37: "step", 38: "bezier",
 };
 
-export function probeLatestEmotecraft(bytes: Uint8Array): boolean {
+export function probeEmotecraft(bytes: Uint8Array): boolean {
   try {
     const reader = new BinaryReader(bytes);
     if (reader.readInt32() !== NETWORK_VERSION || reader.readUint8() !== FILE_TASK) return false;
@@ -105,7 +105,7 @@ export function probeLatestEmotecraft(bytes: Uint8Array): boolean {
   }
 }
 
-export function decodeLatestEmotecraft(bytes: Uint8Array): EmotecraftFile {
+export function decodeEmotecraft(bytes: Uint8Array): EmotecraftFile {
   const reader = new BinaryReader(bytes);
   const networkVersion = reader.readInt32();
   if (networkVersion !== NETWORK_VERSION) throw new Error(`Emotecraft network version must be ${NETWORK_VERSION}, received ${networkVersion}.`);
