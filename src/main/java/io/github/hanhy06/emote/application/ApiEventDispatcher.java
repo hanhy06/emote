@@ -2,11 +2,9 @@ package io.github.hanhy06.emote.application;
 
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.*;
-import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.*;
@@ -28,7 +26,7 @@ public final class ApiEventDispatcher implements PlaybackEngine.Lifecycle {
     }
 
     public Component beforePlay(ServerPlayer player, PreparedEmote emote, PlaySource source) {
-        EmotePlayEvent event = new EmotePlayEvent(player, toInfo(emote), source);
+        EmotePlayEvent event = new EmotePlayEvent(player, emote.info(), source);
         for (EmotePlayListener listener : this.playListeners) {
             try {
                 listener.beforePlay(event);
@@ -89,19 +87,6 @@ public final class ApiEventDispatcher implements PlaybackEngine.Lifecycle {
                 EmoteMod.LOGGER.warn("Emote playback listener {} failed while handling stop", listener.getClass().getName(), exception);
             }
         }
-    }
-
-    public static EmoteInfo toInfo(PreparedEmote emote) {
-        return new EmoteInfo(
-            Identifier.parse(emote.id()),
-            emote instanceof PreparedSequence ? EmoteInfo.Kind.SEQUENCE : EmoteInfo.Kind.ANIMATION,
-            emote.standalone(),
-            emote.metadata(),
-            emote.playerBehavior(),
-            emote.durationTicks(),
-            emote.cooldownTicks(),
-            emote.playbackMode()
-        );
     }
 
     private static <T> ListenerRegistration register(CopyOnWriteArrayList<T> listeners, T listener) {

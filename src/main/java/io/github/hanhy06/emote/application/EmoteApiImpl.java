@@ -7,6 +7,7 @@ import io.github.hanhy06.emote.api.sequence.EmoteSequence;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.LoadedAnimation;
 import io.github.hanhy06.emote.content.PreparedSequence;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
@@ -150,13 +151,13 @@ public final class EmoteApiImpl extends EmoteApi {
     public Optional<EmoteInfo> get(Identifier emoteId) {
         Objects.requireNonNull(emoteId, "emoteId");
         return Optional.ofNullable(this.emoteCatalog.find(emoteId.toString()))
-            .map(ApiEventDispatcher::toInfo);
+            .map(PreparedEmote::info);
     }
 
     @Override
     public List<EmoteInfo> getAll() {
         return this.emoteCatalog.emotes().stream()
-            .map(ApiEventDispatcher::toInfo)
+            .map(PreparedEmote::info)
             .toList();
     }
 
