@@ -269,6 +269,13 @@ export function App() {
             </details>
           ))}
 
+          {eventReviewTypes.includes("commands") && (
+            <p className="message warning" role="alert">
+              <strong>Commands run with server operator permission.</strong>
+              <span>They can modify or delete world data. Review every command before installing this emote, and only use files you trust.</span>
+            </p>
+          )}
+
           {eventReview.length > 0 && (
             <details className="message warning warning-group" role="alert">
               <summary>Review {eventReviewTypes.join(" and ")} at these locations ({eventReview.length})</summary>
