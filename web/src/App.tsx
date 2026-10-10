@@ -73,6 +73,10 @@ export function App() {
   const availability = preview?.availability ?? null;
   const previewDurationTicks = preview?.durationTicks ?? 0;
   const eventReview = useMemo(() => eventReviewLocations(project), [project]);
+  const eventReviewTypes = [
+    ...(eventReview.some((entry) => entry.locations.some((location) => location !== "callbacks")) ? ["commands"] : []),
+    ...(eventReview.some((entry) => entry.locations.includes("callbacks")) ? ["callbacks"] : []),
+  ];
   const warningGroups = useMemo(() => groupConversionWarnings(project?.diagnostics ?? []), [project]);
   const previewTick = preview?.tick ?? null;
   const previewParts = preview?.parts ?? [];
@@ -266,7 +270,7 @@ export function App() {
 
           {eventReview.length > 0 && (
             <details className="message warning warning-group" role="alert">
-              <summary>Review commands and callbacks at these locations ({eventReview.length})</summary>
+              <summary>Review {eventReviewTypes.join(" and ")} at these locations ({eventReview.length})</summary>
               <ul>
                 {eventReview.map((entry) => (
                   <li key={entry.owner}><strong>{entry.owner}</strong><span>{entry.locations.join(" · ")}</span></li>

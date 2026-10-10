@@ -3,6 +3,7 @@ import type { BlockStateData, DisplayNbtPatch, ItemStackData } from "../../domai
 import type { Matrix16 } from "../../domain/matrix";
 import { readBlockState, readDisplayNbt, readItemStack } from "../../format/minecraftData";
 import { asMatrix16, IDENTITY_MATRIX } from "../../format/matrix";
+import { normalizeResourceLocation } from "../../format/resourceLocation";
 import {
   findMatchingSnbtDelimiter,
   omitSnbtFields,
@@ -215,8 +216,14 @@ function readAnimations(
             continue;
           }
           const merge = /^data merge entity @e\[([^\]]+)]\s+(\{.*})$/.exec(line);
-          const tag = merge ? /(?:^|,)tag=([^,\]]+)/.exec(merge[1])?.[1] : undefined;
+          const skin = /^data modify entity @e\[([^\]]+)]\s+item set value\s+(\{.*})$/.exec(line);
+          const selector = merge?.[1] ?? skin?.[1];
+          const tag = selector ? /(?:^|,)tag=([^,\]]+)/.exec(selector)?.[1] : undefined;
           const display = tag ? displayByTag.get(tag) : undefined;
+          if (skin && display?.type === "item_display") {
+            const item = readItemStack(skin[2]);
+            if (normalizeResourceLocation(item.id) === "minecraft:player_head" && item.components?.some((component) => component.name === "minecraft:profile")) continue;
+          }
           if (!merge || !tag || !display) {
             unresolvedCommands.push({ tick: frame.index * TICKS_PER_BD_FRAME, command: line, sourcePath: frame.path });
             diagnostics.push({ severity: "warning", code: "bd_datapack_command_approximated", message: `${name} at ${frame.index * TICKS_PER_BD_FRAME}t: an uninterpreted command was kept; execution context may differ. Review and edit the event.`, sourcePath: frame.path });
