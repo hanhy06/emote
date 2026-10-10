@@ -8,7 +8,7 @@ import { ConversionError } from "../../foundation/diagnostics";
 import type { BoneEntry } from "../common/blockbenchCubeModel";
 import type { BbCube, BbTexture } from "../common/blockbenchCubeSchema";
 import { cubePlayerHeadMatrix, isHiddenAccessoryBone, prepareCubeModels } from "../common/blockbenchCubeSkin";
-import { referencedTextureIndexes, resolveFaceTextureIndex, textureFileStem, uniqueCubeNodeId, writeEmbeddedTextures } from "../common/blockbenchCubeResources";
+import { uniqueCubeNodeId, writeCubeResources, writeEmbeddedTextures } from "../common/blockbenchCubeResources";
 import type { AjProject, AjProjectCube, AjProjectLocator, ProjectTransformGraph } from "./animatedJavaProjectSchema";
 
 export interface AnimatedJavaCubes {
@@ -77,7 +77,7 @@ export function importAnimatedJavaCubes(project: AjProject, sourceStem: string, 
         : composeDegreesTransform(origin, rotation, [1, 1, 1]).multiply(new Matrix4().makeTranslation(-origin[0], -origin[1], -origin[2]));
       bone.nodes.push({ id, localMatrix: cubeMatrix });
       const modelPath = `${projectPath}/${id}`;
-      writeCubeResource(cube, bone, project.resolution, textures, namespace, modelPath, resources);
+      writeCubeResources(cube, bone.group.origin, project.resolution, textures, namespace, modelPath, resources);
       const skin = hiddenAccessory ? undefined : skinAssignments.get(cube.uuid);
       nodes[id] = {
         binding: { sourceNodeId: id, ...(skin ? { skinGroupId: `${skin.part}_${skin.order}` } : {}) },
@@ -111,25 +111,6 @@ export function writeReferencedAnimatedJavaCubeResources(cubes: AnimatedJavaCube
     const id = index === 0 ? bone.id : uniqueCubeNodeId(bone, cube, index, ids);
     const modelPath = `${cubes.projectPath}/${id}`;
     const path = itemModelResourcePath(cubes.namespace, modelPath);
-    if (references.has(path) && !cubes.resources.has(path)) writeCubeResource(cube, bone, resolution, cubes.textures, cubes.namespace, modelPath, cubes.resources);
+    if (references.has(path) && !cubes.resources.has(path)) writeCubeResources(cube, bone.group.origin, resolution, cubes.textures, cubes.namespace, modelPath, cubes.resources);
   }
-}
-
-function writeCubeResource(cube: BbCube, bone: BoneEntry, resolution: AjProject["resolution"], textures: BbTexture[], namespace: string, modelPath: string, resources: Map<string, GeneratedResource>): void {
-  const sourceTextures = textures.length ? textures : [{}];
-  const used = referencedTextureIndexes(cube, sourceTextures);
-  const modelTextures = textures.length ? Object.fromEntries([...used].map((index) => [`layer${index}`, `${namespace}:item/${modelPath.split("/").slice(0, -1).join("/")}/${textureFileStem(textures.length, index)}`])) : { layer0: "minecraft:block/white_concrete" };
-  const inflate = cube.inflate ?? 0;
-  const faces = Object.fromEntries(Object.entries(cube.faces).flatMap(([direction, face]) => {
-    if (!["north", "south", "east", "west", "up", "down"].includes(direction) || face.enabled === false || face.texture === null || face.uv == null) return [];
-    return [[direction, {
-      uv: [face.uv[0] * 16 / resolution.width, face.uv[1] * 16 / resolution.height, face.uv[2] * 16 / resolution.width, face.uv[3] * 16 / resolution.height],
-      texture: `#layer${resolveFaceTextureIndex(face.texture, sourceTextures)}`, ...(face.rotation == null || face.rotation === 0 ? {} : { rotation: face.rotation }),
-    }]];
-  }));
-  resources.set(`assets/${namespace}/models/item/${modelPath}.json`, { kind: "cuboid_model", textures: modelTextures, elements: [{
-    from: cube.from.map((value, axis) => value - bone.group.origin[axis] - inflate + 8),
-    to: cube.to.map((value, axis) => value - bone.group.origin[axis] + inflate + 8), faces,
-  }] });
-  resources.set(itemModelResourcePath(namespace, modelPath), { kind: "item_model", model: `${namespace}:item/${modelPath}` });
 }

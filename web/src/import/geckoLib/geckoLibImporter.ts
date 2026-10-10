@@ -22,8 +22,7 @@ import {
   type BlockbenchCubeProject,
 } from "../common/blockbenchCubeSchema";
 import type { GeckoLibBbmodelProject } from "./geckoLibBbmodelSchema";
-import { uniqueCubeNodeId, writeEmbeddedTextures } from "../common/blockbenchCubeResources";
-import { writeCubeResources } from "./geckoLibCubeResources";
+import { uniqueCubeNodeId, writeCubeResources, writeEmbeddedTextures } from "../common/blockbenchCubeResources";
 import {
   cubePlayerHeadMatrix,
   isHiddenAccessoryBone,
@@ -75,7 +74,7 @@ export function importGeckoLibProject(project: GeckoLibBbmodelProject, sourceNam
       const localMatrix = cubeLocalMatrix(cube, bone);
       bone.nodes.push({ id: nodeId, localMatrix });
       const modelPath = `${projectPath}/${nodeId}`;
-      writeCubeResources(project, bone, cube, namespace, modelPath, resources);
+      writeCubeResources(cube, bone.group.origin, project.resolution, project.textures, namespace, modelPath, resources);
       nodes[nodeId] = {
         binding: {
           sourceNodeId: nodeId,
