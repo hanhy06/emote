@@ -77,11 +77,7 @@ export async function readInput(format: InputFormat, input: ImportInput): Promis
     }
     case "animated_java_blueprint": {
       const { importAnimatedJavaProject } = await import("./animatedJava/animatedJavaProjectImporter");
-      const project = parseInputJson(input) as AjProject;
-      return importAnimatedJavaProject(input, { ...project, groups: project.groups ?? [], elements: project.elements.map((element) => {
-        const visibility = (element as { visibility?: unknown }).visibility;
-        return visibility === "true" || visibility === "false" ? { ...element, visibility: visibility === "true" } : element;
-      }) });
+      return importAnimatedJavaProject(input, parseInputJson(input) as AjProject);
     }
     case "geckolib_bbmodel": {
       const { importGeckoLibProject } = await import("./geckoLib/geckoLibImporter");

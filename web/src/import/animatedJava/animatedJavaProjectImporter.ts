@@ -35,6 +35,10 @@ interface AnimatedJavaAnimationState {
 }
 
 export function importAnimatedJavaProject(input: ImportInput, project: AjProject): ImportedProject {
+  project = { ...project, groups: project.groups ?? [], elements: project.elements.map((element) => {
+    const visibility = (element as { visibility?: unknown }).visibility;
+    return visibility === "true" || visibility === "false" ? { ...element, visibility: visibility === "true" } : element;
+  }) };
   if (!["animated-java:format/blueprint", "animated_java_blueprint"].includes(project.meta.format)) {
     throw new Error(`Unsupported Animated Java project format: ${project.meta.format}`);
   }
