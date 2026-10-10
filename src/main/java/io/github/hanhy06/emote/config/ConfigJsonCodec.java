@@ -211,10 +211,9 @@ final class ConfigJsonCodec {
         }
 
         List<AccessConfig.IdleSettings.Choice> choices = new ArrayList<>();
-        int totalChance = 0;
         for (int index = 0; index < array.size(); index += stride) {
             String id = readRequiredString(array.get(index));
-            if (id == null || choices.stream().anyMatch(choice -> choice.id().equals(id))) {
+            if (id == null) {
                 return null;
             }
             int chance = 0;
@@ -223,12 +222,8 @@ final class ConfigJsonCodec {
                 if (chance < 1) {
                     return null;
                 }
-                totalChance += chance;
             }
             choices.add(new AccessConfig.IdleSettings.Choice(id, chance));
-        }
-        if (weighted && totalChance != 100) {
-            return null;
         }
         return List.copyOf(choices);
     }
