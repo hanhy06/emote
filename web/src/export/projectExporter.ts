@@ -4,7 +4,6 @@ import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocat
 import { EMOTE_SCHEMA_VERSION } from "../format/emote";
 import type { ExportResult } from "./types";
 import { isSequenceControlId, type SequenceAnimationStep, type SequenceStep } from "../domain/emoteDefinition";
-import { normalizeSequenceTimes } from "../domain/animationIRConversion";
 
 export async function exportAnimation(document: ConversionDocument, animationIndex: number): Promise<ExportResult[]> {
   const compiled = compileAnimationFile(document, animationIndex);
@@ -63,7 +62,6 @@ function compileAnimationFiles(document: ConversionDocument, includeSequence: bo
   });
   if (includeSequence) {
     const sequenceOutput = structuredClone(document.sequence);
-    normalizeSequenceTimes(sequenceOutput);
     const outputIdBySourceId = new Map(document.animations.flatMap((entry, index) => entry.sourceReferenceId
       ? [[entry.sourceReferenceId, animations[index].id] as const] : []));
     const baseSequenceId = `${sanitizeNamespace(sequenceOutput.namespace)}:${sanitizeResourcePath(sequenceOutput.idPath ?? sequenceOutput.name)}`;

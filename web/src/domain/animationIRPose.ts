@@ -1,4 +1,4 @@
-import { parseAnimationSeconds } from "../format/time";
+import { parseMinecraftTime } from "../format/time";
 import { Euler, Matrix4, Quaternion, Vector3 } from "three";
 import { orderedNodeIds, type AnimationIR, type DriverIR, type ScalarIR, type TrackIR, type VisibilityIR } from "./animationIR";
 import { sampleCurve, type ScalarEvaluatorIR } from "./animationIRCurves";
@@ -25,7 +25,7 @@ export function evaluatePose(animation: AnimationIR, time: number, evaluate: Sca
     let raw: VisibilityIR;
     if (driver.type === "expression") raw = driver.value as VisibilityIR;
     else if (driver.type === "state") {
-      const key = driver.keys.filter((key) => parseAnimationSeconds(key.time) <= time).at(-1);
+      const key = driver.keys.filter((key) => parseMinecraftTime(key.time) / 20 <= time).at(-1);
       if (!key) return base;
       raw = key.value as VisibilityIR;
     } else throw new Error("Visibility requires an expression or state driver.");

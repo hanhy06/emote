@@ -9,7 +9,7 @@ export function parseMinecraftTime(value: string, minimumTicks = 0): number {
   if (!match) throw new Error("must be a Minecraft time string using d, s, t, or bare ticks");
   const number = Number.parseFloat(value);
   const multiplier = match[1] === "d" ? 24_000 : match[1] === "s" ? 20 : 1;
-  const ticks = Math.floor(number * multiplier + 0.5);
+  const ticks = Math.floor(Math.fround(Math.fround(number) * multiplier) + 0.5);
   if (!Number.isSafeInteger(ticks) || ticks < minimumTicks || ticks > JAVA_INT_MAX) throw new Error(`must resolve to ${minimumTicks}..${JAVA_INT_MAX} ticks`);
   return ticks;
 }

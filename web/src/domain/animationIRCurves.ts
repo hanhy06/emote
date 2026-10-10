@@ -1,4 +1,4 @@
-import { parseAnimationSeconds } from "../format/time";
+import { parseMinecraftTime } from "../format/time";
 import { Quaternion } from "three";
 import type { CurveIR, EasingIR, ScalarIR, SegmentIR, VectorValueIR } from "./animationIR";
 
@@ -31,14 +31,14 @@ export function evaluateEasing(easing: EasingIR | undefined, u: number): number 
 export function sampleCurve(curve: CurveIR, time: number, base: readonly number[], evaluate: ScalarEvaluatorIR): number[] {
   const vector = (value: VectorValueIR, u: number) => value.map((scalar, axis) => evaluate(scalar, u, base[axis]));
   const first = curve.keys[0];
-  if (time < parseAnimationSeconds(first.time)) return curve.before === "first_pre" ? vector(first.pre ?? first.value!, 0) : [...base];
+  if (time < parseMinecraftTime(first.time) / 20) return curve.before === "first_pre" ? vector(first.pre ?? first.value!, 0) : [...base];
   let index = 0;
-  while (index + 1 < curve.keys.length && parseAnimationSeconds(curve.keys[index + 1].time) <= time) index++;
+  while (index + 1 < curve.keys.length && parseMinecraftTime(curve.keys[index + 1].time) / 20 <= time) index++;
   const left = curve.keys[index];
-  if (time === parseAnimationSeconds(left.time) || index === curve.keys.length - 1) return vector(left.post ?? left.value!, 1);
+  if (time === parseMinecraftTime(left.time) / 20 || index === curve.keys.length - 1) return vector(left.post ?? left.value!, 1);
   const right = curve.keys[index + 1];
-  const duration = parseAnimationSeconds(right.time) - parseAnimationSeconds(left.time);
-  const u = (time - parseAnimationSeconds(left.time)) / duration;
+  const duration = (parseMinecraftTime(right.time) - parseMinecraftTime(left.time)) / 20;
+  const u = (time - parseMinecraftTime(left.time) / 20) / duration;
   const start = vector(left.post ?? left.value!, u);
   const segment = curve.segments[index];
   if (segment.interpolation === "step") return start;

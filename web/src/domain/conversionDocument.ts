@@ -1,7 +1,7 @@
 import type { ConversionIssue } from "../foundation/diagnostics";
 import type { PlayerSkinPart } from "./player";
 import { orderedNodeIds, type AnimationEntryIR, type AnimationIR, type AttachmentIR, type AnimationSetIR, type EventIR, type NodeIR, type TransformOperationIR } from "./animationIR";
-import { normalizeAnimationTimes, normalizeSequenceTimes, remapClip, removeTinyStaticNodes } from "./animationIRConversion";
+import { normalizeAnimationTimes, remapClip, removeTinyStaticNodes } from "./animationIRConversion";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
 import { parseAnimationSeconds, parseMinecraftTime } from "../format/time";
@@ -73,7 +73,7 @@ export function createConversionDocument(project: ImportedProject, formatLabel: 
       loop: ir.animation.events?.loop ?? [],
       stop: ir.animation.events?.stop ?? [],
     };
-    normalizeAnimationTimes(ir);
+    normalizeAnimationTimes(ir, project.source !== "emote_json");
     removeTinyStaticNodes(ir, ir.animation.events);
     const ids = new Map<string, string>();
     for (const sourceId of orderedNodeIds(ir.nodes)) {
@@ -126,7 +126,6 @@ export function createConversionDocument(project: ImportedProject, formatLabel: 
       additionalMetadata, cooldown: project.suggestedCooldown ?? "0t", player: project.suggestedPlayer },
     diagnostics: project.diagnostics, resources: project.resources,
   };
-  normalizeSequenceTimes(document.sequence);
   for (const part of [...new Set(Object.values(suggestions).map((suggestion) => suggestion.part))]) {
     const groups = new Map(Object.entries(suggestions).filter(([, suggestion]) => suggestion.part === part)
       .map(([id, suggestion]) => [skinCandidates[id].groupId, suggestion.order]));

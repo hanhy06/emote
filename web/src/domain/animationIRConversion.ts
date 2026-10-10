@@ -1,7 +1,6 @@
 import { orderedNodeIds, type AnimationEntryIR, type AnimationIR, type ClipIR, type ScalarIR, type TimeValueIR } from "./animationIR";
 import { formatMinecraftTime, parseAnimationSeconds, parseMinecraftTime, sourceSecondsTime } from "../format/time";
 import { evaluatePose } from "./animationIRPose";
-import type { SequenceStep } from "./emoteDefinition";
 export function scalarIR(value: number | string): ScalarIR {
   if (typeof value !== "string") return value as ScalarIR;
   const numeric = Number(value.trim());
@@ -13,19 +12,10 @@ export function sourceDelayIR(value: number | string): TimeValueIR {
   return typeof scalar === "number" ? formatMinecraftTime(parseMinecraftTime(sourceSecondsTime(scalar))) : scalar as TimeValueIR;
 }
 
-export function normalizeSequenceTimes(sequence: { cooldown: string; steps?: SequenceStep[] }): void {
-  sequence.cooldown = formatMinecraftTime(parseMinecraftTime(sequence.cooldown));
-  for (const step of sequence.steps ?? []) {
-    if ("wait" in step) step.wait = formatMinecraftTime(parseMinecraftTime(step.wait, 1));
-    else if (step.transition !== undefined) step.transition = formatMinecraftTime(parseMinecraftTime(step.transition));
-  }
-}
-
-export function normalizeAnimationTimes(animation: AnimationIR | AnimationEntryIR): void {
-  if (animation.settings?.cooldown !== undefined) animation.settings.cooldown = formatMinecraftTime(parseMinecraftTime(animation.settings.cooldown));
+export function normalizeAnimationTimes(animation: AnimationIR | AnimationEntryIR, generatedTimes = false): void {
   const clip = "clip" in animation ? animation.clip : animation.animation;
-  clip.duration = formatMinecraftTime(parseMinecraftTime(clip.duration, 1));
-  if (clip.playback) {
+  if (generatedTimes) clip.duration = formatMinecraftTime(parseMinecraftTime(clip.duration, 1));
+  if (generatedTimes && clip.playback) {
     if (clip.playback.loop_start !== undefined) clip.playback.loop_start = formatMinecraftTime(parseMinecraftTime(clip.playback.loop_start));
     for (const field of ["start_delay", "loop_delay"] as const) {
       const value = clip.playback[field];
@@ -35,8 +25,8 @@ export function normalizeAnimationTimes(animation: AnimationIR | AnimationEntryI
   for (const track of clip.tracks) {
     if (track.driver.type === "state") {
       const keys = [...track.driver.keys].sort((first, second) => parseAnimationSeconds(first.time) - parseAnimationSeconds(second.time))
-        .map((key) => ({ ...key, time: formatMinecraftTime(parseMinecraftTime(key.time)) }));
-      track.driver.keys = track.channel === "visible" ? [...new Map(keys.map((key) => [key.time, key])).values()] : keys;
+        .map((key) => ({ ...key, time: generatedTimes ? formatMinecraftTime(parseMinecraftTime(key.time)) : key.time }));
+      track.driver.keys = track.channel === "visible" ? [...new Map(keys.map((key) => [parseMinecraftTime(key.time), key])).values()] : keys;
       continue;
     }
     if (track.driver.type !== "curve") continue;
@@ -44,7 +34,7 @@ export function normalizeAnimationTimes(animation: AnimationIR | AnimationEntryI
     const source = curve.keys.map((key, index) => ({ key, index, seconds: parseAnimationSeconds(key.time), tick: parseMinecraftTime(key.time) }))
       .sort((first, second) => first.seconds - second.seconds);
     const retained = [...new Map(source.map((entry) => [entry.tick, entry])).values()];
-    const keys = retained.map(({ key, tick }) => ({ ...key, time: formatMinecraftTime(tick) }));
+    const keys = retained.map(({ key, tick }) => ({ ...key, time: generatedTimes ? formatMinecraftTime(tick) : key.time }));
     curve.segments = retained.slice(0, -1).map((left, index) => {
       const segment = { ...curve.segments[left.index] };
       if (segment.interpolation === "catmull_rom") {
@@ -59,7 +49,7 @@ export function normalizeAnimationTimes(animation: AnimationIR | AnimationEntryI
   }
   for (const events of Object.values(clip.events ?? {})) {
     events.sort((first, second) => parseAnimationSeconds(first.time ?? "0t") - parseAnimationSeconds(second.time ?? "0t"));
-    for (const event of events) if (event.time !== undefined) event.time = formatMinecraftTime(parseMinecraftTime(event.time));
+    if (generatedTimes) for (const event of events) if (event.time !== undefined) event.time = formatMinecraftTime(parseMinecraftTime(event.time));
   }
 }
 

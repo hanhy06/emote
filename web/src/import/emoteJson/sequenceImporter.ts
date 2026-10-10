@@ -3,7 +3,6 @@ import type { EmoteCallback, EmoteMetadata, EmotePlayerBehavior, ImportedSequenc
 import { isRecord, type RuntimeRecord } from "../../format/runtimeValue";
 import type { ImportInput } from "../input";
 import { parseInputJson } from "../common/inputCache";
-import { normalizeSequenceTimes } from "../../domain/animationIRConversion";
 
 interface EmoteSequence {
   callbacks?: EmoteCallback[];
@@ -45,7 +44,6 @@ export function importSequence(input: ImportInput): ImportedSequence {
     steps: sequence.steps.map(importStep),
     callbacks: sequence.callbacks?.map((callback) => ({ ...callback })),
   };
-  normalizeSequenceTimes(imported);
   return imported;
 }
 

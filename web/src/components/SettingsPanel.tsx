@@ -3,7 +3,7 @@ import type { AnimationEntryIR, TimeValueIR } from "../domain/animationIR";
 import { AdditionalMetadataEditor } from "./AdditionalMetadataEditor";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
 import { createDefaultPlayerBehavior } from "../domain/emoteDefinition";
-import { formatMinecraftTime, parseMinecraftTime } from "../format/time";
+import { parseMinecraftTime } from "../format/time";
 
 const STOP_CONDITION_OPTIONS = [
   ["jump", "Stop on jump"], ["submerge", "Stop when submerged"], ["ride", "Stop on mount"],
@@ -50,10 +50,10 @@ export function SettingsPanel({ animation, minecraftVersion, disabled, onChange,
         const expression = JSON.parse(text) as TimeValueIR;
         return { ...animation, clip: { ...animation.clip, playback: { ...playback, loop_delay: expression } } };
       }
-      const value = formatMinecraftTime(parseMinecraftTime(text));
+      parseMinecraftTime(text);
       return field === "cooldown"
-        ? { ...animation, settings: { ...settings, cooldown: value } }
-        : { ...animation, clip: { ...animation.clip, playback: { ...playback, [field]: value } } };
+        ? { ...animation, settings: { ...settings, cooldown: text } }
+        : { ...animation, clip: { ...animation.clip, playback: { ...playback, [field]: text } } };
     });
   }
 
@@ -99,7 +99,7 @@ export function SettingsPanel({ animation, minecraftVersion, disabled, onChange,
       <AdditionalMetadataEditor value={additionalMetadata} disabled={disabled} onChange={(metadata) => onChange({ ...animation, metadata: { ...metadata, name: animation.metadata.name, description: animation.metadata.description } })} />
       <section className="playback-behavior" aria-labelledby="playback-behavior-heading">
         <h3 id="playback-behavior-heading">Settings</h3>
-        <p>Time accepts d, s, t, or bare ticks. Times are rounded to whole ticks by the converter.</p>
+        <p>Time accepts d, s, t, or bare ticks. Your time strings are preserved; Minecraft converts them to ticks when loading.</p>
         <div className="fields settings-selectors">
           <div className="playback-settings-group">
             <label>Playback mode<select value={mode} disabled={disabled} onChange={(event) => {
