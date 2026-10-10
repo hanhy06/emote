@@ -11,7 +11,6 @@ import {
 import type { EmoteCallback } from "./domain/emoteDefinition";
 import type { PlayerSkinPart } from "./domain/player";
 import type { AnimationEntryIR, EventIR, TimelineEventIR } from "./domain/animationIR";
-import { selectNode, selectNodes } from "./preview/skinParts";
 import { TICKS_PER_SECOND } from "./format/time";
 
 export type WorkspacePage = 0 | 1 | 2;
@@ -66,10 +65,10 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
   switch (action.type) {
     case "open_started":
       return { ...state, openError: "", exportError: "", operation: { type: "opening", message: action.message } };
-    case "documents_open_succeeded": {
-      const session = createConversionSessionFromDocument(action.document);
-      return openedSession(state, session);
-    }
+    case "documents_open_succeeded":
+      return { ...state,
+        session: { document: action.document, animationIndex: 0, previewFrameIndex: 0, selectedNodeIds: new Set() },
+        page: 0, operation: { type: "idle" } };
     case "open_failed":
       return { ...state, openError: action.message, operation: { type: "idle" } };
     case "export_started":
@@ -156,17 +155,18 @@ export function eventReviewLocations(document: ConversionDocument | null): { own
   return review;
 }
 
-function createConversionSessionFromDocument(document: ConversionDocument): ConversionSession {
-  return {
-    document,
-    animationIndex: 0,
-    previewFrameIndex: 0,
-    selectedNodeIds: new Set(),
-  };
+function selectNode(current: ReadonlySet<string>, nodeId: string, additive: boolean): Set<string> {
+  if (!additive) return current.has(nodeId) ? new Set() : new Set([nodeId]);
+  const next = new Set(current);
+  if (next.has(nodeId)) next.delete(nodeId);
+  else next.add(nodeId);
+  return next;
 }
 
-function openedSession(state: WorkspaceState, session: ConversionSession): WorkspaceState {
-  return { ...state, session, page: 0, operation: { type: "idle" } };
+function selectNodes(current: ReadonlySet<string>, nodeIds: readonly string[], additive: boolean): Set<string> {
+  const next = additive ? new Set(current) : new Set<string>();
+  nodeIds.forEach((nodeId) => next.add(nodeId));
+  return next;
 }
 
 function selectSessionAnimation(session: ConversionSession, animationIndex: number): ConversionSession {
