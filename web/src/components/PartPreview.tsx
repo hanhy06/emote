@@ -68,8 +68,7 @@ export default function PartPreview({ parts, assignments, selectedNodeIds, onSel
     scene.add(new THREE.GridHelper(5, 10, 0x888888, 0xcccccc));
 
     const partGroup = new THREE.Group();
-    const clickableMeshes: THREE.Mesh[] = [];
-    const modelMeshes: THREE.Mesh[] = [];
+    const meshes: THREE.Mesh[] = [];
     const geometry = createPlayerHeadGeometry();
     const edgeGeometry = new THREE.EdgesGeometry(geometry);
 
@@ -89,8 +88,7 @@ export default function PartPreview({ parts, assignments, selectedNodeIds, onSel
       if (part.conversionMatrix) mesh.matrix.multiply(new THREE.Matrix4().set(...part.conversionMatrix as MatrixValues));
       mesh.userData.nodeId = part.nodeId;
       partGroup.add(mesh);
-      modelMeshes.push(mesh);
-      clickableMeshes.push(mesh);
+      meshes.push(mesh);
 
       const edges = new THREE.LineSegments(edgeGeometry, new THREE.LineBasicMaterial({ color: 0x333333 }));
       edges.matrixAutoUpdate = false;
@@ -100,7 +98,7 @@ export default function PartPreview({ parts, assignments, selectedNodeIds, onSel
     scene.add(partGroup);
 
     const bounds = new THREE.Box3();
-    for (const mesh of modelMeshes) bounds.expandByObject(mesh);
+    for (const mesh of meshes) bounds.expandByObject(mesh);
     const center = bounds.getCenter(new THREE.Vector3());
     const size = Math.max(bounds.getSize(new THREE.Vector3()).length(), 1);
     const initialTarget = center.clone().add(new THREE.Vector3(0, size * 0.7, 0));
@@ -155,7 +153,7 @@ export default function PartPreview({ parts, assignments, selectedNodeIds, onSel
       const right = Math.min(rectangle.right, Math.max(pointerStart.x, event.clientX));
       const top = Math.max(rectangle.top, Math.min(pointerStart.y, event.clientY));
       const bottom = Math.min(rectangle.bottom, Math.max(pointerStart.y, event.clientY));
-      const nodeIds = clickableMeshes.flatMap((mesh) => {
+      const nodeIds = meshes.flatMap((mesh) => {
         const box = new THREE.Box3().setFromObject(mesh);
         const projectedMin = { x: Number.POSITIVE_INFINITY, y: Number.POSITIVE_INFINITY };
         const projectedMax = { x: Number.NEGATIVE_INFINITY, y: Number.NEGATIVE_INFINITY };
@@ -230,7 +228,7 @@ export default function PartPreview({ parts, assignments, selectedNodeIds, onSel
       pointer.x = ((event.clientX - rectangle.left) / rectangle.width) * 2 - 1;
       pointer.y = -((event.clientY - rectangle.top) / rectangle.height) * 2 + 1;
       raycaster.setFromCamera(pointer, camera);
-      const nodeIds = [...new Set(raycaster.intersectObjects(clickableMeshes, false)
+      const nodeIds = [...new Set(raycaster.intersectObjects(meshes, false)
         .map((intersection) => intersection.object.userData.nodeId as string))];
       if (nodeIds.length === 0) return;
       const selectedIndex = nodeIds.findIndex((nodeId) => selectedNodeIdsRef.current.has(nodeId));
