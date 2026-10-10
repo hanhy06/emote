@@ -34,8 +34,7 @@ public final class MineSkinProvider implements SkinBakeCoordinator.FallbackUploa
     }
 
     @Override
-    public String upload(byte[] png, boolean slimModel) throws IOException, InterruptedException {
-        String contentHash = SkinCache.createContentKey(png, slimModel);
+    public String upload(String contentHash, byte[] png, boolean slimModel) throws IOException, InterruptedException {
         for (int attempt = 0; attempt <= RATE_LIMIT_RETRY_LIMIT; attempt++) {
             TextureResolution resolution = resolveTextureUrl(this.apiKey, contentHash, png, slimModel);
             if (resolution.textureUrl() != null) {
@@ -55,15 +54,10 @@ public final class MineSkinProvider implements SkinBakeCoordinator.FallbackUploa
         byte[] bakedImage,
         boolean slimModel
     ) throws IOException, InterruptedException {
-        String cachedTextureUrl = this.cache.loadContent(contentHash);
-        if (cachedTextureUrl != null) {
-            return TextureResolution.ready(cachedTextureUrl);
-        }
-
         long now = System.currentTimeMillis();
         SkinCache.Failure failure = this.cache.loadFailure(contentHash, now);
         if (failure != null) {
-            return TextureResolution.retry(failure.retryAfterEpochMillis(), failure.errorMessage());
+            return TextureResolution.retry(failure.retryAfterEpochMillis());
         }
         SkinCache.PendingJob pendingJob = this.cache.loadPendingJob(contentHash);
         if (pendingJob != null
@@ -87,23 +81,20 @@ public final class MineSkinProvider implements SkinBakeCoordinator.FallbackUploa
         } catch (MineSkinClient.RateLimitException exception) {
             long retryAt = now + positiveOrRateLimitFallback(exception.retryDelayMillis());
             this.cache.saveFailure(contentHash, exception.getMessage(), retryAt);
-            return TextureResolution.retry(retryAt, exception.getMessage());
+            return TextureResolution.retry(retryAt);
         } catch (MineSkinClient.JobFailedException exception) {
             this.cache.clearPendingJob(contentHash);
             if (exception.isRateLimited()) {
                 long retryAt = now + positiveOrRateLimitFallback(exception.retryDelayMillis());
                 this.cache.saveFailure(contentHash, exception.getMessage(), retryAt);
-                return TextureResolution.retry(retryAt, exception.getMessage());
+                return TextureResolution.retry(retryAt);
             }
 
             this.cache.saveFailure(contentHash, exception.getMessage(), now + FAILED_JOB_RETRY_DELAY_MILLIS);
             EmoteMod.LOGGER.warn("MineSkin rejected baked texture {}: {}", contentHash, exception.getMessage());
-            return TextureResolution.failed(exception.getMessage());
+            return TextureResolution.failed();
         }
 
-        this.cache.saveContent(contentHash, textureUrl);
-        this.cache.clearPendingJob(contentHash);
-        this.cache.clearFailure(contentHash);
         return TextureResolution.ready(textureUrl);
     }
 
@@ -111,17 +102,17 @@ public final class MineSkinProvider implements SkinBakeCoordinator.FallbackUploa
         return value > 0L ? value : RATE_LIMIT_RETRY_DELAY_MILLIS;
     }
 
-    private record TextureResolution(String textureUrl, long retryAtEpochMillis, String errorMessage) {
+    private record TextureResolution(String textureUrl, long retryAtEpochMillis) {
         private static TextureResolution ready(String textureUrl) {
-            return new TextureResolution(Objects.requireNonNull(textureUrl, "textureUrl"), 0L, null);
+            return new TextureResolution(Objects.requireNonNull(textureUrl, "textureUrl"), 0L);
         }
 
-        private static TextureResolution retry(long retryAtEpochMillis, String errorMessage) {
-            return new TextureResolution(null, retryAtEpochMillis, Objects.requireNonNull(errorMessage, "errorMessage"));
+        private static TextureResolution retry(long retryAtEpochMillis) {
+            return new TextureResolution(null, retryAtEpochMillis);
         }
 
-        private static TextureResolution failed(String errorMessage) {
-            return new TextureResolution(null, 0L, Objects.requireNonNull(errorMessage, "errorMessage"));
+        private static TextureResolution failed() {
+            return new TextureResolution(null, 0L);
         }
     }
 }

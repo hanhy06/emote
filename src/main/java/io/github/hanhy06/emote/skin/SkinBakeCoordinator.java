@@ -308,7 +308,7 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
         CompletableFuture<String> result
     ) {
         try {
-            String url = uploadWithSelectedProvider(png, slimModel);
+            String url = uploadWithSelectedProvider(contentKey, png, slimModel);
             synchronized (this) {
                 if (expectedGeneration != this.generation) {
                     result.cancel(false);
@@ -326,7 +326,7 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
         }
     }
 
-    private String uploadWithSelectedProvider(byte[] png, boolean slimModel)
+    private String uploadWithSelectedProvider(String contentKey, byte[] png, boolean slimModel)
         throws IOException, InterruptedException, ExecutionException {
         if (this.accounts.storageError() != null) {
             throw new IOException(this.accounts.storageError());
@@ -336,7 +336,7 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
                 return this.accountUploads.submit(png, slimModel).get();
             } catch (ExecutionException exception) {
                 if (!this.accounts.hasAccounts() && this.fallbackUploader.available()) {
-                    return this.fallbackUploader.upload(png, slimModel);
+                    return this.fallbackUploader.upload(contentKey, png, slimModel);
                 }
                 throw exception;
             }
@@ -345,7 +345,7 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
             throw new IOException("No usable bake account; run /emote account login");
         }
         if (this.fallbackUploader.available()) {
-            return this.fallbackUploader.upload(png, slimModel);
+            return this.fallbackUploader.upload(contentKey, png, slimModel);
         }
         throw new IOException("No skin upload provider is available");
     }
@@ -482,6 +482,6 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
 
         boolean available();
 
-        String upload(byte[] png, boolean slimModel) throws IOException, InterruptedException;
+        String upload(String contentKey, byte[] png, boolean slimModel) throws IOException, InterruptedException;
     }
 }

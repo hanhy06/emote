@@ -210,6 +210,8 @@ public final class SkinCache {
             JsonFileStore.writeObjectAtomically(filePath, object, this.gson);
             this.contentTextureUrls.put(contentHash, textureUrl);
             this.refreshedAccessTimes.put(filePath, System.currentTimeMillis());
+            clearPendingJob(contentHash);
+            clearFailure(contentHash);
         } catch (IOException exception) {
             EmoteMod.LOGGER.warn("Failed to write skin content cache: {}", filePath, exception);
         }
