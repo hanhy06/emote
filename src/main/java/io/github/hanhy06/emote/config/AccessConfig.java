@@ -222,10 +222,6 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
             ).stream().map(id -> new Choice(id, 0)).toList());
         }
 
-        public List<String> emote() {
-            return this.choices.stream().map(Choice::id).toList();
-        }
-
         public List<Choice> resolveChoices(Collection<String> availableIds) {
             Objects.requireNonNull(availableIds, "available emote ids");
             LinkedHashMap<String, Choice> resolved = new LinkedHashMap<>();

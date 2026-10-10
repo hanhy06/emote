@@ -6,14 +6,11 @@ import com.google.gson.JsonParser;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.stream.Stream;
 
 public final class MolangQueryCatalog {
     private static final Catalog CATALOG = loadCatalog();
     private static final Set<String> SUPPORTED_VALUES = CATALOG.values();
     private static final Map<String, QuerySignature> SUPPORTED_FUNCTIONS = CATALOG.functions();
-    public static final Set<String> SUPPORTED_NAMES = Stream.concat(SUPPORTED_VALUES.stream(), SUPPORTED_FUNCTIONS.keySet().stream())
-        .collect(java.util.stream.Collectors.toUnmodifiableSet());
 
     private MolangQueryCatalog() {
     }

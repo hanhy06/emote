@@ -5,7 +5,6 @@ import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaybackPlacement;
-import io.github.hanhy06.emote.api.PlaybackInfo;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.mixin.accessor.EntitySharedFlagsAccessor;
@@ -62,18 +61,6 @@ public final class PlayerPlaybackManager {
         PlayerPlayback playback = this.playerSessions.get(playerId);
         return playback == null ? null : playback.playerState();
     }
-    public Optional<PlaybackInfo> playbackInfo(UUID sessionId) {
-        return Optional.ofNullable(findPlayback(sessionId))
-            .map(playback -> playback.session().info());
-    }
-    public @Nullable PlaybackSession findSession(UUID sessionId) {
-        PlayerPlayback playback = findPlayback(sessionId);
-        return playback == null ? null : playback.session();
-    }
-    private @Nullable PlayerPlayback findPlayback(UUID sessionId) {
-        return this.playerSessions.values().stream()
-            .filter(playback -> playback.session().sessionId().equals(sessionId)).findFirst().orElse(null);
-    }
     public int activePlayerCount() { return this.playerSessions.size(); }
 
     public PlayResult start(ServerPlayer player, PreparedEmote emote) {
@@ -89,7 +76,7 @@ public final class PlayerPlaybackManager {
             : RootTransform.create(player.position(), player.getYRot());
         PlayerPlaybackState previousState = playerState(player.getUUID());
         boolean wasInvisible = previousState != null && previousState.behavior().hidden() ? previousState.wasInvisible() : player.isInvisible();
-        PlayerPlaybackState playerState = new PlayerPlaybackState(player.getUUID(), player.position(), emote.skinBindings(), wasInvisible, emote.playerBehavior());
+        PlayerPlaybackState playerState = new PlayerPlaybackState(player.position(), emote.skinBindings(), wasInvisible, emote.playerBehavior());
         List<PlaybackStateListener> playbackListeners = List.copyOf(this.listeners);
         PlaybackEngine.Lifecycle lifecycle = new PlaybackEngine.Lifecycle() {
             private int notifiedListeners;
@@ -132,7 +119,7 @@ public final class PlayerPlaybackManager {
                 } finally { closingPlayers.remove(player.getUUID()); }
             }
         };
-        var result = this.engine.start(new PlaybackEngine.Request(player.level(), root, emote, emote.id(),
+        var result = this.engine.start(new PlaybackEngine.Request(player.level(), root, emote,
             Map.of("actor", player), PlayerMolangQueries.forPlayer(player), player.createCommandSourceStack(),
             preparation.textures(), lifecycle, placement.mode()), findActive(player.getUUID()));
         return switch (result) {
@@ -146,11 +133,6 @@ public final class PlayerPlaybackManager {
         PlaybackSession session = findActive(player.getUUID());
         return session == null ? null : this.engine.stop(session, reason);
     }
-    public @Nullable PlaybackSession stop(UUID sessionId, PlaybackStopReason reason) {
-        PlaybackSession session = findSession(sessionId);
-        return session == null ? null : this.engine.stop(session, reason);
-    }
-
     void updatePlayerPlacement(PlaybackSession session, Vec3 playerPosition, float playerYaw, EmotePlayerBehavior behavior) {
         if (session.placement().mode() != PlaybackPlacement.Mode.ACTOR) return;
         if (behavior.stopConditions().movementDistance() == 0) this.engine.entities().moveSceneTo(session.nodes(), playerPosition);

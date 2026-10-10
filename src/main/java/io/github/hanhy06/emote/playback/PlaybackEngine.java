@@ -43,21 +43,20 @@ public final class PlaybackEngine implements ConfigListener {
         default void onStopped(PlaybackSession session, PlaybackStopReason reason) {}
     }
 
-    public record Request(ServerLevel level, RootTransform root, PreparedEmote emote, String emoteId,
+    public record Request(ServerLevel level, RootTransform root, PreparedEmote emote,
                           Map<String, Entity> actors, MolangQuerySource queries, @Nullable CommandSourceStack commandSource,
                           @Nullable Map<PlayerSkinRegion, String> skin, Lifecycle lifecycle, PlaybackPlacement.Mode placementMode) {
         public Request {
             Objects.requireNonNull(level, "level");
             Objects.requireNonNull(root, "root");
             Objects.requireNonNull(emote, "emote");
-            Objects.requireNonNull(emoteId, "emoteId");
             actors = Map.copyOf(actors);
             Objects.requireNonNull(queries, "queries");
             Objects.requireNonNull(lifecycle, "lifecycle");
             Objects.requireNonNull(placementMode, "placementMode");
         }
         public Request(ServerLevel level, RootTransform root, PreparedEmote emote) {
-            this(level, root, emote, emote.id(), Map.of(), MolangQuerySource.EMPTY, null, null, Lifecycle.NONE, PlaybackPlacement.Mode.EXTERNAL);
+            this(level, root, emote, Map.of(), MolangQuerySource.EMPTY, null, null, Lifecycle.NONE, PlaybackPlacement.Mode.EXTERNAL);
         }
     }
 
@@ -111,7 +110,7 @@ public final class PlaybackEngine implements ConfigListener {
             if (request.skin() != null) this.entityController.applySkin(nodes, emote.skinBindings(), request.skin());
             timeline.deferInitialVisibility();
             this.entityController.add(request.level(), nodes);
-            session = new PlaybackSession(UUID.randomUUID(), request.level().dimension(), request.emoteId(),
+            session = new PlaybackSession(UUID.randomUUID(), request.level().dimension(), emote.id(),
                 nodes, timeline, request.actors(), request.placementMode());
             session.bindCallbacks(bindings, segmentBindings, EmoteMod.SERVER.getTickCount());
             register(session, request.lifecycle());

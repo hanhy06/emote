@@ -137,7 +137,7 @@ public final class EntityPlaybackManager {
         Marker marker = entry.marker;
         ServerLevel level = (ServerLevel) marker.level();
         var result = this.engine.start(new PlaybackEngine.Request(level, RootTransform.create(marker.position(), marker.getYRot()),
-            emote, emote.id(), Map.of("actor", marker), EntityMolangQueries.forEntity(marker),
+            emote, Map.of("actor", marker), EntityMolangQueries.forEntity(marker),
             EmoteMod.SERVER.createCommandSourceStack().withEntity(marker).withLevel(level)
                 .withPosition(marker.position()).withRotation(marker.getRotationVector()),
             preparation.textures(), lifecycle, PlaybackPlacement.Mode.ACTOR), entry.session);

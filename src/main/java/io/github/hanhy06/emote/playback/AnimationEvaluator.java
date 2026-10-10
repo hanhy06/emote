@@ -91,7 +91,6 @@ final class AnimationEvaluator {
     int displayInterpolationTicks() { return this.animation.model().settings().displayInterpolationTicks(); }
     String nodeId(int index) { return this.nodeIds.get(index); }
     Matrix4fc matrix(int index) { return this.matrices.get(nodeId(index)); }
-    Matrix4fc matrix(String id) { return this.matrices.get(id); }
     boolean visible(int index) { return this.visibility.get(nodeId(index)); }
     Map<String, Boolean> attachmentVisibility(int index) { return this.attachmentVisibility.get(nodeId(index)); }
     Map<String, CompoundTag> nbt(int index) { return this.nbt.getOrDefault(nodeId(index), Map.of()); }

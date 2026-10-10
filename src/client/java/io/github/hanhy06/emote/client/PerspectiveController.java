@@ -18,7 +18,6 @@ public class PerspectiveController {
 
     private CameraType previousCameraType = CameraType.FIRST_PERSON;
     private boolean restoreCameraOnStop;
-    private boolean playbackActive;
     private boolean hideLocalPlayerEquipment;
 
     public PerspectiveController() {
@@ -39,12 +38,10 @@ public class PerspectiveController {
         restorePerspectiveIfNeeded();
         this.previousCameraType = CameraType.FIRST_PERSON;
         this.restoreCameraOnStop = false;
-        this.playbackActive = false;
         this.hideLocalPlayerEquipment = false;
     }
 
     public void handlePlaybackState(boolean active, boolean hidePlayer) {
-        this.playbackActive = active;
         this.hideLocalPlayerEquipment = active && hidePlayer;
         if (active) {
             switchToThirdPersonIfNeeded();
@@ -52,10 +49,6 @@ public class PerspectiveController {
         }
 
         restorePerspectiveIfNeeded();
-    }
-
-    public boolean isPlaybackActive() {
-        return this.playbackActive;
     }
 
     public boolean shouldHideLocalPlayerEquipment() {
