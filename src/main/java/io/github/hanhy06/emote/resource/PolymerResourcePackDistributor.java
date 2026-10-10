@@ -29,38 +29,20 @@ public final class PolymerResourcePackDistributor {
     private final ConfigManager configManager;
     private final ResourcePackContributor contributor;
     private final Path outputPath;
-    private final PackCompiler packCompiler;
     private volatile PublishedPack publishedPack;
 
     public PolymerResourcePackDistributor(ConfigManager configManager) {
-        this(
-            configManager,
-            PolymerResourcePackUtils.getMainPath().resolveSibling(EmoteMod.MOD_ID + "_resource_pack.zip"),
-            true,
-            null
-        );
-    }
-
-    PolymerResourcePackDistributor(
-        ConfigManager configManager,
-        Path outputPath,
-        boolean registerHosting,
-        PackCompiler packCompiler
-    ) {
         this.configManager = configManager;
         this.contributor = new ResourcePackContributor();
-        this.outputPath = outputPath;
-        this.packCompiler = packCompiler == null ? this::compilePack : packCompiler;
+        this.outputPath = PolymerResourcePackUtils.getMainPath().resolveSibling(EmoteMod.MOD_ID + "_resource_pack.zip");
 
-        if (registerHosting) {
-            AutoHostUtils.registerHostedFile(PACK_ID, outputPath);
-            AutoHostUtils.SEND_RESOURCE_PACK_COLLECTOR.register((provider, context, consumer) -> {
-                PublishedPack published = this.publishedPack;
-                if (published != null) {
-                    consumer.accept(provider.createProperties(context, PACK_UUID, PACK_ID, published.hash()));
-                }
-            });
-        }
+        AutoHostUtils.registerHostedFile(PACK_ID, this.outputPath);
+        AutoHostUtils.SEND_RESOURCE_PACK_COLLECTOR.register((provider, context, consumer) -> {
+            PublishedPack published = this.publishedPack;
+            if (published != null) {
+                consumer.accept(provider.createProperties(context, PACK_UUID, PACK_ID, published.hash()));
+            }
+        });
     }
 
     public BuildResult rebuild() {
@@ -88,7 +70,7 @@ public final class PolymerResourcePackDistributor {
         }
 
         try {
-            OutputGenerator.Result staged = this.packCompiler.compile(snapshot, stagingPath);
+            OutputGenerator.Result staged = compilePack(snapshot, stagingPath);
             if (staged == null || staged.hadIssues()) {
                 EmoteMod.LOGGER.warn("Failed to complete the emote resource pack build; keeping the previous pack");
                 return BuildResult.FAILED;
@@ -162,12 +144,6 @@ public final class PolymerResourcePackDistributor {
     }
 
     private record PublishedPack(ResourcePackContributor.Snapshot snapshot, String hash) {
-    }
-
-    @FunctionalInterface
-    interface PackCompiler {
-        OutputGenerator.Result compile(ResourcePackContributor.Snapshot snapshot, Path stagingPath)
-            throws IOException, ExecutionException, InterruptedException;
     }
 
     public enum BuildResult {

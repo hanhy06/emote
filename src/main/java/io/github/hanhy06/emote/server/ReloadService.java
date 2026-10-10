@@ -12,24 +12,20 @@ import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.resource.PolymerResourcePackDistributor;
 
 import java.io.UncheckedIOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public final class ReloadService {
     private final ConfigManager configManager;
     private final EmoteCatalog emoteCatalog;
-    private final LoadResultLoader directoryLoader;
-    private final Supplier<net.minecraft.core.HolderLookup.Provider> registries;
-    private final PlaybackStopper playbackStopper;
-    private final Runnable wheelSynchronizer;
-    private final Supplier<PolymerResourcePackDistributor.BuildResult> resourcePackBuilder;
-    private final Runnable resourcePackPusher;
+    private final EmoteDirectoryLoader directoryLoader;
+    private final PlaybackEngine playbackEngine;
+    private final WheelSyncService wheelSyncService;
+    private final PolymerResourcePackDistributor resourcePackDistributor;
 
     public ReloadService(
         ConfigManager configManager,
@@ -37,39 +33,14 @@ public final class ReloadService {
         EmoteDirectoryLoader directoryLoader,
         PlaybackEngine playbackEngine,
         WheelSyncService wheelSyncService,
-        Supplier<PolymerResourcePackDistributor.BuildResult> resourcePackBuilder,
-        Runnable resourcePackPusher
-    ) {
-        this(
-            configManager,
-            emoteCatalog,
-            directoryLoader::load,
-            () -> EmoteMod.SERVER.registryAccess(),
-            playbackEngine::stopAll,
-            wheelSyncService::syncAll,
-            resourcePackBuilder,
-            resourcePackPusher
-        );
-    }
-
-    ReloadService(
-        ConfigManager configManager,
-        EmoteCatalog emoteCatalog,
-        LoadResultLoader directoryLoader,
-        Supplier<net.minecraft.core.HolderLookup.Provider> registries,
-        PlaybackStopper playbackStopper,
-        Runnable wheelSynchronizer,
-        Supplier<PolymerResourcePackDistributor.BuildResult> resourcePackBuilder,
-        Runnable resourcePackPusher
+        PolymerResourcePackDistributor resourcePackDistributor
     ) {
         this.configManager = configManager;
         this.emoteCatalog = emoteCatalog;
         this.directoryLoader = directoryLoader;
-        this.registries = registries;
-        this.playbackStopper = playbackStopper;
-        this.wheelSynchronizer = wheelSynchronizer;
-        this.resourcePackBuilder = resourcePackBuilder;
-        this.resourcePackPusher = resourcePackPusher;
+        this.playbackEngine = playbackEngine;
+        this.wheelSyncService = wheelSyncService;
+        this.resourcePackDistributor = resourcePackDistributor;
     }
 
     public ReloadResult reload() {
@@ -102,7 +73,7 @@ public final class ReloadService {
             EmoteMod.LOGGER.warn("Emote reload failed; keeping the current registry and active playbacks");
             return ReloadStats.failed(this.emoteCatalog.fileEmotes().size(), ReloadResult.Failure.EMOTE_LOAD);
         }
-        PolymerResourcePackDistributor.BuildResult resourcePackResult = this.resourcePackBuilder.get();
+        PolymerResourcePackDistributor.BuildResult resourcePackResult = this.resourcePackDistributor.rebuild();
         if (resourcePackResult == PolymerResourcePackDistributor.BuildResult.FAILED) {
             EmoteMod.LOGGER.warn("Emote reload failed because the resource pack could not be built; keeping the current state");
             return ReloadStats.failed(this.emoteCatalog.fileEmotes().size(), ReloadResult.Failure.RESOURCE_PACK_BUILD);
@@ -110,11 +81,11 @@ public final class ReloadService {
 
         this.configManager.apply(preparedConfig);
         ReloadStats stats = replaceRegistry(prepared);
-        this.playbackStopper.stopAll(PlaybackStopReason.RELOAD);
+        this.playbackEngine.stopAll(PlaybackStopReason.RELOAD);
         if (resourcePackResult == PolymerResourcePackDistributor.BuildResult.BUILT) {
-            this.resourcePackPusher.run();
+            this.resourcePackDistributor.pushToOnlinePlayers();
         }
-        this.wheelSynchronizer.run();
+        this.wheelSyncService.syncAll();
         EmoteMod.LOGGER.info("Loaded {} emotes from {} files", stats.loadedEmoteCount(), stats.detectedFileCount());
         return stats;
     }
@@ -152,7 +123,7 @@ public final class ReloadService {
 
     private PreparedAnimation prepareAnimation(LoadedAnimation animation) {
         try {
-            return PreparedAnimation.prepare(animation, this.registries.get());
+            return PreparedAnimation.prepare(animation, EmoteMod.SERVER.registryAccess());
         } catch (io.github.hanhy06.emote.api.EmoteLoadException exception) {
             EmoteMod.LOGGER.warn("Ignoring invalid emote animation {}: {}", animation.sourcePath(), exception.getMessage());
             return null;
@@ -169,16 +140,6 @@ public final class ReloadService {
             EmoteMod.LOGGER.warn("Ignoring invalid emote sequence {}: {}", sequence.sourcePath(), exception.getMessage());
             return null;
         }
-    }
-
-    @FunctionalInterface
-    interface LoadResultLoader {
-        EmoteDirectoryLoader.LoadResult load(Path directory);
-    }
-
-    @FunctionalInterface
-    interface PlaybackStopper {
-        void stopAll(PlaybackStopReason reason);
     }
 
     private record ReloadStats(int detectedFileCount, int loadedEmoteCount, ReloadResult.Failure failure) {

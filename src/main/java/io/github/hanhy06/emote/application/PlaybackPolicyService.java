@@ -17,7 +17,7 @@ public final class PlaybackPolicyService implements AccessConfigListener {
     private static final Rules IDLE_RULES = new Rules(true, true, true, false);
     private static final Rules UNRESTRICTED_RULES = new Rules(false, false, false, false);
 
-    private final PermissionChecker permissionChecker;
+    private final PermissionService permissionService;
     private final PlaybackCooldownService cooldowns;
 
     private List<AccessConfig.PermissionEntry> permissionEntries = List.of();
@@ -31,16 +31,9 @@ public final class PlaybackPolicyService implements AccessConfigListener {
         EmoteCatalog emoteCatalog,
         PlaybackCooldownService cooldowns
     ) {
-        this(permissionService::has, cooldowns);
-        Objects.requireNonNull(emoteCatalog, "emote catalog").addListener(this::onEmoteCatalogChanged);
-    }
-
-    PlaybackPolicyService(
-        PermissionChecker permissionChecker,
-        PlaybackCooldownService cooldowns
-    ) {
-        this.permissionChecker = Objects.requireNonNull(permissionChecker, "permission checker");
+        this.permissionService = Objects.requireNonNull(permissionService, "permission service");
         this.cooldowns = Objects.requireNonNull(cooldowns, "cooldowns");
+        Objects.requireNonNull(emoteCatalog, "emote catalog").addListener(this::onEmoteCatalogChanged);
     }
 
     @Override
@@ -124,7 +117,7 @@ public final class PlaybackPolicyService implements AccessConfigListener {
                 continue;
             }
             boolean grantedByDefault = entry.permission().equals(DEFAULT_PERMISSION);
-            if (this.permissionChecker.test(player, entry.permission(), grantedByDefault)) {
+            if (this.permissionService.has(player, entry.permission(), grantedByDefault)) {
                 return entry.idle();
             }
         }
@@ -135,7 +128,7 @@ public final class PlaybackPolicyService implements AccessConfigListener {
         if (source == PlaySource.API) {
             return UNRESTRICTED_RULES;
         }
-        if (this.permissionChecker.test(player, PermissionService.BYPASS_PERMISSION, false)) {
+        if (this.permissionService.has(player, PermissionService.BYPASS_PERMISSION, false)) {
             return UNRESTRICTED_RULES;
         }
         return source == PlaySource.IDLE ? IDLE_RULES : COMMAND_RULES;
@@ -145,7 +138,7 @@ public final class PlaybackPolicyService implements AccessConfigListener {
         boolean allowed = false;
         for (AccessConfig.PermissionEntry entry : this.permissionEntriesByEmoteId.getOrDefault(id, this.wildcardPermissionEntries)) {
             boolean grantedByDefault = entry.permission().equals(DEFAULT_PERMISSION);
-            if (this.permissionChecker.test(player, entry.permission(), grantedByDefault)) {
+            if (this.permissionService.has(player, entry.permission(), grantedByDefault)) {
                 allowed = true;
                 if (entry.cooldown().isPresent()) {
                     return new PermissionResolution(true, entry.cooldown());
@@ -205,8 +198,4 @@ public final class PlaybackPolicyService implements AccessConfigListener {
     ) {
     }
 
-    @FunctionalInterface
-    interface PermissionChecker {
-        boolean test(ServerPlayer player, String permission, boolean defaultValue);
-    }
 }

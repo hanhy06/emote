@@ -10,28 +10,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.function.Function;
-import java.util.function.ToLongFunction;
 
 public final class PlaybackCooldownService implements PlaybackStateListener {
-    private final Function<ServerPlayer, UUID> playerIdResolver;
-    private final ToLongFunction<ServerPlayer> tickSource;
     private final Map<UUID, Map<String, CooldownState>> statesByPlayer = new HashMap<>();
 
-    public PlaybackCooldownService() {
-        this(ServerPlayer::getUUID, player -> player.level().getGameTime());
-    }
-
-    PlaybackCooldownService(
-        Function<ServerPlayer, UUID> playerIdResolver,
-        ToLongFunction<ServerPlayer> tickSource
-    ) {
-        this.playerIdResolver = Objects.requireNonNull(playerIdResolver, "player id resolver");
-        this.tickSource = Objects.requireNonNull(tickSource, "tick source");
-    }
-
     Status status(ServerPlayer player, String emoteId) {
-        UUID playerId = this.playerIdResolver.apply(player);
+        UUID playerId = player.getUUID();
         Map<String, CooldownState> playerStates = this.statesByPlayer.get(playerId);
         if (playerStates == null) {
             return Status.available();
@@ -44,7 +28,7 @@ public final class PlaybackCooldownService implements PlaybackStateListener {
             return Status.available();
         }
 
-        long remainingTicks = coolingDown.readyTick() - this.tickSource.applyAsLong(player);
+        long remainingTicks = coolingDown.readyTick() - player.level().getGameTime();
         if (remainingTicks > 0L) {
             return Status.coolingDown(remainingTicks);
         }
@@ -56,7 +40,7 @@ public final class PlaybackCooldownService implements PlaybackStateListener {
         if (durationTicks <= 0) {
             throw new IllegalArgumentException("cooldown duration must be positive");
         }
-        return new Reservation(this.playerIdResolver.apply(player), emoteId, durationTicks);
+        return new Reservation(player.getUUID(), emoteId, durationTicks);
     }
 
     void claim(Reservation reservation) {
@@ -87,14 +71,14 @@ public final class PlaybackCooldownService implements PlaybackStateListener {
     }
 
     void onPlaybackEnded(ServerPlayer player, String emoteId) {
-        UUID playerId = this.playerIdResolver.apply(player);
+        UUID playerId = player.getUUID();
         Map<String, CooldownState> playerStates = this.statesByPlayer.get(playerId);
         if (playerStates == null) {
             return;
         }
         CooldownState state = playerStates.get(emoteId);
         if (state instanceof InUse inUse) {
-            long readyTick = this.tickSource.applyAsLong(player) + inUse.durationTicks();
+            long readyTick = player.level().getGameTime() + inUse.durationTicks();
             playerStates.put(emoteId, new CoolingDown(readyTick));
         }
     }

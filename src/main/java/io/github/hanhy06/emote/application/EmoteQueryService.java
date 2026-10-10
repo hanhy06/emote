@@ -10,20 +10,16 @@ import io.github.hanhy06.emote.content.PreparedEmote;
 
 public class EmoteQueryService {
     private final EmoteCatalog emoteCatalog;
-    private final VisibilityChecker visibilityChecker;
+    private final PlaybackPolicyService playbackPolicy;
 
     public EmoteQueryService(EmoteCatalog emoteCatalog, PlaybackPolicyService playbackPolicy) {
-        this(emoteCatalog, playbackPolicy::isVisibleForCommand);
-    }
-
-    EmoteQueryService(EmoteCatalog emoteCatalog, VisibilityChecker visibilityChecker) {
         this.emoteCatalog = emoteCatalog;
-        this.visibilityChecker = visibilityChecker;
+        this.playbackPolicy = playbackPolicy;
     }
 
     public List<EmoteSummary> getAll(ServerPlayer player) {
         return this.emoteCatalog.emotes().stream()
-            .filter(emote -> this.visibilityChecker.isVisible(player, emote))
+            .filter(emote -> this.playbackPolicy.isVisibleForCommand(player, emote))
             .sorted(Comparator.comparing(PreparedEmote::name).thenComparing(PreparedEmote::id))
             .map(emote -> new EmoteSummary(emote.id(), emote.name(), emote.description(), emote.tags()))
             .toList();
@@ -63,7 +59,7 @@ public class EmoteQueryService {
     }
 
     public List<String> getPlayableIds(ServerPlayer player) {
-        return collectPlayIds(emote -> this.visibilityChecker.isVisible(player, emote));
+        return collectPlayIds(emote -> this.playbackPolicy.isVisibleForCommand(player, emote));
     }
 
     private List<String> collectPlayIds(Predicate<PreparedEmote> filter) {
@@ -122,8 +118,4 @@ public class EmoteQueryService {
     private record RankedEntry(EmoteSummary emote, int rank) {
     }
 
-    @FunctionalInterface
-    interface VisibilityChecker {
-        boolean isVisible(ServerPlayer player, PreparedEmote emote);
-    }
 }

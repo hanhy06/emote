@@ -95,8 +95,7 @@ public class EmoteMod implements ModInitializer {
             new EmoteDirectoryLoader(),
             engine,
             wheelSync,
-            resourcePackDistributor::rebuild,
-            resourcePackDistributor::pushToOnlinePlayers
+            resourcePackDistributor
         );
 
         UserCommand userCommand = new UserCommand(playback, new EmoteMenu(configManager, catalog, queries, playback), queries, play);

@@ -16,13 +16,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 public class PlayerSkinManager implements ConfigListener {
     private final PlayerSkinProvider provider;
-    private final Function<ServerPlayer, PlayerSkinSource> playerSkinSourceResolver;
-    private final Function<String, CompletableFuture<PlayerSkinSource>> namedSkinSourceResolver;
-    private final Consumer<Runnable> serverExecutor;
     private final Map<String, CompletableFuture<PlayerSkinSource>> namedSources = new HashMap<>();
     private final List<Runnable> defaultReadyListeners = new CopyOnWriteArrayList<>();
     private final List<Consumer<UUID>> readyListeners = new CopyOnWriteArrayList<>();
@@ -31,31 +27,11 @@ public class PlayerSkinManager implements ConfigListener {
     private long sourceGeneration;
 
     public PlayerSkinManager(PlayerSkinProvider provider) {
-        this(provider, PlayerSkinManager::readPlayerSkinSource);
-    }
-
-    PlayerSkinManager(
-        PlayerSkinProvider provider,
-        Function<ServerPlayer, PlayerSkinSource> playerSkinSourceResolver
-    ) {
-        this(provider, playerSkinSourceResolver, PlayerSkinManager::resolveNamedSkinSource);
-    }
-
-    PlayerSkinManager(PlayerSkinProvider provider, Function<ServerPlayer, PlayerSkinSource> playerSkinSourceResolver,
-                      Function<String, CompletableFuture<PlayerSkinSource>> namedSkinSourceResolver) {
-        this(provider, playerSkinSourceResolver, namedSkinSourceResolver, task -> EmoteMod.SERVER.execute(task));
-    }
-
-    PlayerSkinManager(PlayerSkinProvider provider, Function<ServerPlayer, PlayerSkinSource> playerSkinSourceResolver,
-                      Function<String, CompletableFuture<PlayerSkinSource>> namedSkinSourceResolver, Consumer<Runnable> serverExecutor) {
         this.provider = Objects.requireNonNull(provider, "provider");
-        this.playerSkinSourceResolver = Objects.requireNonNull(playerSkinSourceResolver, "playerSkinSourceResolver");
-        this.namedSkinSourceResolver = Objects.requireNonNull(namedSkinSourceResolver, "namedSkinSourceResolver");
-        this.serverExecutor = Objects.requireNonNull(serverExecutor, "serverExecutor");
         this.provider.setListener(new PlayerSkinProvider.Listener() {
             @Override
             public void onDefaultReady() {
-                serverExecutor.accept(() -> {
+                EmoteMod.SERVER.execute(() -> {
                     EmoteMod.SERVER.getPlayerList().getPlayers().forEach(player -> {
                         for (Consumer<UUID> readyListener : readyListeners) readyListener.accept(player.getUUID());
                     });
@@ -80,7 +56,7 @@ public class PlayerSkinManager implements ConfigListener {
         this.namedSources.clear();
         this.provider.onConfigReload(newConfig);
         if (!newConfig.defaultSkin().isEmpty()) {
-            namedSource(newConfig.defaultSkin()).thenAccept(source -> this.serverExecutor.accept(() -> {
+            namedSource(newConfig.defaultSkin()).thenAccept(source -> EmoteMod.SERVER.execute(() -> {
                 if (generation == this.sourceGeneration && source != null) this.provider.setDefaultSource(source);
             }));
         }
@@ -96,7 +72,7 @@ public class PlayerSkinManager implements ConfigListener {
     private CompletableFuture<PlayerSkinSource> namedSource(String name) {
         String normalized = name.strip();
         return this.namedSources.computeIfAbsent(normalized.toLowerCase(Locale.ROOT), ignored ->
-            this.namedSkinSourceResolver.apply(normalized).handle((source, exception) -> {
+            resolveNamedSkinSource(normalized).handle((source, exception) -> {
                 if (source == null || exception != null) {
                     EmoteMod.LOGGER.warn("Could not resolve skin for {}; retaining any prepared fallback skin", normalized, exception);
                     return null;
@@ -213,13 +189,9 @@ public class PlayerSkinManager implements ConfigListener {
         });
     }
 
-    private static PlayerSkinSource readPlayerSkinSource(ServerPlayer player) {
-        return PlayerSkinSource.fromProfile(player.getGameProfile(), EmoteMod.SERVER.services().sessionService());
-    }
-
     private PlayerSkinSource resolvePlayerSkinSource(ServerPlayer player) {
         try {
-            return this.playerSkinSourceResolver.apply(player);
+            return PlayerSkinSource.fromProfile(player.getGameProfile(), EmoteMod.SERVER.services().sessionService());
         } catch (RuntimeException exception) {
             EmoteMod.LOGGER.warn("Could not resolve player skin; using any prepared default skin", exception);
             return null;

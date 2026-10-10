@@ -12,8 +12,8 @@ import io.github.hanhy06.emote.content.PreparedEmote;
 public class EmotePlayService {
     private final EmoteCatalog emoteCatalog;
     private final PlaybackPolicyService playbackPolicy;
-    private final PlaybackStarter emoteStarter;
-    private final PlayEventDispatcher eventDispatcher;
+    private final PlayerPlaybackManager playerPlaybackManager;
+    private final ApiEventDispatcher apiEvents;
 
     public EmotePlayService(
         EmoteCatalog emoteCatalog,
@@ -21,24 +21,10 @@ public class EmotePlayService {
         PlayerPlaybackManager playerPlaybackManager,
         ApiEventDispatcher apiEvents
     ) {
-        this(
-            emoteCatalog,
-            playbackPolicy,
-            playerPlaybackManager::start,
-            apiEvents::beforePlay
-        );
-    }
-
-    EmotePlayService(
-        EmoteCatalog emoteCatalog,
-        PlaybackPolicyService playbackPolicy,
-        PlaybackStarter emoteStarter,
-        PlayEventDispatcher eventDispatcher
-    ) {
         this.emoteCatalog = emoteCatalog;
         this.playbackPolicy = playbackPolicy;
-        this.emoteStarter = emoteStarter;
-        this.eventDispatcher = eventDispatcher;
+        this.playerPlaybackManager = playerPlaybackManager;
+        this.apiEvents = apiEvents;
     }
 
     public PlayResult play(ServerPlayer player, String id) {
@@ -58,14 +44,14 @@ public class EmotePlayService {
         if (!decision.isAllowed()) {
             return decision.rejection();
         }
-        Component cancellationMessage = this.eventDispatcher.beforePlay(player, emote, source);
+        Component cancellationMessage = this.apiEvents.beforePlay(player, emote, source);
         if (cancellationMessage != null) {
             return PlayResult.failure(cancellationMessage);
         }
         this.playbackPolicy.claimCooldown(decision);
         PlayResult result;
         try {
-            result = this.emoteStarter.start(player, emote, placement);
+            result = this.playerPlaybackManager.start(player, emote, placement);
         } catch (RuntimeException | Error exception) {
             this.playbackPolicy.releaseCooldown(decision);
             throw exception;
@@ -76,13 +62,4 @@ public class EmotePlayService {
         return result;
     }
 
-    @FunctionalInterface
-    interface PlaybackStarter {
-        PlayResult start(ServerPlayer player, PreparedEmote emote, PlaybackPlacement placement);
-    }
-
-    @FunctionalInterface
-    interface PlayEventDispatcher {
-        Component beforePlay(ServerPlayer player, PreparedEmote emote, PlaySource source);
-    }
 }
