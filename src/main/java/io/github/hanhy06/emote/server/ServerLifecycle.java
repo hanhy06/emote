@@ -10,6 +10,7 @@ import io.github.hanhy06.emote.playback.PlaybackHooks;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
+import io.github.hanhy06.emote.resource.ResourcePackService;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -35,6 +36,7 @@ public class ServerLifecycle {
     private final ReloadService reloadService;
     private final WheelSyncService wheelSyncService;
     private final IdlePlaybackService idlePlaybackService;
+    private final ResourcePackService resources;
     private final BooleanSupplier missingSkinUploadProvider;
 
     public ServerLifecycle(
@@ -46,6 +48,7 @@ public class ServerLifecycle {
         ReloadService reloadService,
         WheelSyncService wheelSyncService,
         IdlePlaybackService idlePlaybackService,
+        ResourcePackService resources,
         BooleanSupplier missingSkinUploadProvider
     ) {
         this.playerSkinManager = playerSkinManager;
@@ -56,6 +59,7 @@ public class ServerLifecycle {
         this.reloadService = reloadService;
         this.wheelSyncService = wheelSyncService;
         this.idlePlaybackService = idlePlaybackService;
+        this.resources = resources;
         this.missingSkinUploadProvider = missingSkinUploadProvider;
     }
 
@@ -84,6 +88,7 @@ public class ServerLifecycle {
             (handler, ignoredSender, ignoredServer) -> {
                 this.wheelSyncService.syncPlayer(handler.player);
                 this.playerSkinManager.checkPlayerSkin(handler.player);
+                this.resources.notifyPlayer(handler.player);
                 if (this.missingSkinUploadProvider.getAsBoolean()) {
                     handler.player.sendSystemMessage(Component.literal(
                         "[Emote] No bake accounts or MineSkin API key configured; only cached skin textures are available"

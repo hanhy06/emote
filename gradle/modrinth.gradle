@@ -200,7 +200,7 @@ tasks.register("modrinth") {
                     dependencies: [
                         [project_id: "P7dR8mSH", dependency_type: "required"],
                         [project_id: "lzVo0Dll", dependency_type: "embedded"],
-                        [project_id: "xGdtZczs", dependency_type: "embedded"] // Polymer
+                        [project_id: "xGdtZczs", dependency_type: "optional"] // Polymer
                     ],
                     game_versions: build.gameVersions,
                     version_type: versionType,

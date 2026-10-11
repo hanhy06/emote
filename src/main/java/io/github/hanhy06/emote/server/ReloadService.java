@@ -9,7 +9,7 @@ import io.github.hanhy06.emote.content.*;
 import io.github.hanhy06.emote.content.loader.EmoteDirectoryLoader;
 import io.github.hanhy06.emote.network.WheelSyncService;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
-import io.github.hanhy06.emote.resource.PolymerResourcePackDistributor;
+import io.github.hanhy06.emote.resource.ResourcePackService;
 
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
@@ -25,7 +25,7 @@ public final class ReloadService {
     private final EmoteDirectoryLoader directoryLoader;
     private final PlaybackEngine playbackEngine;
     private final WheelSyncService wheelSyncService;
-    private final PolymerResourcePackDistributor resourcePackDistributor;
+    private final ResourcePackService resources;
 
     public ReloadService(
         ConfigManager configManager,
@@ -33,14 +33,14 @@ public final class ReloadService {
         EmoteDirectoryLoader directoryLoader,
         PlaybackEngine playbackEngine,
         WheelSyncService wheelSyncService,
-        PolymerResourcePackDistributor resourcePackDistributor
+        ResourcePackService resources
     ) {
         this.configManager = configManager;
         this.emoteCatalog = emoteCatalog;
         this.directoryLoader = directoryLoader;
         this.playbackEngine = playbackEngine;
         this.wheelSyncService = wheelSyncService;
-        this.resourcePackDistributor = resourcePackDistributor;
+        this.resources = resources;
     }
 
     public ReloadResult reload() {
@@ -73,8 +73,8 @@ public final class ReloadService {
             EmoteMod.LOGGER.warn("Emote reload failed; keeping the current registry and active playbacks");
             return ReloadStats.failed(this.emoteCatalog.fileEmotes().size(), ReloadResult.Failure.EMOTE_LOAD);
         }
-        PolymerResourcePackDistributor.BuildResult resourcePackResult = this.resourcePackDistributor.rebuild();
-        if (resourcePackResult == PolymerResourcePackDistributor.BuildResult.FAILED) {
+        ResourcePackService.BuildResult resourcePackResult = this.resources.rebuild();
+        if (resourcePackResult == ResourcePackService.BuildResult.FAILED) {
             EmoteMod.LOGGER.warn("Emote reload failed because the resource pack could not be built; keeping the current state");
             return ReloadStats.failed(this.emoteCatalog.fileEmotes().size(), ReloadResult.Failure.RESOURCE_PACK_BUILD);
         }
@@ -82,11 +82,12 @@ public final class ReloadService {
         this.configManager.apply(preparedConfig);
         ReloadStats stats = replaceRegistry(prepared);
         this.playbackEngine.stopAll(PlaybackStopReason.RELOAD);
-        if (resourcePackResult == PolymerResourcePackDistributor.BuildResult.BUILT) {
-            this.resourcePackDistributor.pushToOnlinePlayers();
+        if (resourcePackResult == ResourcePackService.BuildResult.BUILT) {
+            this.resources.pushToOnlinePlayers();
         }
         this.wheelSyncService.syncAll();
         EmoteMod.LOGGER.info("Loaded {} emotes from {} files", stats.loadedEmoteCount(), stats.detectedFileCount());
+        this.resources.notifyOnlinePlayers();
         return stats;
     }
 

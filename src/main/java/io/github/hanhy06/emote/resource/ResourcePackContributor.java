@@ -1,6 +1,5 @@
 package io.github.hanhy06.emote.resource;
 
-import eu.pb4.polymer.resourcepack.api.ResourcePackBuilder;
 import io.github.hanhy06.emote.util.Sha256;
 import net.minecraft.resources.Identifier;
 
@@ -28,15 +27,6 @@ final class ResourcePackContributor {
             ? readResources(sourceDirectory)
             : Map.of();
         return new Snapshot(resources, fingerprint(resources));
-    }
-
-    int addTo(Snapshot snapshot, ResourcePackBuilder builder) throws IOException {
-        for (Map.Entry<String, ResourceFile> entry : snapshot.resources.entrySet()) {
-            if (!builder.addData(entry.getKey(), entry.getValue().data())) {
-                throw new IOException("Polymer rejected resource " + entry.getKey());
-            }
-        }
-        return snapshot.resourceCount();
     }
 
     private static Map<String, ResourceFile> readResources(Path sourceDirectory) throws IOException {
@@ -179,9 +169,13 @@ final class ResourcePackContributor {
         int resourceCount() {
             return this.resources.size();
         }
+
+        Map<String, ResourceFile> resources() {
+            return this.resources;
+        }
     }
 
-    private record ResourceFile(byte[] data, String source) {
+    record ResourceFile(byte[] data, String source) {
     }
 
     private static final class Budget {

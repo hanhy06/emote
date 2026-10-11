@@ -13,7 +13,7 @@ import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.EntityPlaybackManager;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
-import io.github.hanhy06.emote.resource.PolymerResourcePackDistributor;
+import io.github.hanhy06.emote.resource.ResourcePackService;
 import io.github.hanhy06.emote.server.IdlePlaybackService;
 import io.github.hanhy06.emote.server.ReloadService;
 import io.github.hanhy06.emote.server.ServerLifecycle;
@@ -88,14 +88,14 @@ public class EmoteMod implements ModInitializer {
         configManager.addAccessConfigListener(idlePlayback);
         configManager.addListener(skins);
         configManager.addListener(engine);
-        PolymerResourcePackDistributor resourcePackDistributor = new PolymerResourcePackDistributor(configManager);
+        ResourcePackService resources = new ResourcePackService(configManager);
         ReloadService reload = new ReloadService(
             configManager,
             catalog,
             new EmoteDirectoryLoader(),
             engine,
             wheelSync,
-            resourcePackDistributor
+            resources
         );
 
         UserCommand userCommand = new UserCommand(playback, new EmoteMenu(configManager, catalog, queries, playback), queries, play);
@@ -109,7 +109,7 @@ public class EmoteMod implements ModInitializer {
         });
 
         ServerLifecycle lifecycle = new ServerLifecycle(
-            skins, cooldowns, catalog, playback, entityPlayback, reload, wheelSync, idlePlayback,
+            skins, cooldowns, catalog, playback, entityPlayback, reload, wheelSync, idlePlayback, resources,
             () -> !accounts.hasAccounts() && !mineSkin.available()
         );
         playback.register();
