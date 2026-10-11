@@ -178,11 +178,10 @@ export function assignSkinPart(document: ConversionDocument, selectedNodeIds: Re
     const sceneGroups = [...groups].filter((group) => Object.values(document.skinCandidates).some((candidate) => candidate.sceneId === scene && candidate.groupId === group));
     if (part) {
       const order = targetOrders.get(scene)!;
-      let nextOrder = Math.max(-1, ...order.values()) + 1;
+      const nextOrder = groups.size === 1 ? [...order.keys()].filter((group) => !groups.has(group)).length + 1 : null;
       for (const group of sceneGroups) {
-        if (order.has(group)) continue;
         const previousOrder = Object.values(document.skinCandidates).find((candidate) => candidate.sceneId === scene && candidate.groupId === group)?.order;
-        order.set(group, previousOrder ?? nextOrder++);
+        order.set(group, nextOrder ?? previousOrder ?? 0);
       }
       result = applySkinGroups(result, part, order, scene);
     }
