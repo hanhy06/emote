@@ -331,7 +331,7 @@ public class WheelScreen extends Screen {
             if (this.remainder * amount < 0.0D) {
                 this.remainder = 0.0D;
             }
-            this.remainder += amount / 5.0D;
+            this.remainder += amount / 3.0D;
             int pages = (int) (this.remainder + Math.copySign(1.0E-9D, this.remainder));
             this.remainder -= pages;
             if (Math.abs(this.remainder) < 1.0E-9D) {
