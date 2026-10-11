@@ -62,6 +62,9 @@ jobs:
       - name: Install web dependencies
         run: npm ci
 
+      - name: Test converter
+        run: npm test
+
       - name: Install documentation dependencies
         run: python -m pip install -r ../docs/mkdocs/requirements.txt
 
