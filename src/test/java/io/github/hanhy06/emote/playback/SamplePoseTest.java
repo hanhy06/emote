@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.playback;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.math.Transformation;
@@ -28,7 +29,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -47,8 +47,8 @@ class SamplePoseTest {
     static Stream<Arguments> samples() throws Exception {
         try (var reader = new InputStreamReader(Objects.requireNonNull(SamplePoseTest.class.getResourceAsStream("/sample-poses.json")), StandardCharsets.UTF_8)) {
             var samples = JsonParser.parseReader(reader).getAsJsonObject().getAsJsonArray("samples");
-            return StreamSupport.stream(samples.spliterator(), false).map(sample ->
-                Arguments.of(sample.getAsJsonObject().get("sample").getAsString(), sample.getAsJsonObject()));
+            return samples.asList().stream().map(JsonElement::getAsJsonObject)
+                .map(sample -> Arguments.of(sample.get("sample").getAsString(), sample));
         }
     }
 
