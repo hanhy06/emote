@@ -37,9 +37,6 @@ public final class PlaybackCooldownService implements PlaybackStateListener {
     }
 
     Reservation reservation(ServerPlayer player, String emoteId, int durationTicks) {
-        if (durationTicks <= 0) {
-            throw new IllegalArgumentException("cooldown duration must be positive");
-        }
         return new Reservation(player.getUUID(), emoteId, durationTicks);
     }
 
@@ -67,15 +64,12 @@ public final class PlaybackCooldownService implements PlaybackStateListener {
 
     @Override
     public void onStopped(ServerPlayer player, PlaybackSession session, PlayerPlaybackState playerState, PlaybackStopReason reason) {
-        onPlaybackEnded(player, session.emoteId());
-    }
-
-    void onPlaybackEnded(ServerPlayer player, String emoteId) {
         UUID playerId = player.getUUID();
         Map<String, CooldownState> playerStates = this.statesByPlayer.get(playerId);
         if (playerStates == null) {
             return;
         }
+        String emoteId = session.emoteId();
         CooldownState state = playerStates.get(emoteId);
         if (state instanceof InUse inUse) {
             long readyTick = player.level().getGameTime() + inUse.durationTicks();

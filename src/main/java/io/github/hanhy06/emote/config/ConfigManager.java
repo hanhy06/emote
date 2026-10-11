@@ -29,7 +29,6 @@ public class ConfigManager {
         .setPrettyPrinting()
         .disableHtmlEscaping()
         .create();
-    private final ConfigJsonCodec jsonCodec = new ConfigJsonCodec();
     private final List<ConfigListener> listeners = new ArrayList<>();
     private final List<AccessConfigListener> accessConfigListeners = new ArrayList<>();
 
@@ -66,7 +65,7 @@ public class ConfigManager {
         this.config = preparedConfig.config();
         this.accessConfig = preparedConfig.accessConfig();
         if (preparedConfig.migrateAccessConfig()) {
-            writeJsonFile(ACCESS_CONFIG_FILE_NAME, this.jsonCodec.writeAccessConfig(this.accessConfig));
+            writeJsonFile(ACCESS_CONFIG_FILE_NAME, ConfigJsonCodec.writeAccessConfig(this.accessConfig));
         }
         broadcastConfig();
         broadcastAccessConfig();
@@ -91,8 +90,8 @@ public class ConfigManager {
             }
         }
 
-        return writeIfAbsent(CONFIG_FILE_NAME, this.jsonCodec.writeConfig(Config.createDefault()))
-            && writeIfAbsent(ACCESS_CONFIG_FILE_NAME, this.jsonCodec.writeAccessConfig(AccessConfig.createDefault()));
+        return writeIfAbsent(CONFIG_FILE_NAME, ConfigJsonCodec.writeConfig(Config.createDefault()))
+            && writeIfAbsent(ACCESS_CONFIG_FILE_NAME, ConfigJsonCodec.writeAccessConfig(AccessConfig.createDefault()));
     }
 
     private static Optional<Path> findBundledEmoteDirectory() {
@@ -141,7 +140,7 @@ public class ConfigManager {
     private Config parseConfig(@Nullable JsonObject configJson) {
         Config loadedConfig;
         try {
-            loadedConfig = this.jsonCodec.readConfig(configJson);
+            loadedConfig = ConfigJsonCodec.readConfig(configJson);
         } catch (RuntimeException exception) {
             EmoteMod.LOGGER.warn("Main config contains invalid field values; keeping the current config: {}", exception.getMessage());
             return null;
@@ -155,7 +154,7 @@ public class ConfigManager {
     private AccessConfig parseAccessConfig(@Nullable JsonObject configJson) {
         AccessConfig loadedConfig;
         try {
-            loadedConfig = this.jsonCodec.readAccessConfig(configJson);
+            loadedConfig = ConfigJsonCodec.readAccessConfig(configJson);
         } catch (RuntimeException exception) {
             EmoteMod.LOGGER.warn("Emote access config contains invalid field values; keeping the current config: {}", exception.getMessage());
             return null;
@@ -191,7 +190,7 @@ public class ConfigManager {
             this.accessConfig.permissions()
         );
 
-        if (!writeJsonFile(ACCESS_CONFIG_FILE_NAME, this.jsonCodec.writeAccessConfig(nextConfig))) {
+        if (!writeJsonFile(ACCESS_CONFIG_FILE_NAME, ConfigJsonCodec.writeAccessConfig(nextConfig))) {
             return false;
         }
 
