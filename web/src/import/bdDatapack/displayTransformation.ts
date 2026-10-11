@@ -1,5 +1,6 @@
 import { Matrix3, Matrix4, Quaternion, Vector3 } from "three";
 import type { Matrix16 } from "../../domain/matrix";
+import { sampleCurve } from "../../domain/animationIRCurves";
 
 export interface DisplayTransformation {
   position: number[];
@@ -66,10 +67,11 @@ export function decomposeDisplayMatrix(matrix: Matrix16): DisplayTransformation 
 
 export function interpolateDisplayTransformation(first: DisplayTransformation, second: DisplayTransformation, progress: number): DisplayTransformation {
   const p = Math.max(0, Math.min(1, progress));
-  return {
-    position: first.position.map((value, axis) => value + (second.position[axis] - value) * p),
-    left_rotation: new Quaternion(...first.left_rotation as [number, number, number, number]).slerp(new Quaternion(...second.left_rotation as [number, number, number, number]), p).toArray(),
-    scale: first.scale.map((value, axis) => value + (second.scale[axis] - value) * p),
-    right_rotation: new Quaternion(...first.right_rotation as [number, number, number, number]).slerp(new Quaternion(...second.right_rotation as [number, number, number, number]), p).toArray(),
-  };
+  const result: DisplayTransformation = { position: [], left_rotation: [], scale: [], right_rotation: [] };
+  for (const channel of ["position", "left_rotation", "scale", "right_rotation"] as const) {
+    result[channel] = sampleCurve({ type: "curve", keys: [{ time: "0t", value: first[channel] }, { time: "20t", value: second[channel] }],
+      segments: [{ interpolation: channel.endsWith("rotation") ? "slerp" : "linear" }],
+    }, p, first[channel], (value) => value as number);
+  }
+  return result;
 }

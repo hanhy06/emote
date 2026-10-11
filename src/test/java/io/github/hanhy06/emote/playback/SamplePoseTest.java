@@ -363,6 +363,41 @@ class SamplePoseTest {
         }
     }
 
+    @Test
+    void playsConvertedBdCurvesAgainstMinecraftTransformationInterpolation() throws Exception {
+        byte[] bytes;
+        try (var input = Objects.requireNonNull(getClass().getResourceAsStream("/bd-curves.json"))) { bytes = input.readAllBytes(); }
+        var animation = PreparedAnimation.prepare(new AnimationJsonParser().parse(Path.of("bd-curves.json"), bytes), registries);
+        var reference = JsonParser.parseString(java.nio.file.Files.readString(Path.of("web/src/test/fixtures/bd-curves.json"))).getAsJsonObject();
+        Map<String, Transformation> original = new HashMap<>();
+        for (var entry : reference.getAsJsonObject("matrices").entrySet()) {
+            var matrix = new Matrix4f();
+            var elements = entry.getValue().getAsJsonArray();
+            for (int row = 0; row < 4; row++) for (int column = 0; column < 4; column++) matrix.set(column, row, elements.get(row * 4 + column).getAsFloat());
+            original.put(entry.getKey(), new Transformation(matrix));
+        }
+        Transformation initial = original.get("initial"), first = original.get("first"), second = original.get("second"), instant = original.get("instant");
+        var interrupted = initial.slerp(first, 0.5f);
+        var evaluator = new AnimationEvaluator(animation, MolangQuerySource.EMPTY);
+        evaluator.initialize(0, 0);
+        for (var point : reference.getAsJsonArray("ticks")) {
+            int tick = point.getAsInt();
+            evaluator.prepareFrame(tick, 0, 1, tick);
+            evaluator.evaluateFrame(tick, 0, 1, tick, true);
+            var expected = tick < 6 ? initial.slerp(first, Math.clamp((tick - 2) / 8f, 0, 1))
+                : tick < 12 ? interrupted.slerp(second, Math.clamp((tick - 8) / 6f, 0, 1))
+                : tick < 14 ? instant : instant.slerp(first, Math.clamp((tick - 12) / 8f, 0, 1));
+            var step = original.get(tick < 4 ? "initial" : tick < 18 ? "instant" : "shear");
+            for (var entry : Map.of("display_0", expected, "display_1", step).entrySet()) {
+                var actual = evaluator.matrix(animation.nodeOrder().indexOf(entry.getKey()));
+                var matrix = entry.getValue().getMatrix();
+                for (int row = 0; row < 4; row++) for (int column = 0; column < 4; column++) {
+                    assertEquals(matrix.get(column, row), actual.get(column, row), 1e-5, entry.getKey() + " tick=" + tick);
+                }
+            }
+        }
+    }
+
     private static final class PoseTarget implements PlaybackPlayer.TimelineTarget {
         final Map<String, Matrix4f> matrices = new HashMap<>();
 
