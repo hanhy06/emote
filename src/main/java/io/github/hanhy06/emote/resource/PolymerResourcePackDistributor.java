@@ -12,7 +12,6 @@ import net.minecraft.network.protocol.common.ClientboundResourcePackPushPacket;
 import net.minecraft.resources.Identifier;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
@@ -93,7 +92,7 @@ final class PolymerResourcePackDistributor {
         creator.creationEvent.register(builder -> {
             for (var entry : snapshot.resources().entrySet()) {
                 if (!builder.addData(entry.getKey(), entry.getValue().data())) {
-                    throw new UncheckedIOException(new IOException("Polymer rejected resource " + entry.getKey()));
+                    throw new IllegalStateException("Polymer rejected resource " + entry.getKey());
                 }
             }
         });
@@ -133,5 +132,4 @@ final class PolymerResourcePackDistributor {
 
     private record PublishedPack(ResourcePackContributor.Snapshot snapshot, String hash) {
     }
-
 }

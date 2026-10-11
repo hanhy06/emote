@@ -22,7 +22,7 @@ final class ResourcePackContributor {
     private static final int MAX_ENTRY_COUNT = 65_536;
     private static final long MAX_EXPANDED_BYTES = 256L * 1024L * 1024L;
 
-    Snapshot read(Path sourceDirectory) throws IOException {
+    static Snapshot read(Path sourceDirectory) throws IOException {
         Map<String, ResourceFile> resources = Files.isDirectory(sourceDirectory)
             ? readResources(sourceDirectory)
             : Map.of();
@@ -149,15 +149,7 @@ final class ResourcePackContributor {
         return digest.digest();
     }
 
-    static final class Snapshot {
-        private final Map<String, ResourceFile> resources;
-        private final byte[] fingerprint;
-
-        private Snapshot(Map<String, ResourceFile> resources, byte[] fingerprint) {
-            this.resources = resources;
-            this.fingerprint = fingerprint;
-        }
-
+    record Snapshot(Map<String, ResourceFile> resources, byte[] fingerprint) {
         boolean hasSameContent(Snapshot other) {
             return other != null && Arrays.equals(this.fingerprint, other.fingerprint);
         }
@@ -168,10 +160,6 @@ final class ResourcePackContributor {
 
         int resourceCount() {
             return this.resources.size();
-        }
-
-        Map<String, ResourceFile> resources() {
-            return this.resources;
         }
     }
 

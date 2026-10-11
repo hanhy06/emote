@@ -14,7 +14,6 @@ public final class ResourcePackService {
     private static final String MISSING_POLYMER_MESSAGE = "[Emote] Resource files were found, but Polymer Resource Pack and Auto Host are not installed. Automatic resource pack delivery is unavailable. Install Polymer and restart the server.";
 
     private final ConfigManager configManager;
-    private final ResourcePackContributor contributor = new ResourcePackContributor();
     private final @Nullable PolymerResourcePackDistributor distributor;
     private boolean missingPolymer;
 
@@ -30,7 +29,7 @@ public final class ResourcePackService {
         ResourcePackContributor.Snapshot snapshot;
         try {
             this.configManager.configureResourcePack();
-            snapshot = this.contributor.read(this.configManager.getResourcePackDirectory());
+            snapshot = ResourcePackContributor.read(this.configManager.getResourcePackDirectory());
         } catch (IOException exception) {
             EmoteMod.LOGGER.warn("Failed to inspect emote resource inputs", exception);
             return BuildResult.FAILED;
