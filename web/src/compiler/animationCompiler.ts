@@ -28,7 +28,8 @@ export function compileAnimation(document: ConversionDocument, index: number, st
     resources: entry.resources, source: entry.source, target_minecraft_version: document.targetMinecraftVersion,
   });
   if (standalone !== undefined) ir.settings = { ...ir.settings, standalone };
-  const generatedResourceReferences = new Set([...referencedItemModelResources(ir)].filter((path) => document.resources.has(path)));
+  ir.animation.tracks = ir.animation.tracks.filter((track) => track.channel !== "nbt"
+    || !track.target.attachment || ir.nodes[track.target.node]?.attachments?.[track.target.attachment]?.type !== "player_skin");
   const profile = minecraftVersionProfile(document.targetMinecraftVersion);
   function formatNbt(value: string): string {
     try {
@@ -39,6 +40,10 @@ export function compileAnimation(document: ConversionDocument, index: number, st
     }
   }
   for (const node of Object.values(ir.nodes)) for (const attachment of Object.values(node.attachments ?? {})) {
+    if (attachment.type === "player_skin") {
+      delete attachment.entity_nbt;
+      continue;
+    }
     if (attachment.type === "block_display" && typeof attachment.block_state_snbt === "string" && attachment.block_state_snbt.trim()) {
       try {
         if (!parseSnbtCompound(attachment.block_state_snbt).some((field) => field.name === profile.blockState.idKey)) attachment.block_state_snbt = writeBlockState(readBlockState(attachment.block_state_snbt), profile);
@@ -56,5 +61,6 @@ export function compileAnimation(document: ConversionDocument, index: number, st
     }
   }
   removeRedundantKeyframes(ir);
+  const generatedResourceReferences = new Set([...referencedItemModelResources(ir)].filter((path) => document.resources.has(path)));
   return { animation: { ...ir, type: "animation", schema_version: EMOTE_SCHEMA_VERSION }, generatedResourceReferences };
 }

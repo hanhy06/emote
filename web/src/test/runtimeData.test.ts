@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { expect, it } from "vitest";
 import { combineConversionDocuments } from "../domain/conversionBatch";
-import { createConversionDocument } from "../domain/conversionDocument";
+import { assignSkinPart, createConversionDocument } from "../domain/conversionDocument";
 import { exportAnimation, exportAnimations } from "../export/projectExporter";
 import type { AnimationJson } from "../format/animation";
 import { readInput } from "../import/formats";
@@ -78,6 +78,31 @@ it("preserves authored v5 animation runtime data through import and export", asy
   const project = await readInput("emote_json", { name: "runtime.json", bytes: new TextEncoder().encode(JSON.stringify(animation)) });
   const [output] = await exportAnimation(createConversionDocument(project, "Emote JSON"), 0);
   expect(JSON.parse(await output.blob.text())).toEqual(animation);
+});
+
+it("omits skin NBT only in output and restores original display data when unassigned", async () => {
+  const authored = structuredClone(animation);
+  authored.nodes.arm.attachments!.prop = {
+    type: "item_display", item_stack_snbt: '{id:"minecraft:player_head",count:1}', item_display: "none", visible: true, entity_nbt: "{Glowing:1b}",
+  };
+  authored.nodes.arm.attachments!.other = structuredClone(animation.nodes.arm.attachments!.prop);
+  authored.animation.tracks.push({ ...structuredClone(authored.animation.tracks[3]), target: { node: "arm", attachment: "other" } });
+  authored.animation.tracks.push({ target: { node: "arm", attachment: "prop" }, channel: "visible", driver: { type: "state", keys: [{ time: "0t", value: true }, { time: "1s", value: false }] } });
+  const project = await readInput("emote_json", { name: "skin.json", bytes: new TextEncoder().encode(JSON.stringify(authored)) });
+  const original = createConversionDocument(project, "Emote JSON");
+  const document = assignSkinPart(original, new Set(["arm"]), "head");
+  const snapshot = structuredClone(document);
+  const expected = structuredClone(authored);
+  expected.nodes.arm.attachments!.prop = { type: "player_skin", part: "head", region: { from: 0, to: 1 }, visible: true };
+  expected.animation.tracks.splice(3, 1);
+  for (const files of [await exportAnimation(document, 0), await exportAnimations(document, false)]) {
+    expect(files).toHaveLength(1);
+    expect(JSON.parse(await files[0].blob.text())).toEqual(expected);
+  }
+  expect(document).toEqual(snapshot);
+  const restored = assignSkinPart(document, new Set(["arm"]), null);
+  const [output] = await exportAnimation(restored, 0);
+  expect(JSON.parse(await output.blob.text())).toEqual(authored);
 });
 
 it("preserves and evaluates shared v5 curves, dynamic arguments and blend in track order", async () => {
