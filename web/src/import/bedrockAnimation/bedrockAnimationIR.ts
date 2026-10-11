@@ -1,13 +1,12 @@
 import { sourceSecondsTime, parseAnimationSeconds } from "../../format/time";
-import type { AnimationIR, CurveIR, DriverIR, NodeIR, TimelineEventIR, VectorValueIR } from "../../domain/animationIR";
-import { scalarIR, sourceDelayIR } from "../../domain/animationIRConversion";
+import type { AnimationIR, CurveIR, DriverIR, NodeIR, ScalarIR, TimelineEventIR, VectorValueIR } from "../../domain/animationIR";
+import { affineCurveIR, affineScalarIR, scalarIR, sourceDelayIR } from "../../domain/animationIRConversion";
 import type { ImportedNode } from "../../domain/conversionSeed";
 import type { ConversionIssue } from "../../foundation/diagnostics";
 import { importedNodeIR } from "../common/blockbenchAnimationIR";
-import { affineMolang, molangScalar, negateMolang, type MolangVector } from "../common/molangVector";
 import type { BedrockAnimation, BedrockChannel, BedrockExpression, BedrockKeyframe, BedrockKeyframeValue, BedrockVector } from "./bedrockAnimationSchema";
 import { BEDROCK_PLAYER_BONES, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_SLICES, resolveBedrockPlayerBone } from "./bedrockPlayerRig";
-import { bedrockPositionToCanonical, bedrockRotationToCanonical } from "./coordinateSpace";
+import { bedrockPositionToCanonical } from "./coordinateSpace";
 import { isRecord } from "../../format/runtimeValue";
 
 export function createBedrockAnimationIR(animation: BedrockAnimation, name: string, imported: Record<string, ImportedNode>, unknownBoneIds: Record<string, string>, diagnostics: ConversionIssue[]): AnimationIR {
@@ -32,7 +31,11 @@ export function createBedrockAnimationIR(animation: BedrockAnimation, name: stri
     },
   };
   const unknown = Object.entries(unknownBoneIds).map(([sourceName, id]) => ({ id, sourceName, parent: undefined, pivot: [0, 0, 0] as const }));
-  const blend = molangScalar(animation.blend_weight ?? 1);
+  let weight: ScalarIR = scalarIR(animation.blend_weight ?? 1);
+  if (typeof weight !== "number") {
+    ir.animation.values = { blend: { type: "expression", base: [1], value: [weight] } };
+    weight = { molang: "q.value('blend', 0)" };
+  }
   for (const bone of [...BEDROCK_PLAYER_BONES, ...unknown]) {
     const id = `bone:${bone.id}`;
     const parentPivot = BEDROCK_PLAYER_BONES.find((p) => p.id === bone.parent)?.pivot ?? [0, 0, 0];
@@ -54,28 +57,27 @@ export function createBedrockAnimationIR(animation: BedrockAnimation, name: stri
     if (!source) continue;
     for (const channel of ["position", "rotation", "scale"] as const) {
       const c = source[channel]; if (c === undefined) continue;
-      const transform = (v: MolangVector): VectorValueIR => {
-        if (channel === "position") return bedrockPositionToCanonical(v, negateMolang).map((v, axis) => scalarIR(affineMolang(v, affineMolang(blend, 1 / 16, 0), position[axis])));
-        if (channel === "rotation") return bedrockRotationToCanonical(v, negateMolang).map((v) => scalarIR(affineMolang(v, blend, 0)));
-        return v.map((v) => scalarIR(affineMolang(v, blend, affineMolang(blend, -1, 1))));
-      };
-      const vector = (v: BedrockVector) => transform((Array.isArray(v) ? v : [v, v, v]).map(molangScalar) as MolangVector);
+      const base = channel === "position" ? position : channel === "rotation" ? [0, 0, 0] : [1, 1, 1];
+      const factors = channel === "position" ? [-1 / 16, 1 / 16, 1 / 16] : channel === "rotation" ? [-1, -1, 1] : [1, 1, 1];
+      const offsets = channel === "position" ? position : [0, 0, 0];
+      const vector = (v: BedrockVector): VectorValueIR => (Array.isArray(v) && v.length !== 1 ? v : Array(3).fill(Array.isArray(v) ? v[0] : v)).map(scalarIR);
       let driver: DriverIR;
-      if (c === null || typeof c !== "object" || Array.isArray(c)) driver = { type: "expression", value: vector(c as BedrockVector) };
+      if (c === null || typeof c !== "object" || Array.isArray(c)) driver = { type: "expression", value: vector(c as BedrockVector).map((value, axis) => affineScalarIR(value, factors[axis], offsets[axis])) };
       else {
         const entries = Object.entries(c).sort(([a], [b]) => Number(a) - Number(b));
         const key = (v: unknown): BedrockKeyframeValue | undefined => typeof v === "object" && v !== null && !Array.isArray(v) ? v as BedrockKeyframeValue : undefined;
         const pre = (v: unknown) => key(v) ? vector(key(v)!.pre ?? key(v)!.post!) : vector(v as BedrockVector);
         const post = (v: unknown) => key(v) ? vector(key(v)!.post ?? key(v)!.pre!) : vector(v as BedrockVector);
-        const curve: CurveIR = { type: "curve", keys: entries.map(([time, v]) => ({ time: `${time}s`, pre: pre(v), post: post(v) })), segments: entries.slice(0, -1).map(([, v], index) => {
+        const curve: CurveIR = { type: "curve", before: "base", at_key: "post", evaluation: "vector", keys: entries.map(([time, v]) => ({ time: `${time}s`, pre: pre(v), post: post(v) })), segments: entries.slice(0, -1).map(([, v], index) => {
           const next = entries[index + 1][1];
           return key(v)?.lerp_mode === "catmullrom" || key(next)?.lerp_mode === "catmullrom"
-            ? { interpolation: "catmull_rom", previous: post(entries[Math.max(0, index - 1)][1]), following: pre(entries[Math.min(entries.length - 1, index + 2)][1]) }
+            ? { interpolation: "catmull_rom", ...(index > 0 ? { previous: post(entries[index - 1][1]) } : {}),
+              ...(index + 2 < entries.length ? { following: pre(entries[index + 2][1]) } : {}) }
             : { interpolation: "linear" };
         }) };
-        driver = curve;
+        driver = affineCurveIR(curve, factors, offsets);
       }
-      ir.animation.tracks.push({ target: { node: id, operation: channel }, channel: "value", driver });
+      ir.animation.tracks.push({ target: { node: id, operation: channel }, channel: "value", driver, ...(weight === 1 ? {} : { blend: { base, weight } }) });
     }
   }
   for (const property of ["particle_effects", "sound_effects", "timeline"] as const) {

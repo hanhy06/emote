@@ -247,6 +247,68 @@ class SamplePoseTest {
         }
     }
 
+    @Test
+    void playsConvertedBedrockCurvesWithSharedBlendAndSourceEvaluationOrder() throws Exception {
+        for (String name : List.of("reference", "dynamic")) {
+            byte[] bytes;
+            try (var input = Objects.requireNonNull(getClass().getResourceAsStream("/bedrock-" + name + ".json"))) { bytes = input.readAllBytes(); }
+            var animation = PreparedAnimation.prepare(new AnimationJsonParser().parse(Path.of("bedrock-" + name + ".json"), bytes), registries);
+            List<String> calls = new ArrayList<>();
+            var evaluator = new AnimationEvaluator(animation, session -> {
+                MolangQuerySource.EMPTY.apply(session);
+                session.setQueryFunction("scoreboard", arguments -> {
+                    String id = arguments.string(0);
+                    calls.add(id);
+                    double value = switch (id) {
+                        case "blend" -> 0.5;
+                        case "angle" -> calls.stream().filter(id::equals).count() * 10;
+                        case "scale" -> calls.stream().filter(id::equals).count() + 1;
+                        default -> {
+                            int axis = id.endsWith("_x") ? 1 : id.endsWith("_y") ? 2 : 3;
+                            yield (id.startsWith("cat_start") ? 0 : id.startsWith("post") ? 64 : id.startsWith("end") ? 32 : 16) * axis;
+                        }
+                    };
+                    return MolangEngine.QueryValue.number(value);
+                });
+            });
+            evaluator.initialize(0, 0);
+            int root = animation.nodeOrder().indexOf("bone:root"), prop = animation.nodeOrder().indexOf("bone:bedrock_custom_prop");
+            int[] ticks = {0, 5, 10, 20, 30, 35, 40};
+            double[] rootX = {0, 0, -0.5, -0.75, -2, -2, -2};
+            double[] referencePropX = {0, -0.046875, -0.5, -0.96875, -2, -2.34375, -2.5};
+            double[] dynamicPropX = {0, -0.1015625, -0.25, -0.5, -0.5, -0.5, -0.5};
+            boolean dynamic = name.equals("dynamic");
+            for (int point = 0; point < ticks.length; point++) {
+                int tick = ticks[point];
+                calls.clear();
+                evaluator.prepareFrame(tick, 0, 1, tick);
+                evaluator.evaluateFrame(tick, 0, 1, tick, true);
+                float rx = dynamic ? -5 : -10, ry = dynamic ? -10 : -20, rz = dynamic ? 15 : 30;
+                var expected = new Matrix4f().scaling(0.9375f).mul(new Matrix4f().translation((float) rootX[point], (float) (-2 * rootX[point]), (float) (-3 * rootX[point]))
+                    .rotateZYX((float) Math.toRadians(rz), (float) Math.toRadians(ry), (float) Math.toRadians(rx)).scale(1.5f, dynamic ? 2 : 1.5f, dynamic ? 2.5f : 1.5f));
+                for (int row = 0; row < 4; row++) for (int column = 0; column < 4; column++) {
+                    assertEquals(expected.get(column, row), evaluator.matrix(root).get(column, row), 1e-6, name + " root tick=" + tick);
+                }
+                double x = (dynamic ? dynamicPropX : referencePropX)[point] * 0.9375;
+                assertEquals(x, evaluator.matrix(prop).m30(), 1e-6, name + " prop X tick=" + tick);
+                assertEquals(-2 * x, evaluator.matrix(prop).m31(), 1e-6, name + " prop Y tick=" + tick);
+                assertEquals(-3 * x, evaluator.matrix(prop).m32(), 1e-6, name + " prop Z tick=" + tick);
+                List<String> expectedCalls = new ArrayList<>();
+                if (dynamic) {
+                    expectedCalls.add("blend");
+                    if (tick >= 10 && tick < 30) {
+                        expectedCalls.addAll(List.of("start_x", "start_y", "start_z"));
+                        if (tick > 10) expectedCalls.addAll(List.of("end_x", "end_y", "end_z"));
+                    } else if (tick >= 30) expectedCalls.addAll(List.of("post_x", "post_y", "post_z"));
+                    expectedCalls.addAll(List.of("angle", "angle", "angle", "scale", "scale", "scale"));
+                    if (tick < 20) expectedCalls.addAll(List.of("cat_start_x", "cat_start_y", "cat_start_z"));
+                    if (tick > 0) expectedCalls.addAll(List.of("cat_end_x", "cat_end_y", "cat_end_z"));
+                }
+                assertEquals(expectedCalls, calls, name + " tick=" + tick);
+            }
+        }
+    }
+
     private static final class PoseTarget implements PlaybackPlayer.TimelineTarget {
         final Map<String, Matrix4f> matrices = new HashMap<>();
 
