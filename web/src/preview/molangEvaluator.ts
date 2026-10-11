@@ -1,12 +1,14 @@
 import MolangParser from "molangjs/dist/molang.esm.js";
 import { TICKS_PER_SECOND } from "../format/time";
 import { ConversionError, PreviewUnavailableError } from "../foundation/diagnostics";
+import type { SharedValueResolverIR } from "../domain/animationIRCurves";
 import { PREVIEW_RUNTIME_QUERY_VALUES, previewRuntimeQueryFunction, usesRuntimeMolangState } from "../format/molang/runtimeAnalysis";
 
 export interface PreviewMolangContext {
   animationTime: number;
   keyframeLerpTime: number;
   lifeTime?: number;
+  resolveValue?: SharedValueResolverIR;
 }
 
 const NUMERIC_LITERAL = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/;
@@ -31,7 +33,7 @@ export class PreviewMolangEvaluator {
     if (usesRuntimeMolangState(expression) || NONDETERMINISTIC_FUNCTION.test(expression)) throw this.error(expression);
 
     try {
-      const variables: Record<string, number> = {
+      const variables: Record<string, number | SharedValueResolverIR> = {
         ...PREVIEW_RUNTIME_QUERY_VALUES,
         "query.anim_time": context.animationTime,
         "q.anim_time": context.animationTime,
@@ -41,6 +43,10 @@ export class PreviewMolangEvaluator {
         "q.key_frame_lerp_time": context.keyframeLerpTime,
         "global.key_frame_lerp_time": context.keyframeLerpTime,
       };
+      if (context.resolveValue) {
+        variables["query.value"] = context.resolveValue;
+        variables["q.value"] = context.resolveValue;
+      }
       if (context.lifeTime !== undefined) {
         variables["query.life_time"] = context.lifeTime;
         variables["q.life_time"] = context.lifeTime;

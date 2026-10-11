@@ -13,12 +13,30 @@ export interface NodePoseIR {
 export function evaluatePose(animation: AnimationIR, time: number, evaluate: ScalarEvaluatorIR, onApproximation?: (reason: string) => void): Record<string, NodePoseIR> {
   const result: Record<string, NodePoseIR> = {};
   const tracks = new Map(animation.animation.tracks.map((track) => [JSON.stringify([track.target.node, track.target.operation, track.target.attachment, track.channel]), track]));
-  const find = (node: string, channel: TrackIR["channel"], operation?: string, attachment?: string) => tracks.get(JSON.stringify([node, operation, attachment, channel]))?.driver;
+  const find = (node: string, channel: TrackIR["channel"], operation?: string, attachment?: string) => tracks.get(JSON.stringify([node, operation, attachment, channel]));
+  const sharedValues = new Map<string, number[]>();
+  const evaluatingValues = new Set<string>();
+  const scalar: ScalarEvaluatorIR = (raw, progress, base) => evaluate(raw, progress, base, resolveValue);
+  const resolveValue = (id: string, component: number): number => {
+    const definition = animation.animation.values?.[id];
+    if (!definition) throw new Error(`Unknown shared value ${id}.`);
+    if (!Number.isInteger(component) || component < 0 || component >= definition.base.length) throw new Error(`Invalid component for shared value ${id}.`);
+    let cached = sharedValues.get(id);
+    if (!cached) {
+      if (evaluatingValues.has(id)) throw new Error(`Cyclic shared value ${id}.`);
+      evaluatingValues.add(id);
+      try {
+        cached = value(definition, definition.base);
+        sharedValues.set(id, cached);
+      } finally { evaluatingValues.delete(id); }
+    }
+    return cached[component];
+  };
   const value = (driver: DriverIR | undefined, base: readonly number[]): number[] => {
     if (!driver) return [...base];
-    if (driver.type === "curve") return sampleCurve(driver, time, base, evaluate);
+    if (driver.type === "curve") return sampleCurve(driver, time, base, scalar);
     if (driver.type !== "expression" || !Array.isArray(driver.value)) throw new Error("Transform requires an expression vector or curve.");
-    return (driver.value as readonly ScalarIR[]).map((scalar, axis) => evaluate(scalar, 0, base[axis]));
+    return (driver.value as readonly ScalarIR[]).map((raw, axis) => scalar(raw, 0, base[axis]));
   };
   const visible = (driver: DriverIR | undefined, base: boolean): boolean => {
     if (!driver) return base;
@@ -29,8 +47,26 @@ export function evaluatePose(animation: AnimationIR, time: number, evaluate: Sca
       if (!key) return base;
       raw = key.value as VisibilityIR;
     } else throw new Error("Visibility requires an expression or state driver.");
-    return typeof raw === "boolean" ? raw : evaluate(raw, 0, base ? 1 : 0) !== 0;
+    return typeof raw === "boolean" ? raw : scalar(raw, 0, base ? 1 : 0) !== 0;
   };
+  const sampled = new Map<TrackIR, number[] | boolean | Error>();
+  for (const track of animation.animation.tracks) {
+    const node = animation.nodes[track.target.node];
+    if (track.channel === "value") {
+      try {
+        const base = node.transform!.find((operation) => operation.id === track.target.operation)!.value;
+        const weight = track.blend ? scalar(track.blend.weight, 0, 1) : 1;
+        const sample = value(track.driver, base);
+        sampled.set(track, track.blend ? sample.map((axis, index) => track.blend!.base[index] + (axis - track.blend!.base[index]) * weight) : sample);
+      } catch (reason) {
+        if (!onApproximation) throw reason;
+        sampled.set(track, reason instanceof Error ? reason : new Error(String(reason)));
+      }
+    } else if (track.channel === "visible") {
+      const base = track.target.attachment ? node.attachments?.[track.target.attachment]?.visible ?? true : node.visible ?? true;
+      sampled.set(track, visible(track.driver, base));
+    }
+  }
   for (const id of orderedNodeIds(animation.nodes)) {
     const node = animation.nodes[id];
     const local = new Matrix4();
@@ -39,7 +75,10 @@ export function evaluatePose(animation: AnimationIR, time: number, evaluate: Sca
     for (const operation of node.transform ?? []) {
       let v: number[];
       try {
-        v = value(find(id, "value", operation.id), operation.value);
+        const track = find(id, "value", operation.id);
+        const sample = track ? sampled.get(track) : undefined;
+        if (sample instanceof Error) throw sample;
+        v = sample ? sample as number[] : [...operation.value];
         v = v.map((component, axis) => {
           if (Number.isFinite(component)) return component;
           if (!onApproximation) throw new Error(`${id}.${operation.id}[${axis}] produced a non-finite transform.`);
@@ -63,7 +102,8 @@ export function evaluatePose(animation: AnimationIR, time: number, evaluate: Sca
       }
     }
     let world = local;
-    let effectiveVisible = visible(find(id, "visible"), node.visible ?? true);
+    const visibilityTrack = find(id, "visible");
+    let effectiveVisible = visibilityTrack ? sampled.get(visibilityTrack) as boolean : node.visible ?? true;
     let orientation = rotation;
     if (node.parent) {
       const parent = result[node.parent];
@@ -92,7 +132,10 @@ export function evaluatePose(animation: AnimationIR, time: number, evaluate: Sca
       onApproximation(`Matrix node ${id} uses a decomposed orientation.`);
     }
     const attachments = Object.fromEntries(Object.entries(node.attachments ?? {}).sort(([a], [b]) => a.localeCompare(b))
-      .map(([attachmentId, attachment]) => [attachmentId, effectiveVisible && visible(find(id, "visible", undefined, attachmentId), attachment.visible ?? true)]));
+      .map(([attachmentId, attachment]) => {
+        const track = find(id, "visible", undefined, attachmentId);
+        return [attachmentId, effectiveVisible && (track ? sampled.get(track) as boolean : attachment.visible ?? true)];
+      }));
     result[id] = { matrix: world, orientation, visible: effectiveVisible, attachments };
   }
   return result;

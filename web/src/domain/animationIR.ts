@@ -35,13 +35,13 @@ export interface NodeIR {
 }
 
 export interface EasingIR {
-  kernel: "linear" | "power" | "sine" | "expo" | "circ" | "back" | "blockbench_elastic" | "blockbench_bounce" | "steps";
+  kernel: "linear" | "power" | "sine" | "expo" | "circ" | "back" | "blockbench_elastic" | "blockbench_bounce" | "blockbench_expo" | "blockbench_steps" | "steps";
   direction?: "in" | "out" | "in_out";
-  exponent?: number;
-  overshoot?: number;
-  frequency?: number;
-  bounciness?: number;
-  count?: number;
+  exponent?: ScalarIR;
+  overshoot?: ScalarIR;
+  frequency?: ScalarIR;
+  bounciness?: ScalarIR;
+  count?: ScalarIR;
 }
 
 export interface SegmentIR {
@@ -52,7 +52,7 @@ export interface SegmentIR {
   following?: VectorValueIR;
   out_tangent?: VectorValueIR;
   in_tangent?: VectorValueIR;
-  handles?: { out: { time: number; value: ScalarIR }; in: { time: number; value: ScalarIR } }[];
+  handles?: { out: { time: ScalarIR; value: ScalarIR }; in: { time: ScalarIR; value: ScalarIR } }[];
 }
 
 export type CurveKeyIR = { time: string } & ({ value: VectorValueIR; pre?: never; post?: never } | { pre: VectorValueIR; post: VectorValueIR; value?: never });
@@ -68,10 +68,12 @@ export interface NbtPatchIR {
 }
 export type DriverIR = CurveIR | { type: "expression"; value: VectorValueIR | VisibilityIR }
   | { type: "state"; keys: { time: string; value: VisibilityIR | NbtPatchIR }[] };
+export type SharedValueIR = (CurveIR | { type: "expression"; value: VectorValueIR }) & { base: readonly number[] };
 export interface TrackIR {
   target: { node: string; operation?: string; attachment?: string };
   channel: "value" | "visible" | "nbt";
   driver: DriverIR;
+  blend?: { base: readonly number[]; weight: ScalarIR };
 }
 
 export interface EventIR {
@@ -91,6 +93,7 @@ export interface ClipIR {
   clock?: { type: "elapsed" } | { type: "molang"; expression: string };
   playback?: { mode?: "once" | "hold" | "loop" | "server_sync"; loop_start?: string; start_delay?: TimeValueIR; loop_delay?: TimeValueIR };
   programs?: { initialize?: string; update?: string };
+  values?: Record<string, SharedValueIR>;
   tracks: TrackIR[];
   events?: { start?: EventIR[]; timeline?: TimelineEventIR[]; loop?: EventIR[]; stop?: EventIR[] };
 }

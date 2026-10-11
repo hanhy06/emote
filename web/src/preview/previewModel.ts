@@ -4,6 +4,7 @@ import { evaluatePose } from "../domain/animationIRPose";
 import type { PlayerSkinPart } from "../domain/player";
 import { matrix4ToRowMajor } from "../format/matrix";
 import { PreviewMolangEvaluator } from "./molangEvaluator";
+import type { ScalarEvaluatorIR } from "../domain/animationIRCurves";
 
 export interface PreviewPart {
   nodeId: string;
@@ -33,9 +34,9 @@ export function createPreviewModel(document: ConversionDocument, animation: Conv
   const reasons = new Set<string>();
   const approximate = (reason: string) => { reasons.add(reason); };
   const evaluator = new PreviewMolangEvaluator();
-  const evaluate = (value: number | { molang: string }, progress: number, base = 0): number => {
+  const evaluate: ScalarEvaluatorIR = (value, progress, base = 0, resolveValue): number => {
     try {
-      return evaluator.evaluate(typeof value === "number" ? value : value.molang, { animationTime: time, keyframeLerpTime: progress, lifeTime: elapsed });
+      return evaluator.evaluate(typeof value === "number" ? value : value.molang, { animationTime: time, keyframeLerpTime: progress, lifeTime: elapsed, resolveValue });
     } catch (reason) {
       approximate(reason instanceof Error ? reason.message : String(reason));
       return base;

@@ -31,6 +31,10 @@ final class AnimationEvaluator {
     private final Map<String, CompoundTag> nbtCaptures = new HashMap<>();
     private int nbtCycle;
     private MolangEngine.Session session;
+    private final Map<String, double[]> sharedValues = new HashMap<>();
+    private final Set<String> evaluatingValues = new HashSet<>();
+    private int sampleTick, sampleLoop;
+    private double sampleProgress;
 
     AnimationEvaluator(PreparedAnimation animation, MolangQuerySource querySource) {
         this.animation = animation;
@@ -54,6 +58,10 @@ final class AnimationEvaluator {
     void initialize(int loopCount, long lifetimeTicks) {
         if (this.session != null) return;
         this.session = MolangEngine.INSTANCE.createSession();
+        this.session.setQueryFunction("value", arguments -> {
+            if (!arguments.isString(0) || !arguments.isNumber(1)) throw new IllegalStateException("q.value requires a value id and component index");
+            return MolangEngine.QueryValue.number(sharedValue(arguments.string(0), arguments.number(1)));
+        });
         this.nbtCycle = loopCount;
         prepareFrame(0, loopCount, 0, lifetimeTicks);
         if (this.animation.model().molang().initialize() != null) {
@@ -96,6 +104,10 @@ final class AnimationEvaluator {
     Set<String> nbtRemoved(int index, String attachmentId) { return this.nbtRemoved.get(nodeId(index)).get(attachmentId); }
 
     private void setFrameQueries(int tick, int loopCount, int deltaTicks, long lifetimeTicks) {
+        if (tick != this.sampleTick || loopCount != this.sampleLoop) this.sharedValues.clear();
+        this.sampleTick = tick;
+        this.sampleLoop = loopCount;
+        this.sampleProgress = 0;
         this.session.setQuery("anim_time", tick / 20.0);
         this.session.setQuery("anim_time_ticks", tick);
         this.session.setQuery("anim_length", this.animation.model().clip().durationTicks() / 20.0);
@@ -111,11 +123,13 @@ final class AnimationEvaluator {
 
     void evaluateFrame(int tick, int loopCount, int deltaTicks, long lifetimeTicks, boolean update, boolean captureNbt) {
         tick = Math.min(tick, this.animation.model().clip().durationTicks());
+        this.sharedValues.clear();
         setFrameQueries(tick, loopCount, deltaTicks, lifetimeTicks);
         if (update && this.animation.model().molang().update() != null) {
             this.session.evaluate(this.animation.expression("$.animation.programs.update"));
         }
         if (this.nbtTracks.isEmpty() || this.animation.playbackMode() == PlaybackMode.SERVER_SYNC) this.nbtCycle = loopCount;
+        Map<String, double[]> frameValues = captureNbt && this.nbtCycle < loopCount ? new HashMap<>(this.sharedValues) : null;
         while (captureNbt && this.nbtCycle < loopCount) {
             setFrameQueries(this.animation.model().clip().durationTicks(), this.nbtCycle, deltaTicks, lifetimeTicks);
             evaluateNbt(this.animation.model().clip().durationTicks());
@@ -125,13 +139,35 @@ final class AnimationEvaluator {
             evaluateNbt(this.animation.model().settings().playback().loopStartTick());
         }
         setFrameQueries(tick, loopCount, deltaTicks, lifetimeTicks);
+        if (frameValues != null) {
+            this.sharedValues.clear();
+            this.sharedValues.putAll(frameValues);
+        }
+        Map<Track, double[]> sampledValues = new IdentityHashMap<>();
+        Map<Track, Boolean> sampledVisibility = new IdentityHashMap<>();
+        for (Track track : this.animation.model().clip().tracks().values()) {
+            Node node = this.animation.model().nodes().get(track.target().node());
+            if (track.channel() == Channel.VALUE) {
+                Operation operation = node.transform().stream().filter(op -> op.id().equals(track.target().operation())).findFirst().orElseThrow();
+                double weight = track.blend() == null ? 1 : scalar(track.blend().weight(), 0);
+                double[] value = sample(track.driver(), tick, operation.value());
+                if (track.blend() != null) for (int i = 0; i < value.length; i++) {
+                    double base = track.blend().base().get(i);
+                    value[i] = base + (value[i] - base) * weight;
+                }
+                sampledValues.put(track, value);
+            } else if (track.channel() == Channel.VISIBLE) {
+                boolean base = track.target().attachment() == null ? node.visible() : node.attachments().get(track.target().attachment()).visible();
+                sampledVisibility.put(track, sampleVisibility(track, tick, base));
+            }
+        }
         for (String id : this.nodeIds) {
             Node node = this.animation.model().nodes().get(id);
             Matrix4f local = new Matrix4f();
             Quaternionf orientation = new Quaternionf();
             for (Operation operation : node.transform()) {
                 Track track = this.tracks.getOrDefault(id, Map.of()).get(operation.id());
-                double[] value = sample(track == null ? null : track.driver(), tick, operation.value());
+                double[] value = track == null ? operation.value().stream().mapToDouble(Double::doubleValue).toArray() : sampledValues.get(track);
                 local.mul(PreparedAnimation.operationMatrix(operation, value));
                 if (operation.op() == OperationType.ROTATE_EULER || operation.op() == OperationType.ROTATE_QUATERNION) {
                     orientation.mul(PreparedAnimation.operationRotation(operation, value)).normalize();
@@ -158,19 +194,20 @@ final class AnimationEvaluator {
             }
             if (!world.isFinite()) throw new IllegalStateException("Node " + id + " produced a non-finite transform");
             this.orientations.put(id, orientation);
-            boolean visible = sampleVisibility(this.nodeVisibilityTracks.get(id), tick, node.visible());
+            boolean visible = sampledVisibility.getOrDefault(this.nodeVisibilityTracks.get(id), node.visible());
             if (node.parentId() != null && node.inherit().visibility()) visible &= this.visibility.get(node.parentId());
             this.visibility.put(id, visible);
             Map<String, Boolean> attachments = this.attachmentVisibility.computeIfAbsent(id, ignored -> new LinkedHashMap<>());
             for (var attachment : node.attachments().entrySet().stream().sorted(Map.Entry.comparingByKey()).toList()) {
-                attachments.put(attachment.getKey(), sampleVisibility(
-                    this.attachmentVisibilityTracks.getOrDefault(id, Map.of()).get(attachment.getKey()), tick, attachment.getValue().visible()));
+                attachments.put(attachment.getKey(), sampledVisibility.getOrDefault(
+                    this.attachmentVisibilityTracks.getOrDefault(id, Map.of()).get(attachment.getKey()), attachment.getValue().visible()));
             }
         }
         if (captureNbt) evaluateNbt(tick);
     }
 
     private void evaluateNbt(double tick) {
+        this.sampleProgress = 0;
         this.session.setQuery("key_frame_lerp_time", 0);
         for (String nodeId : this.nodeIds) {
             Map<String, Track> tracks = this.nbtTracks.getOrDefault(nodeId, Map.of());
@@ -253,10 +290,10 @@ final class AnimationEvaluator {
                 .slerp(new Quaterniond(end[0], end[1], end[2], end[3]).normalize(), t).normalize();
             return new double[]{rotation.x, rotation.y, rotation.z, rotation.w};
         }
-        double[] previous = segment.previous() == null ? start : vector(segment.previous(), progress);
-        double[] following = segment.following() == null ? end : vector(segment.following(), progress);
-        double[] out = segment.outTangent() == null ? null : vector(segment.outTangent(), progress);
-        double[] in = segment.inTangent() == null ? null : vector(segment.inTangent(), progress);
+        double[] previous = segment.interpolation() == Interpolation.CATMULL_ROM && segment.previous() != null ? vector(segment.previous(), progress) : start;
+        double[] following = segment.interpolation() == Interpolation.CATMULL_ROM && segment.following() != null ? vector(segment.following(), progress) : end;
+        double[] out = segment.interpolation() == Interpolation.HERMITE ? vector(segment.outTangent(), progress) : null;
+        double[] in = segment.interpolation() == Interpolation.HERMITE ? vector(segment.inTangent(), progress) : null;
         double durationSeconds = (right.tick() - left.tick()) / 20.0;
         double[] result = new double[start.length];
         for (int i = 0; i < start.length; i++) {
@@ -272,11 +309,13 @@ final class AnimationEvaluator {
                 }
                 case BEZIER -> {
                     BezierHandle handle = segment.handles().get(i);
+                    double outTime = scalar(handle.outTime(), progress), inTime = scalar(handle.inTime(), progress);
+                    if (!(outTime >= 0 && outTime <= inTime && inTime <= 1)) throw new IllegalStateException("Bezier time handles must be monotonic within [0, 1]");
                     double h1 = scalar(handle.outValue(), progress), h2 = scalar(handle.inValue(), progress);
                     double low = 0, high = 1;
                     for (int iteration = 0; iteration < 48; iteration++) {
                         double k = (low + high) / 2;
-                        if (cubic(0, handle.outTime(), handle.inTime(), 1, k) < t) low = k;
+                        if (cubic(0, outTime, inTime, 1, k) < t) low = k;
                         else high = k;
                     }
                     yield cubic(a, h1, h2, b, (low + high) / 2);
@@ -292,22 +331,26 @@ final class AnimationEvaluator {
         return s * s * s * a + 3 * s * s * t * b + 3 * s * t * t * c + t * t * t * d;
     }
 
-    private static double easing(Easing easing, double u) {
+    private double easing(Easing easing, double u) {
         if (easing == null || easing.kernel().equals("linear")) return u;
+        double parameter = scalar(easing.parameter(), u);
+        if (easing.kernel().equals("power") && parameter <= 0
+            || Set.of("steps", "blockbench_steps").contains(easing.kernel()) && (parameter < 2 || parameter != Math.floor(parameter))
+            || easing.kernel().equals("blockbench_bounce") && !(parameter > 0 && parameter < 1)) throw new IllegalStateException("Invalid easing parameter");
         return switch (easing.direction()) {
-            case "in" -> easingBase(easing, u);
-            case "out" -> 1 - easingBase(easing, 1 - u);
-            case "in_out" -> u < 0.5 ? easingBase(easing, 2 * u) / 2 : 1 - easingBase(easing, 2 - 2 * u) / 2;
+            case "in" -> easingBase(easing.kernel(), parameter, u);
+            case "out" -> 1 - easingBase(easing.kernel(), parameter, 1 - u);
+            case "in_out" -> u < 0.5 ? easingBase(easing.kernel(), parameter, 2 * u) / 2 : 1 - easingBase(easing.kernel(), parameter, 2 - 2 * u) / 2;
             default -> throw new IllegalStateException("Unexpected easing direction " + easing.direction());
         };
     }
 
-    private static double easingBase(Easing easing, double u) {
-        double parameter = easing.parameter();
-        return switch (easing.kernel()) {
+    private static double easingBase(String kernel, double parameter, double u) {
+        return switch (kernel) {
             case "power" -> Math.pow(u, parameter);
             case "sine" -> 1 - Math.cos(Math.PI * u / 2);
             case "expo" -> u == 0 ? 0 : Math.pow(2, 10 * (u - 1));
+            case "blockbench_expo" -> Math.pow(2, 10 * (u - 1));
             case "circ" -> 1 - Math.sqrt(1 - u * u);
             case "back" -> u * u * ((parameter + 1) * u - parameter);
             case "blockbench_elastic" -> 1 - Math.pow(Math.cos(Math.PI * u / 2), 3) * Math.cos(Math.PI * parameter * u);
@@ -315,7 +358,8 @@ final class AnimationEvaluator {
                 Math.min(121 * parameter * parameter * Math.pow(u - 9.0 / 11, 2) + 1 - parameter * parameter,
                     484 * parameter * parameter * parameter * Math.pow(u - 10.5 / 11, 2) + 1 - parameter * parameter * parameter));
             case "steps" -> Math.floor(u * parameter) / parameter;
-            default -> throw new IllegalStateException("Unexpected easing kernel " + easing.kernel());
+            case "blockbench_steps" -> Math.min(parameter - 1, Math.floor(u * parameter)) / parameter;
+            default -> throw new IllegalStateException("Unexpected easing kernel " + kernel);
         };
     }
 
@@ -328,6 +372,7 @@ final class AnimationEvaluator {
     }
 
     private double scalar(ScalarValue value, double progress) {
+        this.sampleProgress = progress;
         this.session.setQuery("key_frame_lerp_time", progress);
         double result = switch (value) {
             case ConstantValue constant -> constant.value();
@@ -335,5 +380,25 @@ final class AnimationEvaluator {
         };
         if (!Double.isFinite(result)) throw new IllegalStateException("Transform component evaluated to a non-finite value");
         return result;
+    }
+
+    private double sharedValue(String id, double component) {
+        SharedValue definition = this.animation.model().clip().values().get(id);
+        if (definition == null) throw new IllegalStateException("Unknown shared value " + id);
+        if (component != Math.floor(component) || component < 0 || component >= definition.base().size()) throw new IllegalStateException("Invalid component for shared value " + id);
+        double[] value = this.sharedValues.get(id);
+        if (value == null) {
+            if (!this.evaluatingValues.add(id)) throw new IllegalStateException("Cyclic shared value " + id);
+            double progress = this.sampleProgress;
+            try {
+                value = sample(definition.driver(), this.sampleTick, definition.base());
+                this.sharedValues.put(id, value);
+            } finally {
+                this.evaluatingValues.remove(id);
+                this.sampleProgress = progress;
+                this.session.setQuery("key_frame_lerp_time", progress);
+            }
+        }
+        return value[(int) component];
     }
 }

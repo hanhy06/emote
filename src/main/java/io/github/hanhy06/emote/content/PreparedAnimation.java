@@ -139,17 +139,26 @@ public final class PreparedAnimation implements PreparedEmote {
 
     private static Map<String, io.github.hanhy06.emote.molang.MolangEngine.CompiledExpression> compileExpressions(EmoteAnimation animation) {
         Map<String, io.github.hanhy06.emote.molang.MolangEngine.CompiledExpression> result = new HashMap<>();
+        List<Driver> drivers = new ArrayList<>();
         for (var track : animation.clip().tracks().values()) {
+            drivers.add(track.driver());
+            if (track.blend() != null && track.blend().weight() instanceof MolangValue m) compileExpression(result, m.source(), m.path(), false);
+        }
+        animation.clip().values().values().forEach(value -> drivers.add(value.driver()));
+        for (var driver : drivers) {
             List<EmoteAnimation.Value> values = new ArrayList<>();
-            if (track.driver().value() != null) values.add(track.driver().value());
-            for (var key : track.driver().keys()) { values.add(key.pre()); values.add(key.post()); }
+            if (driver.value() != null) values.add(driver.value());
+            for (var key : driver.keys()) { values.add(key.pre()); values.add(key.post()); }
             List<EmoteAnimation.ScalarValue> scalars = new ArrayList<>();
-            for (var segment : track.driver().segments()) {
+            for (var segment : driver.segments()) {
+                if (segment.easing() != null) scalars.add(segment.easing().parameter());
                 if (segment.previous() != null) values.add(segment.previous());
                 if (segment.following() != null) values.add(segment.following());
                 if (segment.outTangent() != null) values.add(segment.outTangent());
                 if (segment.inTangent() != null) values.add(segment.inTangent());
-                for (var handle : segment.handles()) { scalars.add(handle.outValue()); scalars.add(handle.inValue()); }
+                for (var handle : segment.handles()) {
+                    scalars.add(handle.outTime()); scalars.add(handle.outValue()); scalars.add(handle.inTime()); scalars.add(handle.inValue());
+                }
             }
             for (var value : values) {
                 if (value instanceof EmoteAnimation.VectorValue vector) scalars.addAll(vector.components());

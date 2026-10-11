@@ -10,6 +10,8 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -90,16 +92,19 @@ public record EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings set
     public record TextAttachment(boolean visible, CompoundTag entityNbt, JsonElement text) implements Attachment {}
     public record SkinAttachment(boolean visible, PlayerSkinPart part, double from, double to) implements Attachment {}
     public record ExternalAttachment(boolean visible, Identifier key, JsonElement data) implements Attachment {}
-    public record Clip(int durationTicks, Map<String, Track> tracks, Events events, String clock) {
-        public Clip(int durationTicks, Map<String, Track> tracks, Events events) { this(durationTicks, tracks, events, null); }
+    public record Clip(int durationTicks, Map<String, Track> tracks, Events events, String clock, Map<String, SharedValue> values) {
+        public Clip(int durationTicks, Map<String, Track> tracks, Events events) { this(durationTicks, tracks, events, null, Map.of()); }
         public Clip {
             if (durationTicks <= 0) throw new IllegalArgumentException("Invalid duration");
-            tracks = Map.copyOf(tracks); Objects.requireNonNull(events);
+            tracks = Collections.unmodifiableMap(new LinkedHashMap<>(tracks));
+            values = Map.copyOf(values); Objects.requireNonNull(events);
         }
     }
     public record Target(String node, String operation, String attachment) {}
     public enum Channel { VALUE, VISIBLE, NBT }
-    public record Track(Target target, Channel channel, Driver driver) {}
+    public record Track(Target target, Channel channel, Driver driver, Blend blend) {}
+    public record Blend(List<Double> base, ScalarValue weight) { public Blend { base = List.copyOf(base); } }
+    public record SharedValue(List<Double> base, Driver driver) { public SharedValue { base = List.copyOf(base); } }
     public enum DriverType { EXPRESSION, CURVE, STATE }
     public record Driver(DriverType type, Value value, List<Keyframe> keys, List<Segment> segments, boolean firstPre) {
         public Driver { keys = List.copyOf(keys); segments = List.copyOf(segments); }
@@ -110,8 +115,8 @@ public record EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings set
                           VectorValue following, VectorValue outTangent, VectorValue inTangent, List<BezierHandle> handles) {
         public Segment { handles = List.copyOf(handles); }
     }
-    public record BezierHandle(double outTime, ScalarValue outValue, double inTime, ScalarValue inValue) {}
-    public record Easing(String kernel, String direction, double parameter) {}
+    public record BezierHandle(ScalarValue outTime, ScalarValue outValue, ScalarValue inTime, ScalarValue inValue) {}
+    public record Easing(String kernel, String direction, ScalarValue parameter) {}
     public sealed interface Value permits VectorValue, VisibilityValue, NbtValue {}
     public record VectorValue(List<ScalarValue> components) implements Value {
         public VectorValue { components = List.copyOf(components); }

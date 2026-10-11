@@ -5,6 +5,10 @@ import { createConversionDocument } from "../domain/conversionDocument";
 import { exportAnimation, exportAnimations } from "../export/projectExporter";
 import type { AnimationJson } from "../format/animation";
 import { readInput } from "../import/formats";
+import MolangParser from "molangjs/dist/molang.esm.js";
+import { evaluatePose } from "../domain/animationIRPose";
+import { evaluateEasing, type ScalarEvaluatorIR } from "../domain/animationIRCurves";
+import { PreviewMolangEvaluator } from "../preview/molangEvaluator";
 
 const animation: AnimationJson = {
   type: "animation", schema_version: 5, target_minecraft_version: "26.3", id: "sit:sit_down",
@@ -76,6 +80,57 @@ it("preserves authored v5 animation runtime data through import and export", asy
   expect(JSON.parse(await output.blob.text())).toEqual(animation);
 });
 
+it("preserves and evaluates shared v5 curves, dynamic arguments and blend in track order", async () => {
+  const bytes = await readFile(new URL("../../../src/test/resources/common-curves.json", import.meta.url));
+  const authored: AnimationJson = JSON.parse(bytes.toString("utf8"));
+  const project = await readInput("emote_json", { name: "common-curves.json", bytes });
+  const [output] = await exportAnimation(createConversionDocument(project, "Emote JSON"), 0);
+  const actual: AnimationJson = JSON.parse(await output.blob.text());
+  expect(actual).toEqual(authored);
+  const parser = new MolangParser();
+  for (const tick of [0, 10, 15, 15, 30]) {
+    const calls = new Map<string, number>();
+    const scoreboard = (id: string) => {
+      const count = (calls.get(id) ?? 0) + 1;
+      calls.set(id, count);
+      if (id === "unused") throw new Error("Unused curve data was evaluated.");
+      return id === "weight" ? 0.5 : id === "power" ? 2 : id === "out_time" ? 1 / 3 : id === "in_time" ? 2 / 3 : count;
+    };
+    const evaluate: ScalarEvaluatorIR = (value, progress, _base, resolveValue) => typeof value === "number" ? value : parser.parse(value.molang, {
+      "query.key_frame_lerp_time": progress, "query.value": resolveValue, "query.scoreboard": scoreboard,
+    });
+    const pose = evaluatePose(actual, tick / 20, evaluate);
+    expect(calls.get("weight")).toBe(1);
+    expect(calls.get("random")).toBe(2);
+    expect(calls.get("order")).toBe(2);
+    expect(pose.z.matrix.elements[13]).toBe(0.5);
+    expect(pose.z.matrix.elements[14]).toBe(1.5);
+    expect(pose.c.matrix.elements[12]).toBeGreaterThan(2.1);
+    expect(pose.c.matrix.elements[12]).toBeLessThan(2.9);
+    expect(pose.s.matrix.elements[12]).toBe(1);
+    expect(calls.has("unused")).toBe(false);
+    if (tick === 0) {
+      expect(calls.has("power")).toBe(false);
+      expect(calls.has("out_time")).toBe(false);
+      expect(pose.a.matrix.elements[12]).toBe(0);
+    } else {
+      expect(pose.a.matrix.elements[12]).toBeCloseTo(pose.z.matrix.elements[12], 10);
+      expect(calls.get("out_time")).toBe(3);
+      expect(calls.get("in_time")).toBe(3);
+      expect(calls.get("power") ?? 0).toBe(tick === 15 ? 1 : 0);
+    }
+    if (tick === 15) {
+      expect(pose.a.matrix.elements[13]).toBeCloseTo(2.3125, 10);
+      expect(pose.a.matrix.elements[14]).toBeCloseTo(0.875, 10);
+      expect(pose.b.matrix.elements[0]).toBeCloseTo(2.8828125, 10);
+    }
+  }
+  expect(evaluateEasing({ kernel: "blockbench_expo", direction: "in" }, 0)).toBe(1 / 1024);
+  expect(evaluateEasing({ kernel: "blockbench_steps", direction: "in", count: 5 }, 1)).toBe(0.8);
+  const preview = new PreviewMolangEvaluator();
+  expect(preview.evaluate("q.value('bend', 0) + q.key_frame_lerp_time", { animationTime: 0.75, keyframeLerpTime: 0.25, resolveValue: () => 1.5 })).toBe(1.75);
+});
+
 it("preserves sequence timing, choices, controls, callbacks and external references", async () => {
   const bytes = await readFile(new URL("../../../docs/reference/sequence.json", import.meta.url));
   const expected = JSON.parse(bytes.toString("utf8"));
@@ -86,4 +141,27 @@ it("preserves sequence timing, choices, controls, callbacks and external referen
   const exported = await Promise.all(outputs.filter((output) => output.fileName.endsWith(".json")).map(async (output) => JSON.parse(await output.blob.text())));
   expect(exported.find((output) => output.type === "sequence")).toEqual(expected);
   expect(exported.find((output) => output.type === "animation")).toEqual({ ...animation, settings: { ...animation.settings, standalone: false } });
+});
+
+it("rejects invalid shared dependencies and dynamic curve parameters", async () => {
+  const bytes = await readFile(new URL("../../../src/test/resources/common-curves.json", import.meta.url));
+  const authored: AnimationJson = JSON.parse(bytes.toString("utf8"));
+  const parser = new MolangParser();
+  const evaluate: ScalarEvaluatorIR = (value, progress, _base, resolveValue) => typeof value === "number" ? value : parser.parse(value.molang, {
+    "query.key_frame_lerp_time": progress, "query.value": resolveValue,
+    "query.scoreboard": (id: string) => id === "weight" ? 0.5 : id === "out_time" ? 1 / 3 : id === "in_time" ? 2 / 3 : 2,
+  });
+  for (const expression of ["q.value('random', 0)", "q.value('missing', 0)", "q.value('bend', 1)"]) {
+    const invalid = structuredClone(authored);
+    invalid.animation.values!.random = { type: "expression", base: [0], value: [{ molang: expression }] };
+    expect(() => evaluatePose(invalid, 0.75, evaluate)).toThrow(/shared value/);
+  }
+  for (const field of ["exponent", "time"]) {
+    const invalid = structuredClone(authored);
+    const curve = invalid.animation.tracks[field === "exponent" ? 2 : 3].driver;
+    if (curve.type !== "curve") throw new Error("Expected the fixture curve.");
+    if (field === "exponent") curve.segments[0].easing!.exponent = { molang: "-1" };
+    else curve.segments[0].handles![0].in.time = { molang: "-1" };
+    expect(() => evaluatePose(invalid, 0.75, evaluate)).toThrow(field === "exponent" ? /easing parameter/ : /time handles/);
+  }
 });

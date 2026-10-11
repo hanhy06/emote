@@ -1,0 +1,48 @@
+{
+  "type": "animation", "schema_version": 5, "target_minecraft_version": "26.3", "id": "test:common_curves",
+  "metadata": { "name": "Common curves", "description": "", "author": "test", "license": "Apache-2.0" },
+  "settings": { "standalone": true, "cooldown": "0t", "rotation_deadzone": 50, "player": { "hidden": true, "stop_conditions": { "movement_distance": 0.3, "jump": true, "submerge": true, "ride": true, "damage": true, "attack": true, "game_mode_change": true } } },
+  "nodes": {
+    "a": { "transform": [{ "id": "position", "op": "translate", "value": [0, 0, 0] }, { "id": "shift", "op": "translate", "value": [0, 0, 0] }] },
+    "b": { "transform": [{ "id": "scale", "op": "scale", "value": [1, 1, 1] }] },
+    "c": { "transform": [{ "id": "position", "op": "translate", "value": [0, 0, 0] }] },
+    "s": { "transform": [{ "id": "position", "op": "translate", "value": [0, 0, 0] }] },
+    "z": { "transform": [{ "id": "position", "op": "translate", "value": [0, 0, 0] }] }
+  },
+  "animation": {
+    "duration": "40t", "events": { "start": [], "timeline": [], "loop": [], "stop": [] },
+    "values": {
+      "weight": { "base": [1], "type": "expression", "value": [{ "molang": "q.scoreboard('weight')" }] },
+      "random": { "base": [0], "type": "expression", "value": [{ "molang": "q.scoreboard('random') + math.random(0.1, 0.9)" }] },
+      "independent": { "base": [0], "type": "expression", "value": [{ "molang": "q.scoreboard('random') + math.random(0.1, 0.9)" }] },
+      "bend": { "base": [0], "type": "curve", "keys": [{ "time": "0t", "value": [0] }, { "time": "40t", "value": [4] }], "segments": [{ "interpolation": "linear" }] }
+    },
+    "tracks": [
+      { "target": { "node": "z", "operation": "position" }, "channel": "value", "blend": { "base": [0, 0, 2], "weight": { "molang": "q.value('weight', 0)" } }, "driver": { "type": "expression", "value": [{ "molang": "q.value('random', 0)" }, { "molang": "q.scoreboard('order')" }, 1] } },
+      { "target": { "node": "a", "operation": "shift" }, "channel": "value", "driver": { "type": "expression", "value": [0, { "molang": "q.scoreboard('order')" }, 0] } },
+      {
+        "target": { "node": "a", "operation": "position" }, "channel": "value", "blend": { "base": [0, 0, 0], "weight": { "molang": "q.value('weight', 0)" } },
+        "driver": {
+          "type": "curve", "keys": [
+            { "time": "10t", "value": [{ "molang": "q.value('random', 0)" }, 0, { "molang": "q.value('bend', 0) + q.key_frame_lerp_time" }] },
+            { "time": "30t", "value": [{ "molang": "q.value('random', 0)" }, 10, { "molang": "q.value('bend', 0) + q.key_frame_lerp_time" }] }
+          ],
+          "segments": [{ "interpolation": "linear", "easing": { "kernel": "power", "direction": "in", "exponent": { "molang": "q.scoreboard('power')" } }, "previous": [{ "molang": "q.scoreboard('unused')" }, 0, 0] }]
+        }
+      },
+      {
+        "target": { "node": "b", "operation": "scale" }, "channel": "value",
+        "driver": {
+          "type": "curve", "keys": [{ "time": "0t", "value": [0, 0, 0] }, { "time": "40t", "value": [8, 8, 8] }],
+          "segments": [{ "interpolation": "bezier", "handles": [
+            { "out": { "time": { "molang": "q.scoreboard('out_time')" }, "value": 2 }, "in": { "time": { "molang": "q.scoreboard('in_time')" }, "value": 6 } },
+            { "out": { "time": { "molang": "q.scoreboard('out_time')" }, "value": 2 }, "in": { "time": { "molang": "q.scoreboard('in_time')" }, "value": 6 } },
+            { "out": { "time": { "molang": "q.scoreboard('out_time')" }, "value": 2 }, "in": { "time": { "molang": "q.scoreboard('in_time')" }, "value": 6 } }
+          ] }]
+        }
+      },
+      { "target": { "node": "c", "operation": "position" }, "channel": "value", "driver": { "type": "expression", "value": [{ "molang": "q.value('independent', 0)" }, 0, 0] } },
+      { "target": { "node": "s", "operation": "position" }, "channel": "value", "driver": { "type": "curve", "keys": [{ "time": "0t", "value": [1, 0, 0] }, { "time": "40t", "value": [{ "molang": "q.scoreboard('unused')" }, 0, 0] }], "segments": [{ "interpolation": "step", "out_tangent": [{ "molang": "q.scoreboard('unused')" }, 0, 0] }] } }
+    ]
+  }
+}

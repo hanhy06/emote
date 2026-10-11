@@ -22,7 +22,7 @@ export function normalizeAnimationTimes(animation: AnimationIR | AnimationEntryI
       if (typeof value === "string") clip.playback[field] = formatMinecraftTime(parseMinecraftTime(value));
     }
   }
-  for (const track of clip.tracks) {
+  for (const track of [...clip.tracks, ...Object.values(clip.values ?? {}).map((driver) => ({ channel: "value", driver }))]) {
     if (track.driver.type === "state") {
       const keys = [...track.driver.keys].sort((first, second) => parseAnimationSeconds(first.time) - parseAnimationSeconds(second.time))
         .map((key) => ({ ...key, time: generatedTimes ? formatMinecraftTime(parseMinecraftTime(key.time)) : key.time }));
@@ -55,7 +55,7 @@ export function normalizeAnimationTimes(animation: AnimationIR | AnimationEntryI
 
 export function removeRedundantKeyframes(ir: AnimationIR): void {
   ir.animation.tracks = ir.animation.tracks.filter((track) => {
-    if (track.channel !== "value" || track.driver.type !== "curve") return true;
+    if (track.channel !== "value" || track.driver.type !== "curve" || track.blend) return true;
     const curve = track.driver;
     if (!curve.keys.length || curve.segments.length !== curve.keys.length - 1
       || curve.keys.some((key) => !key.value || key.pre !== undefined || key.post !== undefined || key.value.some((axis) => typeof axis !== "number" || !Number.isFinite(axis)))
@@ -101,7 +101,7 @@ export function removeTinyStaticNodes(ir: AnimationIR, events: NonNullable<Anima
     const node = ir.nodes[id];
     if (node.parent && !staticNodes.has(node.parent)) continue;
     const constant = ir.animation.tracks.filter((t) => t.target.node === id && t.channel === "value").every((t) => {
-      if (t.driver.type !== "curve") return false;
+      if (t.driver.type !== "curve" || t.blend) return false;
       const values = t.driver.keys.flatMap((key) => key.value ? [key.value] : [key.pre, key.post]);
       const first = values[0];
       if (!first || values.some((v) => v.some((axis, index) => typeof axis !== "number" || typeof first[index] !== "number" || Math.abs(axis - first[index]) > 1e-10))) return false;

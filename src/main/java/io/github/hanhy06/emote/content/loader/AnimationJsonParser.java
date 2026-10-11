@@ -55,7 +55,7 @@ public final class AnimationJsonParser {
             d.metadata(),
             new Settings(bool(settings, "standalone", true, "$.settings", d), cooldownTicks, (float) deadzone, playerBehavior,
                 new PlaybackSettings(mode, loopStartTick, startDelay, loopDelay)),
-            molang, nodes, new Clip(durationTicks, tracks, events, expression), d.callbacks(),
+            molang, nodes, new Clip(durationTicks, tracks, events, expression, sharedValues(object(clip, "values", "$.animation", d), durationTicks, d)), d.callbacks(),
             root.has("target_minecraft_version") ? d.requireString(root, "target_minecraft_version", "$") : null,
             object(root, "resources", "$", d), object(root, "source", "$", d)));
     }
@@ -169,72 +169,104 @@ public final class AnimationJsonParser {
             List<String> key = List.of(nodeId, Objects.toString(opId, ""), Objects.toString(aId, ""), channel.name());
             if (!signatures.add(key)) throw d.error(path + ".target", "duplicate target/channel");
             int size = op == null ? 0 : op.op() == OperationType.MATRIX ? 16 : op.op() == OperationType.ROTATE_QUATERNION ? 4 : 3;
-            JsonObject driver = d.requireObject(raw, "driver", path);
-            String p = path + ".driver";
-            DriverType type = enumeration(DriverType.class, nonempty(driver, "type", p, d), p + ".type", d);
-            boolean firstPre = text(driver, "before", "base", p, d).equals("first_pre");
-            if (!Set.of("base", "first_pre").contains(text(driver, "before", "base", p, d))) throw d.error(p + ".before", "invalid before policy");
-            Value expression = null;
-            List<Keyframe> keys = new ArrayList<>();
-            List<Segment> segments = new ArrayList<>();
-            if (type == DriverType.EXPRESSION) {
-                if (channel == Channel.NBT || size == 16) throw d.error(p, "requires a state or step curve");
-                expression = value(d.requireElement(driver, "value", p), channel, size, p + ".value", d);
-            } else {
-                if (type == DriverType.CURVE && channel != Channel.VALUE || type == DriverType.STATE && channel == Channel.VALUE) throw d.error(p + ".type", "driver does not match channel");
-                JsonArray array = d.requireArray(driver, "keys", p);
-                if (array.isEmpty()) throw d.error(p + ".keys", "must not be empty");
-                int previous = -1;
-                for (int k = 0; k < array.size(); k++) {
-                    String kp = p + ".keys[" + k + "]";
-                    JsonObject keyframe = d.requireObject(array.get(k), kp);
-                    int tick = d.requireTime(keyframe, "time", kp, 0);
-                    if (tick < 0 || tick > durationTicks || tick < previous || tick == previous && channel != Channel.NBT) {
-                        throw d.error(kp + ".time", channel == Channel.NBT ? "must not decrease and must be within duration" : "must increase strictly within duration");
-                    }
-                    previous = tick;
-                    Value pre, post;
-                    if (keyframe.has("value")) {
-                        if (keyframe.has("pre") || keyframe.has("post")) throw d.error(kp, "value and pre/post are exclusive");
-                        pre = post = value(d.requireElement(keyframe, "value", kp), channel, size, kp + ".value", d);
-                    } else {
-                        if (type == DriverType.STATE) throw d.error(kp + ".value", "is required");
-                        pre = value(d.requireElement(keyframe, "pre", kp), channel, size, kp + ".pre", d);
-                        post = value(d.requireElement(keyframe, "post", kp), channel, size, kp + ".post", d);
-                    }
-                    keys.add(new Keyframe(tick, pre, post));
-                }
-                if (type == DriverType.CURVE) {
-                    JsonArray arraySegments = d.requireArray(driver, "segments", p);
-                    if (arraySegments.size() != keys.size() - 1) throw d.error(p + ".segments", "must contain keys.length - 1 segments");
-                    for (int s = 0; s < arraySegments.size(); s++) segments.add(segment(d.requireObject(arraySegments.get(s), p + ".segments[" + s + "]"), size, p + ".segments[" + s + "]", d));
-                }
+            Blend blend = null;
+            if (raw.has("blend")) {
+                if (channel != Channel.VALUE || size != 3) throw d.error(path + ".blend", "requires a three-component value track");
+                JsonObject b = d.requireObject(raw, "blend", path);
+                blend = new Blend(vector(d.requireElement(b, "base", path + ".blend"), size, true, path + ".blend.base", d).components().stream()
+                    .map(v -> ((ConstantValue) v).value()).toList(), scalar(d.requireElement(b, "weight", path + ".blend"), path + ".blend.weight", d));
             }
-            result.put(path, new Track(destination, channel, new Driver(type, expression, keys, segments, firstPre)));
+            result.put(path, new Track(destination, channel, driver(d.requireObject(raw, "driver", path), channel, size, durationTicks, path + ".driver", d), blend));
         }
         return result;
     }
 
+    private Map<String, SharedValue> sharedValues(JsonObject input, int durationTicks, EmoteJsonDocument d) throws EmoteLoadException {
+        Map<String, SharedValue> result = new LinkedHashMap<>();
+        for (var entry : input.entrySet()) {
+            String path = "$.animation.values." + entry.getKey();
+            if (entry.getKey().isBlank()) throw d.error(path, "value id must not be blank");
+            JsonObject raw = d.requireObject(entry.getValue(), path);
+            JsonArray base = d.requireArray(raw, "base", path);
+            if (base.size() != 1 && base.size() != 3) throw d.error(path + ".base", "must contain one or three components");
+            List<Double> components = vector(base, base.size(), true, path + ".base", d).components().stream().map(v -> ((ConstantValue) v).value()).toList();
+            result.put(entry.getKey(), new SharedValue(components, driver(raw, Channel.VALUE, base.size(), durationTicks, path, d)));
+        }
+        return result;
+    }
+
+    private Driver driver(JsonObject driver, Channel channel, int size, int durationTicks, String p, EmoteJsonDocument d) throws EmoteLoadException {
+        DriverType type = enumeration(DriverType.class, nonempty(driver, "type", p, d), p + ".type", d);
+        boolean firstPre = text(driver, "before", "base", p, d).equals("first_pre");
+        if (!Set.of("base", "first_pre").contains(text(driver, "before", "base", p, d))) throw d.error(p + ".before", "invalid before policy");
+        Value expression = null;
+        List<Keyframe> keys = new ArrayList<>();
+        List<Segment> segments = new ArrayList<>();
+        if (type == DriverType.EXPRESSION) {
+            if (channel == Channel.NBT || size == 16) throw d.error(p, "requires a state or step curve");
+            expression = value(d.requireElement(driver, "value", p), channel, size, p + ".value", d);
+        } else {
+            if (type == DriverType.CURVE && channel != Channel.VALUE || type == DriverType.STATE && channel == Channel.VALUE) throw d.error(p + ".type", "driver does not match channel");
+            JsonArray array = d.requireArray(driver, "keys", p);
+            if (array.isEmpty()) throw d.error(p + ".keys", "must not be empty");
+            int previous = -1;
+            for (int k = 0; k < array.size(); k++) {
+                String kp = p + ".keys[" + k + "]";
+                JsonObject keyframe = d.requireObject(array.get(k), kp);
+                int tick = d.requireTime(keyframe, "time", kp, 0);
+                if (tick < 0 || tick > durationTicks || tick < previous || tick == previous && channel != Channel.NBT) {
+                    throw d.error(kp + ".time", channel == Channel.NBT ? "must not decrease and must be within duration" : "must increase strictly within duration");
+                }
+                previous = tick;
+                Value pre, post;
+                if (keyframe.has("value")) {
+                    if (keyframe.has("pre") || keyframe.has("post")) throw d.error(kp, "value and pre/post are exclusive");
+                    pre = post = value(d.requireElement(keyframe, "value", kp), channel, size, kp + ".value", d);
+                } else {
+                    if (type == DriverType.STATE) throw d.error(kp + ".value", "is required");
+                    pre = value(d.requireElement(keyframe, "pre", kp), channel, size, kp + ".pre", d);
+                    post = value(d.requireElement(keyframe, "post", kp), channel, size, kp + ".post", d);
+                }
+                keys.add(new Keyframe(tick, pre, post));
+            }
+            if (type == DriverType.CURVE) {
+                JsonArray arraySegments = d.requireArray(driver, "segments", p);
+                if (arraySegments.size() != keys.size() - 1) throw d.error(p + ".segments", "must contain keys.length - 1 segments");
+                for (int s = 0; s < arraySegments.size(); s++) segments.add(segment(d.requireObject(arraySegments.get(s), p + ".segments[" + s + "]"), size, p + ".segments[" + s + "]", d));
+            }
+        }
+        return new Driver(type, expression, keys, segments, firstPre);
+    }
+
     private Segment segment(JsonObject raw, int size, String path, EmoteJsonDocument d) throws EmoteLoadException {
         Interpolation interpolation = enumeration(Interpolation.class, nonempty(raw, "interpolation", path, d), path + ".interpolation", d);
-        if (size == 16 && interpolation != Interpolation.STEP || size == 4 && interpolation != Interpolation.STEP && interpolation != Interpolation.SLERP || size == 3 && interpolation == Interpolation.SLERP) throw d.error(path + ".interpolation", "does not match value dimension");
+        if (size == 16 && interpolation != Interpolation.STEP || size == 4 && interpolation != Interpolation.STEP && interpolation != Interpolation.SLERP || size != 4 && interpolation == Interpolation.SLERP) throw d.error(path + ".interpolation", "does not match value dimension");
         Easing easing = null;
         if (raw.has("easing")) {
             if (interpolation == Interpolation.STEP) throw d.error(path + ".easing", "not allowed for step");
             JsonObject e = d.requireObject(raw, "easing", path);
             String ep = path + ".easing", kernel = nonempty(e, "kernel", ep, d);
-            if (!Set.of("linear", "power", "sine", "expo", "circ", "back", "blockbench_elastic", "blockbench_bounce", "steps").contains(kernel)) throw d.error(ep + ".kernel", "unknown easing");
+            if (!Set.of("linear", "power", "sine", "expo", "circ", "back", "blockbench_elastic", "blockbench_bounce", "blockbench_expo", "blockbench_steps", "steps").contains(kernel)) throw d.error(ep + ".kernel", "unknown easing");
             String direction = kernel.equals("linear") ? "in" : nonempty(e, "direction", ep, d);
             if (!Set.of("in", "out", "in_out").contains(direction)) throw d.error(ep + ".direction", "invalid easing direction");
-            double parameter = switch (kernel) {
-                case "power" -> number(e, "exponent", ep, d);
-                case "back" -> number(e, "overshoot", 1.70158, ep, d);
-                case "blockbench_elastic" -> number(e, "frequency", 1, ep, d);
-                case "blockbench_bounce" -> number(e, "bounciness", 0.5, ep, d);
-                case "steps" -> d.requireInt(e, "count", ep);
-                default -> 0;
+            String field = switch (kernel) {
+                case "power" -> "exponent";
+                case "back" -> "overshoot";
+                case "blockbench_elastic" -> "frequency";
+                case "blockbench_bounce" -> "bounciness";
+                case "steps", "blockbench_steps" -> "count";
+                default -> null;
             };
-            if (kernel.equals("power") && parameter <= 0 || kernel.equals("steps") && parameter < 2 || kernel.equals("blockbench_bounce") && !(parameter > 0 && parameter < 1)) throw d.error(ep, "invalid easing parameter");
+            ScalarValue parameter = field == null ? new ConstantValue(0) : e.has(field) ? scalar(e.get(field), ep + "." + field, d)
+                : switch (kernel) {
+                    case "back" -> new ConstantValue(1.70158);
+                    case "blockbench_elastic" -> new ConstantValue(1);
+                    case "blockbench_bounce" -> new ConstantValue(0.5);
+                    default -> throw d.error(ep + "." + field, "is required");
+                };
+            if (parameter instanceof ConstantValue c && (kernel.equals("power") && c.value() <= 0
+                || Set.of("steps", "blockbench_steps").contains(kernel) && (c.value() < 2 || c.value() != Math.floor(c.value()))
+                || kernel.equals("blockbench_bounce") && !(c.value() > 0 && c.value() < 1))) throw d.error(ep, "invalid easing parameter");
             if (interpolation == Interpolation.BEZIER && Set.of("back", "blockbench_elastic").contains(kernel)) throw d.error(ep, "overshoot easing is not supported for Bezier");
             easing = new Easing(kernel, direction, parameter);
         }
@@ -245,8 +277,10 @@ public final class AnimationJsonParser {
             for (int i = 0; i < h.size(); i++) {
                 String hp = path + ".handles[" + i + "]";
                 JsonObject handle = d.requireObject(h.get(i), hp), out = d.requireObject(handle, "out", hp), in = d.requireObject(handle, "in", hp);
-                double ot = number(out, "time", hp + ".out", d), it = number(in, "time", hp + ".in", d);
-                if (!(ot >= 0 && ot <= it && it <= 1)) throw d.error(hp, "time handles must be monotonic within [0, 1]");
+                ScalarValue ot = scalar(d.requireElement(out, "time", hp + ".out"), hp + ".out.time", d), it = scalar(d.requireElement(in, "time", hp + ".in"), hp + ".in.time", d);
+                if (ot instanceof ConstantValue o && (o.value() < 0 || o.value() > 1)
+                    || it instanceof ConstantValue n && (n.value() < 0 || n.value() > 1)
+                    || ot instanceof ConstantValue o && it instanceof ConstantValue n && o.value() > n.value()) throw d.error(hp, "time handles must be monotonic within [0, 1]");
                 handles.add(new BezierHandle(ot, scalar(d.requireElement(out, "value", hp + ".out"), hp + ".out.value", d), it, scalar(d.requireElement(in, "value", hp + ".in"), hp + ".in.value", d)));
             }
         }
@@ -257,7 +291,7 @@ public final class AnimationJsonParser {
     }
 
     private Value value(JsonElement raw, Channel channel, int size, String path, EmoteJsonDocument d) throws EmoteLoadException {
-        if (channel == Channel.VALUE) return vector(raw, size, size != 3, path, d);
+        if (channel == Channel.VALUE) return vector(raw, size, size == 4 || size == 16, path, d);
         if (channel == Channel.VISIBLE) {
             if (raw.isJsonPrimitive() && raw.getAsJsonPrimitive().isBoolean()) return new ConstantVisibility(raw.getAsBoolean());
             ScalarValue expression = scalar(raw, path, d);

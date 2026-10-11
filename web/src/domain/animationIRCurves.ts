@@ -2,24 +2,38 @@ import { parseMinecraftTime } from "../format/time";
 import { Quaternion } from "three";
 import type { CurveIR, EasingIR, ScalarIR, SegmentIR, VectorValueIR } from "./animationIR";
 
-export type ScalarEvaluatorIR = (value: ScalarIR, progress: number, base?: number) => number;
+export type SharedValueResolverIR = (id: string, component: number) => number;
+export type ScalarEvaluatorIR = (value: ScalarIR, progress: number, base?: number, resolveValue?: SharedValueResolverIR) => number;
 
-export function evaluateEasing(easing: EasingIR | undefined, u: number): number {
+export function evaluateEasing(easing: EasingIR | undefined, u: number, evaluate: ScalarEvaluatorIR = (value) => {
+  if (typeof value !== "number") throw new Error("Dynamic easing requires a scalar evaluator.");
+  return value;
+}): number {
   if (!easing || easing.kernel === "linear") return u;
+  const raw = easing.kernel === "power" ? easing.exponent : easing.kernel === "back" ? easing.overshoot ?? 1.70158
+    : easing.kernel === "blockbench_elastic" ? easing.frequency ?? 1 : easing.kernel === "blockbench_bounce" ? easing.bounciness ?? 0.5
+      : easing.kernel === "steps" || easing.kernel === "blockbench_steps" ? easing.count : 0;
+  if (raw === undefined) throw new Error("Missing easing parameter.");
+  const parameter = evaluate(raw, u);
+  if (!Number.isFinite(parameter) || easing.kernel === "power" && parameter <= 0
+    || ["steps", "blockbench_steps"].includes(easing.kernel) && (parameter < 2 || !Number.isInteger(parameter))
+    || easing.kernel === "blockbench_bounce" && !(parameter > 0 && parameter < 1)) throw new Error("Invalid easing parameter.");
   const f = (x: number): number => {
     switch (easing.kernel) {
-      case "power": return x ** easing.exponent!;
+      case "power": return x ** parameter;
       case "sine": return 1 - Math.cos(Math.PI * x / 2);
       case "expo": return x === 0 ? 0 : 2 ** (10 * (x - 1));
+      case "blockbench_expo": return 2 ** (10 * (x - 1));
       case "circ": return 1 - Math.sqrt(1 - x * x);
-      case "back": { const k = easing.overshoot ?? 1.70158; return x * x * ((k + 1) * x - k); }
-      case "blockbench_elastic": return 1 - Math.cos(Math.PI * x / 2) ** 3 * Math.cos(Math.PI * (easing.frequency ?? 1) * x);
+      case "back": return x * x * ((parameter + 1) * x - parameter);
+      case "blockbench_elastic": return 1 - Math.cos(Math.PI * x / 2) ** 3 * Math.cos(Math.PI * parameter * x);
       case "blockbench_bounce": {
-        const b = easing.bounciness ?? 0.5;
+        const b = parameter;
         return Math.min(121 / 16 * x * x, 121 / 4 * b * (x - 6 / 11) ** 2 + 1 - b,
           121 * b * b * (x - 9 / 11) ** 2 + 1 - b * b, 484 * b ** 3 * (x - 10.5 / 11) ** 2 + 1 - b ** 3);
       }
-      case "steps": return Math.floor(x * easing.count!) / easing.count!;
+      case "steps": return Math.floor(x * parameter) / parameter;
+      case "blockbench_steps": return Math.min(parameter - 1, Math.floor(x * parameter)) / parameter;
       case "linear": return x;
     }
   };
@@ -43,25 +57,27 @@ export function sampleCurve(curve: CurveIR, time: number, base: readonly number[
   const segment = curve.segments[index];
   if (segment.interpolation === "step") return start;
   const end = vector(right.pre ?? right.value!, u);
-  const t = evaluateEasing(segment.easing, u);
+  const t = evaluateEasing(segment.easing, u, evaluate);
   if (segment.interpolation === "slerp") {
     return new Quaternion(...start as [number, number, number, number]).normalize()
       .slerp(new Quaternion(...end as [number, number, number, number]).normalize(), t).toArray();
   }
-  const previous = segment.previous ? vector(segment.previous, u) : start;
-  const following = segment.following ? vector(segment.following, u) : end;
-  const out = segment.out_tangent ? vector(segment.out_tangent, u) : [];
-  const incoming = segment.in_tangent ? vector(segment.in_tangent, u) : [];
+  const previous = segment.interpolation === "catmull_rom" && segment.previous ? vector(segment.previous, u) : start;
+  const following = segment.interpolation === "catmull_rom" && segment.following ? vector(segment.following, u) : end;
+  const out = segment.interpolation === "hermite" && segment.out_tangent ? vector(segment.out_tangent, u) : [];
+  const incoming = segment.interpolation === "hermite" && segment.in_tangent ? vector(segment.in_tangent, u) : [];
   return start.map((a, axis) => {
     const b = end[axis];
     if (segment.interpolation === "linear") return a + (b - a) * t;
     if (segment.interpolation === "bezier") {
       const handle = segment.handles![axis];
+      const outTime = evaluate(handle.out.time, u), inTime = evaluate(handle.in.time, u);
+      if (!(outTime >= 0 && outTime <= inTime && inTime <= 1)) throw new Error("Bezier time handles must be monotonic within [0, 1].");
       const h1 = evaluate(handle.out.value, u, base[axis]), h2 = evaluate(handle.in.value, u, base[axis]);
       let low = 0, high = 1;
       for (let i = 0; i < 48; i++) {
         const k = (low + high) / 2;
-        const x = 3 * (1 - k) ** 2 * k * handle.out.time + 3 * (1 - k) * k * k * handle.in.time + k ** 3;
+        const x = 3 * (1 - k) ** 2 * k * outTime + 3 * (1 - k) * k * k * inTime + k ** 3;
         if (x < t) low = k; else high = k;
       }
       const k = (low + high) / 2;
