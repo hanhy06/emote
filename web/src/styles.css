@@ -127,9 +127,9 @@ h3 { margin: 20px 0 10px; font-size: 15px; font-weight: 600; }
 .playback-behavior-primary input, .playback-behavior-primary select { height: 34px; min-height: 34px; }
 .field-heading { display: flex; align-items: baseline; height: 18px; gap: 8px; line-height: 18px; white-space: nowrap; }
 .field-heading small { overflow: hidden; text-overflow: ellipsis; font-weight: 400; line-height: inherit; }
-.settings-selectors { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.playback-settings-group { display: grid; grid-column: 1 / -1; grid-template-columns: inherit; gap: 12px; }
-.settings-selectors input, .settings-selectors select { min-width: 0; }
+.settings-selectors { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; }
+.playback-settings-group { display: grid; grid-column: 1 / -1; grid-template-columns: inherit; align-items: start; gap: 12px; }
+.settings-selectors input, .settings-selectors select { min-width: 0; height: 34px; min-height: 34px; }
 .settings-toggles { grid-template-columns: repeat(4, max-content); margin-top: 14px; column-gap: 48px; row-gap: 6px; }
 .settings-toggles .checkbox { align-self: center; min-height: 28px; }
 .additional-metadata { margin-top: 18px; padding-top: 2px; border-top: 1px solid #e2e2e2; }
