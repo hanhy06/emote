@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { unzipSync } from "fflate";
+import { strFromU8, unzipSync } from "fflate";
 import { expect, it } from "vitest";
 import { assignSkinPart, createConversionDocument } from "../domain/conversionDocument";
 import { exportAnimation } from "../export/projectExporter";
@@ -41,20 +41,20 @@ it("packages the generated models and textures referenced by exported AJ and bbm
       if (itemPath.startsWith("assets/minecraft/")) continue;
       expect(document.resources.has(itemPath), `${path}: generated item ${itemPath}`).toBe(true);
       generatedModels++;
-      const item = JSON.parse(new TextDecoder().decode(readResource(itemPath)));
+      const item: { model: { model: string } } = JSON.parse(strFromU8(readResource(itemPath)));
       const sourceItem = document.resources.get(itemPath);
       expect(sourceItem, itemPath).toMatchObject({ kind: "item_model", model: item.model.model });
       const modelPath = resourcePath(item.model.model, "models", "json");
-      const model = JSON.parse(new TextDecoder().decode(readResource(modelPath)));
+      const model: { elements: Record<string, unknown>[]; textures: Record<string, string> } = JSON.parse(strFromU8(readResource(modelPath)));
       expect(model.elements.length, modelPath).toBeGreaterThan(0);
       expect(document.resources.get(modelPath), modelPath).toMatchObject({ kind: "cuboid_model", elements: model.elements, textures: model.textures });
-      for (const texture of Object.values(model.textures) as string[]) {
+      for (const texture of Object.values(model.textures)) {
         const texturePath = resourcePath(texture, "textures", "png");
         if (!texture.startsWith(`${itemPath.split("/")[1]}:`)) continue;
         textures.add(texturePath);
         expect(readResource(texturePath), texturePath).toEqual(document.resources.get(texturePath));
         if (document.resources.has(`${texturePath}.mcmeta`)) {
-          expect(document.resources.get(`${texturePath}.mcmeta`), `${texturePath}.mcmeta`).toEqual({ kind: "json", value: JSON.parse(new TextDecoder().decode(readResource(`${texturePath}.mcmeta`))) });
+          expect(document.resources.get(`${texturePath}.mcmeta`), `${texturePath}.mcmeta`).toEqual({ kind: "json", value: JSON.parse(strFromU8(readResource(`${texturePath}.mcmeta`))) });
         }
       }
     }

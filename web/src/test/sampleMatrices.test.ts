@@ -1,5 +1,4 @@
 import { readFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
 import MolangParser from "molangjs/dist/molang.esm.js";
 import { expect, it } from "vitest";
 import type { AnimationIR, ScalarIR } from "../domain/animationIR";
@@ -30,7 +29,7 @@ it("preserves the matrices of the 11 documentation samples after reference conve
   parser.variableHandler = (key) => { throw new Error(`Unbound test query: ${key}`); };
   for (const [name, actual] of converted) {
     const path = `docs/sample/${actual.id.startsWith("sit:") ? "sit/" : ""}${actual.id.replaceAll(":", ".")}.json`;
-    const expected: AnimationIR = JSON.parse(await readFile(fileURLToPath(new URL(`../../../${path}`, import.meta.url)), "utf8"));
+    const expected: AnimationIR = JSON.parse(await readFile(new URL(`../../../${path}`, import.meta.url), "utf8"));
     const displayIds = (animation: AnimationIR) => Object.keys(animation.nodes).filter((id) => Object.keys(animation.nodes[id].attachments ?? {}).length > 0).sort();
     const ids = displayIds(expected);
     expect(ids.length, path).toBeGreaterThan(0);
