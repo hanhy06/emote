@@ -55,6 +55,9 @@ dependencies {
     include(implementation("eu.pb4:polymer-resource-pack:${polymer_version}"))
     include(implementation("eu.pb4:polymer-autohost:${polymer_version}"))
 
+    testImplementation platform("org.junit:junit-bom:5.12.2")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 }
 
 processResources {
@@ -76,6 +79,10 @@ processResources {
 
 tasks.register("prodClient", ClientProductionRunTask)
 tasks.register("prodServer", ServerProductionRunTask)
+
+test {
+    useJUnitPlatform()
+}
 
 tasks.withType(JavaCompile).configureEach {
     it.options.release = 25
