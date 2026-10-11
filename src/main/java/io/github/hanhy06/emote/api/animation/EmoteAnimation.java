@@ -106,16 +106,16 @@ public record EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings set
     public record Blend(List<Double> base, ScalarValue weight) { public Blend { base = List.copyOf(base); } }
     public record SharedValue(List<Double> base, Driver driver) { public SharedValue { base = List.copyOf(base); } }
     public enum DriverType { EXPRESSION, CURVE, STATE }
-    public record Driver(DriverType type, Value value, List<Keyframe> keys, List<Segment> segments, boolean firstPre, boolean keyPre, boolean componentEvaluation) {
+    public record Driver(DriverType type, Value value, List<Keyframe> keys, List<Segment> segments, boolean firstPre, boolean keyPre, boolean componentEvaluation, boolean sampleSegment) {
         public Driver { keys = List.copyOf(keys); segments = List.copyOf(segments); }
     }
     public record Keyframe(int tick, Value pre, Value post) {}
     public enum Interpolation { STEP, LINEAR, SLERP, CATMULL_ROM, HERMITE, BEZIER }
     public record Segment(Interpolation interpolation, Easing easing, double tension, VectorValue previous,
-                          VectorValue following, VectorValue outTangent, VectorValue inTangent, List<BezierHandle> handles) {
+                          VectorValue following, VectorValue outTangent, VectorValue inTangent, List<BezierHandle> handles, boolean inControlFirst) {
         public Segment { handles = List.copyOf(handles); }
     }
-    public record BezierHandle(ScalarValue outTime, ScalarValue outValue, boolean outRelative, ScalarValue inTime, ScalarValue inValue, boolean inRelative) {}
+    public record BezierHandle(ScalarValue outTime, ScalarValue outValue, boolean outRelative, boolean outRescale, ScalarValue inTime, ScalarValue inValue, boolean inRelative, boolean inRescale) {}
     public record Easing(String kernel, String direction, ScalarValue parameter) {}
     public sealed interface Value permits VectorValue, VisibilityValue, NbtValue {}
     public record VectorValue(List<ScalarValue> components) implements Value {

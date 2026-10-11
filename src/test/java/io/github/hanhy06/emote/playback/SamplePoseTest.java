@@ -309,6 +309,60 @@ class SamplePoseTest {
         }
     }
 
+    @Test
+    void playsConvertedEmotecraftAxesAndReusesBendAcrossJointAndInheritance() throws Exception {
+        for (String name : List.of("reference", "dynamic")) {
+            byte[] bytes;
+            try (var input = Objects.requireNonNull(getClass().getResourceAsStream("/emotecraft-" + name + ".json"))) { bytes = input.readAllBytes(); }
+            var animation = PreparedAnimation.prepare(new AnimationJsonParser().parse(Path.of("emotecraft-" + name + ".json"), bytes), registries);
+            List<String> calls = new ArrayList<>();
+            var evaluator = new AnimationEvaluator(animation, session -> {
+                MolangQuerySource.EMPTY.apply(session);
+                session.setQueryFunction("scoreboard", arguments -> {
+                    String id = arguments.string(0);
+                    calls.add(id);
+                    return MolangEngine.QueryValue.number(Double.parseDouble(id.substring(id.lastIndexOf(':') + 1)));
+                });
+            });
+            evaluator.initialize(0, 0);
+            for (int tick : new int[]{0, 5, 10, 20, 40}) {
+                calls.clear();
+                evaluator.prepareFrame(tick, 0, 1, tick);
+                evaluator.evaluateFrame(tick, 0, 1, tick, true);
+                float slow = tick / 40f, fast = Math.min(1, tick / 20f), fastest = Math.min(1, tick / 10f);
+                float bend = (float) Math.toRadians(60 * fast);
+                var body = new Matrix4f().scaling(0.9375f).translate(-slow, 0.75f, 0)
+                    .rotateZYX((float) Math.toRadians(20 * fastest), (float) Math.toRadians(-30 * slow), (float) Math.toRadians(-60 * fast))
+                    .scale(1 + fast, 1 + 2 * fast, 1 + 3 * fast);
+                var lower = new Matrix4f(body).translate(0, 0.75f, 0)
+                    .translate(0, (float) (-0.375 + 0.125 * (1 - Math.cos(bend))), (float) (0.125 * Math.sin(bend))).rotateX(-bend);
+                Map<String, Matrix4f> expected = new HashMap<>(Map.of("pal_body", body, "pal_torso_lower", lower));
+                if (tick == 10) {
+                    expected.put("pal_controls", new Matrix4f(body).translate(-10.25f / 16, -0.75f, 0));
+                    var inherited = new Matrix4f(body).translate(0, 0.375f, 0).rotateX(-bend).translate(0, -0.375f, 0);
+                    expected.put("pal_head", new Matrix4f(inherited).translate(-10.25f / 16, -0.75f, 0).translate(0, 1.5f, 0).rotateX((float) Math.toRadians(-45 * slow)));
+                    float armBend = (float) Math.toRadians(13.125);
+                    expected.put("pal_right_arm_lower", new Matrix4f(inherited).translate(5 / 16f, 10 / 16f, 0)
+                        .translate(0, (float) (-0.375 + 0.125 * (1 - Math.cos(armBend))), (float) (0.125 * Math.sin(armBend))).rotateX(-armBend));
+                }
+                for (var entry : expected.entrySet()) {
+                    var actual = evaluator.matrix(animation.nodeOrder().indexOf(entry.getKey()));
+                    for (int row = 0; row < 4; row++) for (int column = 0; column < 4; column++) {
+                        assertEquals(entry.getValue().get(column, row), actual.get(column, row), 1e-6, name + " " + entry.getKey() + " tick=" + tick);
+                    }
+                }
+                if (name.equals("dynamic")) {
+                    assertEquals(2, calls.stream().filter(id -> id.startsWith("torso.bend")).count());
+                    assertEquals(tick == 0 || tick >= 20 ? 2 : 6, calls.stream().filter(id -> id.startsWith("controls.position")).count());
+                    assertEquals(List.of("body.rotation.0.0.start", "body.rotation.0.0.end", "body.rotation.1.0.start", "body.rotation.1.0.end", "body.rotation.2.0.start", "body.rotation.2.0.end"),
+                        calls.subList(0, 6).stream().map(id -> id.substring(0, id.indexOf(':'))).toList());
+                    if (tick == 10) assertEquals(List.of("controls.position.0.0.start", "controls.position.0.0.end", "controls.position.0.0.arg0", "controls.position.0.0.arg1", "controls.position.0.0.arg2", "controls.position.0.0.arg3"),
+                        calls.stream().filter(id -> id.startsWith("controls.position")).map(id -> id.substring(0, id.indexOf(':'))).toList());
+                }
+            }
+        }
+    }
+
     private static final class PoseTarget implements PlaybackPlayer.TimelineTarget {
         final Map<String, Matrix4f> matrices = new HashMap<>();
 

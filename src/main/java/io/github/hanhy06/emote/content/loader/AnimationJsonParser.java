@@ -199,7 +199,8 @@ public final class AnimationJsonParser {
         DriverType type = enumeration(DriverType.class, nonempty(driver, "type", p, d), p + ".type", d);
         boolean firstPre = text(driver, "before", "base", p, d).equals("first_pre");
         String atKey = text(driver, "at_key", "post", p, d);
-        if (!Set.of("pre", "post").contains(atKey)) throw d.error(p + ".at_key", "invalid key policy");
+        if (!Set.of("pre", "post", "segment").contains(atKey)) throw d.error(p + ".at_key", "invalid key policy");
+        if (atKey.equals("segment") && (type != DriverType.CURVE || size != 1 && size != 3)) throw d.error(p + ".at_key", "segment sampling requires a scalar or three-component curve");
         String evaluation = text(driver, "evaluation", "vector", p, d);
         if (!Set.of("vector", "component").contains(evaluation)) throw d.error(p + ".evaluation", "invalid evaluation order");
         if (evaluation.equals("component") && (type != DriverType.CURVE || size != 1 && size != 3)) throw d.error(p + ".evaluation", "component evaluation requires a scalar or three-component curve");
@@ -219,8 +220,8 @@ public final class AnimationJsonParser {
                 String kp = p + ".keys[" + k + "]";
                 JsonObject keyframe = d.requireObject(array.get(k), kp);
                 int tick = d.requireTime(keyframe, "time", kp, 0);
-                if (tick < 0 || tick > durationTicks || tick < previous || tick == previous && channel != Channel.NBT) {
-                    throw d.error(kp + ".time", channel == Channel.NBT ? "must not decrease and must be within duration" : "must increase strictly within duration");
+                if (tick < 0 || type == DriverType.STATE && tick > durationTicks || tick < previous || tick == previous && channel != Channel.NBT) {
+                    throw d.error(kp + ".time", type == DriverType.CURVE ? "must increase strictly and be non-negative" : channel == Channel.NBT ? "must not decrease and must be within duration" : "must increase strictly within duration");
                 }
                 previous = tick;
                 Value pre, post;
@@ -240,7 +241,7 @@ public final class AnimationJsonParser {
                 for (int s = 0; s < arraySegments.size(); s++) segments.add(segment(d.requireObject(arraySegments.get(s), p + ".segments[" + s + "]"), size, p + ".segments[" + s + "]", d));
             }
         }
-        return new Driver(type, expression, keys, segments, firstPre, atKey.equals("pre"), evaluation.equals("component"));
+        return new Driver(type, expression, keys, segments, firstPre, atKey.equals("pre"), evaluation.equals("component"), atKey.equals("segment"));
     }
 
     private Segment segment(JsonObject raw, int size, String path, EmoteJsonDocument d) throws EmoteLoadException {
@@ -275,6 +276,8 @@ public final class AnimationJsonParser {
             easing = new Easing(kernel, direction, parameter);
         }
         List<BezierHandle> handles = new ArrayList<>();
+        String controlOrder = text(raw, "control_order", "time_value", path, d);
+        if (!Set.of("time_value", "in_out").contains(controlOrder)) throw d.error(path + ".control_order", "invalid control order");
         if (interpolation == Interpolation.BEZIER) {
             JsonArray h = d.requireArray(raw, "handles", path);
             if (h.size() != size) throw d.error(path + ".handles", "must match value dimension");
@@ -282,16 +285,18 @@ public final class AnimationJsonParser {
                 String hp = path + ".handles[" + i + "]";
                 JsonObject handle = d.requireObject(h.get(i), hp), out = d.requireObject(handle, "out", hp), in = d.requireObject(handle, "in", hp);
                 ScalarValue ot = scalar(d.requireElement(out, "time", hp + ".out"), hp + ".out.time", d), it = scalar(d.requireElement(in, "time", hp + ".in"), hp + ".in.time", d);
-                if (ot instanceof ConstantValue o && (o.value() < 0 || o.value() > 1)
-                    || it instanceof ConstantValue n && (n.value() < 0 || n.value() > 1)) throw d.error(hp, "time handles must be within [0, 1]");
-                handles.add(new BezierHandle(ot, scalar(d.requireElement(out, "value", hp + ".out"), hp + ".out.value", d), bool(out, "relative", false, hp + ".out", d),
-                    it, scalar(d.requireElement(in, "value", hp + ".in"), hp + ".in.value", d), bool(in, "relative", false, hp + ".in", d)));
+                String outClamp = text(out, "clamp", "none", hp + ".out", d), inClamp = text(in, "clamp", "none", hp + ".in", d);
+                if (!Set.of("none", "rescale_value").contains(outClamp) || !Set.of("none", "rescale_value").contains(inClamp)) throw d.error(hp, "invalid time clamp policy");
+                if (outClamp.equals("none") && ot instanceof ConstantValue o && (o.value() < 0 || o.value() > 1)
+                    || inClamp.equals("none") && it instanceof ConstantValue n && (n.value() < 0 || n.value() > 1)) throw d.error(hp, "time handles must be within [0, 1]");
+                handles.add(new BezierHandle(ot, scalar(d.requireElement(out, "value", hp + ".out"), hp + ".out.value", d), bool(out, "relative", false, hp + ".out", d), outClamp.equals("rescale_value"),
+                    it, scalar(d.requireElement(in, "value", hp + ".in"), hp + ".in.value", d), bool(in, "relative", false, hp + ".in", d), inClamp.equals("rescale_value")));
             }
         }
         VectorValue out = optionalVector(raw, "out_tangent", size, path, d), in = optionalVector(raw, "in_tangent", size, path, d);
         if (interpolation == Interpolation.HERMITE && (out == null || in == null)) throw d.error(path, "Hermite tangents are required");
         return new Segment(interpolation, easing, number(raw, "tension", 0.5, path, d), optionalVector(raw, "previous", size, path, d),
-            optionalVector(raw, "following", size, path, d), out, in, handles);
+            optionalVector(raw, "following", size, path, d), out, in, handles, controlOrder.equals("in_out"));
     }
 
     private Value value(JsonElement raw, Channel channel, int size, String path, EmoteJsonDocument d) throws EmoteLoadException {
@@ -398,7 +403,7 @@ public final class AnimationJsonParser {
         }
         return result;
     }
-    private VectorValue optionalVector(JsonObject raw, String key, int size, String path, EmoteJsonDocument d) throws EmoteLoadException { return raw.has(key) ? vector(raw.get(key), size, size != 3, path + "." + key, d) : null; }
+    private VectorValue optionalVector(JsonObject raw, String key, int size, String path, EmoteJsonDocument d) throws EmoteLoadException { return raw.has(key) ? vector(raw.get(key), size, size != 1 && size != 3, path + "." + key, d) : null; }
     private JsonObject object(JsonObject raw, String key, String path, EmoteJsonDocument d) throws EmoteLoadException { JsonObject o = d.optionalObject(raw, key, path); return o == null ? new JsonObject() : o; }
     private String text(JsonObject raw, String key, String fallback, String path, EmoteJsonDocument d) throws EmoteLoadException { return raw.has(key) ? d.requireString(raw, key, path) : fallback; }
     private String nonempty(JsonObject raw, String key, String path, EmoteJsonDocument d) throws EmoteLoadException { String s = d.requireString(raw, key, path); if (s.isBlank()) throw d.error(path + "." + key, "must not be blank"); return s; }

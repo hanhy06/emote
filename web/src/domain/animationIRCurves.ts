@@ -58,18 +58,21 @@ export function sampleCurve(curve: CurveIR, time: number, base: readonly number[
   if (time < parseMinecraftTime(first.time) / 20) return curve.before === "first_pre" ? vector(first.pre ?? first.value!, 0) : [...base];
   let index = 0;
   while (index + 1 < curve.keys.length && parseMinecraftTime(curve.keys[index + 1].time) / 20 <= time) index++;
+  if (curve.at_key === "segment" && curve.keys.length > 1) index = Math.min(index, curve.keys.length - 2);
   const left = curve.keys[index];
-  if (time === parseMinecraftTime(left.time) / 20) return vector(curve.at_key === "pre" ? left.pre ?? left.value! : left.post ?? left.value!, 1);
+  if (curve.at_key !== "segment" && time === parseMinecraftTime(left.time) / 20) return vector(curve.at_key === "pre" ? left.pre ?? left.value! : left.post ?? left.value!, 1);
   if (index === curve.keys.length - 1) return vector(left.post ?? left.value!, 1);
   const right = curve.keys[index + 1];
   const duration = (parseMinecraftTime(right.time) - parseMinecraftTime(left.time)) / 20;
-  const u = (time - parseMinecraftTime(left.time) / 20) / duration;
+  const u = Math.min(1, (time - parseMinecraftTime(left.time) / 20) / duration);
   const segment = curve.segments[index];
   const startValues = left.post ?? left.value!, endValues = right.pre ?? right.value!;
-  if (segment.interpolation === "step") return vector(startValues, u);
+  if (segment.interpolation === "step" && curve.at_key !== "segment") return vector(startValues, u);
   const component = curve.evaluation === "component";
   const start = component ? undefined : vector(startValues, u);
   const end = component ? undefined : vector(endValues, u);
+  if (curve.at_key === "segment" && u === 1) return end ?? vector(endValues, u);
+  if (segment.interpolation === "step" || curve.at_key === "segment" && segment.interpolation === "bezier" && u === 0) return start ?? vector(startValues, u);
   const eased = component ? undefined : evaluateEasing(segment.easing, u, evaluate);
   if (segment.interpolation === "slerp") {
     if (component) throw new Error("Quaternion curves require vector evaluation.");
@@ -89,10 +92,24 @@ export function sampleCurve(curve: CurveIR, time: number, base: readonly number[
     if (segment.interpolation === "linear") return a + (b - a) * t;
     if (segment.interpolation === "bezier") {
       const handle = segment.handles![axis];
-      const outTime = evaluate(handle.out.time, u), inTime = evaluate(handle.in.time, u);
+      let outTime: number, inTime: number, outValue: number, inValue: number;
+      if (segment.control_order === "in_out") {
+        inValue = evaluate(handle.in.value, u, handle.in.relative ? 0 : base[axis]);
+        inTime = evaluate(handle.in.time, u);
+        outValue = evaluate(handle.out.value, u, handle.out.relative ? 0 : base[axis]);
+        outTime = evaluate(handle.out.time, u);
+      } else {
+        outTime = evaluate(handle.out.time, u);
+        inTime = evaluate(handle.in.time, u);
+        if (handle.out.clamp !== "rescale_value" && !(outTime >= 0 && outTime <= 1) || handle.in.clamp !== "rescale_value" && !(inTime >= 0 && inTime <= 1)) throw new Error("Bezier time handles must be within [0, 1].");
+        outValue = evaluate(handle.out.value, u, handle.out.relative ? 0 : base[axis]);
+        inValue = evaluate(handle.in.value, u, handle.in.relative ? 0 : base[axis]);
+      }
+      if (handle.out.clamp === "rescale_value") { const clamped = Math.max(0, Math.min(1, outTime)); outValue /= 1 + Math.abs(clamped - outTime); outTime = clamped; }
+      if (handle.in.clamp === "rescale_value") { const clamped = Math.max(0, Math.min(1, inTime)); inValue /= 1 + Math.abs(clamped - inTime); inTime = clamped; }
       if (!(outTime >= 0 && outTime <= 1 && inTime >= 0 && inTime <= 1)) throw new Error("Bezier time handles must be within [0, 1].");
-      const h1 = evaluate(handle.out.value, u, handle.out.relative ? 0 : base[axis]) + (handle.out.relative ? a : 0);
-      const h2 = evaluate(handle.in.value, u, handle.in.relative ? 0 : base[axis]) + (handle.in.relative ? b : 0);
+      const h1 = outValue + (handle.out.relative ? a : 0);
+      const h2 = inValue + (handle.in.relative ? b : 0);
       let low = 0, high = 1;
       for (let i = 0; i < 48; i++) {
         const k = (low + high) / 2;

@@ -52,14 +52,15 @@ export interface SegmentIR {
   following?: VectorValueIR;
   out_tangent?: VectorValueIR;
   in_tangent?: VectorValueIR;
-  handles?: { out: { time: ScalarIR; value: ScalarIR; relative?: boolean }; in: { time: ScalarIR; value: ScalarIR; relative?: boolean } }[];
+  control_order?: "time_value" | "in_out";
+  handles?: { out: { time: ScalarIR; value: ScalarIR; relative?: boolean; clamp?: "rescale_value" }; in: { time: ScalarIR; value: ScalarIR; relative?: boolean; clamp?: "rescale_value" } }[];
 }
 
 export type CurveKeyIR = { time: string } & ({ value: VectorValueIR; pre?: never; post?: never } | { pre: VectorValueIR; post: VectorValueIR; value?: never });
 export interface CurveIR {
   type: "curve";
   before?: "base" | "first_pre";
-  at_key?: "pre" | "post";
+  at_key?: "pre" | "post" | "segment";
   evaluation?: "vector" | "component";
   keys: CurveKeyIR[];
   segments: SegmentIR[];

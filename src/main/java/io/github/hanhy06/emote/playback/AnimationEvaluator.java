@@ -276,17 +276,20 @@ final class AnimationEvaluator {
         if (tick < keys.getFirst().tick()) return driver.firstPre() ? vector((VectorValue) keys.getFirst().pre(), 0) : base.stream().mapToDouble(Double::doubleValue).toArray();
         int index = 0;
         while (index + 1 < keys.size() && keys.get(index + 1).tick() <= tick) index++;
+        if (driver.sampleSegment() && keys.size() > 1) index = Math.min(index, keys.size() - 2);
         Keyframe left = keys.get(index);
-        if (tick == left.tick()) return vector((VectorValue) (driver.keyPre() ? left.pre() : left.post()), 1);
+        if (!driver.sampleSegment() && tick == left.tick()) return vector((VectorValue) (driver.keyPre() ? left.pre() : left.post()), 1);
         if (index == keys.size() - 1) return vector((VectorValue) left.post(), 1);
         Keyframe right = keys.get(index + 1);
-        double progress = (tick - left.tick()) / (right.tick() - left.tick());
+        double progress = Math.min(1, (tick - left.tick()) / (right.tick() - left.tick()));
         Segment segment = driver.segments().get(index);
         VectorValue startValues = (VectorValue) left.post(), endValues = (VectorValue) right.pre();
-        if (segment.interpolation() == Interpolation.STEP) return vector(startValues, progress);
+        if (segment.interpolation() == Interpolation.STEP && !driver.sampleSegment()) return vector(startValues, progress);
         boolean component = driver.componentEvaluation();
         double[] start = component ? null : vector(startValues, progress);
         double[] end = component ? null : vector(endValues, progress);
+        if (driver.sampleSegment() && progress == 1) return component ? vector(endValues, progress) : end;
+        if (segment.interpolation() == Interpolation.STEP || driver.sampleSegment() && segment.interpolation() == Interpolation.BEZIER && progress == 0) return component ? vector(startValues, progress) : start;
         double eased = component ? progress : easing(segment.easing(), progress);
         if (segment.interpolation() == Interpolation.SLERP) {
             Quaterniond rotation = new Quaterniond(start[0], start[1], start[2], start[3]).normalize()
@@ -316,10 +319,24 @@ final class AnimationEvaluator {
                 }
                 case BEZIER -> {
                     BezierHandle handle = segment.handles().get(i);
-                    double outTime = scalar(handle.outTime(), progress), inTime = scalar(handle.inTime(), progress);
+                    double outTime, inTime, outValue, inValue;
+                    if (segment.inControlFirst()) {
+                        inValue = scalar(handle.inValue(), progress);
+                        inTime = scalar(handle.inTime(), progress);
+                        outValue = scalar(handle.outValue(), progress);
+                        outTime = scalar(handle.outTime(), progress);
+                    } else {
+                        outTime = scalar(handle.outTime(), progress);
+                        inTime = scalar(handle.inTime(), progress);
+                        if (!handle.outRescale() && !(outTime >= 0 && outTime <= 1) || !handle.inRescale() && !(inTime >= 0 && inTime <= 1)) throw new IllegalStateException("Bezier time handles must be within [0, 1]");
+                        outValue = scalar(handle.outValue(), progress);
+                        inValue = scalar(handle.inValue(), progress);
+                    }
+                    if (handle.outRescale()) { double clamped = Math.clamp(outTime, 0, 1); outValue /= 1 + Math.abs(clamped - outTime); outTime = clamped; }
+                    if (handle.inRescale()) { double clamped = Math.clamp(inTime, 0, 1); inValue /= 1 + Math.abs(clamped - inTime); inTime = clamped; }
                     if (!(outTime >= 0 && outTime <= 1 && inTime >= 0 && inTime <= 1)) throw new IllegalStateException("Bezier time handles must be within [0, 1]");
-                    double h1 = scalar(handle.outValue(), progress) + (handle.outRelative() ? a : 0);
-                    double h2 = scalar(handle.inValue(), progress) + (handle.inRelative() ? b : 0);
+                    double h1 = outValue + (handle.outRelative() ? a : 0);
+                    double h2 = inValue + (handle.inRelative() ? b : 0);
                     double low = 0, high = 1;
                     for (int iteration = 0; iteration < 48; iteration++) {
                         double k = (low + high) / 2;
