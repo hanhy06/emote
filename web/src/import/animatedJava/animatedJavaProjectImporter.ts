@@ -22,7 +22,6 @@ import type {
   AjProjectGroup,
   AjProjectLocator,
   AjProjectOutlinerEntry,
-  AjProjectKeyframe,
   ProjectTransformGraph,
 } from "./animatedJavaProjectSchema";
 

@@ -154,7 +154,7 @@ function readDisplay(id: string, tag: string, type: string, compound: string): B
   const defaultMatrix = unknownType && !transformation ? IDENTITY_MATRIX : readMatrix(transformation, `${id} create transformation`);
   const entityNbt = omitSnbtFields(compound, OWNED_DISPLAY_FIELDS);
   const common = { id, tag, originalNbt: compound, defaultMatrix, interpolationDuration: readIntegerField(compound, "interpolation_duration", 0),
-    interpolationDelay: readIntegerField(compound, "start_interpolation", 0, true), ...(entityNbt ? { entityNbt } : {}) };
+    interpolationDelay: readIntegerField(compound, "start_interpolation", 0), ...(entityNbt ? { entityNbt } : {}) };
   if (unknownType) return { ...common, type: "anchor" };
   if (type === "item_display") {
     const item = readSnbtRawField(compound, "item");
@@ -271,7 +271,7 @@ function readAnimations(
             tick: frame.index * TICKS_PER_BD_FRAME,
             matrix: currentTransformByTag.get(tag!)!,
             interpolation: duration === 0 ? { type: "step" } : { type: "linear", durationTicks: duration },
-            ...(startField ? { startInterpolation: readIntegerField(merge[2], "start_interpolation", 0, true) } : {}),
+            ...(startField ? { startInterpolation: readIntegerField(merge[2], "start_interpolation", 0) } : {}),
           });
         }
       }
@@ -323,10 +323,7 @@ function mergeSnbtValue(current: string, update: string): string {
 
 function readMatrix(raw: string | null, label: string): Matrix16 {
   if (!raw?.startsWith("[") || !raw.endsWith("]")) throw new Error(`${label} must be an SNBT list.`);
-  return asMatrix16(splitSnbtTopLevel(raw.slice(1, -1)).map((value) => {
-    const parsed = Number(value.replace(/[bBsSlLfFdD]$/, ""));
-    return parsed;
-  }), label);
+  return asMatrix16(splitSnbtTopLevel(raw.slice(1, -1)).map((value) => Number(value.replace(/[bBsSlLfFdD]$/, ""))), label);
 }
 
 function readStringList(raw: string | null): string[] {
@@ -346,11 +343,10 @@ function readBareField(compound: string, name: string): string | null {
   return raw && /^[A-Za-z0-9._+-]+$/.test(raw) ? raw : null;
 }
 
-function readIntegerField(compound: string, name: string, fallback: number, signed = false): number {
+function readIntegerField(compound: string, name: string, fallback: number): number {
   const raw = readSnbtRawField(compound, name);
   if (raw == null) return fallback;
-  const value = Number(raw.replace(/[bBsSlL]$/, ""));
-  return value;
+  return Number(raw.replace(/[bBsSlL]$/, ""));
 }
 
 function parseText(value: string): unknown {

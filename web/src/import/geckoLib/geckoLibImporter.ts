@@ -14,7 +14,6 @@ import {
   type BbAnimator,
   type BbCube,
   type BbGroup,
-  type BbKeyframe,
   type BbLocator,
   type BbOutlinerEntry,
   type BbOutlinerGroup,
@@ -30,7 +29,6 @@ import {
   normalizeBlockbenchName,
   prepareCubeModels,
 } from "../common/blockbenchCubeSkin";
-import { ZERO_VECTOR } from "../common/runtimeOutput";
 import { type BoneEntry } from "../common/blockbenchCubeModel";
 import { molangScalar } from "../common/molangVector";
 import { type GeckoLibAnimationSource, createGeckoLibAnimationIR } from "./geckoLibAnimationIR";

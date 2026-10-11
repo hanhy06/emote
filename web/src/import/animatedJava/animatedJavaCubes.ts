@@ -6,7 +6,7 @@ import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLo
 import { serializeSnbtString } from "../../format/snbt";
 import { ConversionError } from "../../foundation/diagnostics";
 import type { BoneEntry } from "../common/blockbenchCubeModel";
-import type { BbCube, BbTexture } from "../common/blockbenchCubeSchema";
+import type { BbTexture } from "../common/blockbenchCubeSchema";
 import { cubePlayerHeadMatrix, isHiddenAccessoryBone, prepareCubeModels } from "../common/blockbenchCubeSkin";
 import { uniqueCubeNodeId, writeCubeResources, writeEmbeddedTextures } from "../common/blockbenchCubeResources";
 import type { AjProject, AjProjectCube, AjProjectLocator, ProjectTransformGraph } from "./animatedJavaProjectSchema";

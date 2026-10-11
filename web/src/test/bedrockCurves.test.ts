@@ -2,7 +2,6 @@ import { readFile } from "node:fs/promises";
 import { Euler, Matrix4 } from "three";
 import MolangParser from "molangjs/dist/molang.esm.js";
 import { expect, it } from "vitest";
-import type { AnimationIR } from "../domain/animationIR";
 import { evaluatePose } from "../domain/animationIRPose";
 import type { ScalarEvaluatorIR } from "../domain/animationIRCurves";
 import { createConversionDocument } from "../domain/conversionDocument";

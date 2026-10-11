@@ -20,17 +20,16 @@ export function combineConversionDocuments(documents: readonly ConversionDocumen
 
   documents.forEach((document, index) => {
     const prefix = `input_${index + 1}__`;
-    const nodeId = (id: string) => `${prefix}${id}`;
-    const groupId = (id: string) => `${prefix}${id}`;
+    const prefixId = (id: string) => `${prefix}${id}`;
 
     for (const [id, node] of Object.entries(document.nodes)) {
-      nodes[nodeId(id)] = {
+      nodes[prefixId(id)] = {
         ...node,
-        ...(node.parent ? { parent: nodeId(node.parent) } : {}),
+        ...(node.parent ? { parent: prefixId(node.parent) } : {}),
       };
     }
     for (const [id, candidate] of Object.entries(document.skinCandidates)) {
-      skinCandidates[nodeId(id)] = { ...candidate, groupId: groupId(candidate.groupId), sceneId: groupId(candidate.sceneId) };
+      skinCandidates[prefixId(id)] = { ...candidate, groupId: prefixId(candidate.groupId), sceneId: prefixId(candidate.sceneId) };
     }
     animations.push(...document.animations.map((animation) => {
       const separator = animation.id.indexOf(":");
@@ -38,8 +37,8 @@ export function combineConversionDocuments(documents: readonly ConversionDocumen
       return {
         ...animation,
         id: `${animation.id.slice(0, separator)}:${id}`,
-        nodeIds: animation.nodeIds.map(nodeId),
-        clip: remapClip(animation.clip, nodeId),
+        nodeIds: animation.nodeIds.map(prefixId),
+        clip: remapClip(animation.clip, prefixId),
       };
     }));
     if (index > 0) mergeResources(resources, document.resources);

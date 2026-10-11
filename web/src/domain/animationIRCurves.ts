@@ -1,6 +1,6 @@
 import { parseMinecraftTime } from "../format/time";
 import { Quaternion } from "three";
-import type { CurveIR, EasingIR, ScalarIR, SegmentIR, VectorValueIR } from "./animationIR";
+import type { CurveIR, EasingIR, ScalarIR, VectorValueIR } from "./animationIR";
 import { affineScalarIR, scalarIR } from "./animationIRConversion";
 import { mapMolangResult } from "../format/molang/sourceTransformer";
 

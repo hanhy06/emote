@@ -31,26 +31,6 @@ export function requireBoolean(value: unknown, path: string): boolean {
   return value;
 }
 
-export function optionalRecord(value: unknown, path: string): RuntimeRecord | undefined {
-  return value === undefined ? undefined : requireRecord(value, path);
-}
-
-export function optionalArray(value: unknown, path: string): unknown[] | undefined {
-  return value === undefined ? undefined : requireArray(value, path);
-}
-
-export function optionalString(value: unknown, path: string): string | undefined {
-  return value === undefined ? undefined : requireString(value, path);
-}
-
-export function optionalNumber(value: unknown, path: string): number | undefined {
-  return value === undefined ? undefined : requireNumber(value, path);
-}
-
-export function optionalBoolean(value: unknown, path: string): boolean | undefined {
-  return value === undefined ? undefined : requireBoolean(value, path);
-}
-
 export function requireNumberArray(value: unknown, path: string): number[] {
   return requireArray(value, path).map((entry, index) => requireNumber(entry, `${path}[${index}]`));
 }
