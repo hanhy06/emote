@@ -126,11 +126,11 @@ export interface AjProjectKeyframe {
   time: number;
   interpolation?: string;
   easing?: string;
-  easingArgs?: number[];
-  bezier_left_time?: number[];
-  bezier_left_value?: number[];
-  bezier_right_time?: number[];
-  bezier_right_value?: number[];
+  easingArgs?: AjProjectExpression[];
+  bezier_left_time?: AjProjectExpression[];
+  bezier_left_value?: AjProjectExpression[];
+  bezier_right_time?: AjProjectExpression[];
+  bezier_right_value?: AjProjectExpression[];
   data_points: AjProjectDataPoint[];
 }
 

@@ -1,6 +1,8 @@
 import { parseMinecraftTime } from "../format/time";
 import { Quaternion } from "three";
 import type { CurveIR, EasingIR, ScalarIR, SegmentIR, VectorValueIR } from "./animationIR";
+import { affineScalarIR, scalarIR } from "./animationIRConversion";
+import { mapMolangResult } from "../format/molang/sourceTransformer";
 
 export type SharedValueResolverIR = (id: string, component: number) => number;
 export type ScalarEvaluatorIR = (value: ScalarIR, progress: number, base?: number, resolveValue?: SharedValueResolverIR) => number;
@@ -16,8 +18,7 @@ export function evaluateEasing(easing: EasingIR | undefined, u: number, evaluate
   if (raw === undefined) throw new Error("Missing easing parameter.");
   const parameter = evaluate(raw, u);
   if (!Number.isFinite(parameter) || easing.kernel === "power" && parameter <= 0
-    || ["steps", "blockbench_steps"].includes(easing.kernel) && (parameter < 2 || !Number.isInteger(parameter))
-    || easing.kernel === "blockbench_bounce" && !(parameter > 0 && parameter < 1)) throw new Error("Invalid easing parameter.");
+    || ["steps", "blockbench_steps"].includes(easing.kernel) && (parameter < 2 || !Number.isInteger(parameter))) throw new Error("Invalid easing parameter.");
   const f = (x: number): number => {
     switch (easing.kernel) {
       case "power": return x ** parameter;
@@ -33,7 +34,16 @@ export function evaluateEasing(easing: EasingIR | undefined, u: number, evaluate
           121 * b * b * (x - 9 / 11) ** 2 + 1 - b * b, 484 * b ** 3 * (x - 10.5 / 11) ** 2 + 1 - b ** 3);
       }
       case "steps": return Math.floor(x * parameter) / parameter;
-      case "blockbench_steps": return Math.min(parameter - 1, Math.floor(x * parameter)) / parameter;
+      case "blockbench_steps": {
+        const step = 1 / parameter;
+        if (x > (parameter - 1) * step) return (parameter - 1) * step;
+        let low = 0, high = parameter - 1;
+        while (high - low > 1) {
+          const middle = low + Math.floor((high - low) / 2);
+          if (x >= middle * step) low = middle; else high = middle;
+        }
+        return low * step;
+      }
       case "linear": return x;
     }
   };
@@ -49,59 +59,74 @@ export function sampleCurve(curve: CurveIR, time: number, base: readonly number[
   let index = 0;
   while (index + 1 < curve.keys.length && parseMinecraftTime(curve.keys[index + 1].time) / 20 <= time) index++;
   const left = curve.keys[index];
-  if (time === parseMinecraftTime(left.time) / 20 || index === curve.keys.length - 1) return vector(left.post ?? left.value!, 1);
+  if (time === parseMinecraftTime(left.time) / 20) return vector(curve.at_key === "pre" ? left.pre ?? left.value! : left.post ?? left.value!, 1);
+  if (index === curve.keys.length - 1) return vector(left.post ?? left.value!, 1);
   const right = curve.keys[index + 1];
   const duration = (parseMinecraftTime(right.time) - parseMinecraftTime(left.time)) / 20;
   const u = (time - parseMinecraftTime(left.time) / 20) / duration;
-  const start = vector(left.post ?? left.value!, u);
   const segment = curve.segments[index];
-  if (segment.interpolation === "step") return start;
-  const end = vector(right.pre ?? right.value!, u);
-  const t = evaluateEasing(segment.easing, u, evaluate);
+  const startValues = left.post ?? left.value!, endValues = right.pre ?? right.value!;
+  if (segment.interpolation === "step") return vector(startValues, u);
+  const component = curve.evaluation === "component";
+  const start = component ? undefined : vector(startValues, u);
+  const end = component ? undefined : vector(endValues, u);
+  const eased = component ? undefined : evaluateEasing(segment.easing, u, evaluate);
   if (segment.interpolation === "slerp") {
+    if (component) throw new Error("Quaternion curves require vector evaluation.");
     return new Quaternion(...start as [number, number, number, number]).normalize()
-      .slerp(new Quaternion(...end as [number, number, number, number]).normalize(), t).toArray();
+      .slerp(new Quaternion(...end as [number, number, number, number]).normalize(), eased!).toArray();
   }
-  const previous = segment.interpolation === "catmull_rom" && segment.previous ? vector(segment.previous, u) : start;
-  const following = segment.interpolation === "catmull_rom" && segment.following ? vector(segment.following, u) : end;
-  const out = segment.interpolation === "hermite" && segment.out_tangent ? vector(segment.out_tangent, u) : [];
-  const incoming = segment.interpolation === "hermite" && segment.in_tangent ? vector(segment.in_tangent, u) : [];
-  return start.map((a, axis) => {
-    const b = end[axis];
+  const previous = !component && segment.interpolation === "catmull_rom" && segment.previous ? vector(segment.previous, u) : start;
+  const following = !component && segment.interpolation === "catmull_rom" && segment.following ? vector(segment.following, u) : end;
+  const out = !component && segment.interpolation === "hermite" && segment.out_tangent ? vector(segment.out_tangent, u) : undefined;
+  const incoming = !component && segment.interpolation === "hermite" && segment.in_tangent ? vector(segment.in_tangent, u) : undefined;
+  return startValues.map((_, axis) => {
+    const t = component ? evaluateEasing(segment.easing, u, evaluate) : eased!;
+    const p0 = component && segment.interpolation === "catmull_rom" && segment.previous ? evaluate(segment.previous[axis], u, base[axis]) : previous?.[axis];
+    const a = component ? evaluate(startValues[axis], u, base[axis]) : start![axis];
+    const b = component ? evaluate(endValues[axis], u, base[axis]) : end![axis];
+    const p1 = component && segment.interpolation === "catmull_rom" && segment.following ? evaluate(segment.following[axis], u, base[axis]) : following?.[axis];
     if (segment.interpolation === "linear") return a + (b - a) * t;
     if (segment.interpolation === "bezier") {
       const handle = segment.handles![axis];
       const outTime = evaluate(handle.out.time, u), inTime = evaluate(handle.in.time, u);
-      if (!(outTime >= 0 && outTime <= inTime && inTime <= 1)) throw new Error("Bezier time handles must be monotonic within [0, 1].");
-      const h1 = evaluate(handle.out.value, u, base[axis]), h2 = evaluate(handle.in.value, u, base[axis]);
+      if (!(outTime >= 0 && outTime <= 1 && inTime >= 0 && inTime <= 1)) throw new Error("Bezier time handles must be within [0, 1].");
+      const h1 = evaluate(handle.out.value, u, handle.out.relative ? 0 : base[axis]) + (handle.out.relative ? a : 0);
+      const h2 = evaluate(handle.in.value, u, handle.in.relative ? 0 : base[axis]) + (handle.in.relative ? b : 0);
       let low = 0, high = 1;
       for (let i = 0; i < 48; i++) {
         const k = (low + high) / 2;
         const x = 3 * (1 - k) ** 2 * k * outTime + 3 * (1 - k) * k * k * inTime + k ** 3;
+        if (x === t) { low = high = k; break; }
         if (x < t) low = k; else high = k;
       }
       const k = (low + high) / 2;
       return (1 - k) ** 3 * a + 3 * (1 - k) ** 2 * k * h1 + 3 * (1 - k) * k * k * h2 + k ** 3 * b;
     }
-    const m0 = segment.interpolation === "hermite" ? out[axis] * duration : (segment.tension ?? 0.5) * (b - previous[axis]);
-    const m1 = segment.interpolation === "hermite" ? incoming[axis] * duration : (segment.tension ?? 0.5) * (following[axis] - a);
+    const m0 = segment.interpolation === "hermite" ? (component ? evaluate(segment.out_tangent![axis], u, base[axis]) : out![axis]) * duration : (segment.tension ?? 0.5) * (b - (p0 ?? a));
+    const m1 = segment.interpolation === "hermite" ? (component ? evaluate(segment.in_tangent![axis], u, base[axis]) : incoming![axis]) * duration : (segment.tension ?? 0.5) * ((p1 ?? b) - a);
     return (2 * t ** 3 - 3 * t * t + 1) * a + (t ** 3 - 2 * t * t + t) * m0
       + (-2 * t ** 3 + 3 * t * t) * b + (t ** 3 - t * t) * m1;
   });
 }
 
-export function blockbenchEasingIR(name: string | undefined, args?: readonly number[]): EasingIR | undefined {
+export function blockbenchEasingIR(name: string | undefined, args?: readonly (number | string)[]): EasingIR | undefined {
   const normalized = (name ?? "linear").replaceAll("_", "").toLowerCase();
   if (normalized === "linear" || normalized === "none") return undefined;
-  if (normalized === "step") return { kernel: "steps", direction: "in", count: Math.max(2, Math.floor(args?.[0] ?? 5)) };
+  if (normalized === "step") {
+    const raw = scalarIR(args?.[0] ?? 5);
+    const count = typeof raw === "number" ? Math.max(2, Math.floor(raw)) : { molang: mapMolangResult(raw.molang, (result) => `math.max(2, math.floor(${result}))`) };
+    return { kernel: "blockbench_steps", direction: "in", count };
+  }
   const match = /^ease(inout|in|out)(sine|quad|cubic|quart|quint|expo|circ|back|elastic|bounce)$/.exec(normalized);
   if (!match) throw new Error(`Unsupported easing ${name}.`);
   const direction = match[1] === "inout" ? "in_out" : match[1] as "in" | "out";
   const kind = match[2];
   const exponent = ({ quad: 2, cubic: 3, quart: 4, quint: 5 } as Record<string, number>)[kind];
   if (exponent) return { kernel: "power", direction, exponent };
-  if (kind === "back") return { kernel: "back", direction, overshoot: (args?.[0] ?? 1) * 1.70158 };
-  if (kind === "elastic") return { kernel: "blockbench_elastic", direction, frequency: args?.[0] ?? 1 };
-  if (kind === "bounce") return { kernel: "blockbench_bounce", direction, bounciness: args?.[0] ?? 0.5 };
+  if (kind === "back") return { kernel: "back", direction, overshoot: affineScalarIR(scalarIR(args?.[0] ?? 1), 1.70158) };
+  if (kind === "elastic") return { kernel: "blockbench_elastic", direction, frequency: scalarIR(args?.[0] ?? 1) };
+  if (kind === "bounce") return { kernel: "blockbench_bounce", direction, bounciness: scalarIR(args?.[0] ?? 0.5) };
+  if (kind === "expo") return { kernel: "blockbench_expo", direction };
   return { kernel: kind as EasingIR["kernel"], direction };
 }

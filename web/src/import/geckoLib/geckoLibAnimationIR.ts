@@ -1,15 +1,15 @@
-import type { AnimationIR, NodeIR, TimelineEventIR } from "../../domain/animationIR";
-import { sourceDelayIR } from "../../domain/animationIRConversion";
+import type { AnimationIR, NodeIR, ScalarIR, TimelineEventIR } from "../../domain/animationIR";
+import { affineCurveIR, scalarIR, sourceDelayIR } from "../../domain/animationIRConversion";
 import { sourceSecondsTime } from "../../format/time";
 import type { ImportedNode } from "../../domain/conversionSeed";
 import { matrix4ToRowMajor } from "../../format/matrix";
 import type { BbAnimation, BbAnimator } from "../common/blockbenchCubeSchema";
 import type { BoneEntry } from "../common/blockbenchCubeModel";
-import { affineMolang, type MolangScalar, type MolangVector } from "../common/molangVector";
+import type { MolangScalar } from "../common/molangVector";
 import { importedNodeIR, blockbenchCurveIR } from "../common/blockbenchAnimationIR";
 import { PLAYER_RENDER_SCALE } from "../common/blockbenchCubeModel";
 import { PLAYER_ROTATION_QUERY_VALUE_NAMES } from "../../format/molang/queryCatalog";
-import { rewriteMolangIdentifiers } from "../../format/molang/sourceTransformer";
+import { mapMolangResult, rewriteMolangIdentifiers } from "../../format/molang/sourceTransformer";
 
 export interface GeckoLibAnimationSource {
   animation: BbAnimation;
@@ -30,6 +30,13 @@ export function createGeckoLibAnimationIR(source: GeckoLibAnimationSource, bones
       playback: { mode: source.playbackMode, start_delay: sourceDelayIR(source.animation.start_delay || 0), loop_delay: sourceDelayIR(source.animation.loop_delay || 0) },
       tracks: [], events: { start: [], timeline: source.events, loop: [], stop: [] } },
   };
+  const corrected = (value: MolangScalar): MolangScalar => typeof value !== "string" ? value : rewriteMolangIdentifiers(value, (identifier) => {
+    const match = /^(?:q|query)\.([A-Za-z_][A-Za-z0-9_]*)$/i.exec(identifier);
+    return match && PLAYER_ROTATION_QUERY_VALUE_NAMES.has(match[1].toLowerCase()) ? `-(${identifier})` : undefined;
+  });
+  const rawWeight = scalarIR(corrected(source.blendWeight));
+  const blendWeight: ScalarIR = typeof rawWeight === "number" ? Math.max(0, rawWeight)
+    : { molang: mapMolangResult(rawWeight.molang, (result) => `math.max(0, ${result})`) };
   for (const bone of bones) {
     const id = `group:${bone.uuid}`;
     const parentOrigin = bone.parent?.group.origin ?? [0, 0, 0];
@@ -58,18 +65,23 @@ export function createGeckoLibAnimationIR(source: GeckoLibAnimationSource, bones
     }
     const animator = source.animators.get(bone.uuid);
     if (!animator) continue;
-    for (const channel of ["position", "rotation", "scale"] as const) {
-      const convert = (values: MolangVector): MolangVector => {
-        values = values.map((value) => typeof value === "string" ? rewriteMolangIdentifiers(value, (identifier) => {
-          const match = /^(?:q|query)\.([A-Za-z_][A-Za-z0-9_]*)$/i.exec(identifier);
-          return match && PLAYER_ROTATION_QUERY_VALUE_NAMES.has(match[1].toLowerCase()) ? `-(${identifier})` : undefined;
-        }) : value) as MolangVector;
-        if (channel === "position") return values.map((v, axis) => affineMolang(v, affineMolang(source.blendWeight, 1 / 16, 0), position[axis])) as MolangVector;
-        if (channel === "rotation") return values.map((v, axis) => affineMolang(v, source.blendWeight, rotation[axis])) as MolangVector;
-        return values.map((v) => affineMolang(v, source.blendWeight, affineMolang(source.blendWeight, -1, 1))) as MolangVector;
-      };
-      const driver = blockbenchCurveIR((animator.keyframes ?? []).filter((f) => f.channel === channel), convert);
-      if (driver) ir.animation.tracks.push({ target: { node: id, operation: channel }, channel: "value", driver });
+    let weight = blendWeight;
+    if (typeof weight !== "number" && animator.keyframes?.some((frame) => ["position", "rotation", "scale"].includes(frame.channel))) {
+      const valueId = `blend_${Object.keys(ir.animation.values ?? {}).length}`;
+      (ir.animation.values ??= {})[valueId] = { type: "expression", base: [1], value: [weight] };
+      weight = { molang: `q.value('${valueId}', 0)` };
+    }
+    for (const channel of ["rotation", "position", "scale"] as const) {
+      const frames = (animator.keyframes ?? []).filter((frame) => frame.channel === channel).map((frame) => ({ ...frame,
+        data_points: frame.data_points.map((point) => ({ ...point, x: point.x === undefined ? undefined : corrected(point.x), y: point.y === undefined ? undefined : corrected(point.y), z: point.z === undefined ? undefined : corrected(point.z) })),
+        easingArgs: frame.easingArgs?.map(corrected), bezier_left_time: frame.bezier_left_time?.map(corrected), bezier_right_time: frame.bezier_right_time?.map(corrected),
+        bezier_left_value: frame.bezier_left_value?.map(corrected), bezier_right_value: frame.bezier_right_value?.map(corrected),
+      }));
+      const curve = blockbenchCurveIR(frames);
+      if (!curve) continue;
+      const base = channel === "position" ? position : channel === "rotation" ? rotation : [1, 1, 1];
+      const driver = affineCurveIR(curve, channel === "position" ? [1 / 16, 1 / 16, 1 / 16] : [1, 1, 1], channel === "scale" ? [0, 0, 0] : base);
+      ir.animation.tracks.push({ target: { node: id, operation: channel }, channel: "value", driver, ...(weight === 1 ? {} : { blend: { base, weight } }) });
     }
   }
   return ir;

@@ -277,32 +277,39 @@ final class AnimationEvaluator {
         int index = 0;
         while (index + 1 < keys.size() && keys.get(index + 1).tick() <= tick) index++;
         Keyframe left = keys.get(index);
-        if (tick == left.tick() || index == keys.size() - 1) return vector((VectorValue) left.post(), 1);
+        if (tick == left.tick()) return vector((VectorValue) (driver.keyPre() ? left.pre() : left.post()), 1);
+        if (index == keys.size() - 1) return vector((VectorValue) left.post(), 1);
         Keyframe right = keys.get(index + 1);
         double progress = (tick - left.tick()) / (right.tick() - left.tick());
-        double[] start = vector((VectorValue) left.post(), progress);
         Segment segment = driver.segments().get(index);
-        if (segment.interpolation() == Interpolation.STEP) return start;
-        double[] end = vector((VectorValue) right.pre(), progress);
-        double t = easing(segment.easing(), progress);
+        VectorValue startValues = (VectorValue) left.post(), endValues = (VectorValue) right.pre();
+        if (segment.interpolation() == Interpolation.STEP) return vector(startValues, progress);
+        boolean component = driver.componentEvaluation();
+        double[] start = component ? null : vector(startValues, progress);
+        double[] end = component ? null : vector(endValues, progress);
+        double eased = component ? progress : easing(segment.easing(), progress);
         if (segment.interpolation() == Interpolation.SLERP) {
             Quaterniond rotation = new Quaterniond(start[0], start[1], start[2], start[3]).normalize()
-                .slerp(new Quaterniond(end[0], end[1], end[2], end[3]).normalize(), t).normalize();
+                .slerp(new Quaterniond(end[0], end[1], end[2], end[3]).normalize(), eased).normalize();
             return new double[]{rotation.x, rotation.y, rotation.z, rotation.w};
         }
-        double[] previous = segment.interpolation() == Interpolation.CATMULL_ROM && segment.previous() != null ? vector(segment.previous(), progress) : start;
-        double[] following = segment.interpolation() == Interpolation.CATMULL_ROM && segment.following() != null ? vector(segment.following(), progress) : end;
-        double[] out = segment.interpolation() == Interpolation.HERMITE ? vector(segment.outTangent(), progress) : null;
-        double[] in = segment.interpolation() == Interpolation.HERMITE ? vector(segment.inTangent(), progress) : null;
+        double[] previous = !component && segment.interpolation() == Interpolation.CATMULL_ROM && segment.previous() != null ? vector(segment.previous(), progress) : start;
+        double[] following = !component && segment.interpolation() == Interpolation.CATMULL_ROM && segment.following() != null ? vector(segment.following(), progress) : end;
+        double[] out = !component && segment.interpolation() == Interpolation.HERMITE ? vector(segment.outTangent(), progress) : null;
+        double[] in = !component && segment.interpolation() == Interpolation.HERMITE ? vector(segment.inTangent(), progress) : null;
         double durationSeconds = (right.tick() - left.tick()) / 20.0;
-        double[] result = new double[start.length];
-        for (int i = 0; i < start.length; i++) {
-            double a = start[i], b = end[i];
+        double[] result = new double[startValues.components().size()];
+        for (int i = 0; i < result.length; i++) {
+            double t = component ? easing(segment.easing(), progress) : eased;
+            double p0 = component && segment.interpolation() == Interpolation.CATMULL_ROM && segment.previous() != null ? scalar(segment.previous().components().get(i), progress) : previous == null ? 0 : previous[i];
+            double a = component ? scalar(startValues.components().get(i), progress) : start[i];
+            double b = component ? scalar(endValues.components().get(i), progress) : end[i];
+            double p1 = component && segment.interpolation() == Interpolation.CATMULL_ROM && segment.following() != null ? scalar(segment.following().components().get(i), progress) : following == null ? 0 : following[i];
             result[i] = switch (segment.interpolation()) {
                 case LINEAR -> a + (b - a) * t;
                 case CATMULL_ROM, HERMITE -> {
-                    double m0 = segment.interpolation() == Interpolation.HERMITE ? out[i] * durationSeconds : segment.tension() * (b - previous[i]);
-                    double m1 = segment.interpolation() == Interpolation.HERMITE ? in[i] * durationSeconds : segment.tension() * (following[i] - a);
+                    double m0 = segment.interpolation() == Interpolation.HERMITE ? (component ? scalar(segment.outTangent().components().get(i), progress) : out[i]) * durationSeconds : segment.tension() * (b - (segment.previous() == null ? a : p0));
+                    double m1 = segment.interpolation() == Interpolation.HERMITE ? (component ? scalar(segment.inTangent().components().get(i), progress) : in[i]) * durationSeconds : segment.tension() * ((segment.following() == null ? b : p1) - a);
                     double t2 = t * t, t3 = t2 * t;
                     yield (2 * t3 - 3 * t2 + 1) * a + (t3 - 2 * t2 + t) * m0
                         + (-2 * t3 + 3 * t2) * b + (t3 - t2) * m1;
@@ -310,12 +317,15 @@ final class AnimationEvaluator {
                 case BEZIER -> {
                     BezierHandle handle = segment.handles().get(i);
                     double outTime = scalar(handle.outTime(), progress), inTime = scalar(handle.inTime(), progress);
-                    if (!(outTime >= 0 && outTime <= inTime && inTime <= 1)) throw new IllegalStateException("Bezier time handles must be monotonic within [0, 1]");
-                    double h1 = scalar(handle.outValue(), progress), h2 = scalar(handle.inValue(), progress);
+                    if (!(outTime >= 0 && outTime <= 1 && inTime >= 0 && inTime <= 1)) throw new IllegalStateException("Bezier time handles must be within [0, 1]");
+                    double h1 = scalar(handle.outValue(), progress) + (handle.outRelative() ? a : 0);
+                    double h2 = scalar(handle.inValue(), progress) + (handle.inRelative() ? b : 0);
                     double low = 0, high = 1;
                     for (int iteration = 0; iteration < 48; iteration++) {
                         double k = (low + high) / 2;
-                        if (cubic(0, outTime, inTime, 1, k) < t) low = k;
+                        double x = cubic(0, outTime, inTime, 1, k);
+                        if (x == t) { low = high = k; break; }
+                        if (x < t) low = k;
                         else high = k;
                     }
                     yield cubic(a, h1, h2, b, (low + high) / 2);
@@ -335,8 +345,7 @@ final class AnimationEvaluator {
         if (easing == null || easing.kernel().equals("linear")) return u;
         double parameter = scalar(easing.parameter(), u);
         if (easing.kernel().equals("power") && parameter <= 0
-            || Set.of("steps", "blockbench_steps").contains(easing.kernel()) && (parameter < 2 || parameter != Math.floor(parameter))
-            || easing.kernel().equals("blockbench_bounce") && !(parameter > 0 && parameter < 1)) throw new IllegalStateException("Invalid easing parameter");
+            || Set.of("steps", "blockbench_steps").contains(easing.kernel()) && (parameter < 2 || parameter != Math.floor(parameter))) throw new IllegalStateException("Invalid easing parameter");
         return switch (easing.direction()) {
             case "in" -> easingBase(easing.kernel(), parameter, u);
             case "out" -> 1 - easingBase(easing.kernel(), parameter, 1 - u);
@@ -358,7 +367,17 @@ final class AnimationEvaluator {
                 Math.min(121 * parameter * parameter * Math.pow(u - 9.0 / 11, 2) + 1 - parameter * parameter,
                     484 * parameter * parameter * parameter * Math.pow(u - 10.5 / 11, 2) + 1 - parameter * parameter * parameter));
             case "steps" -> Math.floor(u * parameter) / parameter;
-            case "blockbench_steps" -> Math.min(parameter - 1, Math.floor(u * parameter)) / parameter;
+            case "blockbench_steps" -> {
+                double step = 1 / parameter;
+                if (u > (parameter - 1) * step) yield (parameter - 1) * step;
+                double low = 0, high = parameter - 1;
+                while (high - low > 1) {
+                    double middle = low + Math.floor((high - low) / 2);
+                    if (u >= middle * step) low = middle;
+                    else high = middle;
+                }
+                yield low * step;
+            }
             default -> throw new IllegalStateException("Unexpected easing kernel " + kernel);
         };
     }

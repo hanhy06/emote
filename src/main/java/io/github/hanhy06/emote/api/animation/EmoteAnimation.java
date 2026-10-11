@@ -106,7 +106,7 @@ public record EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings set
     public record Blend(List<Double> base, ScalarValue weight) { public Blend { base = List.copyOf(base); } }
     public record SharedValue(List<Double> base, Driver driver) { public SharedValue { base = List.copyOf(base); } }
     public enum DriverType { EXPRESSION, CURVE, STATE }
-    public record Driver(DriverType type, Value value, List<Keyframe> keys, List<Segment> segments, boolean firstPre) {
+    public record Driver(DriverType type, Value value, List<Keyframe> keys, List<Segment> segments, boolean firstPre, boolean keyPre, boolean componentEvaluation) {
         public Driver { keys = List.copyOf(keys); segments = List.copyOf(segments); }
     }
     public record Keyframe(int tick, Value pre, Value post) {}
@@ -115,7 +115,7 @@ public record EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings set
                           VectorValue following, VectorValue outTangent, VectorValue inTangent, List<BezierHandle> handles) {
         public Segment { handles = List.copyOf(handles); }
     }
-    public record BezierHandle(ScalarValue outTime, ScalarValue outValue, ScalarValue inTime, ScalarValue inValue) {}
+    public record BezierHandle(ScalarValue outTime, ScalarValue outValue, boolean outRelative, ScalarValue inTime, ScalarValue inValue, boolean inRelative) {}
     public record Easing(String kernel, String direction, ScalarValue parameter) {}
     public sealed interface Value permits VectorValue, VisibilityValue, NbtValue {}
     public record VectorValue(List<ScalarValue> components) implements Value {

@@ -1,10 +1,38 @@
-import { orderedNodeIds, type AnimationEntryIR, type AnimationIR, type ClipIR, type ScalarIR, type TimeValueIR } from "./animationIR";
+import { orderedNodeIds, type AnimationEntryIR, type AnimationIR, type ClipIR, type CurveIR, type ScalarIR, type TimeValueIR, type VectorValueIR } from "./animationIR";
 import { formatMinecraftTime, parseAnimationSeconds, parseMinecraftTime, sourceSecondsTime } from "../format/time";
 import { evaluatePose } from "./animationIRPose";
+import { mapMolangResult } from "../format/molang/sourceTransformer";
 export function scalarIR(value: number | string): ScalarIR {
   if (typeof value !== "string") return value as ScalarIR;
   const numeric = Number(value.trim());
   return Number.isFinite(numeric) ? numeric : { molang: value };
+}
+
+export function affineScalarIR(value: ScalarIR, factor: number, offset = 0): ScalarIR {
+  if (typeof value === "number") return value * factor + offset;
+  if (factor === 1 && offset === 0) return value;
+  return { molang: mapMolangResult(value.molang, (result) => {
+    const scaled = factor === 1 ? `(${result})` : `((${result}) * ${factor})`;
+    return offset === 0 ? scaled : `(${scaled} + ${offset})`;
+  }) };
+}
+
+export function affineCurveIR(curve: CurveIR, factors: readonly number[], offsets: readonly number[]): CurveIR {
+  const vector = (values: VectorValueIR, relative = false) => values.map((value, axis) => affineScalarIR(value, factors[axis], relative ? 0 : offsets[axis]));
+  for (const key of curve.keys) {
+    if (key.value) key.value = vector(key.value);
+    else { key.pre = vector(key.pre); key.post = vector(key.post); }
+  }
+  for (const segment of curve.segments) {
+    if (segment.previous) segment.previous = vector(segment.previous);
+    if (segment.following) segment.following = vector(segment.following);
+    if (segment.out_tangent) segment.out_tangent = vector(segment.out_tangent, true);
+    if (segment.in_tangent) segment.in_tangent = vector(segment.in_tangent, true);
+    for (const [axis, handle] of (segment.handles ?? []).entries()) for (const control of [handle.out, handle.in]) {
+      control.value = affineScalarIR(control.value, factors[axis], control.relative ? 0 : offsets[axis]);
+    }
+  }
+  return curve;
 }
 
 export function sourceDelayIR(value: number | string): TimeValueIR {

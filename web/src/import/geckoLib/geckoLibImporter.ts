@@ -103,12 +103,17 @@ export function importGeckoLibProject(project: GeckoLibBbmodelProject, sourceNam
     }
   }
 
+  const boneByUuid = new Map(bones.map((bone) => [bone.uuid, bone]));
+  const animationBones = [...new Set([...project.groups.map((group) => group.uuid), ...boneByUuid.keys()])].flatMap((uuid) => {
+    const bone = boneByUuid.get(uuid);
+    return bone ? [bone] : [];
+  });
   const animations: ImportedAnimation[] = [];
   for (const [index, animation] of project.animations.entries()) {
     const sourceIndex = project.animationSourceIndices?.[index] ?? index;
     const animationDiagnostics: ConversionIssue[] = [];
     try {
-      const imported = importAnimation(animation, sourceIndex, bones, nodes, animationDiagnostics);
+      const imported = importAnimation(animation, sourceIndex, animationBones, nodes, animationDiagnostics);
       animations.push(imported);
       diagnostics.push(...animationDiagnostics);
     } catch (reason) {

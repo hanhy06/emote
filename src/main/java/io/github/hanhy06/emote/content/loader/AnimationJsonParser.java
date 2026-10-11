@@ -198,6 +198,11 @@ public final class AnimationJsonParser {
     private Driver driver(JsonObject driver, Channel channel, int size, int durationTicks, String p, EmoteJsonDocument d) throws EmoteLoadException {
         DriverType type = enumeration(DriverType.class, nonempty(driver, "type", p, d), p + ".type", d);
         boolean firstPre = text(driver, "before", "base", p, d).equals("first_pre");
+        String atKey = text(driver, "at_key", "post", p, d);
+        if (!Set.of("pre", "post").contains(atKey)) throw d.error(p + ".at_key", "invalid key policy");
+        String evaluation = text(driver, "evaluation", "vector", p, d);
+        if (!Set.of("vector", "component").contains(evaluation)) throw d.error(p + ".evaluation", "invalid evaluation order");
+        if (evaluation.equals("component") && (type != DriverType.CURVE || size != 1 && size != 3)) throw d.error(p + ".evaluation", "component evaluation requires a scalar or three-component curve");
         if (!Set.of("base", "first_pre").contains(text(driver, "before", "base", p, d))) throw d.error(p + ".before", "invalid before policy");
         Value expression = null;
         List<Keyframe> keys = new ArrayList<>();
@@ -235,7 +240,7 @@ public final class AnimationJsonParser {
                 for (int s = 0; s < arraySegments.size(); s++) segments.add(segment(d.requireObject(arraySegments.get(s), p + ".segments[" + s + "]"), size, p + ".segments[" + s + "]", d));
             }
         }
-        return new Driver(type, expression, keys, segments, firstPre);
+        return new Driver(type, expression, keys, segments, firstPre, atKey.equals("pre"), evaluation.equals("component"));
     }
 
     private Segment segment(JsonObject raw, int size, String path, EmoteJsonDocument d) throws EmoteLoadException {
@@ -265,8 +270,7 @@ public final class AnimationJsonParser {
                     default -> throw d.error(ep + "." + field, "is required");
                 };
             if (parameter instanceof ConstantValue c && (kernel.equals("power") && c.value() <= 0
-                || Set.of("steps", "blockbench_steps").contains(kernel) && (c.value() < 2 || c.value() != Math.floor(c.value()))
-                || kernel.equals("blockbench_bounce") && !(c.value() > 0 && c.value() < 1))) throw d.error(ep, "invalid easing parameter");
+                || Set.of("steps", "blockbench_steps").contains(kernel) && (c.value() < 2 || c.value() != Math.floor(c.value())))) throw d.error(ep, "invalid easing parameter");
             if (interpolation == Interpolation.BEZIER && Set.of("back", "blockbench_elastic").contains(kernel)) throw d.error(ep, "overshoot easing is not supported for Bezier");
             easing = new Easing(kernel, direction, parameter);
         }
@@ -279,9 +283,9 @@ public final class AnimationJsonParser {
                 JsonObject handle = d.requireObject(h.get(i), hp), out = d.requireObject(handle, "out", hp), in = d.requireObject(handle, "in", hp);
                 ScalarValue ot = scalar(d.requireElement(out, "time", hp + ".out"), hp + ".out.time", d), it = scalar(d.requireElement(in, "time", hp + ".in"), hp + ".in.time", d);
                 if (ot instanceof ConstantValue o && (o.value() < 0 || o.value() > 1)
-                    || it instanceof ConstantValue n && (n.value() < 0 || n.value() > 1)
-                    || ot instanceof ConstantValue o && it instanceof ConstantValue n && o.value() > n.value()) throw d.error(hp, "time handles must be monotonic within [0, 1]");
-                handles.add(new BezierHandle(ot, scalar(d.requireElement(out, "value", hp + ".out"), hp + ".out.value", d), it, scalar(d.requireElement(in, "value", hp + ".in"), hp + ".in.value", d)));
+                    || it instanceof ConstantValue n && (n.value() < 0 || n.value() > 1)) throw d.error(hp, "time handles must be within [0, 1]");
+                handles.add(new BezierHandle(ot, scalar(d.requireElement(out, "value", hp + ".out"), hp + ".out.value", d), bool(out, "relative", false, hp + ".out", d),
+                    it, scalar(d.requireElement(in, "value", hp + ".in"), hp + ".in.value", d), bool(in, "relative", false, hp + ".in", d)));
             }
         }
         VectorValue out = optionalVector(raw, "out_tangent", size, path, d), in = optionalVector(raw, "in_tangent", size, path, d);

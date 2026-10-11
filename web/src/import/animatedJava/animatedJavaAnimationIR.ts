@@ -1,12 +1,12 @@
 import { sourceSecondsTime } from "../../format/time";
-import type { AnimationIR, NodeIR } from "../../domain/animationIR";
-import { sourceDelayIR } from "../../domain/animationIRConversion";
+import type { AnimationIR, NodeIR, ScalarIR } from "../../domain/animationIR";
+import { affineCurveIR, scalarIR, sourceDelayIR } from "../../domain/animationIRConversion";
 import type { ImportedNode } from "../../domain/conversionSeed";
 import type { DisplayNbtPatch } from "../../domain/minecraftData";
 import { writeDisplayNbt } from "../../format/minecraftData";
 import { minecraftVersionProfile } from "../../format/minecraftVersionProfiles";
 import { importedNodeIR, blockbenchCurveIR } from "../common/blockbenchAnimationIR";
-import { affineMolang, molangScalar, type MolangVector } from "../common/molangVector";
+import { mapMolangResult } from "../../format/molang/sourceTransformer";
 import { initialDisplayNbt } from "../common/runtimeOutput";
 import type { AjProject, AjProjectAnimation, ProjectTransformGraph } from "./animatedJavaProjectSchema";
 import type { AnimatedJavaCubes } from "./animatedJavaCubes";
@@ -28,9 +28,13 @@ export function createAnimatedJavaAnimationIR(source: AjProjectAnimation, projec
     animation: { duration: sourceSecondsTime(typeof source.length === "number" ? Math.max(0.05, source.length, ...Object.values(source.animators).flatMap((a) => (a.keyframes ?? []).map((f) => f.time))) : source.length), tracks: [] },
   };
   ir.animation.playback = { mode: playbackMode as "once" | "hold" | "loop", start_delay: sourceDelayIR(source.start_delay || 0), loop_delay: sourceDelayIR(source.loop_delay || 0) };
-  const weight = molangScalar(source.blend_weight || 1);
-  const groupWeight = source.blend_weight === undefined || source.blend_weight === "" ? 1 : molangScalar(source.blend_weight);
-  for (const [uuid, group] of hierarchy.groups) {
+  const rawWeight = scalarIR(source.blend_weight === undefined || source.blend_weight === "" ? 1 : source.blend_weight);
+  const blendWeight: ScalarIR = typeof rawWeight === "number" ? Math.max(0, rawWeight)
+    : { molang: mapMolangResult(rawWeight.molang, (result) => `math.max(0, ${result})`) };
+  const groupIds = [...new Set([...project.groups.map((group) => group.uuid), ...hierarchy.groups.keys()])];
+  for (const uuid of groupIds) {
+    const group = hierarchy.groups.get(uuid);
+    if (!group) continue;
     const id = `group:${uuid}`;
     const parent = hierarchy.groupParents.get(uuid);
     const origin = parent ? hierarchy.groups.get(parent)?.origin ?? [0, 0, 0] : [0, 0, 0];
@@ -40,15 +44,21 @@ export function createAnimatedJavaAnimationIR(source: AjProjectAnimation, projec
       transform: [ { id: "position", op: "translate", value: position },
         { id: "rotation", op: "rotate_euler", order: "ZYX", value: group.rotation }, { id: "scale", op: "scale", value: [1, 1, 1] } ],
     };
-    for (const channel of ["position", "rotation", "scale"] as const) {
-      const frames = source.animators[uuid]?.keyframes?.filter((frame) => frame.channel === channel) ?? [];
-      const transform = (values: MolangVector): MolangVector => values.map((value, axis) => {
-        if (channel === "position") return affineMolang(value, affineMolang(groupWeight, 1 / 16, 0), position[axis]);
-        if (channel === "rotation") return affineMolang(value, groupWeight, group.rotation[axis]);
-        return affineMolang(value, groupWeight, affineMolang(groupWeight, -1, 1));
-      }) as MolangVector;
-      const driver = blockbenchCurveIR(frames, transform);
-      if (driver) ir.animation.tracks.push({ target: { node: id, operation: channel }, channel: "value", driver });
+    let weight = blendWeight;
+    if (typeof weight !== "number" && source.animators[uuid]?.keyframes?.some((frame) => ["position", "rotation", "scale"].includes(frame.channel))) {
+      const valueId = `blend_${Object.keys(ir.animation.values ?? {}).length}`;
+      (ir.animation.values ??= {})[valueId] = { type: "expression", base: [1], value: [weight] };
+      weight = { molang: `q.value('${valueId}', 0)` };
+    }
+    for (const channel of ["rotation", "position", "scale"] as const) {
+      const frames = (source.animators[uuid]?.keyframes?.filter((frame) => frame.channel === channel) ?? []).map((frame) => ({ ...frame,
+        ...(/bounce$/i.test(frame.easing ?? "") && frame.easingArgs?.[0] === undefined ? { easingArgs: [0.25] } : {}),
+      }));
+      const curve = blockbenchCurveIR(frames);
+      if (!curve) continue;
+      const base = channel === "position" ? position : channel === "rotation" ? group.rotation : [1, 1, 1];
+      const driver = affineCurveIR(curve, channel === "position" ? [1 / 16, 1 / 16, 1 / 16] : [1, 1, 1], channel === "scale" ? [0, 0, 0] : base);
+      ir.animation.tracks.push({ target: { node: id, operation: channel }, channel: "value", driver, ...(weight === 1 ? {} : { blend: { base, weight } }) });
     }
   }
   for (const bone of cubes?.bones ?? []) for (const entry of bone.nodes) {
@@ -83,15 +93,23 @@ export function createAnimatedJavaAnimationIR(source: AjProjectAnimation, projec
       { id: "rotation", op: "rotate_euler", order: "XYZ", value: rotation }, { id: "scale", op: "scale", value: size } ];
     if (n?.type === "text_display") node.transform.push({ id: "text_orientation", op: "rotate_euler", order: "XYZ", value: [0, 180, 0] });
     ir.nodes[element.uuid] = node;
-    for (const channel of ["position", "rotation", "scale"] as const) {
-      const frames = source.animators[element.uuid]?.keyframes?.filter((f) => f.channel === channel) ?? [];
-      const transform = (v: MolangVector): MolangVector => v.map((v, axis) => {
-        if (channel === "position") return affineMolang(v, affineMolang(weight, (axis === 0 ? -1 : 1) / 16, 0), basePosition[axis]);
-        if (channel === "rotation") return affineMolang(v, affineMolang(weight, axis === 2 ? 1 : -1, 0), rotation[axis]);
-        return affineMolang(affineMolang(v, weight, affineMolang(weight, -1, 1)), !n || n.type === "item_display" ? 1 : size[axis], 0);
-      }) as MolangVector;
-      const driver = blockbenchCurveIR(frames, transform);
-      if (driver) ir.animation.tracks.push({ target: { node: element.uuid, operation: channel }, channel: "value", driver });
+    let weight = blendWeight;
+    if (typeof weight !== "number" && source.animators[element.uuid]?.keyframes?.some((frame) => ["position", "rotation", "scale"].includes(frame.channel))) {
+      const valueId = `blend_${Object.keys(ir.animation.values ?? {}).length}`;
+      (ir.animation.values ??= {})[valueId] = { type: "expression", base: [1], value: [weight] };
+      weight = { molang: `q.value('${valueId}', 0)` };
+    }
+    for (const channel of ["rotation", "position", "scale"] as const) {
+      const frames = (source.animators[element.uuid]?.keyframes?.filter((frame) => frame.channel === channel) ?? []).map((frame) => ({ ...frame,
+        ...(/bounce$/i.test(frame.easing ?? "") && frame.easingArgs?.[0] === undefined ? { easingArgs: [0.25] } : {}),
+      }));
+      const curve = blockbenchCurveIR(frames);
+      if (!curve) continue;
+      const displayScale = !n || n.type === "item_display" ? [1, 1, 1] : size;
+      const base = channel === "position" ? basePosition : channel === "rotation" ? rotation : displayScale;
+      const factors = channel === "position" ? [-1 / 16, 1 / 16, 1 / 16] : channel === "rotation" ? [-1, -1, 1] : displayScale;
+      const driver = affineCurveIR(curve, factors, channel === "scale" ? [0, 0, 0] : base);
+      ir.animation.tracks.push({ target: { node: element.uuid, operation: channel }, channel: "value", driver, ...(weight === 1 ? {} : { blend: { base, weight } }) });
     }
   }
   const statesByNode = new Map<string, ProjectNodeStateFrame[]>();

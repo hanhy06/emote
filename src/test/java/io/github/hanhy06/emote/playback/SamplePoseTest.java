@@ -27,6 +27,8 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -181,6 +183,67 @@ class SamplePoseTest {
             variantEvaluator.evaluateFrame(15, 0, 1, 15, true);
             double expectedBend = kernel.equals("blockbench_expo") ? 4 * Math.pow(2, -7.5) : 0.8;
             assertEquals((expectedBend + 0.25) * 0.5, variantEvaluator.matrix(0).m32(), 1e-6);
+        }
+    }
+
+    @Test
+    void playsConvertedBbAndAjEasingsAgainstOriginalSourceValues() throws Exception {
+        var reference = JsonParser.parseString(java.nio.file.Files.readString(Path.of("web/src/test/fixtures/blockbench-easings.json"))).getAsJsonObject();
+        for (String format : new String[]{"bb", "aj"}) {
+            byte[] bytes;
+            try (var input = Objects.requireNonNull(getClass().getResourceAsStream("/" + format + "-easings.json"))) { bytes = input.readAllBytes(); }
+            var animation = PreparedAnimation.prepare(new AnimationJsonParser().parse(Path.of(format + "-easings.json"), bytes), registries);
+            assertEquals(32, animation.model().clip().tracks().size());
+            var evaluator = new AnimationEvaluator(animation, MolangQuerySource.EMPTY);
+            evaluator.initialize(0, 0);
+            double scale = format.equals("bb") ? 0.9375 : 1;
+            for (int point = 1; point < reference.getAsJsonArray("progress").size() - 1; point++) {
+                int tick = (int) Math.round(reference.getAsJsonArray("progress").get(point).getAsDouble() * 20);
+                evaluator.prepareFrame(tick, 0, 1, tick);
+                evaluator.evaluateFrame(tick, 0, 1, tick, true);
+                Map<String, Matrix4fc> matrices = new HashMap<>();
+                for (int i = 0; i < evaluator.nodeCount(); i++) matrices.put(evaluator.nodeId(i), evaluator.matrix(i));
+                for (var entry : reference.getAsJsonArray("cases")) {
+                    var easing = entry.getAsJsonObject();
+                    String name = easing.get("name").getAsString();
+                    double expected = easing.getAsJsonArray(format).get(point).getAsDouble();
+                    assertEquals(expected, matrices.get(name).m30() / scale - 1, 1e-6, format + "." + name + "@" + tick);
+                }
+            }
+        }
+    }
+
+    @Test
+    void preservesBlockbenchKeySelectionAndRelativeControls() throws Exception {
+        byte[] bytes;
+        try (var input = Objects.requireNonNull(getClass().getResourceAsStream("/blockbench-curves.json"))) { bytes = input.readAllBytes(); }
+        var animation = PreparedAnimation.prepare(new AnimationJsonParser().parse(Path.of("blockbench-curves.json"), bytes), registries);
+        List<String> calls = new ArrayList<>();
+        var evaluator = new AnimationEvaluator(animation, session -> {
+            MolangQuerySource.EMPTY.apply(session);
+            session.setQueryFunction("scoreboard", arguments -> {
+                String id = arguments.string(0);
+                calls.add(id);
+                return MolangEngine.QueryValue.number(switch (id) {
+                    case "start", "start_y" -> 4;
+                    case "end", "end_y" -> 8;
+                    case "out" -> 2;
+                    case "in" -> -1;
+                    default -> throw new IllegalStateException("Unexpected query " + id);
+                });
+            });
+        });
+        evaluator.initialize(0, 0);
+        int[] ticks = {0, 10, 20, 30, 31};
+        double[] expected = {2, 2, 6.375, 8, 10};
+        for (int point = 0; point < ticks.length; point++) {
+            calls.clear();
+            int tick = ticks[point];
+            evaluator.prepareFrame(tick, 0, 1, tick);
+            evaluator.evaluateFrame(tick, 0, 1, tick, true);
+            assertEquals(expected[point], evaluator.matrix(0).m30(), 1e-6, "tick=" + tick);
+            assertEquals(tick == 20 ? 6 : tick == 30 ? 8 : 0, evaluator.matrix(0).m31(), 1e-6, "Y tick=" + tick);
+            assertEquals(tick == 20 ? List.of("start", "end", "out", "in", "start_y", "end_y") : tick == 30 ? List.of("end", "end_y") : List.of(), calls);
         }
     }
 

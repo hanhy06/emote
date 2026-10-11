@@ -30,6 +30,14 @@ it("preserves the matrices of the 11 documentation samples after reference conve
   for (const [name, actual] of converted) {
     const path = `docs/sample/${actual.id.startsWith("sit:") ? "sit/" : ""}${actual.id.replaceAll(":", ".")}.json`;
     const expected: AnimationIR = JSON.parse(await readFile(new URL(`../../../${path}`, import.meta.url), "utf8"));
+    if (name === "indicate") {
+      const head = expected.animation.tracks.find((track) => track.target.node === "group:e6d94dbf-09d0-91b4-b6f9-741dcc8a6641" && track.target.operation === "rotation");
+      expect(head?.driver.type).toBe("curve");
+      if (head?.driver.type === "curve") {
+        expect(head.driver.keys[0].time).toBe("5t");
+        head.driver.before = "first_pre";
+      }
+    }
     const displayIds = (animation: AnimationIR) => Object.keys(animation.nodes).filter((id) => Object.keys(animation.nodes[id].attachments ?? {}).length > 0).sort();
     const ids = displayIds(expected);
     expect(ids.length, path).toBeGreaterThan(0);

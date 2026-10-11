@@ -101,11 +101,11 @@ export interface BbKeyframe {
   time: number;
   interpolation?: string;
   easing?: string;
-  easingArgs?: number[];
-  bezier_left_time?: number[];
-  bezier_left_value?: number[];
-  bezier_right_time?: number[];
-  bezier_right_value?: number[];
+  easingArgs?: (number | string)[];
+  bezier_left_time?: (number | string)[];
+  bezier_left_value?: (number | string)[];
+  bezier_right_time?: (number | string)[];
+  bezier_right_value?: (number | string)[];
   data_points: BbDataPoint[];
 }
 
