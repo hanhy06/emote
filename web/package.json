@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "test": "vitest run",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
     "check": "npm run typecheck && npm run build"
@@ -22,6 +23,7 @@
     "@types/node": "26.1.1",
     "@types/three": "0.185.1",
     "typescript": "7.0.2",
-    "vite": "^8.1.4"
+    "vite": "^8.1.4",
+    "vitest": "4.1.10"
   }
 }
