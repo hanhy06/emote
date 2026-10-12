@@ -441,6 +441,63 @@ class SamplePoseTest {
         }
     }
 
+    @Test
+    void defersPoseApplicationAndDrainsInterruptedWorkBeforeSeek() throws Exception {
+        byte[] bytes;
+        try (var input = Objects.requireNonNull(getClass().getResourceAsStream("/bd-curves.json"))) { bytes = input.readAllBytes(); }
+        var animation = PreparedAnimation.prepare(new AnimationJsonParser().parse(Path.of("bd-curves.json"), bytes), registries);
+        var mainThread = Thread.currentThread();
+        var workerThread = new java.util.concurrent.atomic.AtomicReference<Thread>();
+        var release = new java.util.concurrent.CountDownLatch(1);
+        try (var worker = java.util.concurrent.Executors.newSingleThreadExecutor(runnable -> {
+            var thread = Thread.ofPlatform().name("test pose worker").unstarted(runnable);
+            workerThread.set(thread);
+            return thread;
+        })) {
+            try {
+                var target = new PoseTarget();
+                var playback = new EmotePlayback(animation, MolangQuerySource.EMPTY, new java.util.Random(1), worker);
+                playback.start(target);
+                var previous = Map.copyOf(target.matrices);
+                var entered = new java.util.concurrent.CountDownLatch(1);
+                worker.submit(() -> {
+                    entered.countDown();
+                    try {
+                        if (!release.await(5, java.util.concurrent.TimeUnit.SECONDS)) throw new IllegalStateException("Pose gate timed out");
+                    }
+                    catch (InterruptedException exception) { throw new IllegalStateException(exception); }
+                });
+                assertTrue(entered.await(5, java.util.concurrent.TimeUnit.SECONDS));
+                playback.prepareAdvance();
+                assertEquals(previous, target.matrices);
+                assertTrue(workerThread.get() != mainThread);
+                var releaser = Thread.ofPlatform().start(() -> {
+                    try { Thread.sleep(30); }
+                    catch (InterruptedException exception) { throw new IllegalStateException(exception); }
+                    finally { release.countDown(); }
+                });
+                mainThread.interrupt();
+                assertThrows(IllegalStateException.class, playback::completeAdvance);
+                assertTrue(Thread.interrupted());
+                releaser.join();
+                assertEquals(previous, target.matrices);
+
+                playback.setTick(10);
+                var referenceTarget = new PoseTarget();
+                var reference = new EmotePlayback(animation);
+                reference.start(referenceTarget);
+                reference.setTick(10);
+                assertEquals(referenceTarget.matrices, target.matrices);
+                worker.shutdown();
+                assertThrows(java.util.concurrent.RejectedExecutionException.class, playback::prepareAdvance);
+                playback.stop();
+            } finally {
+                release.countDown();
+                Thread.interrupted();
+            }
+        }
+    }
+
     private static final class PoseTarget implements EmotePlayback.PoseTarget {
         final Map<String, Matrix4f> matrices = new HashMap<>();
 

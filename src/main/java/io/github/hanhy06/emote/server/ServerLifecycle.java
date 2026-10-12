@@ -67,6 +67,7 @@ public class ServerLifecycle {
         ServerLifecycleEvents.SERVER_STARTED.register(this::handleServerStarted);
         ServerLifecycleEvents.SERVER_STOPPING.register(this::handleServerStopping);
         ServerLifecycleEvents.SERVER_STOPPED.register(this::handleServerStopped);
+        ServerTickEvents.START_SERVER_TICK.register(ignoredServer -> this.playerPlaybackManager.engine().beginTick());
         ServerTickEvents.END_SERVER_TICK.register(ignoredServer -> {
             this.markerPlayback.tick();
             this.playerPlaybackManager.engine().tick();
@@ -116,6 +117,7 @@ public class ServerLifecycle {
 
     private void handleServerStarted(MinecraftServer server) {
         EmoteMod.SERVER = server;
+        this.playerPlaybackManager.engine().startWorker();
         removeOrphanedRuntimeEntities(server);
         this.reloadService.reload();
     }
@@ -137,6 +139,7 @@ public class ServerLifecycle {
 
     private void handleServerStopping(MinecraftServer ignoredServer) {
         this.playerPlaybackManager.engine().stopAll(PlaybackStopReason.SERVER_STOPPING);
+        this.playerPlaybackManager.engine().stopWorker();
         this.cooldowns.clear();
         this.emoteCatalog.clearApiRegistrations();
         this.idlePlaybackService.clear();

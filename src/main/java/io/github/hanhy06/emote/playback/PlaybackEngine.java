@@ -16,12 +16,17 @@ import net.minecraft.world.entity.Entity;
 import org.jspecify.annotations.Nullable;
 
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 
 public final class PlaybackEngine implements ConfigListener {
     private final Map<UUID, ActivePlayback> activePlaybacks = new HashMap<>();
     private int activeDisplayEntities;
-    private final PlaybackStressTest stressTest = new PlaybackStressTest();
+    private PlaybackStressTest stressTest;
+    private ExecutorService poseExecutor;
+    private @Nullable List<ActivePlayback> framePlaybacks;
+    private @Nullable ActivePlayback preparedPlayback;
     private final CallbackRegistry callbackRegistry = new CallbackRegistry();
     private int maxActiveDisplayEntities = Config.DEFAULT_MAX_ACTIVE_DISPLAY_ENTITIES;
     private Lifecycle stateListener = Lifecycle.NONE;
@@ -61,6 +66,16 @@ public final class PlaybackEngine implements ConfigListener {
     public enum FailureReason { DISPLAY_LIMIT, START_REJECTED }
 
     public CallbackRegistry callbackRegistry() { return this.callbackRegistry; }
+    public void startWorker() {
+        this.framePlaybacks = null;
+        this.preparedPlayback = null;
+        this.poseExecutor = Executors.newSingleThreadExecutor(Thread.ofPlatform().name("Emote pose worker").factory());
+        this.stressTest = new PlaybackStressTest(this.poseExecutor);
+    }
+
+    public void stopWorker() {
+        this.poseExecutor.close();
+    }
     public void setStateListener(Lifecycle listener) { this.stateListener = Objects.requireNonNull(listener, "listener"); }
     @Override public void onConfigReload(Config config) { this.maxActiveDisplayEntities = config.maxActiveDisplayEntities(); }
 
@@ -81,7 +96,7 @@ public final class PlaybackEngine implements ConfigListener {
         List<CallbackRegistry.Binding> bindings;
         Map<PreparedAnimation, List<CallbackRegistry.Binding>> segmentBindings = new HashMap<>();
         try {
-            playback = new EmotePlayback(emote, request.queries());
+            playback = new EmotePlayback(emote, request.queries(), java.util.random.RandomGenerator.getDefault(), this.poseExecutor);
             bindings = this.callbackRegistry.resolve(emote.callbacks());
             for (var animation : playback.selectedAnimations()) segmentBindings.put(animation, this.callbackRegistry.resolve(animation.callbacks()));
         } catch (IllegalArgumentException exception) {
@@ -166,10 +181,60 @@ public final class PlaybackEngine implements ConfigListener {
         return true;
     }
 
-    public void tick() {
-        this.stressTest.tick();
-        for (ActivePlayback playback : List.copyOf(this.activePlaybacks.values())) {
+    public void beginTick() {
+        this.framePlaybacks = List.copyOf(this.activePlaybacks.values());
+        this.stressTest.prepareTick();
+        // Earlier callbacks may change later sessions, so only the first session advances before the world tick.
+        for (ActivePlayback playback : this.framePlaybacks) {
             PlaybackSession session = playback.session();
+            if (!contains(session)) continue;
+            try {
+                PlaybackStopReason reason = playback.lifecycle().beforeTick(session);
+                if (!contains(session)) continue;
+                if (reason != null) { stop(session, reason); continue; }
+                if (!session.tick(EmoteMod.SERVER.getTickCount())) continue;
+                this.preparedPlayback = playback;
+                session.beginFrame();
+                playback.lifecycle().prepareFrame(session);
+                if (!contains(session)) return;
+                session.playback().restoreDeferredVisibility();
+                session.playback().prepareAdvance();
+                return;
+            } catch (RuntimeException exception) {
+                EmoteMod.LOGGER.warn("Failed to prepare emote {}", session.emoteId(), exception);
+                this.preparedPlayback = null;
+                try { session.endFrame(); }
+                catch (RuntimeException seekFailure) { EmoteMod.LOGGER.warn("Failed to apply pending seek for emote {}", session.emoteId(), seekFailure); }
+                finally { stop(session, PlaybackStopReason.ERROR); }
+            }
+        }
+    }
+
+    public void tick() {
+        List<ActivePlayback> playbacks = this.framePlaybacks == null ? List.copyOf(this.activePlaybacks.values()) : this.framePlaybacks;
+        ActivePlayback prepared = this.preparedPlayback;
+        this.framePlaybacks = null;
+        this.preparedPlayback = null;
+        this.stressTest.tick();
+        for (ActivePlayback playback : playbacks) {
+            PlaybackSession session = playback.session();
+            if (playback == prepared) {
+                PlaybackStopReason reason = null;
+                try {
+                    try {
+                        if (contains(session)) {
+                            session.playback().completeAdvance();
+                            if (contains(session)) session.tickCallbacks();
+                        }
+                    } finally { session.endFrame(); }
+                    if (contains(session) && session.playback().isFinished()) reason = PlaybackStopReason.FINISHED;
+                } catch (RuntimeException exception) {
+                    EmoteMod.LOGGER.warn("Failed to play emote {}", session.emoteId(), exception);
+                    reason = PlaybackStopReason.ERROR;
+                }
+                if (reason != null) stop(session, reason);
+                continue;
+            }
             if (!contains(session)) continue;
             PlaybackStopReason reason = null;
             try {

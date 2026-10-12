@@ -24,6 +24,10 @@ import java.util.Set;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import java.util.Comparator;
 import java.util.random.RandomGenerator;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.function.Supplier;
 import io.github.hanhy06.emote.api.sequence.EmoteSequence;
 import io.github.hanhy06.emote.util.WeightedChoiceSelector;
 import io.github.hanhy06.emote.content.PreparedSequence.*;
@@ -36,6 +40,11 @@ public final class EmotePlayback {
     private PoseTarget target;
     private final MolangQuerySource querySource;
     private final AnimationEvaluator evaluator;
+    private final @Nullable ExecutorService poseExecutor;
+    private @Nullable Future<?> poseTask;
+    private @Nullable Supplier<AdvanceResult> pendingAdvance;
+    private boolean deferPose, preparedAdvance;
+    private AdvanceResult preparedResult;
     private final Map<String, Matrix4f> appliedTransforms = new HashMap<>();
     private final Map<String, Boolean> appliedVisibility = new HashMap<>();
     private final Map<String, Map<String, Boolean>> appliedAttachmentVisibility = new HashMap<>();
@@ -82,8 +91,13 @@ public final class EmotePlayback {
     }
 
     public EmotePlayback(PreparedEmote emote, MolangQuerySource querySource, RandomGenerator random) {
+        this(emote, querySource, random, null);
+    }
+
+    public EmotePlayback(PreparedEmote emote, MolangQuerySource querySource, RandomGenerator random, @Nullable ExecutorService poseExecutor) {
         this.emote = Objects.requireNonNull(emote, "emote");
         this.querySource = Objects.requireNonNull(querySource, "querySource");
+        this.poseExecutor = poseExecutor;
         this.model = emote instanceof PreparedAnimation animation ? animation.model() : null;
         this.evaluator = emote instanceof PreparedAnimation animation ? new AnimationEvaluator(animation, querySource) : null;
         this.selectedSteps = emote instanceof PreparedSequence sequence ? List.copyOf(selectSteps(sequence.steps(), random)) : List.of();
@@ -237,6 +251,7 @@ public final class EmotePlayback {
     public AdvanceResult advance(int elapsedTicks) { return advance(elapsedTicks, true); }
 
     public AdvanceResult advance(int elapsedTicks, boolean continueAfterLoopBoundary) {
+        if (this.preparedAdvance) completeAdvance();
         if (elapsedTicks < 0) throw new IllegalArgumentException("Elapsed ticks must be non-negative");
         if ((this.emote instanceof PreparedSequence)) return advanceSequence(elapsedTicks);
         if (this.phase == PlaybackPhase.NOT_STARTED) throw new IllegalStateException("Timeline has not started");
@@ -255,7 +270,8 @@ public final class EmotePlayback {
             if (this.loopCount - previousLoop > MAX_LOOP_BOUNDARIES_PER_FRAME) throw new IllegalStateException("Server clock crossed too many loop boundaries in one frame");
             if (this.phase == PlaybackPhase.RUNNING || previousPhase != this.phase || this.loopCount != previousLoop) {
                 this.evaluator.prepareFrame(this.currentTick, this.loopCount, elapsedTicks, this.lifetimeTicks);
-                applyAnimationPose(elapsedTicks, false);
+                return advanceAnimationPose(elapsedTicks, false, previousTick, previousLoop, previousPhase,
+                    this.loopCount != previousLoop ? AdvanceResult.RESTARTED : AdvanceResult.CONTINUE);
             }
             executeAnimationFrame(previousTick, previousLoop, previousPhase);
             if (this.eventsStopped) return AdvanceResult.FINISHED;
@@ -274,17 +290,77 @@ public final class EmotePlayback {
             this.phase = PlaybackPhase.RUNNING;
             this.remainingDelay = 0;
             this.evaluator.prepareFrame(this.currentTick, this.loopCount, 0, this.lifetimeTicks);
-            applyAnimationPose(0, false);
-            executeAnimationFrame(previousTick, previousLoop, previousPhase);
-            if (this.eventsStopped) return AdvanceResult.FINISHED;
-            return restart ? AdvanceResult.RESTARTED : AdvanceResult.CONTINUE;
+            return advanceAnimationPose(0, false, previousTick, previousLoop, previousPhase,
+                restart ? AdvanceResult.RESTARTED : AdvanceResult.CONTINUE);
         }
         int next = this.evaluator.nextTick(this.currentTick, this.loopCount, elapsedTicks, this.lifetimeTicks);
         AdvanceResult result = resolveAnimationTick(next, continueAfterLoopBoundary);
         this.pendingUpdate = this.phase == PlaybackPhase.LOOP_BOUNDARY && !this.sequenceCycle;
-        applyAnimationPose(elapsedTicks, !this.pendingUpdate);
-        executeAnimationFrame(previousTick, previousLoop, previousPhase);
-        return this.eventsStopped ? AdvanceResult.FINISHED : result;
+        return advanceAnimationPose(elapsedTicks, !this.pendingUpdate, previousTick, previousLoop, previousPhase, result);
+    }
+
+    public void prepareAdvance() {
+        if (this.preparedAdvance) throw new IllegalStateException("Playback frame already prepared");
+        this.deferPose = true;
+        try { this.preparedResult = advance(); }
+        finally { this.deferPose = false; }
+        this.preparedAdvance = true;
+    }
+
+    public boolean hasPreparedAdvance() { return this.preparedAdvance; }
+
+    public AdvanceResult completeAdvance() {
+        Supplier<AdvanceResult> completion = this.pendingAdvance;
+        this.pendingAdvance = null;
+        this.preparedAdvance = false;
+        return completion == null ? this.preparedResult : completion.get();
+    }
+
+    private AdvanceResult advanceAnimationPose(int deltaTicks, boolean update, int previousTick, int previousLoop,
+                                               PlaybackPhase previousPhase, AdvanceResult result) {
+        this.evaluator.sampleFrame(this.currentTick, this.loopCount, deltaTicks, this.lifetimeTicks, update, true);
+        submitPose(this.evaluator, null, 0);
+        Supplier<AdvanceResult> completion = () -> {
+            awaitPose();
+            this.evaluator.finishFrame();
+            applyEvaluator(deltaTicks == 0 ? 0 : 1);
+            executeAnimationFrame(previousTick, previousLoop, previousPhase);
+            return this.eventsStopped ? AdvanceResult.FINISHED : result;
+        };
+        if (!this.deferPose) return completion.get();
+        this.pendingAdvance = completion;
+        return result;
+    }
+
+    private void submitPose(AnimationEvaluator evaluator, @Nullable Map<String, Matrix4f> transitionStart, float progress) {
+        Matrix4fc root = this.target.rootMatrix();
+        if (this.poseExecutor == null) evaluator.calculatePose(root, transitionStart, progress);
+        else this.poseTask = this.poseExecutor.submit(() -> evaluator.calculatePose(root, transitionStart, progress));
+    }
+
+    private void awaitPose() {
+        Future<?> task = this.poseTask;
+        if (task == null) return;
+        boolean interrupted = Thread.interrupted();
+        try {
+            // Interruption must not release the shared input buffers while the calculation is still running.
+            while (true) {
+                try { task.get(); break; }
+                catch (InterruptedException exception) { interrupted = true; }
+                catch (ExecutionException exception) { throw new IllegalStateException("Pose calculation failed", exception.getCause()); }
+            }
+        } finally {
+            this.poseTask = null;
+            if (interrupted) Thread.currentThread().interrupt();
+        }
+        if (interrupted) throw new IllegalStateException("Interrupted while waiting for pose calculation");
+    }
+
+    public void discardPreparedAdvance() {
+        this.pendingAdvance = null;
+        this.preparedAdvance = false;
+        try { awaitPose(); }
+        finally { if (this.child != null) this.child.discardPreparedAdvance(); }
     }
 
     private AdvanceResult resolveAnimationTick(int next, boolean continueAfterLoopBoundary) {
@@ -321,7 +397,8 @@ public final class EmotePlayback {
 
     private void applyAnimationPose(int deltaTicks, boolean update) {
         this.evaluator.sampleFrame(this.currentTick, this.loopCount, deltaTicks, this.lifetimeTicks, update, true);
-        this.evaluator.calculatePose(this.target.rootMatrix(), null, 0);
+        submitPose(this.evaluator, null, 0);
+        awaitPose();
         this.evaluator.finishFrame();
         applyEvaluator(deltaTicks == 0 ? 0 : 1);
     }
@@ -373,13 +450,14 @@ public final class EmotePlayback {
     private void prepareChild(SelectedAnimationStep selected) {
         if (this.child != null && this.childSelection == selected) return;
         this.childSelection = selected;
-        this.child = new EmotePlayback(selected.animation(), this.querySource);
+        this.child = new EmotePlayback(selected.animation(), this.querySource, RandomGenerator.getDefault(), this.poseExecutor);
         this.child.target = this.target;
         this.child.sequenceCycle = true;
         this.child.initializeAnimation();
         if (selected.animation().model().settings().playback().loopDelay() instanceof EmoteAnimation.ConstantValue delay) this.child.sampledLoopDelay = (int) delay.value();
         this.child.evaluator.sampleFrame(0, 0, 0, 0, false, false);
-        this.child.evaluator.calculatePose(this.target.rootMatrix(), null, 0);
+        this.child.submitPose(this.child.evaluator, null, 0);
+        this.child.awaitPose();
         this.child.phase = PlaybackPhase.RUNNING;
         for (var segment : this.sequencePhases) {
             if (!Objects.equals(segment.stepIndex(), selected.stepIndex()) || !Objects.equals(segment.repeatIndex(), selected.repeatIndex())) continue;
@@ -496,24 +574,32 @@ public final class EmotePlayback {
                 budget -= delta;
                 AdvanceResult result;
                 if (delta == 0) {
+                    if (this.deferPose) {
+                        int remaining = budget;
+                        this.pendingAdvance = () -> advanceSequence(remaining);
+                        return AdvanceResult.CONTINUE;
+                    }
                     PlaybackPhase previousPhase = this.child.phase;
                     result = this.child.resolveAnimationTick(this.child.currentTick, false);
                     this.child.executeAnimationFrame(this.child.currentTick, this.child.loopCount, previousPhase);
-                } else result = this.child.advance(delta, false);
-                copyChildPose();
-                if (this.eventsStopped) break;
-                this.lifecycleListener.onTick(this.child.currentTick);
-                if (this.eventsStopped || this.lifecycleListener.hasPendingSeek()) return isFinished() ? AdvanceResult.FINISHED : AdvanceResult.CONTINUE;
-                if (result != AdvanceResult.FINISHED && result != AdvanceResult.LOOP_BOUNDARY) break;
-                this.segmentLengths.put(this.sequenceSegment, this.phaseTick);
-                var selected = selectedAnimation(segment);
-                if (selected.loopDelayAfter() && this.child.model.settings().playback().mode() == EmoteAnimation.PlaybackMode.LOOP
-                    && this.sequenceSegment + 1 < this.sequencePhases.size()
-                    && this.sequencePhases.get(this.sequenceSegment + 1).phase() == PlaybackTimeline.Phase.LOOP_DELAY) {
-                    this.segmentLengths.put(this.sequenceSegment + 1, this.child.sampledLoopDelay);
+                } else {
+                    this.child.deferPose = this.deferPose;
+                    try { result = this.child.advance(delta, false); }
+                    finally { this.child.deferPose = false; }
                 }
-                closeChild(PlaybackStopReason.FINISHED);
-                if (this.eventsStopped || this.lifecycleListener.hasPendingSeek()) return isFinished() ? AdvanceResult.FINISHED : AdvanceResult.CONTINUE;
+                if (this.deferPose) {
+                    int remaining = budget;
+                    AdvanceResult prepared = result;
+                    this.pendingAdvance = () -> {
+                        AdvanceResult completed = this.child.pendingAdvance == null ? prepared : this.child.completeAdvance();
+                        if (!finishSequenceAnimation(segment, completed)) return isFinished() ? AdvanceResult.FINISHED : AdvanceResult.CONTINUE;
+                        this.sequenceSegment++;
+                        enterSequencePhase(true);
+                        return advanceSequence(remaining);
+                    };
+                    return AdvanceResult.CONTINUE;
+                }
+                if (!finishSequenceAnimation(segment, result)) return isFinished() ? AdvanceResult.FINISHED : AdvanceResult.CONTINUE;
             } else {
                 int length = Objects.requireNonNull(sequencePhaseLength(this.sequenceSegment));
                 int delta = Math.min(budget, Math.max(0, length - this.phaseTick));
@@ -522,7 +608,23 @@ public final class EmotePlayback {
                 this.lifetimeTicks += delta;
                 budget -= delta;
                 if (this.child != null) this.child.lifetimeTicks += delta;
-                if (segment.phase() == PlaybackTimeline.Phase.TRANSITION) applyTransition((double) this.phaseTick / length);
+                if (this.deferPose) {
+                    if (segment.phase() == PlaybackTimeline.Phase.TRANSITION) submitPose(this.child.evaluator, this.transitionStartTransforms, (float) this.phaseTick / length);
+                    int remaining = budget;
+                    this.pendingAdvance = () -> {
+                        awaitPose();
+                        if (segment.phase() == PlaybackTimeline.Phase.TRANSITION) applyTransitionPose();
+                        if (this.phaseTick < length) return AdvanceResult.CONTINUE;
+                        this.segmentLengths.put(this.sequenceSegment, length);
+                        this.sequenceSegment++;
+                        enterSequencePhase(true);
+                        return advanceSequence(remaining);
+                    };
+                    return AdvanceResult.CONTINUE;
+                }
+                if (segment.phase() == PlaybackTimeline.Phase.TRANSITION) {
+                    applyTransition((double) this.phaseTick / length);
+                }
                 if (this.phaseTick < length) break;
                 this.segmentLengths.put(this.sequenceSegment, length);
             }
@@ -530,6 +632,23 @@ public final class EmotePlayback {
             enterSequencePhase(true);
         }
         return isFinished() ? AdvanceResult.FINISHED : AdvanceResult.CONTINUE;
+    }
+
+    private boolean finishSequenceAnimation(PlaybackTimeline.Segment segment, AdvanceResult result) {
+        copyChildPose();
+        if (this.eventsStopped) return false;
+        this.lifecycleListener.onTick(this.child.currentTick);
+        if (this.eventsStopped || this.lifecycleListener.hasPendingSeek()) return false;
+        if (result != AdvanceResult.FINISHED && result != AdvanceResult.LOOP_BOUNDARY) return false;
+        this.segmentLengths.put(this.sequenceSegment, this.phaseTick);
+        var selected = selectedAnimation(segment);
+        if (selected.loopDelayAfter() && this.child.model.settings().playback().mode() == EmoteAnimation.PlaybackMode.LOOP
+            && this.sequenceSegment + 1 < this.sequencePhases.size()
+            && this.sequencePhases.get(this.sequenceSegment + 1).phase() == PlaybackTimeline.Phase.LOOP_DELAY) {
+            this.segmentLengths.put(this.sequenceSegment + 1, this.child.sampledLoopDelay);
+        }
+        closeChild(PlaybackStopReason.FINISHED);
+        return !this.eventsStopped && !this.lifecycleListener.hasPendingSeek();
     }
 
     private void copyChildPose() {
@@ -542,7 +661,12 @@ public final class EmotePlayback {
     }
 
     private void applyTransition(double progress) {
-        this.child.evaluator.calculatePose(this.target.rootMatrix(), this.transitionStartTransforms, (float) progress);
+        submitPose(this.child.evaluator, this.transitionStartTransforms, (float) progress);
+        awaitPose();
+        applyTransitionPose();
+    }
+
+    private void applyTransitionPose() {
         for (int index = 0; index < this.child.evaluator.nodeCount(); index++) {
             String id = this.child.evaluator.nodeId(index);
             applyTransform(id, this.child.evaluator.poseMatrix(index), this.child.evaluator.transformation(index), 0);
@@ -589,6 +713,7 @@ public final class EmotePlayback {
     }
 
     public void setTick(int tick) {
+        if (this.preparedAdvance) completeAdvance();
         if (!canSetTick(tick)) return;
         if ((this.emote instanceof PreparedSequence)) {
             seekSequence(locateSequence(tick), tick, null);
@@ -611,6 +736,7 @@ public final class EmotePlayback {
     }
 
     public void setAnimationTick(int animationTick) {
+        if (this.preparedAdvance) completeAdvance();
         if (!canSetAnimationTick(animationTick)) return;
         if (!(this.emote instanceof PreparedSequence)) { setTick(animationTick); return; }
         this.child.setTick(animationTick);
@@ -636,6 +762,7 @@ public final class EmotePlayback {
     }
 
     public void setStep(int stepIndex, int repeatIndex, int animationTick) {
+        if (this.preparedAdvance) completeAdvance();
         int index = stepSegment(stepIndex, repeatIndex, animationTick);
         if (!canSeek()) return;
         var segment = timeline().segments().get(index);
@@ -800,6 +927,7 @@ public final class EmotePlayback {
     }
 
     public void stop(PlaybackStopReason reason) {
+        discardPreparedAdvance();
         if (this.stoppedPosition == null) this.stoppedPosition = position();
         this.phase = PlaybackPhase.FINISHED;
         if (!this.eventsStarted || this.eventsStopped) {
