@@ -101,14 +101,15 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
     public void setVisible(String nodeId, boolean visible) {
         NodeInstance node = requiredNode(nodeId);
         node.visible = visible;
-        node.attachments().forEach((id, attachment) -> setVisible(attachment, effectiveVisibility(nodeId, id)));
+        node.attachments().forEach((id, attachment) -> setVisible(node, attachment, effectiveVisibility(nodeId, id), false));
     }
 
     @Override
     public void setVisible(String nodeId, String attachmentId, boolean visible) {
-        AttachmentInstance attachment = requiredNode(nodeId).attachments().get(attachmentId);
+        NodeInstance node = requiredNode(nodeId);
+        AttachmentInstance attachment = node.attachments().get(attachmentId);
         attachment.visible = visible;
-        setVisible(attachment, effectiveVisibility(nodeId, attachmentId));
+        setVisible(node, attachment, effectiveVisibility(nodeId, attachmentId), false);
     }
 
     @Override
@@ -229,47 +230,52 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
         return true;
     }
 
-    private void setVisible(AttachmentInstance node, boolean visible) {
-        if (node.isAnchor()) {
-            return;
+    private void setVisible(NodeInstance node, AttachmentInstance attachment, boolean visible, boolean loadedNbt) {
+        if (attachment.isAnchor() || attachment.displayed == visible && !loadedNbt) return;
+        if (visible && node.latestTransformation != null) {
+            applyTransformation(attachment, node.latestTransformation, attachment.displayed ? attachment.appliedInterpolationDuration : 0, true);
         }
-        switch (node.displayContent()) {
+        switch (attachment.displayContent()) {
             case DisplayData.Item(ItemStack itemStack, var _) ->
-                ((ItemDisplayAccessor) node.entity()).emote$setItemStack(visible ? itemStack : ItemStack.EMPTY);
-            case DisplayData.Block(var blockState) -> ((BlockDisplayAccessor) node.entity()).emote$setBlockState(
+                ((ItemDisplayAccessor) attachment.entity()).emote$setItemStack(visible ? itemStack : ItemStack.EMPTY);
+            case DisplayData.Block(var blockState) -> ((BlockDisplayAccessor) attachment.entity()).emote$setBlockState(
                 visible ? blockState : Blocks.AIR.defaultBlockState()
             );
             case DisplayData.Text(Component text) ->
-                ((TextDisplayAccessor) node.entity()).emote$setText(visible ? text : Component.empty());
+                ((TextDisplayAccessor) attachment.entity()).emote$setText(visible ? text : Component.empty());
             case null -> {
             }
         }
+        attachment.displayed = visible;
     }
 
     @Override
     public void applyNbt(String nodeId, String attachmentId, CompoundTag nbt, Set<String> remove) {
-        AttachmentInstance attachment = requiredNode(nodeId).attachments().get(attachmentId);
+        NodeInstance node = requiredNode(nodeId);
+        AttachmentInstance attachment = node.attachments().get(attachmentId);
         if (attachment.isAnchor()) return;
         TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, attachment.entity().registryAccess());
         attachment.entity().saveWithoutId(output);
         CompoundTag current = output.buildResult();
         Set<String> changed = attachment.replaceNbtState(current, nbt, remove);
-        loadNbt(nodeId, attachment, current, changed);
+        loadNbt(node, attachment, current, changed);
     }
 
     @Override
     public void resetNbt(String nodeId, String attachmentId) {
-        AttachmentInstance attachment = requiredNode(nodeId).attachments().get(attachmentId);
+        NodeInstance node = requiredNode(nodeId);
+        AttachmentInstance attachment = node.attachments().get(attachmentId);
         if (attachment.isAnchor() || !attachment.hasModifiedNbt()) return;
         TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, attachment.entity().registryAccess());
         attachment.entity().saveWithoutId(output);
         CompoundTag current = output.buildResult();
         Set<String> restored = attachment.restoreNbtFields(current);
-        loadNbt(nodeId, attachment, current, restored);
+        loadNbt(node, attachment, current, restored);
     }
 
-    private void loadNbt(String nodeId, AttachmentInstance attachment, CompoundTag current, Set<String> changed) {
+    private void loadNbt(NodeInstance node, AttachmentInstance attachment, CompoundTag current, Set<String> changed) {
         attachment.entity().load(TagValueInput.create(ProblemReporter.DISCARDING, attachment.entity().registryAccess(), current));
+        attachment.appliedTransformation = null;
         if (attachment.entity() instanceof Display.ItemDisplay && (changed.contains("item") || changed.contains("item_display"))) {
             ItemDisplayAccessor accessor = (ItemDisplayAccessor) attachment.entity();
             ItemStack item = changed.contains("item") ? accessor.emote$getItemStack() : ((DisplayData.Item) attachment.displayContent()).itemStack();
@@ -282,17 +288,20 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
             accessor.emote$setText(text);
             attachment.setDisplayContent(new DisplayData.Text(text));
         }
-        setVisible(attachment, effectiveVisibility(nodeId, attachment.id()));
+        setVisible(node, attachment, effectiveVisibility(node.id(), attachment.id()), true);
     }
 
     @Override
     public void applyTransform(String nodeId, Transformation transformation, int interpolationDurationTicks) {
         NodeInstance node = requiredNode(nodeId);
+        node.latestTransformation = transformation;
         if (node.isAnchor()) {
             return;
         }
         for (AttachmentInstance attachment : node.attachments().values()) {
-            if (attachment.entity() != null) applyTransformation(attachment.entity(), transformation, interpolationDurationTicks);
+            if (attachment.entity() != null && attachment.displayed && effectiveVisibility(nodeId, attachment.id())) {
+                applyTransformation(attachment, transformation, interpolationDurationTicks, false);
+            }
         }
     }
 
@@ -368,11 +377,15 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
         };
     }
 
-    private void applyTransformation(Display entity, Transformation transformation, int interpolationDurationTicks) {
-        DisplayAccessor accessor = (DisplayAccessor) entity;
+    private void applyTransformation(AttachmentInstance attachment, Transformation transformation, int interpolationDurationTicks, boolean force) {
+        if (!force && attachment.appliedTransformation != null && transformation.getMatrix().equals(attachment.appliedTransformation.getMatrix())
+            && interpolationDurationTicks == attachment.appliedInterpolationDuration) return;
+        DisplayAccessor accessor = (DisplayAccessor) attachment.entity();
         accessor.emote$setTransformation(transformation);
         accessor.emote$setTransformationInterpolationDuration(interpolationDurationTicks);
         accessor.emote$setTransformationInterpolationDelay(0);
+        attachment.appliedTransformation = transformation;
+        attachment.appliedInterpolationDuration = interpolationDurationTicks;
     }
 
     private static DisplayData requirePreparedData(
@@ -401,6 +414,7 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
         private final EmoteAnimation.Node node;
         private final Map<String, AttachmentInstance> attachments;
         private boolean visible;
+        private Transformation latestTransformation;
 
         public NodeInstance(String id, EmoteAnimation.Node node, Map<String, AttachmentInstance> attachments) {
             this.id = Objects.requireNonNull(id, "id");
@@ -420,6 +434,9 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
         private final EmoteAnimation.Attachment attachment;
         private final Display entity;
         private boolean visible;
+        private boolean displayed = true;
+        private Transformation appliedTransformation;
+        private int appliedInterpolationDuration;
         private DisplayData displayContent;
         private CompoundTag initialEntityData = new CompoundTag();
         private final Set<String> modifiedNbtFields = new HashSet<>();

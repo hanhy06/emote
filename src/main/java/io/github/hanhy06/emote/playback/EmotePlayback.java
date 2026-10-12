@@ -669,9 +669,17 @@ public final class EmotePlayback {
     private void applyTransitionPose() {
         for (int index = 0; index < this.child.evaluator.nodeCount(); index++) {
             String id = this.child.evaluator.nodeId(index);
+            if (!this.child.evaluator.visible(index)) applyVisibility(id, false);
+            if (this.child.evaluator.attachmentVisibility(index).containsValue(false)) {
+                this.child.evaluator.attachmentVisibility(index).forEach((attachment, visible) -> {
+                    if (!visible) this.target.setVisible(id, attachment, false);
+                });
+            }
             applyTransform(id, this.child.evaluator.poseMatrix(index), this.child.evaluator.transformation(index), 0);
             applyVisibility(id, this.child.evaluator.visible(index));
-            this.child.evaluator.attachmentVisibility(index).forEach((attachment, visible) -> this.target.setVisible(id, attachment, visible));
+            this.child.evaluator.attachmentVisibility(index).forEach((attachment, visible) -> {
+                if (visible) this.target.setVisible(id, attachment, true);
+            });
         }
         hideUnusedNodes();
     }
@@ -969,9 +977,16 @@ public final class EmotePlayback {
 
     private void applyEvaluator(int interpolationDurationTicks) {
         for (int index = 0; index < this.evaluator.nodeCount(); index++) {
-            String nodeId = applyEvaluatorTransform(index, interpolationDurationTicks);
-            applyVisibility(nodeId, this.evaluator.visible(index));
+            String nodeId = this.evaluator.nodeId(index);
             Map<String, Boolean> previous = this.appliedAttachmentVisibility.computeIfAbsent(nodeId, ignored -> new HashMap<>());
+            if (!this.evaluator.visible(index)) applyVisibility(nodeId, false);
+            if (this.evaluator.attachmentVisibility(index).containsValue(false)) {
+                this.evaluator.attachmentVisibility(index).forEach((attachmentId, visible) -> {
+                    if (!visible && !Boolean.FALSE.equals(previous.put(attachmentId, false))) this.target.setVisible(nodeId, attachmentId, false);
+                });
+            }
+            applyTransform(nodeId, this.evaluator.poseMatrix(index), this.evaluator.transformation(index), interpolationDurationTicks);
+            applyVisibility(nodeId, this.evaluator.visible(index));
             this.evaluator.attachmentVisibility(index).forEach((attachmentId, visible) -> {
                 if (!Boolean.valueOf(visible).equals(previous.put(attachmentId, visible))) {
                     this.target.setVisible(nodeId, attachmentId, visible);
@@ -981,17 +996,6 @@ public final class EmotePlayback {
                 applyNbt(nodeId, attachment.getKey(), attachment.getValue(), this.evaluator.nbtRemoved(index, attachment.getKey()));
             }
         }
-    }
-
-    private String applyEvaluatorTransform(int index, int interpolationDurationTicks) {
-        String nodeId = this.evaluator.nodeId(index);
-        applyTransform(
-            nodeId,
-            this.evaluator.poseMatrix(index),
-            this.evaluator.transformation(index),
-            interpolationDurationTicks
-        );
-        return nodeId;
     }
 
     private void applyTransform(
