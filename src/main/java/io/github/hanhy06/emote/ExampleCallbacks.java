@@ -4,7 +4,7 @@ import io.github.hanhy06.emote.api.EmoteApi;
 import io.github.hanhy06.emote.api.EmoteCallbacks;
 import io.github.hanhy06.emote.api.PlaybackContext;
 import io.github.hanhy06.emote.api.Registration;
-import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
+import io.github.hanhy06.emote.playback.PlaybackScene;
 import io.github.hanhy06.emote.util.TrumpetPlayer;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.protocol.Packet;
@@ -216,7 +216,7 @@ public final class ExampleCallbacks {
         allay.setPermanentlyInvulnerable(true);
         allay.setSilent(true);
         allay.setCanPickUpLoot(false);
-        allay.addTag(PlaybackEntityController.RUNTIME_TAG);
+        allay.addTag(PlaybackScene.RUNTIME_TAG);
         Objects.requireNonNull(allay.getAttribute(Attributes.SCALE), "Allay scale attribute").setBaseValue(ALLAY_SCALE);
 
         if (!level.addFreshEntity(allay)) {
@@ -241,7 +241,7 @@ public final class ExampleCallbacks {
         bat.setPermanentlyInvulnerable(true);
         bat.setSilent(true);
         bat.setResting(false);
-        bat.addTag(PlaybackEntityController.RUNTIME_TAG);
+        bat.addTag(PlaybackScene.RUNTIME_TAG);
 
         if (!level.addFreshEntity(bat)) {
             bat.discard();

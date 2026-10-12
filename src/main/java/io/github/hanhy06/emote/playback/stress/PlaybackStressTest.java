@@ -3,10 +3,9 @@ package io.github.hanhy06.emote.playback.stress;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.playback.PlaybackPlayer;
-import io.github.hanhy06.emote.playback.runtime.EntityTimelineTarget;
-import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
-import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
+import io.github.hanhy06.emote.playback.EmotePlayback;
+import io.github.hanhy06.emote.playback.PlaybackScene;
+import io.github.hanhy06.emote.playback.RootTransform;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -25,14 +24,9 @@ public final class PlaybackStressTest {
     static final int MAX_INITIAL_TICK = 175;
     private static final long RANDOM_SEED = 0xE607EL;
 
-    private final PlaybackEntityController entityController;
     private final StressTestPacketLoad packetLoad = StressTestPacketLoad.INSTANCE;
 
     private @Nullable Session session;
-
-    public PlaybackStressTest(PlaybackEntityController entityController) {
-        this.entityController = Objects.requireNonNull(entityController, "entityController");
-    }
 
     public StartResult start(
         ServerLevel level,
@@ -117,28 +111,23 @@ public final class PlaybackStressTest {
         try {
             for (int index = 0; index < instanceCount; index++) {
                 PreparedAnimation emote = selection.get(index);
-                PlaybackNodes nodes = this.entityController.create(
-                    level,
-                    gridPosition(origin, index, instanceCount),
-                    yaw,
-                    emote
-                );
-                PlaybackPlayer timeline = new PlaybackPlayer(emote);
-                startAtInitialTick(timeline, new EntityTimelineTarget(emote, nodes, this.entityController), emote.model(), initialTick(random, index));
-                this.entityController.applySkin(nodes, emote.skinBindings(), preparedSkin);
-                this.entityController.add(level, nodes);
+                PlaybackScene scene = PlaybackScene.create(level, RootTransform.create(gridPosition(origin, index, instanceCount), yaw), emote);
+                EmotePlayback playback = new EmotePlayback(emote);
+                startAtInitialTick(playback, scene, emote.model(), initialTick(random, index));
+                scene.applySkin(emote.skinBindings(), preparedSkin);
+                scene.add();
                 try {
-                    this.packetLoad.register(level, nodes);
-                    instances.add(new StressTestInstance(emote, nodes, timeline));
-                    displayEntityCount += nodes.displayEntityCount();
+                    this.packetLoad.register(level, scene);
+                    instances.add(new StressTestInstance(emote, scene, playback));
+                    displayEntityCount += scene.displayEntityCount();
                 } catch (RuntimeException exception) {
-                    this.packetLoad.unregister(nodes);
-                    this.entityController.remove(level, nodes);
+                    this.packetLoad.unregister(scene);
+                    scene.close();
                     throw exception;
                 }
             }
         } catch (RuntimeException exception) {
-            removeInstances(level, instances);
+            removeInstances(instances);
             this.packetLoad.stop();
             throw exception;
         }
@@ -170,7 +159,7 @@ public final class PlaybackStressTest {
         StressTestPacketLoad.PacketLoadResult packetLoadResult = this.packetLoad.finishRuntime();
         long cleanupStartedNanos = System.nanoTime();
         try {
-            removeInstances(current.level(), current.instances());
+            removeInstances(current.instances());
         } finally {
             this.packetLoad.stop();
         }
@@ -196,9 +185,9 @@ public final class PlaybackStressTest {
             if (!instance.emote.id().equals(id)) {
                 return false;
             }
-            this.packetLoad.unregister(instance.nodes);
-            this.entityController.remove(current.level(), instance.nodes);
-            current.removeDisplayEntities(instance.nodes.displayEntityCount());
+            this.packetLoad.unregister(instance.scene);
+            instance.scene.close();
+            current.removeDisplayEntities(instance.scene.displayEntityCount());
             return true;
         });
     }
@@ -219,10 +208,10 @@ public final class PlaybackStressTest {
                 try {
                     long emoteStartedNanos = System.nanoTime();
                     try {
-                        PlaybackPlayer.AdvanceResult result = advanceTimeline(instance.timeline);
-                        if (result == PlaybackPlayer.AdvanceResult.FINISHED) {
-                            instance.timeline = new PlaybackPlayer(instance.emote);
-                            instance.timeline.start(new EntityTimelineTarget(instance.emote, instance.nodes, this.entityController));
+                        EmotePlayback.AdvanceResult result = advancePlayback(instance.playback);
+                        if (result == EmotePlayback.AdvanceResult.FINISHED) {
+                            instance.playback = new EmotePlayback(instance.emote);
+                            instance.playback.start(instance.scene);
                         }
                     } finally {
                         emoteProcessingNanos += System.nanoTime() - emoteStartedNanos;
@@ -230,16 +219,16 @@ public final class PlaybackStressTest {
 
                     long networkStartedNanos = System.nanoTime();
                     try {
-                        this.packetLoad.sync(instance.nodes);
+                        this.packetLoad.sync(instance.scene);
                     } finally {
                         networkProcessingNanos += System.nanoTime() - networkStartedNanos;
                     }
                 } catch (RuntimeException exception) {
                     EmoteMod.LOGGER.warn("Failed to run stress test emote {}", instance.emote.id(), exception);
-                    this.packetLoad.unregister(instance.nodes);
-                    this.entityController.remove(current.level(), instance.nodes);
+                    this.packetLoad.unregister(instance.scene);
+                    instance.scene.close();
                     iterator.remove();
-                    current.removeDisplayEntities(instance.nodes.displayEntityCount());
+                    current.removeDisplayEntities(instance.scene.displayEntityCount());
                     current.failedInstances++;
                 }
             }
@@ -332,7 +321,7 @@ public final class PlaybackStressTest {
         };
     }
 
-    private void startAtInitialTick(PlaybackPlayer timeline, PlaybackPlayer.TimelineTarget target, EmoteAnimation animation, int requestedTick) {
+    private void startAtInitialTick(EmotePlayback playback, EmotePlayback.PoseTarget target, EmoteAnimation animation, int requestedTick) {
         int initialTick = requestedTick;
         if (animation.settings().playback().mode() == EmoteAnimation.PlaybackMode.ONCE
             || animation.settings().playback().mode() == EmoteAnimation.PlaybackMode.HOLD) {
@@ -342,21 +331,21 @@ public final class PlaybackStressTest {
                 Math.max(0, animation.clip().durationTicks() - 1)
             );
         }
-        timeline.startAtCyclePhase(target, initialTick);
+        playback.startAtCyclePhase(target, initialTick);
     }
 
-    private PlaybackPlayer.AdvanceResult advanceTimeline(PlaybackPlayer timeline) {
-        PlaybackPlayer.AdvanceResult result = timeline.advance();
-        if (result == PlaybackPlayer.AdvanceResult.LOOP_BOUNDARY) {
-            result = timeline.continueAfterLoopEvent();
+    private EmotePlayback.AdvanceResult advancePlayback(EmotePlayback playback) {
+        EmotePlayback.AdvanceResult result = playback.advance();
+        if (result == EmotePlayback.AdvanceResult.LOOP_BOUNDARY) {
+            result = playback.continueAfterLoopEvent();
         }
         return result;
     }
 
-    private void removeInstances(ServerLevel level, List<StressTestInstance> instances) {
+    private void removeInstances(List<StressTestInstance> instances) {
         for (StressTestInstance instance : instances) {
-            this.packetLoad.unregister(instance.nodes);
-            this.entityController.remove(level, instance.nodes);
+            this.packetLoad.unregister(instance.scene);
+            instance.scene.close();
         }
     }
 
@@ -512,14 +501,14 @@ public final class PlaybackStressTest {
 
     private static final class StressTestInstance {
         private final PreparedAnimation emote;
-        private final PlaybackNodes nodes;
+        private final PlaybackScene scene;
 
-        private PlaybackPlayer timeline;
+        private EmotePlayback playback;
 
-        private StressTestInstance(PreparedAnimation emote, PlaybackNodes nodes, PlaybackPlayer timeline) {
+        private StressTestInstance(PreparedAnimation emote, PlaybackScene scene, EmotePlayback playback) {
             this.emote = emote;
-            this.nodes = nodes;
-            this.timeline = timeline;
+            this.scene = scene;
+            this.playback = playback;
         }
     }
 }

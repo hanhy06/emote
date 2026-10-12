@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.playback.stress;
 
 import io.github.hanhy06.emote.mixin.accessor.SynchedEntityDataAccessor;
-import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
+import io.github.hanhy06.emote.playback.PlaybackScene;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelOutboundHandlerAdapter;
@@ -73,13 +73,13 @@ public final class StressTestPacketLoad {
         this.session = new Session(packetFanout, sinks);
     }
 
-    public void register(ServerLevel level, PlaybackNodes nodes) {
+    public void register(ServerLevel level, PlaybackScene scene) {
         Session current = this.session;
         if (current == null) {
             return;
         }
 
-        for (PlaybackNodes.AttachmentInstance node : nodes.attachments().toList()) {
+        for (PlaybackScene.AttachmentInstance node : scene.attachments()) {
             Entity entity = node.entity();
             if (entity == null || current.entities.containsKey(entity)) {
                 continue;
@@ -101,13 +101,13 @@ public final class StressTestPacketLoad {
         }
     }
 
-    public void unregister(PlaybackNodes nodes) {
+    public void unregister(PlaybackScene scene) {
         Session current = this.session;
         if (current == null) {
             return;
         }
 
-        for (PlaybackNodes.AttachmentInstance node : nodes.attachments().toList()) {
+        for (PlaybackScene.AttachmentInstance node : scene.attachments()) {
             Entity entity = node.entity();
             if (entity != null && current.entities.remove(entity) != null) {
                 current.encodeForAll(new ClientboundRemoveEntitiesPacket(entity.getId()));
@@ -129,13 +129,13 @@ public final class StressTestPacketLoad {
         }
     }
 
-    public void sync(PlaybackNodes nodes) {
+    public void sync(PlaybackScene scene) {
         Session current = this.session;
         if (current == null) {
             return;
         }
 
-        for (PlaybackNodes.AttachmentInstance node : nodes.attachments().toList()) {
+        for (PlaybackScene.AttachmentInstance node : scene.attachments()) {
             Entity entity = node.entity();
             if (entity == null) {
                 continue;

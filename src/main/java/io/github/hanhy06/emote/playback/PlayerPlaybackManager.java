@@ -9,8 +9,6 @@ import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.mixin.accessor.EntitySharedFlagsAccessor;
 import io.github.hanhy06.emote.playback.molang.PlayerMolangQueries;
-import io.github.hanhy06.emote.playback.runtime.RootTransform;
-import io.github.hanhy06.emote.playback.session.PlaybackSession;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import io.github.hanhy06.emote.skin.SkinBinding;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
@@ -135,8 +133,8 @@ public final class PlayerPlaybackManager {
     }
     void updatePlayerPlacement(PlaybackSession session, Vec3 playerPosition, float playerYaw, EmotePlayerBehavior behavior) {
         if (session.placement().mode() != PlaybackPlacement.Mode.ACTOR) return;
-        if (behavior.stopConditions().movementDistance() == 0) this.engine.entities().moveSceneTo(session.nodes(), playerPosition);
-        this.engine.entities().updateViewRotation(session.nodes(), playerYaw, session.playback().rotationDeadzone());
+        if (behavior.stopConditions().movementDistance() == 0) session.scene().moveTo(playerPosition);
+        session.scene().updateViewRotation(playerYaw, session.playback().rotationDeadzone());
     }
     public void interrupt(ServerPlayer player, PlaybackStopReason reason) {
         PlaybackSession session = findActive(player.getUUID());
@@ -148,7 +146,7 @@ public final class PlayerPlaybackManager {
         if (session == null || player == null) return;
         var bindings = playerState(playerId).skinBindings();
         var preparation = this.skins.preparePlayerSkin(player, bindings);
-        this.engine.entities().applySkin(session.nodes(), bindings, preparation.textures());
+        session.scene().applySkin(bindings, preparation.textures());
     }
 
     private static void hidePlayer(ServerPlayer player, PlayerPlaybackState playerState) {

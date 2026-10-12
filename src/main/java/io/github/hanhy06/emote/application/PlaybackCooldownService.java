@@ -3,7 +3,7 @@ package io.github.hanhy06.emote.application;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.playback.PlaybackStateListener;
 import io.github.hanhy06.emote.playback.PlayerPlaybackState;
-import io.github.hanhy06.emote.playback.session.PlaybackSession;
+import io.github.hanhy06.emote.playback.PlaybackSession;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.HashMap;

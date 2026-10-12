@@ -28,12 +28,12 @@ import io.github.hanhy06.emote.api.sequence.EmoteSequence;
 import io.github.hanhy06.emote.util.WeightedChoiceSelector;
 import io.github.hanhy06.emote.content.PreparedSequence.*;
 
-public final class PlaybackPlayer {
+public final class EmotePlayback {
     private final EmoteAnimation model;
     private final PreparedEmote emote;
     private final List<SelectedStep> selectedSteps;
     private final List<PlaybackTimeline.Segment> sequencePhases;
-    private TimelineTarget target;
+    private PoseTarget target;
     private final MolangQuerySource querySource;
     private final AnimationEvaluator evaluator;
     private final Map<String, Matrix4f> appliedTransforms = new HashMap<>();
@@ -54,7 +54,7 @@ public final class PlaybackPlayer {
     private int frameBoundaries;
     private boolean pendingUpdate;
     private int loopCount;
-    private PlaybackPlayer child;
+    private EmotePlayback child;
     private SelectedAnimationStep childSelection;
     private int sequenceSegment;
     private int phaseTick;
@@ -73,15 +73,15 @@ public final class PlaybackPlayer {
     private PlaybackPosition stoppedPosition;
     private final Map<String, Matrix4f> transitionStartTransforms = new HashMap<>();
 
-    public PlaybackPlayer(PreparedEmote emote) {
+    public EmotePlayback(PreparedEmote emote) {
         this(emote, MolangQuerySource.EMPTY, RandomGenerator.getDefault());
     }
 
-    public PlaybackPlayer(PreparedEmote emote, MolangQuerySource querySource) {
+    public EmotePlayback(PreparedEmote emote, MolangQuerySource querySource) {
         this(emote, querySource, RandomGenerator.getDefault());
     }
 
-    public PlaybackPlayer(PreparedEmote emote, MolangQuerySource querySource, RandomGenerator random) {
+    public EmotePlayback(PreparedEmote emote, MolangQuerySource querySource, RandomGenerator random) {
         this.emote = Objects.requireNonNull(emote, "emote");
         this.querySource = Objects.requireNonNull(querySource, "querySource");
         this.model = emote instanceof PreparedAnimation animation ? animation.model() : null;
@@ -95,7 +95,7 @@ public final class PlaybackPlayer {
             .map(SelectedAnimationStep::animation).distinct().toList();
     }
 
-    public void start(TimelineTarget target) {
+    public void start(PoseTarget target) {
         if (this.phase != PlaybackPhase.NOT_STARTED) throw new IllegalStateException("Timeline already started");
         this.target = Objects.requireNonNull(target, "target");
         this.phase = PlaybackPhase.RUNNING;
@@ -110,14 +110,14 @@ public final class PlaybackPlayer {
         }
     }
 
-    public void startSynchronized(TimelineTarget target, long serverTick) {
+    public void startSynchronized(PoseTarget target, long serverTick) {
         if (this.phase != PlaybackPhase.NOT_STARTED) throw new IllegalStateException("Timeline already started");
         if (this.emote.playbackMode() != EmoteAnimation.PlaybackMode.SERVER_SYNC) throw new IllegalStateException("Timeline is not server synchronized");
         this.target = Objects.requireNonNull(target, "target");
         startAtCyclePhaseUnchecked(serverTick);
     }
 
-    public void startAtCyclePhase(TimelineTarget target, long cycleTick) {
+    public void startAtCyclePhase(PoseTarget target, long cycleTick) {
         if (this.phase != PlaybackPhase.NOT_STARTED) throw new IllegalStateException("Timeline already started");
         this.target = Objects.requireNonNull(target, "target");
         startAtCyclePhaseUnchecked(cycleTick);
@@ -371,7 +371,7 @@ public final class PlaybackPlayer {
     private void prepareChild(SelectedAnimationStep selected) {
         if (this.child != null && this.childSelection == selected) return;
         this.childSelection = selected;
-        this.child = new PlaybackPlayer(selected.animation(), this.querySource);
+        this.child = new EmotePlayback(selected.animation(), this.querySource);
         this.child.target = this.target;
         this.child.sequenceCycle = true;
         this.child.initializeAnimation();
@@ -603,7 +603,7 @@ public final class PlaybackPlayer {
     }
 
     public boolean canSetAnimationTick(int animationTick) {
-        PlaybackPlayer animation = (this.emote instanceof PreparedSequence) ? this.child : this;
+        EmotePlayback animation = (this.emote instanceof PreparedSequence) ? this.child : this;
         if (animationTick < 0 || (animation != null && animationTick > animation.model.clip().durationTicks())) throw new IllegalArgumentException("Tick is outside the animation");
         return canSeek() && position().phase() == PlaybackTimeline.Phase.ANIMATION;
     }
@@ -914,14 +914,14 @@ public final class PlaybackPlayer {
         int animationTick,
         AnimationEventPhase phase
     ) {
-        execute(events.stream().map(event -> new PlaybackPlayer.EventOccurrence(event, animationId, animationTick, phase)).toList());
+        execute(events.stream().map(event -> new EmotePlayback.EventOccurrence(event, animationId, animationTick, phase)).toList());
     }
 
-    private void execute(List<PlaybackPlayer.EventOccurrence> events) {
+    private void execute(List<EmotePlayback.EventOccurrence> events) {
         if (this.eventExecutor == null) {
             return;
         }
-        for (PlaybackPlayer.EventOccurrence event : events) {
+        for (EmotePlayback.EventOccurrence event : events) {
             if (this.eventsStopped && event.phase() != AnimationEventPhase.STOP) break;
             this.eventExecutor.execute(event);
         }
@@ -929,7 +929,7 @@ public final class PlaybackPlayer {
 
     @FunctionalInterface
     public interface EventExecutor {
-        void execute(PlaybackPlayer.EventOccurrence event);
+        void execute(EmotePlayback.EventOccurrence event);
     }
 
     public interface LifecycleListener {
@@ -941,7 +941,7 @@ public final class PlaybackPlayer {
         default boolean hasPendingSeek() { return false; }
     }
 
-    public interface TimelineTarget {
+    public interface PoseTarget {
         Transformation createTransformation(String nodeId, Matrix4fc matrix);
 
         void applyTransform(String nodeId, Matrix4fc matrix, int interpolationDurationTicks);

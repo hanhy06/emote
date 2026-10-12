@@ -7,7 +7,7 @@ import io.github.hanhy06.emote.application.EmoteSummary;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
-import io.github.hanhy06.emote.playback.session.PlaybackSession;
+import io.github.hanhy06.emote.playback.PlaybackSession;
 import net.minecraft.core.Holder;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;

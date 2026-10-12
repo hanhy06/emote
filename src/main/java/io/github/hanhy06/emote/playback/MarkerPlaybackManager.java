@@ -6,8 +6,6 @@ import io.github.hanhy06.emote.api.PlaybackPlacement;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.playback.molang.EntityMolangQueries;
-import io.github.hanhy06.emote.playback.runtime.RootTransform;
-import io.github.hanhy06.emote.playback.session.PlaybackSession;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import io.github.hanhy06.emote.skin.SkinBinding;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
@@ -24,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-public final class EntityPlaybackManager {
+public final class MarkerPlaybackManager {
     private final PlaybackEngine engine;
     private final EmoteCatalog catalog;
     private final PlayerSkinManager skins;
@@ -33,7 +31,7 @@ public final class EntityPlaybackManager {
     private long skinRevision;
     private boolean running;
 
-    public EntityPlaybackManager(PlaybackEngine engine, EmoteCatalog catalog, PlayerSkinManager skins) {
+    public MarkerPlaybackManager(PlaybackEngine engine, EmoteCatalog catalog, PlayerSkinManager skins) {
         this.engine = engine;
         this.catalog = catalog;
         this.skins = skins;
@@ -80,7 +78,7 @@ public final class EntityPlaybackManager {
             if (entry.session != null && !entry.needsStart && entry.skinRevision != this.skinRevision) {
                 entry.skinRevision = this.skinRevision;
                 var preparation = this.skins.prepareNamedSkin(entry.settings.skinName(), entry.skinBindings);
-                if (!preparation.preparing()) this.engine.entities().applySkin(entry.session.nodes(), entry.skinBindings, preparation.textures());
+                if (!preparation.preparing()) entry.session.scene().applySkin(entry.skinBindings, preparation.textures());
             }
         }
     }
@@ -117,8 +115,8 @@ public final class EntityPlaybackManager {
             }
             @Override public void prepareFrame(PlaybackSession session) {
                 if (session.placement().mode() != PlaybackPlacement.Mode.ACTOR) return;
-                engine.entities().moveSceneTo(session.nodes(), entry.marker.position());
-                engine.entities().updateViewRotation(session.nodes(), entry.marker.getYRot(), 0);
+                session.scene().moveTo(entry.marker.position());
+                session.scene().updateViewRotation(entry.marker.getYRot(), 0);
             }
             @Override public RootTransform resolveActorPlacement(PlaybackSession session) {
                 return RootTransform.create(entry.marker.position(), entry.marker.getYRot());

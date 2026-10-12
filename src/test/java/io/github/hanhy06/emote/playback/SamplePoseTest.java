@@ -71,7 +71,7 @@ class SamplePoseTest {
                 queries.entrySet().forEach(query -> session.setQuery(query.getKey(), query.getValue().getAsDouble()));
             };
             var target = new PoseTarget();
-            var player = new PlaybackPlayer(animation, querySource);
+            var player = new EmotePlayback(animation, querySource);
             player.start(target);
             int elapsedTicks = 0;
             for (var frameElement : run.getAsJsonArray("frames")) {
@@ -398,7 +398,7 @@ class SamplePoseTest {
         }
     }
 
-    private static final class PoseTarget implements PlaybackPlayer.TimelineTarget {
+    private static final class PoseTarget implements EmotePlayback.PoseTarget {
         final Map<String, Matrix4f> matrices = new HashMap<>();
 
         @Override public Transformation createTransformation(String nodeId, Matrix4fc matrix) { return new Transformation(new Matrix4f(matrix)); }

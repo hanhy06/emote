@@ -5,10 +5,10 @@ import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.application.PlaybackCooldownService;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.network.WheelSyncService;
-import io.github.hanhy06.emote.playback.EntityPlaybackManager;
+import io.github.hanhy06.emote.playback.MarkerPlaybackManager;
 import io.github.hanhy06.emote.playback.PlaybackHooks;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
-import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
+import io.github.hanhy06.emote.playback.PlaybackScene;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import io.github.hanhy06.emote.resource.ResourcePackService;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
@@ -32,7 +32,7 @@ public class ServerLifecycle {
     private final PlaybackCooldownService cooldowns;
     private final EmoteCatalog emoteCatalog;
     private final PlayerPlaybackManager playerPlaybackManager;
-    private final EntityPlaybackManager entityPlayback;
+    private final MarkerPlaybackManager markerPlayback;
     private final ReloadService reloadService;
     private final WheelSyncService wheelSyncService;
     private final IdlePlaybackService idlePlaybackService;
@@ -44,7 +44,7 @@ public class ServerLifecycle {
         PlaybackCooldownService cooldowns,
         EmoteCatalog emoteCatalog,
         PlayerPlaybackManager playerPlaybackManager,
-        EntityPlaybackManager entityPlayback,
+        MarkerPlaybackManager markerPlayback,
         ReloadService reloadService,
         WheelSyncService wheelSyncService,
         IdlePlaybackService idlePlaybackService,
@@ -55,7 +55,7 @@ public class ServerLifecycle {
         this.cooldowns = cooldowns;
         this.emoteCatalog = emoteCatalog;
         this.playerPlaybackManager = playerPlaybackManager;
-        this.entityPlayback = entityPlayback;
+        this.markerPlayback = markerPlayback;
         this.reloadService = reloadService;
         this.wheelSyncService = wheelSyncService;
         this.idlePlaybackService = idlePlaybackService;
@@ -68,7 +68,7 @@ public class ServerLifecycle {
         ServerLifecycleEvents.SERVER_STOPPING.register(this::handleServerStopping);
         ServerLifecycleEvents.SERVER_STOPPED.register(this::handleServerStopped);
         ServerTickEvents.END_SERVER_TICK.register(ignoredServer -> {
-            this.entityPlayback.tick();
+            this.markerPlayback.tick();
             this.playerPlaybackManager.engine().tick();
             this.idlePlaybackService.tick();
         });
@@ -124,7 +124,7 @@ public class ServerLifecycle {
         List<Entity> orphaned = new ArrayList<>();
         for (var level : server.getAllLevels()) {
             for (Entity entity : level.getAllEntities()) {
-                if (entity.entityTags().contains(PlaybackEntityController.RUNTIME_TAG)) {
+                if (entity.entityTags().contains(PlaybackScene.RUNTIME_TAG)) {
                     orphaned.add(entity);
                 }
             }

@@ -1,10 +1,7 @@
-package io.github.hanhy06.emote.playback.timeline;
+package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.playback.PlaybackPlayer;
-import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
-import io.github.hanhy06.emote.playback.runtime.RootTransform;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
@@ -16,29 +13,29 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.Objects;
 
-public final class EventCommandExecutor implements PlaybackPlayer.EventExecutor {
+public final class EventCommandExecutor implements EmotePlayback.EventExecutor {
     private final ServerLevel level;
     private final @Nullable CommandSourceStack actorSource;
-    private final PlaybackNodes nodes;
-    private final PlaybackPlayer timeline;
+    private final PlaybackScene scene;
+    private final EmotePlayback playback;
 
     public EventCommandExecutor(
         ServerLevel level,
         @Nullable CommandSourceStack actorSource,
-        PlaybackNodes nodes,
-        PlaybackPlayer timeline
+        PlaybackScene scene,
+        EmotePlayback playback
     ) {
         this.level = Objects.requireNonNull(level, "level");
         this.actorSource = actorSource;
-        this.nodes = Objects.requireNonNull(nodes, "nodes");
-        this.timeline = Objects.requireNonNull(timeline, "timeline");
+        this.scene = Objects.requireNonNull(scene, "scene");
+        this.playback = Objects.requireNonNull(playback, "playback");
     }
 
     @Override
-    public void execute(PlaybackPlayer.EventOccurrence preparedEvent) {
+    public void execute(EmotePlayback.EventOccurrence preparedEvent) {
         EmoteAnimation.Event event = preparedEvent.event();
         if (event.externalKey() != null) throw new IllegalStateException("No resolver for external action " + event.externalKey());
-        Vec3 origin = resolveOrigin(event.origin(), this.nodes, this.timeline);
+        Vec3 origin = resolveOrigin(event.origin(), this.scene, this.playback);
         if (!event.commands().isEmpty()) {
             CommandSourceStack source = createSource(event.source())
                 .withPosition(origin)
@@ -69,16 +66,16 @@ public final class EventCommandExecutor implements PlaybackPlayer.EventExecutor 
         };
     }
 
-    static Vec3 resolveOrigin(EmoteAnimation.CommandOrigin origin, PlaybackNodes nodes, PlaybackPlayer timeline) {
-        RootTransform root = nodes.root();
+    static Vec3 resolveOrigin(EmoteAnimation.CommandOrigin origin, PlaybackScene scene, EmotePlayback playback) {
+        RootTransform root = scene.root();
         Matrix4fc displayMatrix;
         if (origin.type() == EmoteAnimation.OriginType.ROOT) {
             displayMatrix = root.rotationMatrix();
         } else {
-            if (!nodes.nodes().containsKey(origin.node())) throw new IllegalStateException("Command references missing playback node: " + origin.node());
-            displayMatrix = timeline.currentTransformation(origin.node()).getMatrix();
+            if (!scene.nodes().containsKey(origin.node())) throw new IllegalStateException("Command references missing playback node: " + origin.node());
+            displayMatrix = playback.currentTransformation(origin.node()).getMatrix();
         }
-        Matrix4fc matrix = root.worldMatrix(nodes.orientationYaw(), displayMatrix);
+        Matrix4fc matrix = root.worldMatrix(scene.orientationYaw(), displayMatrix);
         Vector3f position = matrix.transformPosition(new Vector3f(
             (float) origin.offset().x(),
             (float) origin.offset().y(),
@@ -88,7 +85,7 @@ public final class EventCommandExecutor implements PlaybackPlayer.EventExecutor 
     }
 
     private Entity requiredEntity(String nodeId, String attachmentId) {
-        PlaybackNodes.NodeInstance node = requiredNode(nodeId);
+        PlaybackScene.NodeInstance node = requiredNode(nodeId);
         var attachment = node.attachments().get(attachmentId);
         if (attachment == null || attachment.entity() == null || attachment.entity().isRemoved()) {
             throw new IllegalStateException("Command source node entity is unavailable: " + nodeId);
@@ -96,8 +93,8 @@ public final class EventCommandExecutor implements PlaybackPlayer.EventExecutor 
         return attachment.entity();
     }
 
-    private PlaybackNodes.NodeInstance requiredNode(String nodeId) {
-        PlaybackNodes.NodeInstance node = this.nodes.nodes().get(nodeId);
+    private PlaybackScene.NodeInstance requiredNode(String nodeId) {
+        PlaybackScene.NodeInstance node = this.scene.nodes().get(nodeId);
         if (node == null) {
             throw new IllegalStateException("Command references missing playback node: " + nodeId);
         }

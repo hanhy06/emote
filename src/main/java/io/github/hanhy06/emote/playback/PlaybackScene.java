@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.playback.runtime;
+package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
@@ -38,16 +38,96 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
-import static io.github.hanhy06.emote.playback.runtime.PlaybackNodes.*;
-import io.github.hanhy06.emote.content.PreparedAnimation;
+import net.minecraft.nbt.Tag;
+import org.joml.Matrix4fc;
+import java.util.List;
+import java.util.Objects;
+import java.util.HashSet;
 
-public final class PlaybackEntityController {
-    public void applySkin(PlaybackNodes nodes, Collection<SkinBinding> bindings, Map<PlayerSkinRegion, String> skin) {
+public final class PlaybackScene implements EmotePlayback.PoseTarget {
+    private final ServerLevel level;
+    private final PreparedEmote emote;
+    private RootTransform root;
+    private final Map<String, NodeInstance> nodes;
+    private final List<AttachmentInstance> attachments;
+    private final int displayEntityCount;
+    private float viewYaw;
+
+    private PlaybackScene(ServerLevel level, RootTransform root, PreparedEmote emote, Map<String, NodeInstance> nodes) {
+        this.level = Objects.requireNonNull(level, "level");
+        this.root = Objects.requireNonNull(root, "root");
+        this.emote = Objects.requireNonNull(emote, "emote");
+        this.nodes = Map.copyOf(nodes);
+        this.attachments = this.nodes.values().stream().flatMap(node -> node.attachments().values().stream()).toList();
+        this.displayEntityCount = (int) this.attachments.stream().filter(attachment -> attachment.entity() != null).count();
+        this.viewYaw = root.yaw();
+    }
+
+    public RootTransform root() { return this.root; }
+    public Map<String, NodeInstance> nodes() { return this.nodes; }
+    public int displayEntityCount() { return this.displayEntityCount; }
+    public List<AttachmentInstance> attachments() { return this.attachments; }
+    public float viewYaw() { return this.viewYaw; }
+
+    public float orientationYaw() {
+        return Mth.wrapDegrees(this.root.yaw() + this.root.relativeYaw(this.viewYaw));
+    }
+
+    private float updateViewYaw(float playerYaw, float maxDifference) {
+        float difference = Mth.wrapDegrees(playerYaw - this.viewYaw);
+        if (Math.abs(difference) > maxDifference) {
+            this.viewYaw = Mth.wrapDegrees(this.viewYaw + difference - Math.copySign(maxDifference, difference));
+        }
+        return this.viewYaw;
+    }
+
+    private boolean effectiveVisibility(String nodeId, String attachmentId) {
+        NodeInstance node = this.nodes.get(nodeId);
+        return node.visible && node.attachments().get(attachmentId).visible;
+    }
+
+    @Override
+    public Transformation createTransformation(String nodeId, Matrix4fc matrix) {
+        requiredNode(nodeId);
+        return this.root.displayTransformation(matrix);
+    }
+
+    @Override
+    public void setVisible(String nodeId, boolean visible) {
+        NodeInstance node = requiredNode(nodeId);
+        node.visible = visible;
+        node.attachments().forEach((id, attachment) -> setVisible(attachment, effectiveVisibility(nodeId, id)));
+    }
+
+    @Override
+    public void setVisible(String nodeId, String attachmentId, boolean visible) {
+        AttachmentInstance attachment = requiredNode(nodeId).attachments().get(attachmentId);
+        attachment.visible = visible;
+        setVisible(attachment, effectiveVisibility(nodeId, attachmentId));
+    }
+
+    @Override
+    public void resetAll() {
+        this.nodes.forEach((nodeId, node) -> {
+            node.attachments().keySet().forEach(attachmentId -> resetNbt(nodeId, attachmentId));
+            applyTransform(nodeId, this.emote.defaultMatrix(nodeId), 0);
+            node.attachments().forEach((id, attachment) -> setVisible(nodeId, id, attachment.attachment().visible()));
+            setVisible(nodeId, node.node().visible());
+        });
+    }
+
+    private NodeInstance requiredNode(String nodeId) {
+        NodeInstance node = this.nodes.get(nodeId);
+        if (node == null) throw new IllegalStateException("Missing playback node: " + nodeId);
+        return node;
+    }
+
+    public void applySkin(Collection<SkinBinding> bindings, Map<PlayerSkinRegion, String> skin) {
         if (skin == null || bindings.isEmpty()) {
             return;
         }
         for (SkinBinding binding : bindings) {
-            NodeInstance node = nodes.nodes().get(binding.nodeId());
+            NodeInstance node = this.nodes.get(binding.nodeId());
             if (node == null) {
                 continue;
             }
@@ -82,7 +162,7 @@ public final class PlaybackEntityController {
     private static final int RESPONSIVE_INTERPOLATION_TICKS = 1;
     private static final int VIEW_ROTATION_INTERPOLATION_TICKS = 3;
 
-    public PlaybackNodes create(ServerLevel level, RootTransform root, PreparedEmote emote) {
+    public static PlaybackScene create(ServerLevel level, RootTransform root, PreparedEmote emote) {
         LinkedHashMap<String, NodeInstance> instances = new LinkedHashMap<>();
         for (String nodeId : emote.nodeOrder()) {
             EmoteAnimation.Node node = emote.nodes().get(nodeId);
@@ -93,37 +173,35 @@ public final class PlaybackEntityController {
                     entry.getValue(), preparedData.get(entry.getKey()), emote.rotationDeadzone())));
             instances.put(nodeId, new NodeInstance(nodeId, node, attachments));
         }
-        return new PlaybackNodes(root, instances);
+        return new PlaybackScene(level, root, emote, instances);
     }
 
-    public PlaybackNodes create(ServerLevel level, Vec3 position, float yaw, PreparedAnimation emote) {
-        return create(level, RootTransform.create(position, yaw), emote);
-    }
-
-    public void add(ServerLevel level, PlaybackNodes nodes) {
+    public void add() {
         try {
-            for (AttachmentInstance node : nodes.attachments().toList()) {
-                if (!node.isAnchor() && !level.addFreshEntity(node.entity())) {
+            for (AttachmentInstance node : this.attachments) {
+                if (!node.isAnchor() && !this.level.addFreshEntity(node.entity())) {
                     throw new IllegalStateException("Failed to add display entity for attachment " + node.id());
                 }
             }
         } catch (RuntimeException exception) {
-            removeEntities(level, nodes.nodes().values());
+            close();
             throw exception;
         }
     }
 
-    public void remove(ServerLevel level, PlaybackNodes nodes) {
-        removeEntities(level, nodes.nodes().values());
+    public void close() {
+        for (AttachmentInstance attachment : this.attachments) {
+            if (attachment.entity() != null && !attachment.entity().isRemoved()) attachment.entity().kill(this.level);
+        }
     }
 
-    public boolean updateViewRotation(PlaybackNodes nodes, float currentYaw, float rotationDeadzone) {
-        float previousRelativeYaw = nodes.root().relativeYaw(nodes.viewYaw());
-        float viewYaw = nodes.updateViewYaw(currentYaw, rotationDeadzone);
-        float relativeYaw = nodes.root().relativeYaw(viewYaw);
+    public boolean updateViewRotation(float currentYaw, float rotationDeadzone) {
+        float previousRelativeYaw = root().relativeYaw(viewYaw());
+        float viewYaw = updateViewYaw(currentYaw, rotationDeadzone);
+        float relativeYaw = root().relativeYaw(viewYaw);
         boolean rotationChanged = Mth.packDegrees(previousRelativeYaw) != Mth.packDegrees(relativeYaw);
         int interpolationTicks = positionRotationInterpolationTicks(rotationDeadzone);
-        for (AttachmentInstance node : nodes.attachments().toList()) {
+        for (AttachmentInstance node : this.attachments) {
             if (!node.isAnchor()) {
                 ((DisplayAccessor) node.entity()).emote$setPosRotInterpolationDuration(interpolationTicks);
                 if (rotationChanged) {
@@ -134,19 +212,19 @@ public final class PlaybackEntityController {
         return rotationChanged;
     }
 
-    public boolean moveSceneTo(PlaybackNodes nodes, Vec3 position) {
-        if (!nodes.moveSceneTo(position)) {
-            return false;
-        }
-        for (AttachmentInstance node : nodes.attachments().toList()) {
+    public boolean moveTo(Vec3 position) {
+        Objects.requireNonNull(position, "position");
+        if (position.equals(this.root.position())) return false;
+        this.root = RootTransform.create(position, this.root.yaw());
+        for (AttachmentInstance node : this.attachments) {
             if (!node.isAnchor()) {
-                node.entity().setPos(nodes.root().position());
+                node.entity().setPos(root().position());
             }
         }
         return true;
     }
 
-    public void setVisible(AttachmentInstance node, boolean visible) {
+    private void setVisible(AttachmentInstance node, boolean visible) {
         if (node.isAnchor()) {
             return;
         }
@@ -163,25 +241,29 @@ public final class PlaybackEntityController {
         }
     }
 
-    public void applyNbt(PlaybackNodes nodes, String nodeId, AttachmentInstance attachment, CompoundTag nbt, Set<String> remove) {
+    @Override
+    public void applyNbt(String nodeId, String attachmentId, CompoundTag nbt, Set<String> remove) {
+        AttachmentInstance attachment = requiredNode(nodeId).attachments().get(attachmentId);
         if (attachment.isAnchor()) return;
         TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, attachment.entity().registryAccess());
         attachment.entity().saveWithoutId(output);
         CompoundTag current = output.buildResult();
         Set<String> changed = attachment.replaceNbtState(current, nbt, remove);
-        loadNbt(nodes, nodeId, attachment, current, changed);
+        loadNbt(nodeId, attachment, current, changed);
     }
 
-    public void resetNbt(PlaybackNodes nodes, String nodeId, AttachmentInstance attachment) {
+    @Override
+    public void resetNbt(String nodeId, String attachmentId) {
+        AttachmentInstance attachment = requiredNode(nodeId).attachments().get(attachmentId);
         if (attachment.isAnchor() || !attachment.hasModifiedNbt()) return;
         TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, attachment.entity().registryAccess());
         attachment.entity().saveWithoutId(output);
         CompoundTag current = output.buildResult();
         Set<String> restored = attachment.restoreNbtFields(current);
-        loadNbt(nodes, nodeId, attachment, current, restored);
+        loadNbt(nodeId, attachment, current, restored);
     }
 
-    private void loadNbt(PlaybackNodes nodes, String nodeId, AttachmentInstance attachment, CompoundTag current, Set<String> changed) {
+    private void loadNbt(String nodeId, AttachmentInstance attachment, CompoundTag current, Set<String> changed) {
         attachment.entity().load(TagValueInput.create(ProblemReporter.DISCARDING, attachment.entity().registryAccess(), current));
         if (attachment.entity() instanceof Display.ItemDisplay && (changed.contains("item") || changed.contains("item_display"))) {
             ItemDisplayAccessor accessor = (ItemDisplayAccessor) attachment.entity();
@@ -195,23 +277,22 @@ public final class PlaybackEntityController {
             accessor.emote$setText(text);
             attachment.setDisplayContent(new DisplayData.Text(text));
         }
-        setVisible(attachment, nodes.effectiveVisibility(nodeId, attachment.id()));
+        setVisible(attachment, effectiveVisibility(nodeId, attachment.id()));
     }
 
-    public void applyTransformation(
-        NodeInstance node,
-        Transformation transformation,
-        int interpolationDurationTicks
-    ) {
+    @Override
+    public void applyTransform(String nodeId, Matrix4fc matrix, int interpolationDurationTicks) {
+        NodeInstance node = requiredNode(nodeId);
         if (node.isAnchor()) {
             return;
         }
+        Transformation transformation = this.root.displayTransformation(matrix);
         for (AttachmentInstance attachment : node.attachments().values()) {
             if (attachment.entity() != null) applyTransformation(attachment.entity(), transformation, interpolationDurationTicks);
         }
     }
 
-    private AttachmentInstance createAttachment(
+    private static AttachmentInstance createAttachment(
         ServerLevel level,
         RootTransform root,
         String nodeId,
@@ -241,7 +322,7 @@ public final class PlaybackEntityController {
         return instance;
     }
 
-    private Display createDisplay(ServerLevel level, EmoteAnimation.Attachment attachment) {
+    private static Display createDisplay(ServerLevel level, EmoteAnimation.Attachment attachment) {
         Display display = switch (attachment) {
             case EmoteAnimation.ItemAttachment ignored -> EntityTypes.ITEM_DISPLAY.create(level, EntitySpawnReason.COMMAND);
             case EmoteAnimation.SkinAttachment ignored -> EntityTypes.ITEM_DISPLAY.create(level, EntitySpawnReason.COMMAND);
@@ -259,7 +340,7 @@ public final class PlaybackEntityController {
         return rotationDeadzone == 0.0F ? RESPONSIVE_INTERPOLATION_TICKS : VIEW_ROTATION_INTERPOLATION_TICKS;
     }
 
-    private DisplayData applyRuntimeData(
+    private static DisplayData applyRuntimeData(
         Display entity,
         DisplayData preparedData
     ) {
@@ -290,7 +371,7 @@ public final class PlaybackEntityController {
         accessor.emote$setTransformationInterpolationDelay(0);
     }
 
-    private DisplayData requirePreparedData(
+    private static DisplayData requirePreparedData(
         String nodeId,
         DisplayData preparedData
     ) {
@@ -300,7 +381,7 @@ public final class PlaybackEntityController {
         return preparedData;
     }
 
-    private Component resolveText(Display.TextDisplay entity, Component text) {
+    private static Component resolveText(Display.TextDisplay entity, Component text) {
         try {
             var source = entity.createCommandSourceStackForNameResolution((ServerLevel) entity.level())
                 .withPermission(LevelBasedPermissionSet.GAMEMASTER);
@@ -310,11 +391,107 @@ public final class PlaybackEntityController {
         }
     }
 
-    private void removeEntities(ServerLevel level, Collection<NodeInstance> nodes) {
-        for (AttachmentInstance node : nodes.stream().flatMap(n -> n.attachments().values().stream()).toList()) {
-            if (node.entity() != null && !node.entity().isRemoved()) {
-                node.entity().kill(level);
+
+    public static final class NodeInstance {
+        private final String id;
+        private final EmoteAnimation.Node node;
+        private final Map<String, AttachmentInstance> attachments;
+        private boolean visible;
+
+        public NodeInstance(String id, EmoteAnimation.Node node, Map<String, AttachmentInstance> attachments) {
+            this.id = Objects.requireNonNull(id, "id");
+            this.node = Objects.requireNonNull(node, "node");
+            this.attachments = Map.copyOf(attachments);
+            this.visible = node.visible();
+        }
+
+        public String id() { return this.id; }
+        public EmoteAnimation.Node node() { return this.node; }
+        public Map<String, AttachmentInstance> attachments() { return this.attachments; }
+        public boolean isAnchor() { return this.attachments.values().stream().noneMatch(a -> a.entity() != null); }
+    }
+
+    public static final class AttachmentInstance {
+        private final String id;
+        private final EmoteAnimation.Attachment attachment;
+        private final Display entity;
+        private boolean visible;
+        private DisplayData displayContent;
+        private CompoundTag initialEntityData = new CompoundTag();
+        private final Set<String> modifiedNbtFields = new HashSet<>();
+
+        public AttachmentInstance(String id, EmoteAnimation.Attachment attachment, Display entity, DisplayData displayContent) {
+            this.id = Objects.requireNonNull(id, "id");
+            this.attachment = Objects.requireNonNull(attachment, "attachment");
+            this.entity = entity;
+            this.displayContent = displayContent;
+            this.visible = attachment.visible();
+        }
+
+        public String id() { return this.id; }
+        public EmoteAnimation.Attachment attachment() { return this.attachment; }
+
+        public Display entity() {
+            return this.entity;
+        }
+
+        public DisplayData displayContent() {
+            return this.displayContent;
+        }
+
+        public void setItemStack(ItemStack itemStack) {
+            if (!(this.displayContent instanceof DisplayData.Item item)) {
+                throw new IllegalStateException("Attachment is not an item display: " + this.id);
             }
+            this.displayContent = new DisplayData.Item(Objects.requireNonNull(itemStack, "itemStack"), item.itemDisplay());
+        }
+
+        void setDisplayContent(DisplayData displayContent) {
+            this.displayContent = Objects.requireNonNull(displayContent, "displayContent");
+        }
+
+        void setInitialEntityData(CompoundTag data) {
+            this.initialEntityData = data.copy();
+        }
+
+        CompoundTag initialEntityData() {
+            return this.initialEntityData.copy();
+        }
+
+        void setInitialItem(Tag item) {
+            this.initialEntityData.put("item", item.copy());
+        }
+
+        Set<String> replaceNbtState(CompoundTag current, CompoundTag merge, Set<String> remove) {
+            Set<String> changed = new HashSet<>(restoreNbtFields(current));
+            changed.addAll(merge.keySet());
+            changed.addAll(remove);
+            remove.forEach(current::remove);
+            current.merge(merge);
+            this.modifiedNbtFields.addAll(merge.keySet());
+            this.modifiedNbtFields.addAll(remove);
+            return changed;
+        }
+
+        Set<String> restoreNbtFields(CompoundTag current) {
+            Set<String> restored = Set.copyOf(this.modifiedNbtFields);
+            for (String field : restored) {
+                Tag initial = this.initialEntityData.get(field);
+                if (initial == null) current.remove(field);
+                else current.put(field, initial.copy());
+            }
+            this.modifiedNbtFields.clear();
+            return restored;
+        }
+
+        boolean hasModifiedNbt() {
+            return !this.modifiedNbtFields.isEmpty();
+        }
+
+        public boolean isAnchor() {
+            return this.entity == null;
         }
     }
+
+
 }

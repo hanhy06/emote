@@ -10,7 +10,7 @@ import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
-import io.github.hanhy06.emote.playback.session.PlaybackSession;
+import io.github.hanhy06.emote.playback.PlaybackSession;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;

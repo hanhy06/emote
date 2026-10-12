@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.playback.session;
+package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.PlaybackContext;
@@ -6,9 +6,6 @@ import io.github.hanhy06.emote.api.PlaybackInfo;
 import io.github.hanhy06.emote.api.PlaybackPlacement;
 import io.github.hanhy06.emote.api.PlaybackState;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
-import io.github.hanhy06.emote.playback.PlaybackPlayer;
-import io.github.hanhy06.emote.playback.CallbackRegistry;
-import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
@@ -24,7 +21,7 @@ import java.util.*;
 import java.util.function.Consumer;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 
-public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
+public final class PlaybackSession implements EmotePlayback.LifecycleListener {
     private final UUID sessionId;
     private List<Context> callbackContexts = List.of();
     private List<Context> animationCallbackContexts = List.of();
@@ -42,8 +39,8 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
     private @Nullable Runnable deferredCleanup;
     private final ResourceKey<Level> levelKey;
     private final String emoteId;
-    private final PlaybackNodes nodes;
-    private final PlaybackPlayer playback;
+    private final PlaybackScene scene;
+    private final EmotePlayback playback;
     private final Map<String, Entity> actors;
     private PlaybackPlacement.Mode placementMode;
 
@@ -51,15 +48,15 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
         UUID sessionId,
         ResourceKey<Level> levelKey,
         String emoteId,
-        PlaybackNodes nodes,
-        PlaybackPlayer playback,
+        PlaybackScene scene,
+        EmotePlayback playback,
         Map<String, Entity> actors,
         PlaybackPlacement.Mode placementMode
     ) {
         this.sessionId = Objects.requireNonNull(sessionId, "sessionId");
         this.levelKey = Objects.requireNonNull(levelKey, "levelKey");
         this.emoteId = Objects.requireNonNull(emoteId, "emoteId");
-        this.nodes = Objects.requireNonNull(nodes, "nodes");
+        this.scene = Objects.requireNonNull(scene, "scene");
         this.playback = Objects.requireNonNull(playback, "playback");
         this.actors = Map.copyOf(actors);
         this.placementMode = Objects.requireNonNull(placementMode, "placementMode");
@@ -80,7 +77,7 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
     }
 
     public PlaybackPlacement placement() {
-        return new PlaybackPlacement(this.placementMode, this.nodes.root().position(), this.nodes.orientationYaw());
+        return new PlaybackPlacement(this.placementMode, this.scene.root().position(), this.scene.orientationYaw());
     }
 
     public void setPlacementMode(PlaybackPlacement.Mode mode) {
@@ -89,10 +86,10 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
 
     public Optional<Vec3> nodeWorldPosition(String nodeId) {
         Objects.requireNonNull(nodeId, "nodeId");
-        if (!this.nodes.nodes().containsKey(nodeId)) return Optional.empty();
+        if (!this.scene.nodes().containsKey(nodeId)) return Optional.empty();
         var transform = this.playback.currentTransformation(nodeId).getMatrix();
-        Vector3f point = this.nodes.root().worldMatrix(this.nodes.orientationYaw(), transform).transformPosition(new Vector3f());
-        return Optional.of(this.nodes.root().position().add(point.x, point.y, point.z));
+        Vector3f point = this.scene.root().worldMatrix(this.scene.orientationYaw(), transform).transformPosition(new Vector3f());
+        return Optional.of(this.scene.root().position().add(point.x, point.y, point.z));
     }
 
     public void bindCallbacks(
@@ -314,7 +311,7 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
         public boolean setTick(int tick) { return PlaybackSession.this.setTick(tick); }
         public boolean setAnimationTick(int animationTick) { return PlaybackSession.this.setAnimationTick(animationTick); }
         public boolean setStep(int stepIndex, int repeatIndex, int animationTick) { return PlaybackSession.this.setStep(stepIndex, repeatIndex, animationTick); }
-        public Vec3 getRootPosition() { return PlaybackSession.this.nodes.root().position(); }
+        public Vec3 getRootPosition() { return PlaybackSession.this.scene.root().position(); }
         public Optional<PlaybackStopReason> getStopReason() { return Optional.ofNullable(this.closeReason != null ? this.closeReason : PlaybackSession.this.stopReason); }
         public @Nullable Object getUserState() { return this.userState; }
         public void setUserState(@Nullable Object state) { this.userState = state; }
@@ -324,9 +321,9 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
             return Optional.ofNullable(PlaybackSession.this.actors.get(name)).filter(entity -> !entity.isRemoved());
         }
 
-        public Optional<Entity> getNodeEntity(String nodeId, String attachmentId) {
+        public Optional<Entity> getAttachmentEntity(String nodeId, String attachmentId) {
             Objects.requireNonNull(nodeId, "nodeId");
-            return Optional.ofNullable(PlaybackSession.this.nodes.nodes().get(nodeId))
+            return Optional.ofNullable(PlaybackSession.this.scene.nodes().get(nodeId))
                 .map(node -> node.attachments().get(attachmentId))
                 .flatMap(attachment -> Optional.<Entity>ofNullable(attachment.entity())).filter(entity -> !entity.isRemoved());
         }
@@ -344,11 +341,11 @@ public final class PlaybackSession implements PlaybackPlayer.LifecycleListener {
         return this.emoteId;
     }
 
-    public PlaybackNodes nodes() {
-        return this.nodes;
+    public PlaybackScene scene() {
+        return this.scene;
     }
 
-    public PlaybackPlayer playback() {
+    public EmotePlayback playback() {
         return this.playback;
     }
 }

@@ -3,7 +3,7 @@ package io.github.hanhy06.emote.application;
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.*;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
-import io.github.hanhy06.emote.playback.session.PlaybackSession;
+import io.github.hanhy06.emote.playback.PlaybackSession;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 

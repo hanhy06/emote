@@ -4,7 +4,7 @@ import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.network.payload.PlaybackStatePayload;
 import io.github.hanhy06.emote.playback.PlaybackStateListener;
 import io.github.hanhy06.emote.playback.PlayerPlaybackState;
-import io.github.hanhy06.emote.playback.session.PlaybackSession;
+import io.github.hanhy06.emote.playback.PlaybackSession;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.level.ServerPlayer;
 

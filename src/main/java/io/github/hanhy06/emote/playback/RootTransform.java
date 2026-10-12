@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.playback.runtime;
+package io.github.hanhy06.emote.playback;
 
 import com.mojang.math.Transformation;
 import net.minecraft.util.Mth;
