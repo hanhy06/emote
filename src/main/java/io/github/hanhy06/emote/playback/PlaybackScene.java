@@ -1,19 +1,20 @@
 package io.github.hanhy06.emote.playback;
 
-import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.content.DisplayData;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.mixin.accessor.BlockDisplayAccessor;
 import io.github.hanhy06.emote.mixin.accessor.DisplayAccessor;
 import io.github.hanhy06.emote.mixin.accessor.ItemDisplayAccessor;
 import io.github.hanhy06.emote.mixin.accessor.TextDisplayAccessor;
 import io.github.hanhy06.emote.skin.PlayerHeadProfileFactory;
 import io.github.hanhy06.emote.skin.SkinBinding;
+import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentUtils;
 import net.minecraft.network.chat.ResolutionContext;
@@ -32,17 +33,15 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.Vec3;
+import org.joml.Matrix4fc;
 
 import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Set;
-
-import net.minecraft.nbt.Tag;
-import org.joml.Matrix4fc;
-import java.util.List;
-import java.util.Objects;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 public final class PlaybackScene implements EmotePlayback.PoseTarget {
     private final ServerLevel level;
@@ -81,11 +80,6 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
         return this.viewYaw;
     }
 
-    private boolean effectiveVisibility(String nodeId, String attachmentId) {
-        NodeInstance node = this.nodes.get(nodeId);
-        return node.visible && node.attachments().get(attachmentId).visible;
-    }
-
     @Override
     public Matrix4fc rootMatrix() {
         return this.root.rotationMatrix();
@@ -101,7 +95,7 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
     public void setVisible(String nodeId, boolean visible) {
         NodeInstance node = requiredNode(nodeId);
         node.visible = visible;
-        node.attachments().forEach((id, attachment) -> setVisible(node, attachment, effectiveVisibility(nodeId, id), false));
+        node.attachments().values().forEach(attachment -> setVisible(node, attachment, node.visible && attachment.visible, false));
     }
 
     @Override
@@ -109,7 +103,7 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
         NodeInstance node = requiredNode(nodeId);
         AttachmentInstance attachment = node.attachments().get(attachmentId);
         attachment.visible = visible;
-        setVisible(node, attachment, effectiveVisibility(nodeId, attachmentId), false);
+        setVisible(node, attachment, node.visible && attachment.visible, false);
     }
 
     @Override
@@ -288,7 +282,7 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
             accessor.emote$setText(text);
             attachment.setDisplayContent(new DisplayData.Text(text));
         }
-        setVisible(node, attachment, effectiveVisibility(node.id(), attachment.id()), true);
+        setVisible(node, attachment, node.visible && attachment.visible, true);
     }
 
     @Override
@@ -299,7 +293,7 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
             return;
         }
         for (AttachmentInstance attachment : node.attachments().values()) {
-            if (attachment.entity() != null && attachment.displayed && effectiveVisibility(nodeId, attachment.id())) {
+            if (attachment.entity() != null && attachment.displayed && node.visible && attachment.visible) {
                 applyTransformation(attachment, transformation, interpolationDurationTicks, false);
             }
         }
@@ -408,7 +402,6 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
         }
     }
 
-
     public static final class NodeInstance {
         private final String id;
         private final EmoteAnimation.Node node;
@@ -513,6 +506,4 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
             return this.entity == null;
         }
     }
-
-
 }

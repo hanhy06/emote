@@ -1,36 +1,36 @@
 package io.github.hanhy06.emote.playback;
 
 import com.mojang.math.Transformation;
-import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.api.PlaybackPosition;
+import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.api.PlaybackTimeline;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.api.sequence.EmoteSequence;
 import io.github.hanhy06.emote.content.AnimationEventPhase;
+import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.content.PreparedSequence;
-import org.jspecify.annotations.Nullable;
+import io.github.hanhy06.emote.content.PreparedSequence.*;
 import io.github.hanhy06.emote.playback.molang.MolangQuerySource;
+import io.github.hanhy06.emote.util.WeightedChoiceSelector;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
+import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import io.github.hanhy06.emote.content.PreparedAnimation;
-import java.util.Comparator;
-import java.util.random.RandomGenerator;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.function.Supplier;
-import io.github.hanhy06.emote.api.sequence.EmoteSequence;
-import io.github.hanhy06.emote.util.WeightedChoiceSelector;
-import io.github.hanhy06.emote.content.PreparedSequence.*;
+import java.util.random.RandomGenerator;
 
 public final class EmotePlayback {
     private final EmoteAnimation model;
