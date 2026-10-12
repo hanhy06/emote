@@ -89,7 +89,7 @@ public final class PlaybackEngine implements ConfigListener {
     public void startWorker() {
         this.stopping = false;
         this.poseExecutor = Executors.newSingleThreadExecutor(Thread.ofPlatform().name("Emote pose worker").factory());
-        this.stressTest = new PlaybackStressTest(this.poseExecutor);
+        this.stressTest = new PlaybackStressTest();
     }
 
     public void stopWorker() {
@@ -102,6 +102,8 @@ public final class PlaybackEngine implements ConfigListener {
                 playback.session.releaseFrame();
             }
             this.framePlaybacks = List.of();
+            this.stressTest.stop();
+            this.stressTest.discardFrames();
             finishClosings();
         } finally { this.poseExecutor.close(); }
     }
@@ -175,7 +177,7 @@ public final class PlaybackEngine implements ConfigListener {
     public void beginTick() {
         if (this.frameTask != null || !this.framePlaybacks.isEmpty()) throw new IllegalStateException("Previous emote tick has not finished");
         List<ActivePlayback> frames = new ArrayList<>();
-        this.stressTest.prepareTick();
+        boolean hasStressFrames = this.stressTest.prepareTick();
         for (ActivePlayback playback : List.copyOf(this.activePlaybacks.values())) {
             PlaybackSession session = playback.session;
             if (!contains(session)) continue;
@@ -203,16 +205,18 @@ public final class PlaybackEngine implements ConfigListener {
             }
         }
         this.framePlaybacks = List.copyOf(frames);
-        if (!frames.isEmpty()) {
+        if (!frames.isEmpty() || hasStressFrames) {
             try {
                 this.frameTask = this.poseExecutor.submit(() -> {
                     for (ActivePlayback playback : frames) {
                         try { playback.frame.calculate(); }
                         catch (RuntimeException exception) { playback.frameError = exception; }
                     }
+                    this.stressTest.calculateFrames();
                 });
             } catch (RuntimeException exception) {
                 for (ActivePlayback playback : frames) playback.frameError = exception;
+                this.stressTest.failFrames(exception);
             }
         }
     }
@@ -235,10 +239,13 @@ public final class PlaybackEngine implements ConfigListener {
     }
 
     public void tick() {
+        long endTickStartedNanos = System.nanoTime();
         try { awaitFrames(); }
         catch (RuntimeException exception) {
             for (ActivePlayback playback : this.framePlaybacks) playback.frameError = exception;
+            this.stressTest.failFrames(exception);
         }
+        long waitNanos = System.nanoTime() - endTickStartedNanos;
         for (ActivePlayback playback : this.framePlaybacks) {
             if (!contains(playback.session) || playback.frameError != null) {
                 playback.frame.discard();
@@ -260,6 +267,7 @@ public final class PlaybackEngine implements ConfigListener {
                 stop(playback.session, PlaybackStopReason.ERROR);
             }
         }
+        this.stressTest.applyFrames();
         finishClosings();
         for (ActivePlayback playback : this.framePlaybacks) {
             PlaybackSession session = playback.session;
@@ -287,7 +295,7 @@ public final class PlaybackEngine implements ConfigListener {
         }
         this.framePlaybacks = List.of();
         finishClosings();
-        this.stressTest.tick();
+        this.stressTest.tick(endTickStartedNanos, waitNanos);
     }
 
     public @Nullable PlaybackSession stop(PlaybackSession session, PlaybackStopReason reason) {
