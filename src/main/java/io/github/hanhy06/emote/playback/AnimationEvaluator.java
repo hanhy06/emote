@@ -24,6 +24,7 @@ final class AnimationEvaluator {
     private final Transformation[] transformations;
     private final Transformation[] transitionStarts, transitionEnds;
     private Map<String, Matrix4f> transitionInput;
+    private long sampleGeneration, transitionGeneration;
     private final Quaternionf[] orientations;
     private final boolean[] visibility;
     private final Track[][] tracks;
@@ -164,12 +165,12 @@ final class AnimationEvaluator {
 
     void evaluateFrame(int tick, int loopCount, int deltaTicks, long lifetimeTicks, boolean update) {
         sampleFrame(tick, loopCount, deltaTicks, lifetimeTicks, update, true);
-        calculatePose(new Matrix4f(), null, 0);
         finishFrame();
+        calculatePose(capturePose(), new Matrix4f(), null, 0);
     }
 
     void sampleFrame(int tick, int loopCount, int deltaTicks, long lifetimeTicks, boolean update, boolean captureNbt) {
-        this.transitionInput = null;
+        this.sampleGeneration++;
         tick = Math.min(tick, this.animation.model().clip().durationTicks());
         this.sharedValues.clear();
         setFrameQueries(tick, loopCount, deltaTicks, lifetimeTicks);
@@ -213,8 +214,44 @@ final class AnimationEvaluator {
         }
     }
 
-    void calculatePose(Matrix4fc rootMatrix, Map<String, Matrix4f> transitionStart, float progress) {
-        boolean prepareTransition = transitionStart != null && transitionStart != this.transitionInput;
+    Pose capturePose() {
+        Pose pose = new Pose(this.sampleGeneration, this.nodeIds.size());
+        this.sampledValues.forEach((track, values) -> pose.values.put(track, values.clone()));
+        pose.sampledVisibility.putAll(this.sampledVisibility);
+        this.nbt.forEach((node, attachments) -> {
+            Map<String, CompoundTag> states = new HashMap<>();
+            attachments.forEach((attachment, state) -> states.put(attachment, state.copy()));
+            pose.nbt.put(node, states);
+        });
+        this.nbtRemoved.forEach((node, attachments) -> {
+            Map<String, Set<String>> removed = new HashMap<>();
+            attachments.forEach((attachment, fields) -> removed.put(attachment, Set.copyOf(fields)));
+            pose.nbtRemoved.put(node, removed);
+        });
+        return pose;
+    }
+
+    static final class Pose {
+        private final long generation;
+        private final Map<Track, double[]> values = new IdentityHashMap<>();
+        private final Map<Track, Boolean> sampledVisibility = new IdentityHashMap<>();
+        final Matrix4fc[] matrices;
+        final Transformation[] transformations;
+        final boolean[] visibility;
+        final List<Map<String, Boolean>> attachmentVisibility = new ArrayList<>();
+        final Map<String, Map<String, CompoundTag>> nbt = new HashMap<>();
+        final Map<String, Map<String, Set<String>>> nbtRemoved = new HashMap<>();
+
+        private Pose(long generation, int count) {
+            this.generation = generation;
+            this.matrices = new Matrix4fc[count];
+            this.transformations = new Transformation[count];
+            this.visibility = new boolean[count];
+        }
+    }
+
+    void calculatePose(Pose pose, Matrix4fc rootMatrix, Map<String, Matrix4f> transitionStart, float progress) {
+        boolean prepareTransition = transitionStart != null && (transitionStart != this.transitionInput || pose.generation != this.transitionGeneration);
         for (int index = 0; index < this.nodeIds.size(); index++) {
             Node node = this.animation.node(index);
             Matrix4f world = this.matrices[index];
@@ -230,11 +267,11 @@ final class AnimationEvaluator {
                         this.local.mul(this.animation.operationMatrix(operation));
                         if (rotation) orientation.mul(this.animation.operationRotation(operation)).normalize();
                     } else if (rotation) {
-                        PreparedAnimation.operationRotation(operation, this.sampledValues.get(track), this.operationRotation, this.quaternion);
+                        PreparedAnimation.operationRotation(operation, pose.values.get(track), this.operationRotation, this.quaternion);
                         this.local.mul(this.operationMatrix.rotation(this.operationRotation));
                         orientation.mul(this.operationRotation).normalize();
                     } else {
-                        this.local.mul(PreparedAnimation.operationMatrix(operation, this.sampledValues.get(track), this.operationMatrix));
+                        this.local.mul(PreparedAnimation.operationMatrix(operation, pose.values.get(track), this.operationMatrix));
                     }
                 }
                 if (parentIndex < 0) world.set(this.local);
@@ -256,16 +293,16 @@ final class AnimationEvaluator {
                 }
                 if (!world.isFinite()) throw new IllegalStateException("Node " + nodeId(index) + " produced a non-finite transform");
             }
-            Matrix4fc pose = world;
+            Matrix4fc matrix = world;
             if (transitionStart != null) {
                 if (prepareTransition) {
                     this.transitionStarts[index] = new Transformation(new Matrix4f(transitionStart.get(nodeId(index))));
                     this.transitionEnds[index] = new Transformation(new Matrix4f(world));
                 }
-                pose = this.transitionStarts[index].slerp(this.transitionEnds[index], progress).getMatrix();
+                matrix = this.transitionStarts[index].slerp(this.transitionEnds[index], progress).getMatrix();
             }
-            this.poseMatrices[index] = pose;
-            this.displayMatrix.set(rootMatrix).mul(pose);
+            this.poseMatrices[index] = matrix;
+            this.displayMatrix.set(rootMatrix).mul(matrix);
             Transformation previous = this.transformations[index];
             if (previous == null || !previous.getMatrix().equals(this.displayMatrix)) {
                 // Transformation retains its matrix and Display retains its decomposed components.
@@ -276,16 +313,21 @@ final class AnimationEvaluator {
                 transformation.rightRotation();
                 this.transformations[index] = transformation;
             }
-            boolean visible = this.sampledVisibility.getOrDefault(this.nodeVisibilityTracks[index], node.visible());
+            boolean visible = pose.sampledVisibility.getOrDefault(this.nodeVisibilityTracks[index], node.visible());
             if (parentIndex >= 0 && node.inherit().visibility()) visible &= this.visibility[parentIndex];
             this.visibility[index] = visible;
             Map<String, Boolean> attachments = this.attachmentVisibility.get(index);
             for (String attachmentId : this.animation.attachmentIds(index)) {
-                attachments.put(attachmentId, this.sampledVisibility.getOrDefault(
+                attachments.put(attachmentId, pose.sampledVisibility.getOrDefault(
                     this.attachmentVisibilityTracks.get(index).get(attachmentId), node.attachments().get(attachmentId).visible()));
             }
+            pose.matrices[index] = new Matrix4f(matrix);
+            pose.transformations[index] = this.transformations[index];
+            pose.visibility[index] = visible;
+            pose.attachmentVisibility.add(Map.copyOf(attachments));
         }
         this.transitionInput = transitionStart;
+        this.transitionGeneration = pose.generation;
     }
 
     void finishFrame() {

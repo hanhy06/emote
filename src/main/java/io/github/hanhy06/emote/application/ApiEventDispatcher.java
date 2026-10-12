@@ -15,7 +15,7 @@ import io.github.hanhy06.emote.content.PreparedEmote;
 public final class ApiEventDispatcher implements PlaybackEngine.Lifecycle {
     private final CopyOnWriteArrayList<EmotePlayListener> playListeners = new CopyOnWriteArrayList<>();
     private final CopyOnWriteArrayList<EmotePlaybackListener> playbackListeners = new CopyOnWriteArrayList<>();
-    private final Map<UUID, StartDispatch> startingPlaybacks = new HashMap<>();
+    private final Map<UUID, List<EmotePlaybackListener>> startedPlaybacks = new HashMap<>();
 
     public ListenerRegistration addPlayListener(EmotePlayListener listener) {
         return register(this.playListeners, Objects.requireNonNull(listener, "listener"));
@@ -45,24 +45,18 @@ public final class ApiEventDispatcher implements PlaybackEngine.Lifecycle {
     public void onStarted(PlaybackSession session) {
         PlaybackInfo playback = session.info();
         UUID key = session.sessionId();
-        StartDispatch dispatch = new StartDispatch(List.copyOf(this.playbackListeners));
-        if (this.startingPlaybacks.putIfAbsent(key, dispatch) != null) {
+        List<EmotePlaybackListener> notified = new ArrayList<>();
+        if (this.startedPlaybacks.putIfAbsent(key, notified) != null) {
             throw new IllegalStateException("Playback start is already being dispatched: " + session.sessionId());
         }
-        try {
-            for (EmotePlaybackListener listener : dispatch.listeners()) {
-                dispatch.markNotified();
-                try {
-                    listener.onStarted(playback);
-                } catch (RuntimeException exception) {
-                    EmoteMod.LOGGER.warn("Emote playback listener {} failed while handling start", listener.getClass().getName(), exception);
-                }
-                if (dispatch.stopped()) {
-                    break;
-                }
+        for (EmotePlaybackListener listener : List.copyOf(this.playbackListeners)) {
+            notified.add(listener);
+            try {
+                listener.onStarted(playback);
+            } catch (RuntimeException exception) {
+                EmoteMod.LOGGER.warn("Emote playback listener {} failed while handling start", listener.getClass().getName(), exception);
             }
-        } finally {
-            this.startingPlaybacks.remove(key, dispatch);
+            if (!session.isActive()) break;
         }
     }
 
@@ -72,14 +66,8 @@ public final class ApiEventDispatcher implements PlaybackEngine.Lifecycle {
         PlaybackStopReason reason
     ) {
         PlaybackInfo playback = session.info();
-        StartDispatch startDispatch = this.startingPlaybacks.get(session.sessionId());
-        List<EmotePlaybackListener> listeners;
-        if (startDispatch == null) {
-            listeners = List.copyOf(this.playbackListeners);
-        } else {
-            startDispatch.markStopped();
-            listeners = startDispatch.notifiedListeners();
-        }
+        List<EmotePlaybackListener> listeners = this.startedPlaybacks.remove(session.sessionId());
+        if (listeners == null) return;
         for (EmotePlaybackListener listener : listeners) {
             try {
                 listener.onStopped(playback, reason);
@@ -95,33 +83,4 @@ public final class ApiEventDispatcher implements PlaybackEngine.Lifecycle {
         return () -> registered.compareAndSet(true, false) && listeners.remove(listener);
     }
 
-    private static final class StartDispatch {
-        private final List<EmotePlaybackListener> listeners;
-        private int notifiedCount;
-        private boolean stopped;
-
-        private StartDispatch(List<EmotePlaybackListener> listeners) {
-            this.listeners = listeners;
-        }
-
-        private List<EmotePlaybackListener> listeners() {
-            return this.listeners;
-        }
-
-        private void markNotified() {
-            this.notifiedCount++;
-        }
-
-        private List<EmotePlaybackListener> notifiedListeners() {
-            return this.listeners.subList(0, this.notifiedCount);
-        }
-
-        private void markStopped() {
-            this.stopped = true;
-        }
-
-        private boolean stopped() {
-            return this.stopped;
-        }
-    }
 }

@@ -17,25 +17,22 @@ public final class EventCommandExecutor implements EmotePlayback.EventExecutor {
     private final ServerLevel level;
     private final @Nullable CommandSourceStack actorSource;
     private final PlaybackScene scene;
-    private final EmotePlayback playback;
 
     public EventCommandExecutor(
         ServerLevel level,
         @Nullable CommandSourceStack actorSource,
-        PlaybackScene scene,
-        EmotePlayback playback
+        PlaybackScene scene
     ) {
         this.level = Objects.requireNonNull(level, "level");
         this.actorSource = actorSource;
         this.scene = Objects.requireNonNull(scene, "scene");
-        this.playback = Objects.requireNonNull(playback, "playback");
     }
 
     @Override
     public void execute(EmotePlayback.EventOccurrence preparedEvent) {
         EmoteAnimation.Event event = preparedEvent.event();
         if (event.externalKey() != null) throw new IllegalStateException("No resolver for external action " + event.externalKey());
-        Vec3 origin = resolveOrigin(event.origin(), this.scene, this.playback);
+        Vec3 origin = resolveOrigin(event.origin(), this.scene, preparedEvent.pose());
         if (!event.commands().isEmpty()) {
             CommandSourceStack source = createSource(event.source())
                 .withPosition(origin)
@@ -66,16 +63,16 @@ public final class EventCommandExecutor implements EmotePlayback.EventExecutor {
         };
     }
 
-    static Vec3 resolveOrigin(EmoteAnimation.CommandOrigin origin, PlaybackScene scene, EmotePlayback playback) {
-        RootTransform root = scene.root();
+    static Vec3 resolveOrigin(EmoteAnimation.CommandOrigin origin, PlaybackScene scene, EmotePlayback.PoseView pose) {
+        RootTransform root = pose.root();
         Matrix4fc displayMatrix;
         if (origin.type() == EmoteAnimation.OriginType.ROOT) {
             displayMatrix = root.rotationMatrix();
         } else {
             if (!scene.nodes().containsKey(origin.node())) throw new IllegalStateException("Command references missing playback node: " + origin.node());
-            displayMatrix = playback.currentTransformation(origin.node()).getMatrix();
+            displayMatrix = pose.nodeMatrix(origin.node());
         }
-        Matrix4fc matrix = root.worldMatrix(scene.orientationYaw(), displayMatrix);
+        Matrix4fc matrix = root.worldMatrix(pose.orientationYaw(), displayMatrix);
         Vector3f position = matrix.transformPosition(new Vector3f(
             (float) origin.offset().x(),
             (float) origin.offset().y(),

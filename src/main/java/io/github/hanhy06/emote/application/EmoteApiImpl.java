@@ -189,7 +189,7 @@ public final class EmoteApiImpl extends EmoteApi {
         Objects.requireNonNull(sessionId, "sessionId");
         requireServerThread();
         return Optional.ofNullable(this.engine.findSession(sessionId))
-            .map(session -> session.playback().timeline());
+            .map(PlaybackSession::timeline);
     }
 
     @Override

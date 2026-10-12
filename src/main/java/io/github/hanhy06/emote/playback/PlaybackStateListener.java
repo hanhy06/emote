@@ -7,4 +7,5 @@ public interface PlaybackStateListener {
     void onStarted(ServerPlayer player, PlaybackSession session, PlayerPlaybackState playerState);
 
     void onStopped(ServerPlayer player, PlaybackSession session, PlayerPlaybackState playerState, PlaybackStopReason reason);
+    default void onCancelled(ServerPlayer player, PlaybackSession session, PlayerPlaybackState playerState, PlaybackStopReason reason) {}
 }

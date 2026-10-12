@@ -37,7 +37,6 @@ public final class PlayerPlaybackManager {
     private final PlaybackEngine engine;
     private final PlayerSkinManager skins;
     private final List<PlaybackStateListener> listeners = new ArrayList<>();
-    private final Set<UUID> closingPlayers = new HashSet<>();
     private final Map<UUID, PlayerPlayback> playerSessions = new HashMap<>();
 
     public PlayerPlaybackManager(PlaybackEngine engine, PlayerSkinManager skins) {
@@ -66,7 +65,6 @@ public final class PlayerPlaybackManager {
     }
 
     public PlayResult start(ServerPlayer player, PreparedEmote emote, PlaybackPlacement placement) {
-        if (this.closingPlayers.contains(player.getUUID())) return PlayResult.failure("Your previous emote is still closing.");
         PlayerSkinPreparation preparation = this.skins.preparePlayerSkin(player, emote.skinBindings());
         if (preparation.preparing()) return PlayResult.failure("Preparing your skin… " + preparation.progressPercent() + "%");
         RootTransform root = placement.mode() == PlaybackPlacement.Mode.EXTERNAL
@@ -78,8 +76,12 @@ public final class PlayerPlaybackManager {
         List<PlaybackStateListener> playbackListeners = List.copyOf(this.listeners);
         PlaybackEngine.Lifecycle lifecycle = new PlaybackEngine.Lifecycle() {
             private int notifiedListeners;
-            @Override public void onStarted(PlaybackSession session) {
+            private boolean started;
+            @Override public void onRegistered(PlaybackSession session) {
                 playerSessions.put(player.getUUID(), new PlayerPlayback(session, playerState));
+            }
+            @Override public void onStarted(PlaybackSession session) {
+                this.started = true;
                 hidePlayer(player, playerState);
                 for (PlaybackStateListener listener : playbackListeners) {
                     this.notifiedListeners++;
@@ -94,8 +96,7 @@ public final class PlayerPlaybackManager {
                 if (shouldStopForMovement(player, playerState)) return PlaybackStopReason.MOVED;
                 return null;
             }
-            @Override public void prepareFrame(PlaybackSession session) {
-                updatePlayerPlacement(session, player.position(), player.getYRot(), playerState.behavior());
+            @Override public void onFrameApplied(PlaybackSession session) {
                 if (playerState.behavior().hidden() && !player.isInvisible()) {
                     player.setInvisible(true);
                     syncPlayerVisibility(player);
@@ -107,14 +108,15 @@ public final class PlayerPlaybackManager {
                 return RootTransform.create(position, player.getYRot());
             }
             @Override public void onClosing(PlaybackSession session) {
-                playerSessions.remove(player.getUUID());
-                closingPlayers.add(player.getUUID());
+                PlayerPlayback active = playerSessions.get(player.getUUID());
+                if (active != null && active.session() == session) playerSessions.remove(player.getUUID());
             }
             @Override public void onStopped(PlaybackSession session, PlaybackStopReason reason) {
-                try {
-                    restorePlayerVisibility(player, playerState);
-                    for (int i = 0; i < this.notifiedListeners; i++) playbackListeners.get(i).onStopped(player, session, playerState, reason);
-                } finally { closingPlayers.remove(player.getUUID()); }
+                if (this.started) restorePlayerVisibility(player, playerState);
+                for (int i = 0; i < playbackListeners.size(); i++) {
+                    if (i < this.notifiedListeners) playbackListeners.get(i).onStopped(player, session, playerState, reason);
+                    else playbackListeners.get(i).onCancelled(player, session, playerState, reason);
+                }
             }
         };
         var result = this.engine.start(new PlaybackEngine.Request(player.level(), root, emote,
@@ -130,11 +132,6 @@ public final class PlayerPlaybackManager {
     public @Nullable PlaybackSession stop(ServerPlayer player, PlaybackStopReason reason) {
         PlaybackSession session = findActive(player.getUUID());
         return session == null ? null : this.engine.stop(session, reason);
-    }
-    void updatePlayerPlacement(PlaybackSession session, Vec3 playerPosition, float playerYaw, EmotePlayerBehavior behavior) {
-        if (session.placement().mode() != PlaybackPlacement.Mode.ACTOR) return;
-        if (behavior.stopConditions().movementDistance() == 0) session.scene().moveTo(playerPosition);
-        session.scene().updateViewRotation(playerYaw, session.playback().rotationDeadzone());
     }
     public void interrupt(ServerPlayer player, PlaybackStopReason reason) {
         PlaybackSession session = findActive(player.getUUID());
@@ -166,7 +163,7 @@ public final class PlayerPlaybackManager {
     private void handleStartTracking(Entity entity, ServerPlayer trackingPlayer) {
         if (!(entity instanceof ServerPlayer emotePlayer)) return;
         PlayerPlaybackState playerState = playerState(emotePlayer.getUUID());
-        if (playerState != null && playerState.behavior().hidden()) {
+        if (playerState != null && findActive(emotePlayer.getUUID()).state() == io.github.hanhy06.emote.api.PlaybackState.RUNNING && playerState.behavior().hidden()) {
             trackingPlayer.connection.send(new ClientboundSetEquipmentPacket(emotePlayer.getId(), EMPTY_EQUIPMENT));
         }
     }
@@ -174,7 +171,7 @@ public final class PlayerPlaybackManager {
     private void handleEquipmentSync(ServerPlayer player, Map<EquipmentSlot, ItemStack> changedItems) {
         if (PLAYER_EQUIPMENT_SLOTS.stream().noneMatch(changedItems::containsKey)) return;
         PlayerPlaybackState playerState = playerState(player.getUUID());
-        if (playerState != null && playerState.behavior().hidden()) sendToTrackingPlayers(player, EMPTY_EQUIPMENT);
+        if (playerState != null && findActive(player.getUUID()).state() == io.github.hanhy06.emote.api.PlaybackState.RUNNING && playerState.behavior().hidden()) sendToTrackingPlayers(player, EMPTY_EQUIPMENT);
     }
 
     private static void syncPlayerVisibility(ServerPlayer player) {

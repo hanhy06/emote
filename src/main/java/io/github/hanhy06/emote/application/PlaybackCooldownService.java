@@ -81,6 +81,14 @@ public final class PlaybackCooldownService implements PlaybackStateListener {
         this.statesByPlayer.clear();
     }
 
+    @Override
+    public void onCancelled(ServerPlayer player, PlaybackSession session, PlayerPlaybackState playerState, PlaybackStopReason reason) {
+        Map<String, CooldownState> states = this.statesByPlayer.get(player.getUUID());
+        if (states == null) return;
+        CooldownState state = states.get(session.emoteId());
+        if (state instanceof InUse) removeState(player.getUUID(), session.emoteId(), state);
+    }
+
     private void removeState(UUID playerId, String emoteId, CooldownState expectedState) {
         Map<String, CooldownState> playerStates = this.statesByPlayer.get(playerId);
         if (playerStates == null || !playerStates.remove(emoteId, expectedState)) {

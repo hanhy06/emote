@@ -51,6 +51,8 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
     private final List<AttachmentInstance> attachments;
     private final int displayEntityCount;
     private float viewYaw;
+    private RootTransform preparedRoot;
+    private float preparedViewYaw, preparedRotationDeadzone;
 
     private PlaybackScene(ServerLevel level, RootTransform root, PreparedEmote emote, Map<String, NodeInstance> nodes) {
         this.level = Objects.requireNonNull(level, "level");
@@ -67,6 +69,32 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
     public int displayEntityCount() { return this.displayEntityCount; }
     public List<AttachmentInstance> attachments() { return this.attachments; }
     public float viewYaw() { return this.viewYaw; }
+
+    public void preparePlacement(RootTransform placement, float rotationDeadzone) {
+        this.preparedRoot = new RootTransform(placement.position(), this.root.yaw(), this.root.rotationMatrix());
+        float difference = Mth.wrapDegrees(placement.yaw() - this.viewYaw);
+        this.preparedViewYaw = Math.abs(difference) > rotationDeadzone
+            ? Mth.wrapDegrees(this.viewYaw + difference - Math.copySign(rotationDeadzone, difference)) : this.viewYaw;
+        this.preparedRotationDeadzone = rotationDeadzone;
+    }
+
+    @Override public RootTransform frameRoot() { return this.preparedRoot; }
+    @Override public float frameOrientationYaw() { return this.preparedViewYaw; }
+
+    public void applyPlacement() {
+        moveTo(this.preparedRoot.position());
+        float previousRelativeYaw = this.root.relativeYaw(this.viewYaw);
+        this.viewYaw = this.preparedViewYaw;
+        float relativeYaw = this.root.relativeYaw(this.viewYaw);
+        boolean rotationChanged = Mth.packDegrees(previousRelativeYaw) != Mth.packDegrees(relativeYaw);
+        int interpolationTicks = positionRotationInterpolationTicks(this.preparedRotationDeadzone);
+        for (AttachmentInstance attachment : this.attachments) {
+            if (!attachment.isAnchor()) {
+                ((DisplayAccessor) attachment.entity()).emote$setPosRotInterpolationDuration(interpolationTicks);
+                if (rotationChanged) attachment.entity().setYRot(relativeYaw);
+            }
+        }
+    }
 
     public float orientationYaw() {
         return Mth.wrapDegrees(this.root.yaw() + this.root.relativeYaw(this.viewYaw));

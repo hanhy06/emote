@@ -67,12 +67,12 @@ public class ServerLifecycle {
         ServerLifecycleEvents.SERVER_STARTED.register(this::handleServerStarted);
         ServerLifecycleEvents.SERVER_STOPPING.register(this::handleServerStopping);
         ServerLifecycleEvents.SERVER_STOPPED.register(this::handleServerStopped);
-        ServerTickEvents.START_SERVER_TICK.register(ignoredServer -> this.playerPlaybackManager.engine().beginTick());
-        ServerTickEvents.END_SERVER_TICK.register(ignoredServer -> {
+        ServerTickEvents.START_SERVER_TICK.register(ignoredServer -> {
             this.markerPlayback.tick();
-            this.playerPlaybackManager.engine().tick();
             this.idlePlaybackService.tick();
+            this.playerPlaybackManager.engine().beginTick();
         });
+        ServerTickEvents.END_SERVER_TICK.register(ignoredServer -> this.playerPlaybackManager.engine().tick());
         PlaybackHooks.INTERRUPTION.register(this.playerPlaybackManager::interrupt);
         ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, ignoredSource, ignoredBaseDamage, damageTaken, ignoredBlocked) -> {
             if (damageTaken > 0.0F && entity instanceof ServerPlayer player) {

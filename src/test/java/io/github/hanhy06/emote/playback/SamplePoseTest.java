@@ -5,6 +5,9 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.content.PreparedAnimation;
+import io.github.hanhy06.emote.content.PreparedSequence;
+import io.github.hanhy06.emote.api.PlaybackStopReason;
+import io.github.hanhy06.emote.api.sequence.EmoteSequence;
 import io.github.hanhy06.emote.content.loader.AnimationJsonParser;
 import io.github.hanhy06.emote.playback.molang.MolangQuerySource;
 import io.github.hanhy06.emote.molang.MolangEngine;
@@ -72,13 +75,19 @@ class SamplePoseTest {
             };
             var target = new PoseTarget();
             var player = new EmotePlayback(animation, querySource);
-            player.start(target);
+            var initial = player.prepareStart(target);
+            initial.calculate();
+            initial.apply();
+            initial.dispatchEvents();
             int elapsedTicks = 0;
             for (var frameElement : run.getAsJsonArray("frames")) {
                 var frame = frameElement.getAsJsonObject();
                 int tick = frame.get("elapsed_ticks").getAsInt();
                 while (elapsedTicks < tick) {
-                    player.advance();
+                    var advance = player.prepareAdvance();
+                    advance.calculate();
+                    advance.apply();
+                    advance.dispatchEvents();
                     elapsedTicks++;
                 }
                 for (var node : frame.getAsJsonObject("matrices").entrySet()) {
@@ -407,7 +416,7 @@ class SamplePoseTest {
         evaluator.initialize(0, 0);
         var root = RootTransform.create(new net.minecraft.world.phys.Vec3(3, 80, -7), 37);
         evaluator.sampleFrame(4, 0, 1, 4, true, true);
-        evaluator.calculatePose(root.rotationMatrix(), null, 0);
+        evaluator.calculatePose(evaluator.capturePose(), root.rotationMatrix(), null, 0);
         evaluator.finishFrame();
         var published = evaluator.transformation(0);
         var publishedMatrix = published.getMatrixCopy();
@@ -420,7 +429,7 @@ class SamplePoseTest {
 
         evaluator.sampleFrame(10, 0, 1, 10, true, false);
         for (float progress : new float[]{0, 0.5f, 1, 0.25f}) {
-            evaluator.calculatePose(root.rotationMatrix(), starts, progress);
+            evaluator.calculatePose(evaluator.capturePose(), root.rotationMatrix(), starts, progress);
             for (int index = 0; index < evaluator.nodeCount(); index++) {
                 var expectedPose = new Transformation(new Matrix4f(starts.get(evaluator.nodeId(index))))
                     .slerp(new Transformation(new Matrix4f(evaluator.matrix(index))), progress);
@@ -440,13 +449,13 @@ class SamplePoseTest {
             assertEquals(rightRotation, published.rightRotation());
         }
         evaluator.sampleFrame(16, 0, 1, 16, true, false);
-        evaluator.calculatePose(root.rotationMatrix(), starts, 0.5f);
+        evaluator.calculatePose(evaluator.capturePose(), root.rotationMatrix(), starts, 0.5f);
         var updatedEnd = new Transformation(new Matrix4f(evaluator.matrix(0)));
         var expectedUpdated = new Transformation(new Matrix4f(starts.get(evaluator.nodeId(0)))).slerp(updatedEnd, 0.5f);
         assertEquals(expectedUpdated.getMatrix(), evaluator.poseMatrix(0));
         var nextStarts = new HashMap<>(starts);
         nextStarts.put(evaluator.nodeId(0), new Matrix4f().translation(9, -2, 4));
-        evaluator.calculatePose(root.rotationMatrix(), nextStarts, 0.25f);
+        evaluator.calculatePose(evaluator.capturePose(), root.rotationMatrix(), nextStarts, 0.25f);
         assertEquals(new Transformation(new Matrix4f(nextStarts.get(evaluator.nodeId(0)))).slerp(updatedEnd, 0.25f).getMatrix(), evaluator.poseMatrix(0));
     }
 
@@ -469,13 +478,18 @@ class SamplePoseTest {
     }
 
     @Test
-    void defersPoseApplicationAndDrainsInterruptedWorkBeforeSeek() throws Exception {
+    void preparesInputsOnMainAndCalculatesWithoutApplyingOrDispatching() throws Exception {
         byte[] bytes;
         try (var input = Objects.requireNonNull(getClass().getResourceAsStream("/bd-curves.json"))) { bytes = input.readAllBytes(); }
         var animation = PreparedAnimation.prepare(new AnimationJsonParser().parse(Path.of("bd-curves.json"), bytes), registries);
         var mainThread = Thread.currentThread();
         var workerThread = new java.util.concurrent.atomic.AtomicReference<Thread>();
         var release = new java.util.concurrent.CountDownLatch(1);
+        var queryThreads = new ArrayList<Thread>();
+        MolangQuerySource queries = session -> {
+            queryThreads.add(Thread.currentThread());
+            MolangQuerySource.EMPTY.apply(session);
+        };
         try (var worker = java.util.concurrent.Executors.newSingleThreadExecutor(runnable -> {
             var thread = Thread.ofPlatform().name("test pose worker").unstarted(runnable);
             workerThread.set(thread);
@@ -483,8 +497,16 @@ class SamplePoseTest {
         })) {
             try {
                 var target = new PoseTarget();
-                var playback = new EmotePlayback(animation, MolangQuerySource.EMPTY, new java.util.Random(1), worker);
-                playback.start(target);
+                var playback = new EmotePlayback(animation, queries, new java.util.Random(1));
+                var initial = playback.prepareStart(target);
+                assertTrue(target.matrices.isEmpty());
+                target.root.translation(100, 0, 0);
+                worker.submit(initial::calculate).get();
+                assertTrue(target.matrices.isEmpty());
+                initial.apply();
+                initial.dispatchEvents();
+                assertEquals(0, target.matrices.get("display_1").m30(), 1e-6);
+                target.root.identity();
                 var previous = Map.copyOf(target.matrices);
                 var entered = new java.util.concurrent.CountDownLatch(1);
                 worker.submit(() -> {
@@ -495,45 +517,135 @@ class SamplePoseTest {
                     catch (InterruptedException exception) { throw new IllegalStateException(exception); }
                 });
                 assertTrue(entered.await(5, java.util.concurrent.TimeUnit.SECONDS));
-                playback.prepareAdvance();
+                var advance = playback.prepareAdvance(4);
+                var queryCount = queryThreads.size();
+                var calculation = worker.submit(advance::calculate);
                 assertEquals(previous, target.matrices);
+                assertThrows(IllegalStateException.class, () -> playback.prepareTick(10));
                 assertTrue(workerThread.get() != mainThread);
-                var releaser = Thread.ofPlatform().start(() -> {
-                    try { Thread.sleep(30); }
-                    catch (InterruptedException exception) { throw new IllegalStateException(exception); }
-                    finally { release.countDown(); }
-                });
-                mainThread.interrupt();
-                assertThrows(IllegalStateException.class, playback::completeAdvance);
-                assertTrue(Thread.interrupted());
-                releaser.join();
+                release.countDown();
+                calculation.get();
+                assertEquals(queryCount, queryThreads.size());
+                assertTrue(queryThreads.stream().allMatch(thread -> thread == mainThread));
                 assertEquals(previous, target.matrices);
+                advance.apply();
+                advance.dispatchEvents();
+                assertEquals(4, playback.currentTick());
+                assertThrows(IllegalStateException.class, advance::calculate);
 
-                playback.setTick(10);
+                var seek = playback.prepareTick(10);
+                worker.submit(seek::calculate).get();
+                seek.apply();
+                seek.dispatchEvents();
                 var referenceTarget = new PoseTarget();
                 var reference = new EmotePlayback(animation);
-                reference.start(referenceTarget);
-                reference.setTick(10);
+                var referenceInitial = reference.prepareStart(referenceTarget);
+                referenceInitial.calculate();
+                referenceInitial.apply();
+                referenceInitial.dispatchEvents();
+                var referenceSeek = reference.prepareTick(10);
+                referenceSeek.calculate();
+                referenceSeek.apply();
+                referenceSeek.dispatchEvents();
                 assertEquals(referenceTarget.matrices, target.matrices);
-                worker.shutdown();
-                assertThrows(java.util.concurrent.RejectedExecutionException.class, playback::prepareAdvance);
-                playback.stop();
+                var discarded = playback.prepareAdvance();
+                worker.submit(discarded::calculate).get();
+                discarded.discard();
+                assertEquals(referenceTarget.matrices, target.matrices);
             } finally {
                 release.countDown();
-                Thread.interrupted();
             }
         }
     }
 
+    @Test
+    void preparesSequenceBoundariesAndKeepsEachEventPoseUntilDispatch() throws Exception {
+        JsonObject json;
+        try (var input = Objects.requireNonNull(getClass().getResourceAsStream("/common-curves.json"))) {
+            json = JsonParser.parseReader(new InputStreamReader(input, StandardCharsets.UTF_8)).getAsJsonObject();
+        }
+        json.add("nodes", JsonParser.parseString("{\"n\":{\"transform\":[{\"id\":\"position\",\"op\":\"translate\",\"value\":[0,0,0]}],\"attachments\":{\"text\":{\"type\":\"text_display\",\"text\":\"probe\"}}}}"));
+        json.add("animation", JsonParser.parseString("""
+            {"duration":"2t","playback":{"mode":"once","start_delay":"0t","loop_delay":"0t"},
+             "tracks":[{"target":{"node":"n","operation":"position"},"channel":"value",
+                         "driver":{"type":"expression","value":[{"molang":"q.anim_time_ticks"},0,0]}},
+                       {"target":{"node":"n","attachment":"text"},"channel":"nbt",
+                         "driver":{"type":"state","keys":[{"time":"0t","value":{"merge":{"molang":"return '{Glowing:1b}';"}}}]}}],
+             "events":{"start":[{"source":{"type":"server"},"origin":{"type":"node","node":"n"},
+                                   "action":{"type":"commands","commands":["say start"]}}],
+                       "timeline":[{"time":"2t","source":{"type":"server"},"origin":{"type":"node","node":"n"},
+                                     "action":{"type":"commands","commands":["say end"]}}],"loop":[],"stop":[]}}
+            """));
+        var first = PreparedAnimation.prepare(new AnimationJsonParser().parse(Path.of("first.json"), json.toString().getBytes(StandardCharsets.UTF_8)), registries);
+        json.addProperty("id", "test:second");
+        json.getAsJsonObject("animation").getAsJsonArray("tracks").get(0).getAsJsonObject().getAsJsonObject("driver")
+            .add("value", JsonParser.parseString("[{\"molang\":\"10 + q.anim_time_ticks\"},0,0]"));
+        var second = PreparedAnimation.prepare(new AnimationJsonParser().parse(Path.of("second.json"), json.toString().getBytes(StandardCharsets.UTF_8)), registries);
+        var sequence = PreparedSequence.prepare(new EmoteSequence(net.minecraft.resources.Identifier.parse("test:sequence"), first.metadata(),
+            new EmoteSequence.Settings(0, first.playerBehavior()), List.of(
+                new EmoteSequence.AnimationStep(first.model().id(), 1),
+                new EmoteSequence.AnimationStep(second.model().id(), 1, 2))), Map.of(first.id(), first, second.id(), second));
+        var target = new PoseTarget();
+        var playback = new EmotePlayback(sequence);
+        var effects = new ArrayList<String>();
+        playback.bindEvents(event -> effects.add("event:" + event.animationId() + ":" + event.animationTick() + ":" + event.pose().nodeMatrix("n").m30()));
+        playback.bindLifecycleListener(new EmotePlayback.LifecycleListener() {
+            public void onStart(PreparedAnimation animation) {
+                effects.add("start:" + animation.id() + ":" + playback.position().animationTick() + ":" + playback.currentTransformation("n").getMatrix().m30());
+            }
+            public void onTick(int tick) {
+                effects.add("tick:" + tick + ":" + playback.position().animationTick() + ":" + playback.currentTransformation("n").getMatrix().m30());
+            }
+            public void onClose(PlaybackStopReason reason) { effects.add("close:" + reason); }
+        });
+        var initial = playback.prepareStart(target);
+        assertTrue(target.matrices.isEmpty());
+        assertTrue(effects.isEmpty());
+        initial.calculate();
+        assertTrue(target.matrices.isEmpty());
+        initial.apply();
+        assertTrue(effects.isEmpty());
+        initial.dispatchEvents();
+        effects.clear();
+        var advance = playback.prepareAdvance(3);
+        assertEquals(io.github.hanhy06.emote.api.PlaybackTimeline.Phase.TRANSITION, playback.position().phase());
+        assertTrue(effects.isEmpty());
+        assertEquals(0, target.matrices.get("n").m30(), 1e-6);
+        advance.calculate();
+        assertTrue(effects.isEmpty());
+        assertEquals(0, target.matrices.get("n").m30(), 1e-6);
+        advance.apply();
+        assertTrue(effects.isEmpty());
+        assertEquals(6, target.matrices.get("n").m30(), 1e-6);
+        advance.dispatchEvents();
+        assertEquals(List.of("event:test:common_curves:2:2.0", "tick:2:2:2.0", "close:FINISHED"), effects);
+        var next = playback.prepareAdvance(2);
+        assertEquals(1, playback.position().animationTick());
+        next.calculate();
+        next.apply();
+        assertEquals(11, target.matrices.get("n").m30(), 1e-6);
+        assertTrue(target.nbt.get("n/text").getBooleanOr("Glowing", false));
+        next.dispatchEvents();
+        assertEquals(List.of("event:test:common_curves:2:2.0", "tick:2:2:2.0", "close:FINISHED",
+            "event:test:second:0:10.0", "start:test:second:0:10.0", "tick:1:1:11.0"), effects);
+        var stop = playback.prepareStop(PlaybackStopReason.MANUAL);
+        stop.calculate();
+        stop.apply();
+        stop.dispatchEvents();
+        assertEquals("close:MANUAL", effects.getLast());
+    }
+
     private static final class PoseTarget implements EmotePlayback.PoseTarget {
         final Map<String, Matrix4f> matrices = new HashMap<>();
+        final Map<String, CompoundTag> nbt = new HashMap<>();
+        final Matrix4f root = new Matrix4f();
 
-        @Override public Matrix4fc rootMatrix() { return new Matrix4f(); }
+        @Override public Matrix4fc rootMatrix() { return this.root; }
         @Override public Transformation createTransformation(String nodeId, Matrix4fc matrix) { return new Transformation(new Matrix4f(matrix)); }
         @Override public void applyTransform(String nodeId, Transformation transformation, int interpolationDurationTicks) { this.matrices.put(nodeId, transformation.getMatrixCopy()); }
         @Override public void setVisible(String nodeId, boolean visible) {}
         @Override public void setVisible(String nodeId, String attachmentId, boolean visible) {}
-        @Override public void applyNbt(String nodeId, String attachmentId, CompoundTag nbt, Set<String> remove) {}
+        @Override public void applyNbt(String nodeId, String attachmentId, CompoundTag nbt, Set<String> remove) { this.nbt.put(nodeId + "/" + attachmentId, nbt.copy()); }
         @Override public void resetAll() { this.matrices.clear(); }
     }
 }

@@ -108,22 +108,20 @@ public final class MarkerPlaybackManager {
                 entry.settings.skinName(), preparation.state());
         }
         var lifecycle = new PlaybackEngine.Lifecycle() {
-            @Override public void onStarted(PlaybackSession session) { entry.session = session; }
+            @Override public void onRegistered(PlaybackSession session) { entry.session = session; }
             @Override public @Nullable PlaybackStopReason beforeTick(PlaybackSession session) {
                 return entry.marker.isRemoved() || !entry.marker.level().dimension().equals(session.levelKey())
                     ? PlaybackStopReason.ENTITY_UNAVAILABLE : null;
             }
-            @Override public void prepareFrame(PlaybackSession session) {
-                if (session.placement().mode() != PlaybackPlacement.Mode.ACTOR) return;
-                session.scene().moveTo(entry.marker.position());
-                session.scene().updateViewRotation(entry.marker.getYRot(), 0);
-            }
             @Override public RootTransform resolveActorPlacement(PlaybackSession session) {
                 return RootTransform.create(entry.marker.position(), entry.marker.getYRot());
             }
+            @Override public float rotationDeadzone(PlaybackSession session) { return 0; }
+            @Override public void onClosing(PlaybackSession session) {
+                if (entry.session == session) entry.session = null;
+            }
             @Override public void onStopped(PlaybackSession session, PlaybackStopReason reason) {
-                if (entry.session != session) return;
-                entry.session = null;
+                if (entry.session != null) return;
                 if (reason == PlaybackStopReason.FINISHED || reason == PlaybackStopReason.RELOAD) {
                     entry.needsStart = true;
                     entry.nextAttempt = EmoteMod.SERVER.getTickCount() + 1L;
