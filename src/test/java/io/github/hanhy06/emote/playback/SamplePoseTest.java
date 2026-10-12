@@ -398,11 +398,55 @@ class SamplePoseTest {
         }
     }
 
+    @Test
+    void calculatesRootAndTransitionWithoutMutatingPublishedComponents() throws Exception {
+        byte[] bytes;
+        try (var input = Objects.requireNonNull(getClass().getResourceAsStream("/bd-curves.json"))) { bytes = input.readAllBytes(); }
+        var animation = PreparedAnimation.prepare(new AnimationJsonParser().parse(Path.of("bd-curves.json"), bytes), registries);
+        var evaluator = new AnimationEvaluator(animation, MolangQuerySource.EMPTY);
+        evaluator.initialize(0, 0);
+        var root = RootTransform.create(new net.minecraft.world.phys.Vec3(3, 80, -7), 37);
+        evaluator.sampleFrame(4, 0, 1, 4, true, true);
+        evaluator.calculatePose(root.rotationMatrix(), null, 0);
+        evaluator.finishFrame();
+        var published = evaluator.transformation(0);
+        var publishedMatrix = published.getMatrixCopy();
+        var translation = new org.joml.Vector3f(published.translation());
+        var rotation = new org.joml.Quaternionf(published.leftRotation());
+        var scale = new org.joml.Vector3f(published.scale());
+        var rightRotation = new org.joml.Quaternionf(published.rightRotation());
+        var starts = new HashMap<String, Matrix4f>();
+        for (int index = 0; index < evaluator.nodeCount(); index++) starts.put(evaluator.nodeId(index), new Matrix4f(evaluator.matrix(index)));
+
+        evaluator.sampleFrame(10, 0, 1, 10, true, false);
+        for (float progress : new float[]{0, 0.5f, 1, 0.25f}) {
+            evaluator.calculatePose(root.rotationMatrix(), starts, progress);
+            for (int index = 0; index < evaluator.nodeCount(); index++) {
+                var expectedPose = new Transformation(new Matrix4f(starts.get(evaluator.nodeId(index))))
+                    .slerp(new Transformation(new Matrix4f(evaluator.matrix(index))), progress);
+                assertEquals(expectedPose.getMatrix(), evaluator.poseMatrix(index));
+                var expected = new Transformation(root.displayMatrix(expectedPose.getMatrix()));
+                var actual = evaluator.transformation(index);
+                assertEquals(expected.getMatrix(), actual.getMatrix());
+                assertEquals(expected.translation(), actual.translation());
+                assertEquals(expected.leftRotation(), actual.leftRotation());
+                assertEquals(expected.scale(), actual.scale());
+                assertEquals(expected.rightRotation(), actual.rightRotation());
+            }
+            assertEquals(publishedMatrix, published.getMatrix());
+            assertEquals(translation, published.translation());
+            assertEquals(rotation, published.leftRotation());
+            assertEquals(scale, published.scale());
+            assertEquals(rightRotation, published.rightRotation());
+        }
+    }
+
     private static final class PoseTarget implements EmotePlayback.PoseTarget {
         final Map<String, Matrix4f> matrices = new HashMap<>();
 
+        @Override public Matrix4fc rootMatrix() { return new Matrix4f(); }
         @Override public Transformation createTransformation(String nodeId, Matrix4fc matrix) { return new Transformation(new Matrix4f(matrix)); }
-        @Override public void applyTransform(String nodeId, Matrix4fc matrix, int interpolationDurationTicks) { this.matrices.put(nodeId, new Matrix4f(matrix)); }
+        @Override public void applyTransform(String nodeId, Transformation transformation, int interpolationDurationTicks) { this.matrices.put(nodeId, transformation.getMatrixCopy()); }
         @Override public void setVisible(String nodeId, boolean visible) {}
         @Override public void setVisible(String nodeId, String attachmentId, boolean visible) {}
         @Override public void applyNbt(String nodeId, String attachmentId, CompoundTag nbt, Set<String> remove) {}

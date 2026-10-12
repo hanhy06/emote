@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.playback;
 
+import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.molang.MolangEngine;
 import io.github.hanhy06.emote.playback.molang.MolangQuerySource;
 import net.minecraft.nbt.CompoundTag;
@@ -19,6 +20,8 @@ final class AnimationEvaluator {
     private final MolangQuerySource querySource;
     private final List<String> nodeIds;
     private final Matrix4f[] matrices;
+    private final Matrix4fc[] poseMatrices;
+    private final Transformation[] transformations;
     private final Quaternionf[] orientations;
     private final boolean[] visibility;
     private final Track[][] tracks;
@@ -31,6 +34,7 @@ final class AnimationEvaluator {
     private final Map<Track, double[]> blendedValues = new IdentityHashMap<>();
     private final Map<Driver, int[]> keyCursors = new IdentityHashMap<>();
     private final Matrix4f local = new Matrix4f(), operationMatrix = new Matrix4f();
+    private final Matrix4f displayMatrix = new Matrix4f();
     private final Matrix4f inherited = new Matrix4f(), residual = new Matrix4f(), parentLinear = new Matrix4f();
     private final Quaternionf operationRotation = new Quaternionf();
     private final Quaterniond quaternion = new Quaterniond(), slerpStart = new Quaterniond(), slerpEnd = new Quaterniond();
@@ -51,6 +55,8 @@ final class AnimationEvaluator {
         this.nodeIds = animation.nodeOrder();
         int count = this.nodeIds.size();
         this.matrices = new Matrix4f[count];
+        this.poseMatrices = new Matrix4fc[count];
+        this.transformations = new Transformation[count];
         this.orientations = new Quaternionf[count];
         this.visibility = new boolean[count];
         this.tracks = new Track[count][];
@@ -131,6 +137,8 @@ final class AnimationEvaluator {
     int nodeCount() { return this.nodeIds.size(); }
     String nodeId(int index) { return this.nodeIds.get(index); }
     Matrix4fc matrix(int index) { return this.matrices[index]; }
+    Matrix4fc poseMatrix(int index) { return this.poseMatrices[index]; }
+    Transformation transformation(int index) { return this.transformations[index]; }
     boolean visible(int index) { return this.visibility[index]; }
     Map<String, Boolean> attachmentVisibility(int index) { return this.attachmentVisibility.get(index); }
     Map<String, CompoundTag> nbt(int index) { return this.nbt.getOrDefault(nodeId(index), Map.of()); }
@@ -151,10 +159,12 @@ final class AnimationEvaluator {
     }
 
     void evaluateFrame(int tick, int loopCount, int deltaTicks, long lifetimeTicks, boolean update) {
-        evaluateFrame(tick, loopCount, deltaTicks, lifetimeTicks, update, true);
+        sampleFrame(tick, loopCount, deltaTicks, lifetimeTicks, update, true);
+        calculatePose(new Matrix4f(), null, 0);
+        finishFrame();
     }
 
-    void evaluateFrame(int tick, int loopCount, int deltaTicks, long lifetimeTicks, boolean update, boolean captureNbt) {
+    void sampleFrame(int tick, int loopCount, int deltaTicks, long lifetimeTicks, boolean update, boolean captureNbt) {
         tick = Math.min(tick, this.animation.model().clip().durationTicks());
         this.sharedValues.clear();
         setFrameQueries(tick, loopCount, deltaTicks, lifetimeTicks);
@@ -196,6 +206,9 @@ final class AnimationEvaluator {
                 this.sampledVisibility.put(track, sampleVisibility(track, tick, this.defaultVisibility.get(track)));
             }
         }
+    }
+
+    void calculatePose(Matrix4fc rootMatrix, Map<String, Matrix4f> transitionStart, float progress) {
         for (int index = 0; index < this.nodeIds.size(); index++) {
             Node node = this.animation.node(index);
             this.local.identity();
@@ -235,6 +248,24 @@ final class AnimationEvaluator {
                 if (node.inherit().rotation() == RotationInheritance.PARENT) orientation.premul(parentOrientation).normalize();
             }
             if (!world.isFinite()) throw new IllegalStateException("Node " + nodeId(index) + " produced a non-finite transform");
+            Matrix4fc pose = world;
+            if (transitionStart != null) {
+                var start = new Transformation(new Matrix4f(transitionStart.get(nodeId(index))));
+                var end = new Transformation(new Matrix4f(world));
+                pose = start.slerp(end, progress).getMatrix();
+            }
+            this.poseMatrices[index] = pose;
+            this.displayMatrix.set(rootMatrix).mul(pose);
+            Transformation previous = this.transformations[index];
+            if (previous == null || !previous.getMatrix().equals(this.displayMatrix)) {
+                // Transformation retains its matrix and Display retains its decomposed components.
+                var transformation = new Transformation(new Matrix4f(this.displayMatrix));
+                transformation.translation();
+                transformation.leftRotation();
+                transformation.scale();
+                transformation.rightRotation();
+                this.transformations[index] = transformation;
+            }
             boolean visible = this.sampledVisibility.getOrDefault(this.nodeVisibilityTracks[index], node.visible());
             if (parentIndex >= 0 && node.inherit().visibility()) visible &= this.visibility[parentIndex];
             this.visibility[index] = visible;
@@ -244,7 +275,10 @@ final class AnimationEvaluator {
                     this.attachmentVisibilityTracks.get(index).get(attachmentId), node.attachments().get(attachmentId).visible()));
             }
         }
-        if (captureNbt) evaluateNbt(tick);
+    }
+
+    void finishFrame() {
+        evaluateNbt(this.sampleTick);
     }
 
     private void evaluateNbt(double tick) {

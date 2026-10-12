@@ -320,7 +320,9 @@ public final class EmotePlayback {
     }
 
     private void applyAnimationPose(int deltaTicks, boolean update) {
-        this.evaluator.evaluateFrame(this.currentTick, this.loopCount, deltaTicks, this.lifetimeTicks, update);
+        this.evaluator.sampleFrame(this.currentTick, this.loopCount, deltaTicks, this.lifetimeTicks, update, true);
+        this.evaluator.calculatePose(this.target.rootMatrix(), null, 0);
+        this.evaluator.finishFrame();
         applyEvaluator(deltaTicks == 0 ? 0 : 1);
     }
 
@@ -376,7 +378,8 @@ public final class EmotePlayback {
         this.child.sequenceCycle = true;
         this.child.initializeAnimation();
         if (selected.animation().model().settings().playback().loopDelay() instanceof EmoteAnimation.ConstantValue delay) this.child.sampledLoopDelay = (int) delay.value();
-        this.child.evaluator.evaluateFrame(0, 0, 0, 0, false, false);
+        this.child.evaluator.sampleFrame(0, 0, 0, 0, false, false);
+        this.child.evaluator.calculatePose(this.target.rootMatrix(), null, 0);
         this.child.phase = PlaybackPhase.RUNNING;
         for (var segment : this.sequencePhases) {
             if (!Objects.equals(segment.stepIndex(), selected.stepIndex()) || !Objects.equals(segment.repeatIndex(), selected.repeatIndex())) continue;
@@ -539,11 +542,10 @@ public final class EmotePlayback {
     }
 
     private void applyTransition(double progress) {
+        this.child.evaluator.calculatePose(this.target.rootMatrix(), this.transitionStartTransforms, (float) progress);
         for (int index = 0; index < this.child.evaluator.nodeCount(); index++) {
             String id = this.child.evaluator.nodeId(index);
-            var start = new Transformation(new Matrix4f(this.transitionStartTransforms.get(id)));
-            var end = new Transformation(new Matrix4f(this.child.evaluator.matrix(index)));
-            applyTransform(id, start.slerp(end, (float) progress).getMatrix(), 0);
+            applyTransform(id, this.child.evaluator.poseMatrix(index), this.child.evaluator.transformation(index), 0);
             applyVisibility(id, this.child.evaluator.visible(index));
             this.child.evaluator.attachmentVisibility(index).forEach((attachment, visible) -> this.target.setVisible(id, attachment, visible));
         }
@@ -857,7 +859,8 @@ public final class EmotePlayback {
         String nodeId = this.evaluator.nodeId(index);
         applyTransform(
             nodeId,
-            this.evaluator.matrix(index),
+            this.evaluator.poseMatrix(index),
+            this.evaluator.transformation(index),
             interpolationDurationTicks
         );
         return nodeId;
@@ -866,13 +869,14 @@ public final class EmotePlayback {
     private void applyTransform(
         String nodeId,
         Matrix4fc matrix,
+        Transformation transformation,
         int interpolationDurationTicks
     ) {
         Matrix4f applied = this.appliedTransforms.get(nodeId);
         if (applied != null && matrix.equals(applied)) return;
         if (applied == null) this.appliedTransforms.put(nodeId, new Matrix4f(matrix));
         else applied.set(matrix);
-        this.target.applyTransform(nodeId, matrix, interpolationDurationTicks);
+        this.target.applyTransform(nodeId, transformation, interpolationDurationTicks);
     }
 
     private void applyVisibility(String nodeId, boolean visible) {
@@ -942,9 +946,11 @@ public final class EmotePlayback {
     }
 
     public interface PoseTarget {
+        Matrix4fc rootMatrix();
+
         Transformation createTransformation(String nodeId, Matrix4fc matrix);
 
-        void applyTransform(String nodeId, Matrix4fc matrix, int interpolationDurationTicks);
+        void applyTransform(String nodeId, Transformation transformation, int interpolationDurationTicks);
 
         void setVisible(String nodeId, boolean visible);
 

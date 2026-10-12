@@ -87,6 +87,11 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
     }
 
     @Override
+    public Matrix4fc rootMatrix() {
+        return this.root.rotationMatrix();
+    }
+
+    @Override
     public Transformation createTransformation(String nodeId, Matrix4fc matrix) {
         requiredNode(nodeId);
         return this.root.displayTransformation(matrix);
@@ -110,7 +115,7 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
     public void resetAll() {
         this.nodes.forEach((nodeId, node) -> {
             node.attachments().keySet().forEach(attachmentId -> resetNbt(nodeId, attachmentId));
-            applyTransform(nodeId, this.emote.defaultMatrix(nodeId), 0);
+            applyTransform(nodeId, createTransformation(nodeId, this.emote.defaultMatrix(nodeId)), 0);
             node.attachments().forEach((id, attachment) -> setVisible(nodeId, id, attachment.attachment().visible()));
             setVisible(nodeId, node.node().visible());
         });
@@ -281,12 +286,11 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
     }
 
     @Override
-    public void applyTransform(String nodeId, Matrix4fc matrix, int interpolationDurationTicks) {
+    public void applyTransform(String nodeId, Transformation transformation, int interpolationDurationTicks) {
         NodeInstance node = requiredNode(nodeId);
         if (node.isAnchor()) {
             return;
         }
-        Transformation transformation = this.root.displayTransformation(matrix);
         for (AttachmentInstance attachment : node.attachments().values()) {
             if (attachment.entity() != null) applyTransformation(attachment.entity(), transformation, interpolationDurationTicks);
         }
