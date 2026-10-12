@@ -18,13 +18,22 @@ final class AnimationEvaluator {
     private final PreparedAnimation animation;
     private final MolangQuerySource querySource;
     private final List<String> nodeIds;
-    private final Map<String, Matrix4f> matrices = new LinkedHashMap<>();
-    private final Map<String, Quaternionf> orientations = new HashMap<>();
-    private final Map<String, Boolean> visibility = new HashMap<>();
-    private final Map<String, Map<String, Track>> tracks = new HashMap<>();
-    private final Map<String, Track> nodeVisibilityTracks = new HashMap<>();
-    private final Map<String, Map<String, Track>> attachmentVisibilityTracks = new HashMap<>();
-    private final Map<String, Map<String, Boolean>> attachmentVisibility = new HashMap<>();
+    private final Matrix4f[] matrices;
+    private final Quaternionf[] orientations;
+    private final boolean[] visibility;
+    private final Track[][] tracks;
+    private final Track[] nodeVisibilityTracks;
+    private final List<Map<String, Track>> attachmentVisibilityTracks = new ArrayList<>();
+    private final List<Map<String, Boolean>> attachmentVisibility = new ArrayList<>();
+    private final Map<Track, Boolean> defaultVisibility = new IdentityHashMap<>();
+    private final Map<Track, double[]> sampledValues = new IdentityHashMap<>();
+    private final Map<Track, Boolean> sampledVisibility = new IdentityHashMap<>();
+    private final Map<Track, double[]> blendedValues = new IdentityHashMap<>();
+    private final Map<Driver, int[]> keyCursors = new IdentityHashMap<>();
+    private final Matrix4f local = new Matrix4f(), operationMatrix = new Matrix4f();
+    private final Matrix4f inherited = new Matrix4f(), residual = new Matrix4f(), parentLinear = new Matrix4f();
+    private final Quaternionf operationRotation = new Quaternionf();
+    private final Quaterniond quaternion = new Quaterniond(), slerpStart = new Quaterniond(), slerpEnd = new Quaterniond();
     private final Map<String, Map<String, Track>> nbtTracks = new HashMap<>();
     private final Map<String, Map<String, CompoundTag>> nbt = new HashMap<>();
     private final Map<String, Map<String, Set<String>>> nbtRemoved = new HashMap<>();
@@ -40,18 +49,42 @@ final class AnimationEvaluator {
         this.animation = animation;
         this.querySource = querySource;
         this.nodeIds = animation.nodeOrder();
-        for (var id : this.nodeIds) this.matrices.put(id, new Matrix4f());
+        int count = this.nodeIds.size();
+        this.matrices = new Matrix4f[count];
+        this.orientations = new Quaternionf[count];
+        this.visibility = new boolean[count];
+        this.tracks = new Track[count][];
+        this.nodeVisibilityTracks = new Track[count];
+        Map<String, Map<String, Track>> valueTracks = new HashMap<>();
+        Map<String, Track> visibilityTracks = new HashMap<>();
+        Map<String, Map<String, Track>> attachmentTracks = new HashMap<>();
         for (var track : animation.model().clip().tracks().values()) {
             String node = track.target().node();
             if (track.channel() == Channel.VALUE) {
-                this.tracks.computeIfAbsent(node, ignored -> new HashMap<>()).put(track.target().operation(), track);
+                valueTracks.computeIfAbsent(node, ignored -> new HashMap<>()).put(track.target().operation(), track);
+                if (track.blend() != null) this.blendedValues.put(track, new double[track.blend().base().size()]);
             } else if (track.channel() == Channel.NBT) {
-                this.nbtTracks.computeIfAbsent(node, ignored -> new HashMap<>()).put(track.target().attachment(), track);
+                this.nbtTracks.computeIfAbsent(node, ignored -> new TreeMap<>()).put(track.target().attachment(), track);
             } else if (track.target().attachment() == null) {
-                this.nodeVisibilityTracks.put(node, track);
+                visibilityTracks.put(node, track);
+                this.defaultVisibility.put(track, animation.nodes().get(node).visible());
             } else {
-                this.attachmentVisibilityTracks.computeIfAbsent(node, ignored -> new HashMap<>()).put(track.target().attachment(), track);
+                attachmentTracks.computeIfAbsent(node, ignored -> new HashMap<>()).put(track.target().attachment(), track);
+                this.defaultVisibility.put(track, animation.nodes().get(node).attachments().get(track.target().attachment()).visible());
             }
+        }
+        for (int index = 0; index < count; index++) {
+            String id = this.nodeIds.get(index);
+            Node node = animation.node(index);
+            this.matrices[index] = new Matrix4f();
+            this.orientations[index] = new Quaternionf();
+            this.tracks[index] = new Track[node.transform().size()];
+            for (int operation = 0; operation < this.tracks[index].length; operation++) {
+                this.tracks[index][operation] = valueTracks.getOrDefault(id, Map.of()).get(node.transform().get(operation).id());
+            }
+            this.nodeVisibilityTracks[index] = visibilityTracks.get(id);
+            this.attachmentVisibilityTracks.add(attachmentTracks.getOrDefault(id, Map.of()));
+            this.attachmentVisibility.add(new LinkedHashMap<>());
         }
     }
 
@@ -97,9 +130,9 @@ final class AnimationEvaluator {
 
     int nodeCount() { return this.nodeIds.size(); }
     String nodeId(int index) { return this.nodeIds.get(index); }
-    Matrix4fc matrix(int index) { return this.matrices.get(nodeId(index)); }
-    boolean visible(int index) { return this.visibility.get(nodeId(index)); }
-    Map<String, Boolean> attachmentVisibility(int index) { return this.attachmentVisibility.get(nodeId(index)); }
+    Matrix4fc matrix(int index) { return this.matrices[index]; }
+    boolean visible(int index) { return this.visibility[index]; }
+    Map<String, Boolean> attachmentVisibility(int index) { return this.attachmentVisibility.get(index); }
     Map<String, CompoundTag> nbt(int index) { return this.nbt.getOrDefault(nodeId(index), Map.of()); }
     Set<String> nbtRemoved(int index, String attachmentId) { return this.nbtRemoved.get(nodeId(index)).get(attachmentId); }
 
@@ -143,64 +176,72 @@ final class AnimationEvaluator {
             this.sharedValues.clear();
             this.sharedValues.putAll(frameValues);
         }
-        Map<Track, double[]> sampledValues = new IdentityHashMap<>();
-        Map<Track, Boolean> sampledVisibility = new IdentityHashMap<>();
+        this.sampledValues.clear();
+        this.sampledVisibility.clear();
         for (Track track : this.animation.model().clip().tracks().values()) {
-            Node node = this.animation.model().nodes().get(track.target().node());
             if (track.channel() == Channel.VALUE) {
-                Operation operation = node.transform().stream().filter(op -> op.id().equals(track.target().operation())).findFirst().orElseThrow();
+                Operation operation = this.animation.operation(track);
                 double weight = track.blend() == null ? 1 : scalar(track.blend().weight(), 0);
                 double[] value = sample(track.driver(), tick, operation.value());
-                if (track.blend() != null) for (int i = 0; i < value.length; i++) {
-                    double base = track.blend().base().get(i);
-                    value[i] = base + (value[i] - base) * weight;
+                if (track.blend() != null) {
+                    double[] blended = this.blendedValues.get(track);
+                    for (int i = 0; i < value.length; i++) {
+                        double base = track.blend().base().get(i);
+                        blended[i] = base + (value[i] - base) * weight;
+                    }
+                    value = blended;
                 }
-                sampledValues.put(track, value);
+                this.sampledValues.put(track, value);
             } else if (track.channel() == Channel.VISIBLE) {
-                boolean base = track.target().attachment() == null ? node.visible() : node.attachments().get(track.target().attachment()).visible();
-                sampledVisibility.put(track, sampleVisibility(track, tick, base));
+                this.sampledVisibility.put(track, sampleVisibility(track, tick, this.defaultVisibility.get(track)));
             }
         }
-        for (String id : this.nodeIds) {
-            Node node = this.animation.model().nodes().get(id);
-            Matrix4f local = new Matrix4f();
-            Quaternionf orientation = new Quaternionf();
-            for (Operation operation : node.transform()) {
-                Track track = this.tracks.getOrDefault(id, Map.of()).get(operation.id());
-                double[] value = track == null ? operation.value().stream().mapToDouble(Double::doubleValue).toArray() : sampledValues.get(track);
-                local.mul(PreparedAnimation.operationMatrix(operation, value));
-                if (operation.op() == OperationType.ROTATE_EULER || operation.op() == OperationType.ROTATE_QUATERNION) {
-                    orientation.mul(PreparedAnimation.operationRotation(operation, value)).normalize();
+        for (int index = 0; index < this.nodeIds.size(); index++) {
+            Node node = this.animation.node(index);
+            this.local.identity();
+            Quaternionf orientation = this.orientations[index].identity();
+            for (int operationIndex = 0; operationIndex < node.transform().size(); operationIndex++) {
+                Operation operation = node.transform().get(operationIndex);
+                Track track = this.tracks[index][operationIndex];
+                boolean rotation = operation.op() == OperationType.ROTATE_EULER || operation.op() == OperationType.ROTATE_QUATERNION;
+                if (track == null) {
+                    this.local.mul(this.animation.operationMatrix(operation));
+                    if (rotation) orientation.mul(this.animation.operationRotation(operation)).normalize();
+                } else if (rotation) {
+                    PreparedAnimation.operationRotation(operation, this.sampledValues.get(track), this.operationRotation, this.quaternion);
+                    this.local.mul(this.operationMatrix.rotation(this.operationRotation));
+                    orientation.mul(this.operationRotation).normalize();
+                } else {
+                    this.local.mul(PreparedAnimation.operationMatrix(operation, this.sampledValues.get(track), this.operationMatrix));
                 }
             }
-            Matrix4f world = this.matrices.get(id);
-            if (node.parentId() == null) world.set(local);
+            Matrix4f world = this.matrices[index];
+            int parentIndex = this.animation.parentIndex(index);
+            if (parentIndex < 0) world.set(this.local);
             else {
-                Matrix4f parent = this.matrices.get(node.parentId());
-                Quaternionf parentOrientation = this.orientations.get(node.parentId());
+                Matrix4f parent = this.matrices[parentIndex];
+                Quaternionf parentOrientation = this.orientations[parentIndex];
                 if (node.inherit().rotation() == RotationInheritance.PARENT && node.inherit().scale()) {
-                    world.set(parent).mul(local);
+                    world.set(parent).mul(this.local);
                 } else {
-                    Matrix4f inherited = new Matrix4f();
-                    if (node.inherit().rotation() == RotationInheritance.PARENT) inherited.rotation(parentOrientation);
+                    this.inherited.identity();
+                    if (node.inherit().rotation() == RotationInheritance.PARENT) this.inherited.rotation(parentOrientation);
                     if (node.inherit().scale()) {
-                        Matrix4f residual = new Matrix4f().rotation(parentOrientation).invert()
-                            .mul(new Matrix4f(parent).setTranslation(0, 0, 0));
-                        inherited.mul(residual);
+                        this.residual.rotation(parentOrientation).invert().mul(this.parentLinear.set(parent).setTranslation(0, 0, 0));
+                        this.inherited.mul(this.residual);
                     }
-                    world.set(inherited.setTranslation(parent.m30(), parent.m31(), parent.m32())).mul(local);
+                    world.set(this.inherited.setTranslation(parent.m30(), parent.m31(), parent.m32())).mul(this.local);
                 }
                 if (node.inherit().rotation() == RotationInheritance.PARENT) orientation.premul(parentOrientation).normalize();
             }
-            if (!world.isFinite()) throw new IllegalStateException("Node " + id + " produced a non-finite transform");
-            this.orientations.put(id, orientation);
-            boolean visible = sampledVisibility.getOrDefault(this.nodeVisibilityTracks.get(id), node.visible());
-            if (node.parentId() != null && node.inherit().visibility()) visible &= this.visibility.get(node.parentId());
-            this.visibility.put(id, visible);
-            Map<String, Boolean> attachments = this.attachmentVisibility.computeIfAbsent(id, ignored -> new LinkedHashMap<>());
-            for (var attachment : node.attachments().entrySet().stream().sorted(Map.Entry.comparingByKey()).toList()) {
-                attachments.put(attachment.getKey(), sampledVisibility.getOrDefault(
-                    this.attachmentVisibilityTracks.getOrDefault(id, Map.of()).get(attachment.getKey()), attachment.getValue().visible()));
+            if (!world.isFinite()) throw new IllegalStateException("Node " + nodeId(index) + " produced a non-finite transform");
+            boolean visible = this.sampledVisibility.getOrDefault(this.nodeVisibilityTracks[index], node.visible());
+            if (parentIndex >= 0 && node.inherit().visibility()) visible &= this.visibility[parentIndex];
+            this.visibility[index] = visible;
+            Map<String, Boolean> attachments = this.attachmentVisibility.get(index);
+            for (String attachmentId : this.animation.attachmentIds(index)) {
+                attachments.put(attachmentId, this.sampledVisibility.getOrDefault(
+                    this.attachmentVisibilityTracks.get(index).get(attachmentId), node.attachments().get(attachmentId).visible()));
             }
         }
         if (captureNbt) evaluateNbt(tick);
@@ -213,7 +254,7 @@ final class AnimationEvaluator {
             Map<String, Track> tracks = this.nbtTracks.getOrDefault(nodeId, Map.of());
             Map<String, CompoundTag> states = this.nbt.computeIfAbsent(nodeId, ignored -> new LinkedHashMap<>());
             Map<String, Set<String>> removedStates = this.nbtRemoved.computeIfAbsent(nodeId, ignored -> new HashMap<>());
-            for (String attachmentId : tracks.keySet().stream().sorted().toList()) {
+            for (String attachmentId : tracks.keySet()) {
                 CompoundTag state = new CompoundTag();
                 Set<String> removed = new HashSet<>();
                 for (Keyframe key : tracks.get(attachmentId).driver().keys()) {
@@ -258,8 +299,7 @@ final class AnimationEvaluator {
                 if (!driver.firstPre()) return base;
                 value = (VisibilityValue) keys.getFirst().pre();
             } else {
-                int index = 0;
-                while (index + 1 < keys.size() && keys.get(index + 1).tick() <= tick) index++;
+                int index = keyIndex(driver, tick);
                 value = (VisibilityValue) keys.get(index).post();
             }
         }
@@ -270,12 +310,11 @@ final class AnimationEvaluator {
     }
 
     private double[] sample(Driver driver, double tick, List<Double> base) {
-        if (driver == null) return base.stream().mapToDouble(Double::doubleValue).toArray();
+        if (driver == null) return this.animation.baseValue(base);
         if (driver.type() == DriverType.EXPRESSION) return vector((VectorValue) driver.value(), 0);
         List<Keyframe> keys = driver.keys();
-        if (tick < keys.getFirst().tick()) return driver.firstPre() ? vector((VectorValue) keys.getFirst().pre(), 0) : base.stream().mapToDouble(Double::doubleValue).toArray();
-        int index = 0;
-        while (index + 1 < keys.size() && keys.get(index + 1).tick() <= tick) index++;
+        if (tick < keys.getFirst().tick()) return driver.firstPre() ? vector((VectorValue) keys.getFirst().pre(), 0) : this.animation.baseValue(base);
+        int index = keyIndex(driver, tick);
         if (driver.sampleSegment() && keys.size() > 1) index = Math.min(index, keys.size() - 2);
         Keyframe left = keys.get(index);
         if (!driver.sampleSegment() && tick == left.tick()) return vector((VectorValue) (driver.keyPre() ? left.pre() : left.post()), 1);
@@ -292,8 +331,8 @@ final class AnimationEvaluator {
         if (segment.interpolation() == Interpolation.STEP || driver.sampleSegment() && segment.interpolation() == Interpolation.BEZIER && progress == 0) return component ? vector(startValues, progress) : start;
         double eased = component ? progress : easing(segment.easing(), progress);
         if (segment.interpolation() == Interpolation.SLERP) {
-            Quaterniond rotation = new Quaterniond(start[0], start[1], start[2], start[3]).normalize()
-                .slerp(new Quaterniond(end[0], end[1], end[2], end[3]).normalize(), eased).normalize();
+            Quaterniond rotation = this.slerpStart.set(start[0], start[1], start[2], start[3]).normalize()
+                .slerp(this.slerpEnd.set(end[0], end[1], end[2], end[3]).normalize(), eased).normalize();
             return new double[]{rotation.x, rotation.y, rotation.z, rotation.w};
         }
         double[] previous = !component && segment.interpolation() == Interpolation.CATMULL_ROM && segment.previous() != null ? vector(segment.previous(), progress) : start;
@@ -353,6 +392,25 @@ final class AnimationEvaluator {
         return result;
     }
 
+    private int keyIndex(Driver driver, double tick) {
+        int[] cursor = this.keyCursors.computeIfAbsent(driver, ignored -> new int[1]);
+        List<Keyframe> keys = driver.keys();
+        int index = cursor[0];
+        if (keys.get(index).tick() > tick) {
+            int low = 0, high = index;
+            while (low < high) {
+                int middle = (low + high + 1) >>> 1;
+                if (keys.get(middle).tick() <= tick) low = middle;
+                else high = middle - 1;
+            }
+            index = low;
+        } else {
+            while (index + 1 < keys.size() && keys.get(index + 1).tick() <= tick) index++;
+        }
+        cursor[0] = index;
+        return index;
+    }
+
     private static double cubic(double a, double b, double c, double d, double t) {
         double s = 1 - t;
         return s * s * s * a + 3 * s * s * t * b + 3 * s * t * t * c + t * t * t * d;
@@ -400,6 +458,14 @@ final class AnimationEvaluator {
     }
 
     private double[] vector(VectorValue value, double progress) {
+        double[] constant = this.animation.constantVector(value);
+        if (constant != null) {
+            if (constant.length > 0) {
+                this.sampleProgress = progress;
+                this.session.setQuery("key_frame_lerp_time", progress);
+            }
+            return constant;
+        }
         double[] result = new double[value.components().size()];
         for (int i = 0; i < result.length; i++) {
             result[i] = scalar(value.components().get(i), progress);

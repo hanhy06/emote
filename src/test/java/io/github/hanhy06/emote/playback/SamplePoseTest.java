@@ -234,8 +234,8 @@ class SamplePoseTest {
             });
         });
         evaluator.initialize(0, 0);
-        int[] ticks = {0, 10, 20, 30, 31};
-        double[] expected = {2, 2, 6.375, 8, 10};
+        int[] ticks = {0, 10, 20, 30, 31, 20, 0, 30, 10, 31};
+        double[] expected = {2, 2, 6.375, 8, 10, 6.375, 2, 8, 2, 10};
         for (int point = 0; point < ticks.length; point++) {
             calls.clear();
             int tick = ticks[point];

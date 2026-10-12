@@ -25,6 +25,7 @@ import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 import org.joml.Quaterniond;
 import org.joml.Quaternionf;
+import org.joml.Quaternionfc;
 import java.nio.file.Path;
 import java.util.*;
 
@@ -32,6 +33,14 @@ public final class PreparedAnimation implements PreparedEmote {
     private final List<SkinBinding> skinBindings;
     private final EmoteAnimation model;
     private final List<String> nodeOrder;
+    private final List<Node> orderedNodes;
+    private final int[] parentIndices;
+    private final List<List<String>> attachmentIds;
+    private final Map<Track, Operation> trackOperations = new IdentityHashMap<>();
+    private final Map<List<Double>, double[]> baseValues = new IdentityHashMap<>();
+    private final Map<VectorValue, double[]> constantVectors = new IdentityHashMap<>();
+    private final Map<Operation, Matrix4f> operationMatrices = new IdentityHashMap<>();
+    private final Map<Operation, Quaternionf> operationRotations = new IdentityHashMap<>();
     private final Map<String, MolangEngine.CompiledExpression> expressions;
     private final Map<String, Matrix4f> defaultMatrices;
     private final int displayEntityCount;
@@ -43,9 +52,40 @@ public final class PreparedAnimation implements PreparedEmote {
         this.model = source.model();
         this.skinBindings = compileSkinBindings(this.model);
         this.nodeOrder = nodeOrder(this.model.nodes());
-        this.expressions = compileExpressions(this.model);
+        this.orderedNodes = this.nodeOrder.stream().map(this.model.nodes()::get).toList();
+        this.parentIndices = new int[this.nodeOrder.size()];
+        Map<String, Integer> nodeIndices = new HashMap<>();
+        for (int index = 0; index < this.nodeOrder.size(); index++) nodeIndices.put(this.nodeOrder.get(index), index);
+        List<List<String>> attachments = new ArrayList<>(this.nodeOrder.size());
         Map<String, Matrix4f> matrices = new HashMap<>();
-        this.model.nodes().forEach((id, node) -> matrices.put(id, baseMatrix(node)));
+        for (int index = 0; index < this.orderedNodes.size(); index++) {
+            Node node = this.orderedNodes.get(index);
+            this.parentIndices[index] = node.parentId() == null ? -1 : nodeIndices.get(node.parentId());
+            attachments.add(node.attachments().keySet().stream().sorted().toList());
+            Matrix4f matrix = new Matrix4f();
+            for (Operation operation : node.transform()) {
+                double[] value = operation.value().stream().mapToDouble(Double::doubleValue).toArray();
+                this.baseValues.put(operation.value(), value);
+                Matrix4f operationMatrix = operationMatrix(operation, value);
+                this.operationMatrices.put(operation, operationMatrix);
+                if (operation.op() == OperationType.ROTATE_EULER || operation.op() == OperationType.ROTATE_QUATERNION) {
+                    this.operationRotations.put(operation, operationRotation(operation, value));
+                }
+                matrix.mul(operationMatrix);
+            }
+            matrices.put(this.nodeOrder.get(index), matrix);
+        }
+        this.attachmentIds = List.copyOf(attachments);
+        for (Track track : this.model.clip().tracks().values()) {
+            if (track.channel() != Channel.VALUE) continue;
+            Operation operation = this.model.nodes().get(track.target().node()).transform().stream()
+                .filter(op -> op.id().equals(track.target().operation())).findFirst().orElseThrow();
+            this.trackOperations.put(track, operation);
+        }
+        for (SharedValue value : this.model.clip().values().values()) {
+            this.baseValues.put(value.base(), value.base().stream().mapToDouble(Double::doubleValue).toArray());
+        }
+        this.expressions = compileExpressions(this.model, this.constantVectors);
         this.defaultMatrices = Map.copyOf(matrices);
         this.displayContents = Map.copyOf(displayContents);
         this.displayEntityCount = displayContents.values().stream().mapToInt(Map::size).sum();
@@ -120,6 +160,14 @@ public final class PreparedAnimation implements PreparedEmote {
     }
 
     public List<String> nodeOrder() { return this.nodeOrder; }
+    public Node node(int index) { return this.orderedNodes.get(index); }
+    public int parentIndex(int index) { return this.parentIndices[index]; }
+    public List<String> attachmentIds(int index) { return this.attachmentIds.get(index); }
+    public Operation operation(Track track) { return this.trackOperations.get(track); }
+    public double[] baseValue(List<Double> value) { return this.baseValues.get(value); }
+    public double[] constantVector(VectorValue value) { return this.constantVectors.get(value); }
+    public Matrix4fc operationMatrix(Operation operation) { return this.operationMatrices.get(operation); }
+    public Quaternionfc operationRotation(Operation operation) { return this.operationRotations.get(operation); }
 
     public io.github.hanhy06.emote.molang.MolangEngine.CompiledExpression expression(String path) {
         return this.expressions.get(path);
@@ -137,7 +185,8 @@ public final class PreparedAnimation implements PreparedEmote {
         return List.copyOf(result);
     }
 
-    private static Map<String, io.github.hanhy06.emote.molang.MolangEngine.CompiledExpression> compileExpressions(EmoteAnimation animation) {
+    private static Map<String, io.github.hanhy06.emote.molang.MolangEngine.CompiledExpression> compileExpressions(
+        EmoteAnimation animation, Map<VectorValue, double[]> constantVectors) {
         Map<String, io.github.hanhy06.emote.molang.MolangEngine.CompiledExpression> result = new HashMap<>();
         List<Driver> drivers = new ArrayList<>();
         for (var track : animation.clip().tracks().values()) {
@@ -161,7 +210,12 @@ public final class PreparedAnimation implements PreparedEmote {
                 }
             }
             for (var value : values) {
-                if (value instanceof EmoteAnimation.VectorValue vector) scalars.addAll(vector.components());
+                if (value instanceof EmoteAnimation.VectorValue vector) {
+                    scalars.addAll(vector.components());
+                    if (vector.components().stream().allMatch(ConstantValue.class::isInstance)) {
+                        constantVectors.put(vector, vector.components().stream().mapToDouble(component -> ((ConstantValue) component).value()).toArray());
+                    }
+                }
                 else if (value instanceof EmoteAnimation.MolangVisibility m) scalars.add(new EmoteAnimation.MolangValue(m.source(), m.path()));
                 else if (value instanceof EmoteAnimation.MolangNbtValue m) scalars.add(new EmoteAnimation.MolangValue(m.source(), m.path()));
             }
@@ -227,7 +281,11 @@ public final class PreparedAnimation implements PreparedEmote {
     }
 
     public static Matrix4f operationMatrix(EmoteAnimation.Operation operation, double[] value) {
-        Matrix4f matrix = new Matrix4f();
+        return operationMatrix(operation, value, new Matrix4f());
+    }
+
+    public static Matrix4f operationMatrix(EmoteAnimation.Operation operation, double[] value, Matrix4f matrix) {
+        matrix.identity();
         switch (operation.op()) {
             case TRANSLATE -> matrix.translate((float) value[0], (float) value[1], (float) value[2]);
             case SCALE -> matrix.scale((float) value[0], (float) value[1], (float) value[2]);
@@ -241,12 +299,16 @@ public final class PreparedAnimation implements PreparedEmote {
     }
 
     public static Quaternionf operationRotation(EmoteAnimation.Operation operation, double[] value) {
+        return operationRotation(operation, value, new Quaternionf(), operation.op() == OperationType.ROTATE_QUATERNION ? new Quaterniond() : null);
+    }
+
+    public static Quaternionf operationRotation(EmoteAnimation.Operation operation, double[] value, Quaternionf rotation, Quaterniond quaternion) {
         if (operation.op() == EmoteAnimation.OperationType.ROTATE_QUATERNION) {
-            Quaterniond rotation = new Quaterniond(value[0], value[1], value[2], value[3]);
-            if (rotation.lengthSquared() == 0) throw new IllegalArgumentException("Zero quaternion");
-            return new Quaternionf(rotation.normalize());
+            quaternion.set(value[0], value[1], value[2], value[3]);
+            if (quaternion.lengthSquared() == 0) throw new IllegalArgumentException("Zero quaternion");
+            return rotation.set(quaternion.normalize());
         }
-        Quaternionf rotation = new Quaternionf();
+        rotation.identity();
         for (char axis : operation.order().name().toCharArray()) {
             float radians = (float) Math.toRadians(value[axis == 'X' ? 0 : axis == 'Y' ? 1 : 2]);
             if (axis == 'X') rotation.rotateX(radians);
