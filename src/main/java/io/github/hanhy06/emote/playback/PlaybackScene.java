@@ -82,7 +82,8 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
     @Override public float frameOrientationYaw() { return this.preparedViewYaw; }
 
     public void applyPlacement() {
-        moveTo(this.preparedRoot.position());
+        boolean positionChanged = !this.preparedRoot.position().equals(this.root.position());
+        this.root = this.preparedRoot;
         float previousRelativeYaw = this.root.relativeYaw(this.viewYaw);
         this.viewYaw = this.preparedViewYaw;
         float relativeYaw = this.root.relativeYaw(this.viewYaw);
@@ -90,6 +91,7 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
         int interpolationTicks = positionRotationInterpolationTicks(this.preparedRotationDeadzone);
         for (AttachmentInstance attachment : this.attachments) {
             if (!attachment.isAnchor()) {
+                if (positionChanged) attachment.entity().setPos(this.root.position());
                 ((DisplayAccessor) attachment.entity()).emote$setPosRotInterpolationDuration(interpolationTicks);
                 if (rotationChanged) attachment.entity().setYRot(relativeYaw);
             }
@@ -98,14 +100,6 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
 
     public float orientationYaw() {
         return Mth.wrapDegrees(this.root.yaw() + this.root.relativeYaw(this.viewYaw));
-    }
-
-    private float updateViewYaw(float playerYaw, float maxDifference) {
-        float difference = Mth.wrapDegrees(playerYaw - this.viewYaw);
-        if (Math.abs(difference) > maxDifference) {
-            this.viewYaw = Mth.wrapDegrees(this.viewYaw + difference - Math.copySign(maxDifference, difference));
-        }
-        return this.viewYaw;
     }
 
     @Override
@@ -221,35 +215,6 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
         for (AttachmentInstance attachment : this.attachments) {
             if (attachment.entity() != null && !attachment.entity().isRemoved()) attachment.entity().kill(this.level);
         }
-    }
-
-    public boolean updateViewRotation(float currentYaw, float rotationDeadzone) {
-        float previousRelativeYaw = root().relativeYaw(viewYaw());
-        float viewYaw = updateViewYaw(currentYaw, rotationDeadzone);
-        float relativeYaw = root().relativeYaw(viewYaw);
-        boolean rotationChanged = Mth.packDegrees(previousRelativeYaw) != Mth.packDegrees(relativeYaw);
-        int interpolationTicks = positionRotationInterpolationTicks(rotationDeadzone);
-        for (AttachmentInstance node : this.attachments) {
-            if (!node.isAnchor()) {
-                ((DisplayAccessor) node.entity()).emote$setPosRotInterpolationDuration(interpolationTicks);
-                if (rotationChanged) {
-                    node.entity().setYRot(relativeYaw);
-                }
-            }
-        }
-        return rotationChanged;
-    }
-
-    public boolean moveTo(Vec3 position) {
-        Objects.requireNonNull(position, "position");
-        if (position.equals(this.root.position())) return false;
-        this.root = RootTransform.create(position, this.root.yaw());
-        for (AttachmentInstance node : this.attachments) {
-            if (!node.isAnchor()) {
-                node.entity().setPos(root().position());
-            }
-        }
-        return true;
     }
 
     private void setVisible(NodeInstance node, AttachmentInstance attachment, boolean visible, boolean loadedNbt) {

@@ -1,12 +1,13 @@
 package io.github.hanhy06.emote.playback.stress;
 
-import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.playback.EmotePlayback;
 import io.github.hanhy06.emote.playback.PlaybackScene;
 import io.github.hanhy06.emote.playback.RootTransform;
 import io.github.hanhy06.emote.playback.molang.MolangQuerySource;
+import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -15,7 +16,6 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.ToIntFunction;
 import java.util.random.RandomGenerator;
-import io.github.hanhy06.emote.content.PreparedAnimation;
 
 public final class PlaybackStressTest {
     public static final int DEFAULT_INSTANCE_COUNT = 100;
@@ -123,7 +123,7 @@ public final class PlaybackStressTest {
                 displayEntityCount += scene.displayEntityCount();
             }
         } catch (RuntimeException exception) {
-            removeInstances(instances);
+            instances.forEach(instance -> instance.close(this.packetLoad));
             this.packetLoad.stop();
             throw exception;
         }
@@ -154,7 +154,7 @@ public final class PlaybackStressTest {
         StressTestPacketLoad.PacketLoadResult packetLoadResult = this.packetLoad.finishRuntime();
         long cleanupStartedNanos = System.nanoTime();
         try {
-            removeInstances(current.instances());
+            current.instances.forEach(instance -> instance.close(this.packetLoad));
         } finally {
             this.packetLoad.stop();
         }
@@ -167,7 +167,7 @@ public final class PlaybackStressTest {
         if (current == null) {
             return 0;
         }
-        return current.activeDisplayEntities();
+        return current.activeDisplayEntities;
     }
 
     public void stopById(String id) {
@@ -176,15 +176,12 @@ public final class PlaybackStressTest {
             return;
         }
 
-        current.instances().removeIf(instance -> {
+        current.instances.removeIf(instance -> {
             if (!instance.emote.id().equals(id)) {
                 return false;
             }
-            instance.active = false;
-            if (instance.frame != null) instance.frame.cancelEvents();
-            this.packetLoad.unregister(instance.scene);
-            instance.scene.close();
-            current.removeDisplayEntities(instance.scene.displayEntityCount());
+            instance.close(this.packetLoad);
+            current.activeDisplayEntities -= instance.scene.displayEntityCount();
             return true;
         });
     }
@@ -197,7 +194,7 @@ public final class PlaybackStressTest {
         this.applicationNanos = 0;
         List<StressTestInstance> frames = new ArrayList<>();
         long started = System.nanoTime();
-        Iterator<StressTestInstance> iterator = current.instances().iterator();
+        Iterator<StressTestInstance> iterator = current.instances.iterator();
         while (iterator.hasNext()) {
             StressTestInstance instance = iterator.next();
             instance.frame = null;
@@ -218,11 +215,9 @@ public final class PlaybackStressTest {
             }
             catch (RuntimeException exception) {
                 EmoteMod.LOGGER.warn("Failed to prepare stress test emote {}", instance.emote.id(), exception);
-                instance.active = false;
-                this.packetLoad.unregister(instance.scene);
-                instance.scene.close();
+                instance.close(this.packetLoad);
                 iterator.remove();
-                current.removeDisplayEntities(instance.scene.displayEntityCount());
+                current.activeDisplayEntities -= instance.scene.displayEntityCount();
                 current.failedInstances++;
             }
         }
@@ -257,7 +252,7 @@ public final class PlaybackStressTest {
                 instance.frameApplied = true;
                 if (!instance.added) {
                     instance.scene.add();
-                    this.packetLoad.register(current.level(), instance.scene);
+                    this.packetLoad.register(current.level, instance.scene);
                     instance.added = true;
                 }
             } catch (RuntimeException exception) {
@@ -274,22 +269,17 @@ public final class PlaybackStressTest {
 
     private void failInstance(Session current, StressTestInstance instance, RuntimeException exception) {
         EmoteMod.LOGGER.warn("Failed to run stress test emote {}", instance.emote.id(), exception);
-        instance.active = false;
-        instance.frame.cancelEvents();
-        this.packetLoad.unregister(instance.scene);
-        instance.scene.close();
-        current.instances().remove(instance);
-        current.removeDisplayEntities(instance.scene.displayEntityCount());
+        instance.close(this.packetLoad);
+        current.instances.remove(instance);
+        current.activeDisplayEntities -= instance.scene.displayEntityCount();
         current.failedInstances++;
     }
 
     public void discardFrames() {
         for (StressTestInstance instance : this.frameInstances) {
             if (!instance.frameApplied) instance.frame.discard();
-            instance.frame = null;
         }
-        this.frameInstances = List.of();
-        this.frameSession = null;
+        releaseFrames();
     }
 
     public void tick(long endTickStartedNanos, long waitNanos) {
@@ -431,15 +421,6 @@ public final class PlaybackStressTest {
         return playback.prepareStartAtCyclePhase(target, initialTick);
     }
 
-    private void removeInstances(List<StressTestInstance> instances) {
-        for (StressTestInstance instance : instances) {
-            instance.active = false;
-            if (instance.frame != null) instance.frame.cancelEvents();
-            try { this.packetLoad.unregister(instance.scene); }
-            finally { instance.scene.close(); }
-        }
-    }
-
     static boolean hasCompletedDuration(int completedTicks, int durationTicks) {
         return completedTicks >= durationTicks;
     }
@@ -498,22 +479,6 @@ public final class PlaybackStressTest {
             this.startedServerTick = startedServerTick;
             this.baselineTickNanos = baselineTickNanos;
             this.creationNanos = creationNanos;
-        }
-
-        private ServerLevel level() {
-            return this.level;
-        }
-
-        private List<StressTestInstance> instances() {
-            return this.instances;
-        }
-
-        private int activeDisplayEntities() {
-            return this.activeDisplayEntities;
-        }
-
-        private void removeDisplayEntities(int count) {
-            this.activeDisplayEntities -= count;
         }
 
         private void recordProcessing(long emoteNanos, long networkNanos) {
@@ -606,6 +571,13 @@ public final class PlaybackStressTest {
             this.scene = scene;
             this.playback = playback;
             this.initialTick = initialTick;
+        }
+
+        private void close(StressTestPacketLoad packetLoad) {
+            this.active = false;
+            if (this.frame != null) this.frame.cancelEvents();
+            try { packetLoad.unregister(this.scene); }
+            finally { this.scene.close(); }
         }
     }
 }
