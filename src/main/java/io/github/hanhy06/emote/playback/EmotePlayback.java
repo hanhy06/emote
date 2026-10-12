@@ -80,7 +80,7 @@ public final class EmotePlayback {
     private LifecycleListener lifecycleListener = new LifecycleListener() {};
     private long holdTicks;
     private PlaybackPosition stoppedPosition;
-    private final Map<String, Matrix4f> transitionStartTransforms = new HashMap<>();
+    private Map<String, Matrix4f> transitionStartTransforms = new HashMap<>();
 
     public EmotePlayback(PreparedEmote emote) {
         this(emote, MolangQuerySource.EMPTY, RandomGenerator.getDefault());
@@ -479,7 +479,7 @@ public final class EmotePlayback {
             var selected = selectedAnimation(segment);
             prepareChild(selected);
             if (segment.phase() == PlaybackTimeline.Phase.TRANSITION) {
-                this.transitionStartTransforms.clear();
+                this.transitionStartTransforms = new HashMap<>();
                 for (String id : this.child.emote.nodeOrder()) {
                     Matrix4fc start = this.appliedTransforms.get(id);
                     this.transitionStartTransforms.put(id, new Matrix4f(start == null ? this.emote.defaultMatrix(id) : start));

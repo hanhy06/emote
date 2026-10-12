@@ -42,6 +42,7 @@ public final class PreparedAnimation implements PreparedEmote {
     private final Map<Operation, Matrix4f> operationMatrices = new IdentityHashMap<>();
     private final Map<Operation, Quaternionf> operationRotations = new IdentityHashMap<>();
     private final Map<String, MolangEngine.CompiledExpression> expressions;
+    private final Set<String> queryNames;
     private final Map<String, Matrix4f> defaultMatrices;
     private final int displayEntityCount;
     private final Path sourcePath;
@@ -86,6 +87,8 @@ public final class PreparedAnimation implements PreparedEmote {
             this.baseValues.put(value.base(), value.base().stream().mapToDouble(Double::doubleValue).toArray());
         }
         this.expressions = compileExpressions(this.model, this.constantVectors);
+        this.queryNames = this.expressions.values().stream().flatMap(expression -> expression.queryUses().stream())
+            .map(MolangEngine.QueryUse::name).collect(java.util.stream.Collectors.toUnmodifiableSet());
         this.defaultMatrices = Map.copyOf(matrices);
         this.displayContents = Map.copyOf(displayContents);
         this.displayEntityCount = displayContents.values().stream().mapToInt(Map::size).sum();
@@ -172,6 +175,8 @@ public final class PreparedAnimation implements PreparedEmote {
     public io.github.hanhy06.emote.molang.MolangEngine.CompiledExpression expression(String path) {
         return this.expressions.get(path);
     }
+
+    public Set<String> queryNames() { return this.queryNames; }
 
     private static List<String> nodeOrder(Map<String, EmoteAnimation.Node> nodes) {
         List<String> result = new ArrayList<>();

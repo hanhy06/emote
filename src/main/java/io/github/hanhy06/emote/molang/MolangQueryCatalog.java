@@ -11,6 +11,10 @@ public final class MolangQueryCatalog {
     private static final Catalog CATALOG = loadCatalog();
     private static final Set<String> SUPPORTED_VALUES = CATALOG.values();
     private static final Map<String, QuerySignature> SUPPORTED_FUNCTIONS = CATALOG.functions();
+    private static final Set<String> SUPPORTED_QUERIES = java.util.stream.Stream.concat(SUPPORTED_VALUES.stream(), SUPPORTED_FUNCTIONS.keySet().stream())
+        .collect(java.util.stream.Collectors.toUnmodifiableSet());
+
+    public static Set<String> queryNames() { return SUPPORTED_QUERIES; }
 
     private MolangQueryCatalog() {
     }

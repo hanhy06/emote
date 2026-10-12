@@ -22,6 +22,8 @@ final class AnimationEvaluator {
     private final Matrix4f[] matrices;
     private final Matrix4fc[] poseMatrices;
     private final Transformation[] transformations;
+    private final Transformation[] transitionStarts, transitionEnds;
+    private Map<String, Matrix4f> transitionInput;
     private final Quaternionf[] orientations;
     private final boolean[] visibility;
     private final Track[][] tracks;
@@ -57,6 +59,8 @@ final class AnimationEvaluator {
         this.matrices = new Matrix4f[count];
         this.poseMatrices = new Matrix4fc[count];
         this.transformations = new Transformation[count];
+        this.transitionStarts = new Transformation[count];
+        this.transitionEnds = new Transformation[count];
         this.orientations = new Quaternionf[count];
         this.visibility = new boolean[count];
         this.tracks = new Track[count][];
@@ -110,7 +114,7 @@ final class AnimationEvaluator {
 
     void prepareFrame(int tick, int loopCount, int deltaTicks, long lifetimeTicks) {
         setFrameQueries(tick, loopCount, deltaTicks, lifetimeTicks);
-        this.querySource.apply(this.session);
+        this.querySource.apply(this.session, this.animation.queryNames());
     }
 
     int nextTick(int previousTick, int loopCount, int deltaTicks, long lifetimeTicks) {
@@ -165,6 +169,7 @@ final class AnimationEvaluator {
     }
 
     void sampleFrame(int tick, int loopCount, int deltaTicks, long lifetimeTicks, boolean update, boolean captureNbt) {
+        this.transitionInput = null;
         tick = Math.min(tick, this.animation.model().clip().durationTicks());
         this.sharedValues.clear();
         setFrameQueries(tick, loopCount, deltaTicks, lifetimeTicks);
@@ -209,50 +214,55 @@ final class AnimationEvaluator {
     }
 
     void calculatePose(Matrix4fc rootMatrix, Map<String, Matrix4f> transitionStart, float progress) {
+        boolean prepareTransition = transitionStart != null && transitionStart != this.transitionInput;
         for (int index = 0; index < this.nodeIds.size(); index++) {
             Node node = this.animation.node(index);
-            this.local.identity();
-            Quaternionf orientation = this.orientations[index].identity();
-            for (int operationIndex = 0; operationIndex < node.transform().size(); operationIndex++) {
-                Operation operation = node.transform().get(operationIndex);
-                Track track = this.tracks[index][operationIndex];
-                boolean rotation = operation.op() == OperationType.ROTATE_EULER || operation.op() == OperationType.ROTATE_QUATERNION;
-                if (track == null) {
-                    this.local.mul(this.animation.operationMatrix(operation));
-                    if (rotation) orientation.mul(this.animation.operationRotation(operation)).normalize();
-                } else if (rotation) {
-                    PreparedAnimation.operationRotation(operation, this.sampledValues.get(track), this.operationRotation, this.quaternion);
-                    this.local.mul(this.operationMatrix.rotation(this.operationRotation));
-                    orientation.mul(this.operationRotation).normalize();
-                } else {
-                    this.local.mul(PreparedAnimation.operationMatrix(operation, this.sampledValues.get(track), this.operationMatrix));
-                }
-            }
             Matrix4f world = this.matrices[index];
             int parentIndex = this.animation.parentIndex(index);
-            if (parentIndex < 0) world.set(this.local);
-            else {
-                Matrix4f parent = this.matrices[parentIndex];
-                Quaternionf parentOrientation = this.orientations[parentIndex];
-                if (node.inherit().rotation() == RotationInheritance.PARENT && node.inherit().scale()) {
-                    world.set(parent).mul(this.local);
-                } else {
-                    this.inherited.identity();
-                    if (node.inherit().rotation() == RotationInheritance.PARENT) this.inherited.rotation(parentOrientation);
-                    if (node.inherit().scale()) {
-                        this.residual.rotation(parentOrientation).invert().mul(this.parentLinear.set(parent).setTranslation(0, 0, 0));
-                        this.inherited.mul(this.residual);
+            if (transitionStart == null || prepareTransition) {
+                this.local.identity();
+                Quaternionf orientation = this.orientations[index].identity();
+                for (int operationIndex = 0; operationIndex < node.transform().size(); operationIndex++) {
+                    Operation operation = node.transform().get(operationIndex);
+                    Track track = this.tracks[index][operationIndex];
+                    boolean rotation = operation.op() == OperationType.ROTATE_EULER || operation.op() == OperationType.ROTATE_QUATERNION;
+                    if (track == null) {
+                        this.local.mul(this.animation.operationMatrix(operation));
+                        if (rotation) orientation.mul(this.animation.operationRotation(operation)).normalize();
+                    } else if (rotation) {
+                        PreparedAnimation.operationRotation(operation, this.sampledValues.get(track), this.operationRotation, this.quaternion);
+                        this.local.mul(this.operationMatrix.rotation(this.operationRotation));
+                        orientation.mul(this.operationRotation).normalize();
+                    } else {
+                        this.local.mul(PreparedAnimation.operationMatrix(operation, this.sampledValues.get(track), this.operationMatrix));
                     }
-                    world.set(this.inherited.setTranslation(parent.m30(), parent.m31(), parent.m32())).mul(this.local);
                 }
-                if (node.inherit().rotation() == RotationInheritance.PARENT) orientation.premul(parentOrientation).normalize();
+                if (parentIndex < 0) world.set(this.local);
+                else {
+                    Matrix4f parent = this.matrices[parentIndex];
+                    Quaternionf parentOrientation = this.orientations[parentIndex];
+                    if (node.inherit().rotation() == RotationInheritance.PARENT && node.inherit().scale()) {
+                        world.set(parent).mul(this.local);
+                    } else {
+                        this.inherited.identity();
+                        if (node.inherit().rotation() == RotationInheritance.PARENT) this.inherited.rotation(parentOrientation);
+                        if (node.inherit().scale()) {
+                            this.residual.rotation(parentOrientation).invert().mul(this.parentLinear.set(parent).setTranslation(0, 0, 0));
+                            this.inherited.mul(this.residual);
+                        }
+                        world.set(this.inherited.setTranslation(parent.m30(), parent.m31(), parent.m32())).mul(this.local);
+                    }
+                    if (node.inherit().rotation() == RotationInheritance.PARENT) orientation.premul(parentOrientation).normalize();
+                }
+                if (!world.isFinite()) throw new IllegalStateException("Node " + nodeId(index) + " produced a non-finite transform");
             }
-            if (!world.isFinite()) throw new IllegalStateException("Node " + nodeId(index) + " produced a non-finite transform");
             Matrix4fc pose = world;
             if (transitionStart != null) {
-                var start = new Transformation(new Matrix4f(transitionStart.get(nodeId(index))));
-                var end = new Transformation(new Matrix4f(world));
-                pose = start.slerp(end, progress).getMatrix();
+                if (prepareTransition) {
+                    this.transitionStarts[index] = new Transformation(new Matrix4f(transitionStart.get(nodeId(index))));
+                    this.transitionEnds[index] = new Transformation(new Matrix4f(world));
+                }
+                pose = this.transitionStarts[index].slerp(this.transitionEnds[index], progress).getMatrix();
             }
             this.poseMatrices[index] = pose;
             this.displayMatrix.set(rootMatrix).mul(pose);
@@ -275,6 +285,7 @@ final class AnimationEvaluator {
                     this.attachmentVisibilityTracks.get(index).get(attachmentId), node.attachments().get(attachmentId).visible()));
             }
         }
+        this.transitionInput = transitionStart;
     }
 
     void finishFrame() {

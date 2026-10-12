@@ -439,6 +439,33 @@ class SamplePoseTest {
             assertEquals(scale, published.scale());
             assertEquals(rightRotation, published.rightRotation());
         }
+        evaluator.sampleFrame(16, 0, 1, 16, true, false);
+        evaluator.calculatePose(root.rotationMatrix(), starts, 0.5f);
+        var updatedEnd = new Transformation(new Matrix4f(evaluator.matrix(0)));
+        var expectedUpdated = new Transformation(new Matrix4f(starts.get(evaluator.nodeId(0)))).slerp(updatedEnd, 0.5f);
+        assertEquals(expectedUpdated.getMatrix(), evaluator.poseMatrix(0));
+        var nextStarts = new HashMap<>(starts);
+        nextStarts.put(evaluator.nodeId(0), new Matrix4f().translation(9, -2, 4));
+        evaluator.calculatePose(root.rotationMatrix(), nextStarts, 0.25f);
+        assertEquals(new Transformation(new Matrix4f(nextStarts.get(evaluator.nodeId(0)))).slerp(updatedEnd, 0.25f).getMatrix(), evaluator.poseMatrix(0));
+    }
+
+    @Test
+    void collectsQueriesFromEveryAnimationExpression() throws Exception {
+        JsonObject json;
+        try (var input = Objects.requireNonNull(getClass().getResourceAsStream("/common-curves.json"))) {
+            json = JsonParser.parseReader(new InputStreamReader(input, StandardCharsets.UTF_8)).getAsJsonObject();
+        }
+        var clip = json.getAsJsonObject("animation");
+        clip.add("programs", JsonParser.parseString("{\"initialize\":\"v.counter=q.max_health;\",\"update\":\"v.counter=v.counter+q.health;\"}"));
+        clip.add("clock", JsonParser.parseString("{\"type\":\"molang\",\"expression\":\"q.anim_time + q.delta_time\"}"));
+        clip.add("playback", JsonParser.parseString("{\"mode\":\"loop\",\"start_delay\":{\"molang\":\"q.player_level * 0\"},\"loop_delay\":{\"molang\":\"q.scoreboard('delay') * 0\"}}"));
+        clip.getAsJsonObject("values").add("location", JsonParser.parseString("{\"base\":[0],\"type\":\"expression\",\"value\":[{\"molang\":\"q.position(0)\"}]}"));
+        json.getAsJsonObject("nodes").add("n", JsonParser.parseString("{\"attachments\":{\"text\":{\"type\":\"text_display\",\"text\":\"probe\"}}}"));
+        clip.getAsJsonArray("tracks").add(JsonParser.parseString("{\"target\":{\"node\":\"n\",\"attachment\":\"text\"},\"channel\":\"nbt\",\"driver\":{\"type\":\"state\",\"keys\":[{\"time\":\"0t\",\"value\":{\"merge\":{\"molang\":\"q.hurt_time;return '{Glowing:1b}';\"}}}]}}"));
+        var prepared = PreparedAnimation.prepare(new AnimationJsonParser().parse(Path.of("queries.json"), json.toString().getBytes(StandardCharsets.UTF_8)), registries);
+        assertTrue(prepared.queryNames().containsAll(Set.of("max_health", "health", "anim_time", "delta_time", "player_level", "scoreboard", "position", "hurt_time", "value", "key_frame_lerp_time")));
+        assertTrue(!prepared.queryNames().contains("is_swimming"));
     }
 
     @Test
