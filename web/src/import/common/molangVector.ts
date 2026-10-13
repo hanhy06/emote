@@ -1,5 +1,4 @@
 export type MolangScalar = number | string;
-export type MolangVector = [MolangScalar, MolangScalar, MolangScalar];
 
 export function molangScalar(value: string | number): MolangScalar {
   if (typeof value !== "string") return value;

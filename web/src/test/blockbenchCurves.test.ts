@@ -24,7 +24,7 @@ function importCurves(frames: BbKeyframe[], blend: number | string = 1): { bb: A
   const project: AjProject = { meta: { format: "animated_java_blueprint", format_version: "1" }, resolution: { width: 16, height: 16 }, groups: [group], outliner: [], textures: [], animations: [animation],
     elements: ["item", "block", "text"].map((uuid) => ({ uuid, name: uuid, type: `animated_java:vanilla_${uuid}_display`, position: [32, 64, 96], rotation: [7, 11, 19], scale: [2, 3, 4], visibility: true })),
   };
-  const bb = createGeckoLibAnimationIR({ animation, animationIndex: 0, animators: new Map([["bone", animation.animators.bone]]), blendWeight: blend, playbackMode: "once", events: [] },
+  const bb = createGeckoLibAnimationIR({ animation, animators: new Map([["bone", animation.animators.bone]]), blendWeight: blend, playbackMode: "once", events: [] },
     [{ id: "bone", uuid: "bone", group, cubes: [], locators: [], nodes: [] }], {});
   const aj = createAnimatedJavaAnimationIR(animation, project, { groups: new Map([["bone", group]]), groupParents: new Map(), elementParents: new Map([["item", "bone"], ["block", "bone"], ["text", "bone"]]) }, imported, 1, []);
   return { bb, aj };

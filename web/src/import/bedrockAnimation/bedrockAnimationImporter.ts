@@ -1,7 +1,7 @@
 import { createDefaultPlayerBehavior } from "../../domain/emoteDefinition";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { importedNodeHints } from "../../domain/conversionSeed";
-import type { ImportedAnimation, ImportedNode, ImportedProject } from "../../domain/conversionSeed";
+import type { ImportedAnimation, ImportedProject } from "../../domain/conversionSeed";
 import { skippedAnimationIssue, type ConversionIssue } from "../../foundation/diagnostics";
 import type { BedrockAnimation, BedrockAnimationDocument } from "./bedrockAnimationSchema";
 import {
@@ -31,7 +31,11 @@ export function importBedrockAnimationDocument(document: BedrockAnimationDocumen
     const animationDiagnostics: ConversionIssue[] = [];
     try {
       collectAnimationDiagnostics(name, animation, animationDiagnostics);
-      const imported = importAnimation(name, animation, index, animationDiagnostics, nodes, unknownBoneIds);
+      const imported: ImportedAnimation = {
+        ir: createBedrockAnimationIR(animation, name, nodes, unknownBoneIds, animationDiagnostics),
+        id: sanitizeResourcePath(name, `animation_${index + 1}`),
+        name,
+      };
       diagnostics.push(...animationDiagnostics);
       return [imported];
     } catch (reason) {
@@ -54,14 +58,6 @@ export function importBedrockAnimationDocument(document: BedrockAnimationDocumen
     animations,
     diagnostics,
     resources: new Map(),
-  };
-}
-
-function importAnimation(name: string, animation: BedrockAnimation, index: number, diagnostics: ConversionIssue[], nodes: Record<string, ImportedNode>, unknownBoneIds: Record<string, string>): ImportedAnimation {
-  return {
-    ir: createBedrockAnimationIR(animation, name, nodes, unknownBoneIds, diagnostics),
-    id: sanitizeResourcePath(name, `animation_${index + 1}`),
-    name,
   };
 }
 

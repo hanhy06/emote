@@ -13,7 +13,6 @@ import { mapMolangResult, rewriteMolangIdentifiers } from "../../format/molang/s
 
 export interface GeckoLibAnimationSource {
   animation: BbAnimation;
-  animationIndex: number;
   animators: ReadonlyMap<string, BbAnimator>;
   blendWeight: MolangScalar;
   playbackMode: "once" | "hold" | "loop";

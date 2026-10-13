@@ -7,9 +7,6 @@ import { ExportPanel } from "./components/ExportPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { downloadExports } from "./export/download";
 import type { ExportResult } from "./export/types";
-import type { EmoteCallback } from "./domain/emoteDefinition";
-import type { PlayerSkinPart } from "./domain/player";
-import type { EventIR } from "./domain/animationIR";
 import { INPUT_FORMATS } from "./import/formats";
 import { importFileBatch } from "./import/importBatch";
 import { conversionErrorMessage, groupConversionWarnings } from "./foundation/diagnostics";
@@ -156,23 +153,6 @@ export function App() {
   const handleCandidatesSelect = useCallback((candidateIds: readonly string[], additive: boolean) => {
     dispatch({ type: "candidates_selected", candidateIds, additive });
   }, []);
-
-  function assignSelected(part: PlayerSkinPart | null) {
-    if (selectedCandidateIds.size === 0) return;
-    dispatch({ type: "skin_part_assigned", part });
-  }
-
-  function assignOrder(order: number) {
-    dispatch({ type: "skin_order_assigned", order });
-  }
-
-  function changeLifecycleEvents(events: { callbacks: EmoteCallback[]; start: EventIR[]; loop: EventIR[]; stop: EventIR[] }) {
-    dispatch({ type: "lifecycle_events_changed", events });
-  }
-
-  function changeTimelineEvents(tick: number, events: EventIR[]) {
-    dispatch({ type: "timeline_events_changed", tick, events });
-  }
 
   const filePicker = (
     <label className={`file-input${busy || !eventJsonValid || !settingsValid ? " disabled" : ""}`}>
@@ -338,8 +318,11 @@ export function App() {
                   assignments={assignments}
                   orders={orders}
                   selectedCandidateIds={selectedCandidateIds}
-                  onAssignPart={assignSelected}
-                  onAssignOrder={assignOrder}
+                  onAssignPart={(part) => {
+                    if (selectedCandidateIds.size === 0) return;
+                    dispatch({ type: "skin_part_assigned", part });
+                  }}
+                  onAssignOrder={(order) => dispatch({ type: "skin_order_assigned", order })}
                   onSelectCandidate={handleCandidateSelect}
                 />
               </div>
@@ -357,8 +340,8 @@ export function App() {
               callbacks={selectedAnimation.callbacks}
               tick={selectedTick}
               disabled={busy}
-              onLifecycleChange={changeLifecycleEvents}
-              onTimelineChange={changeTimelineEvents}
+              onLifecycleChange={(events) => dispatch({ type: "lifecycle_events_changed", events })}
+              onTimelineChange={(tick, events) => dispatch({ type: "timeline_events_changed", tick, events })}
               onValidityChange={setEventJsonValid}
             />
           </section>}

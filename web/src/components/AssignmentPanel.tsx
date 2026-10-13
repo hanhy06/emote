@@ -1,4 +1,4 @@
-import type { TargetedEvent, TargetedMouseEvent } from "preact";
+import type { TargetedEvent } from "preact";
 import { useEffect, useRef } from "preact/hooks";
 import type { PreviewPart } from "../preview/previewModel";
 import type { PlayerSkinPart } from "../domain/player";
@@ -59,10 +59,6 @@ export function AssignmentPanel({
       });
     }
   }, [parts, selectedCandidateIds]);
-
-  function handleCandidateClick(event: TargetedMouseEvent<HTMLButtonElement>, candidateId: string) {
-    onSelectCandidate(candidateId, event.ctrlKey || event.metaKey || event.shiftKey);
-  }
 
   function assignOrderAndScroll(order: number) {
     onAssignOrder(order);
@@ -129,7 +125,7 @@ export function AssignmentPanel({
             <button
               type="button"
               className={selectedCandidateIds.has(item.candidateId) ? "selected" : ""}
-              onClick={(event) => handleCandidateClick(event, item.candidateId)}
+              onClick={(event) => onSelectCandidate(item.candidateId, event.ctrlKey || event.metaKey || event.shiftKey)}
             >
               <span>{item.label}</span>
               <span>{item.detail}</span>

@@ -224,7 +224,6 @@ function resolveGeckoLibAnimationSource(
   const boneAnimators = resolveBoneAnimators(animation, index, bones, diagnostics);
   return {
     animation,
-    animationIndex: index,
     animators: boneAnimators,
     blendWeight,
     playbackMode: playbackMode as GeckoLibAnimationSource["playbackMode"],

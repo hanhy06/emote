@@ -48,14 +48,10 @@ export function normalizeBlockbenchName(name: string | undefined): string | unde
   return normalized || undefined;
 }
 
-export function isHiddenAccessoryName(name: string | undefined): boolean {
-  const normalized = normalizeBlockbenchName(name);
-  return normalized !== undefined && HIDDEN_ACCESSORY_BONES.has(normalized);
-}
-
 export function isHiddenAccessoryBone(bone: BoneEntry): boolean {
   for (let current: BoneEntry | undefined = bone; current; current = current.parent) {
-    if (isHiddenAccessoryName(current.group.name)) return true;
+    const normalized = normalizeBlockbenchName(current.group.name);
+    if (normalized !== undefined && HIDDEN_ACCESSORY_BONES.has(normalized)) return true;
   }
   return false;
 }
