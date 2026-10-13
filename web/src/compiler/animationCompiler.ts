@@ -7,7 +7,7 @@ import { parseSnbtCompound } from "../format/snbt";
 import type { AnimationJson } from "../format/animation";
 import { EMOTE_SCHEMA_VERSION } from "../format/emote";
 import { ConversionError } from "../foundation/diagnostics";
-import { removeRedundantKeyframes } from "../domain/animationIRConversion";
+import { removeRedundantKeyframes, removeTinyStaticNodes } from "./animationOptimization";
 
 export function compileAnimation(document: ConversionDocument, index: number, standalone?: boolean): { animation: AnimationJson; generatedResourceReferences: ReadonlySet<string> } {
   const entry = document.animations[index];
@@ -61,6 +61,7 @@ export function compileAnimation(document: ConversionDocument, index: number, st
     }
   }
   removeRedundantKeyframes(ir);
+  removeTinyStaticNodes(ir);
   const generatedResourceReferences = new Set([...referencedItemModelResources(ir)].filter((path) => document.resources.has(path)));
   return { animation: { ...ir, type: "animation", schema_version: EMOTE_SCHEMA_VERSION }, generatedResourceReferences };
 }

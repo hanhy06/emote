@@ -1,7 +1,7 @@
 import type { ConversionIssue } from "../foundation/diagnostics";
 import type { PlayerSkinPart } from "./player";
 import { orderedNodeIds, type AnimationEntryIR, type AnimationIR, type AttachmentIR, type AnimationSetIR, type ClipIR, type EventIR, type NodeIR, type TransformOperationIR } from "./animationIR";
-import { normalizeAnimationTimes, remapClip, removeTinyStaticNodes } from "./animationIRConversion";
+import { normalizeAnimationTimes, remapClip } from "./animationIRConversion";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
 import { parseAnimationSeconds, parseMinecraftTime } from "../format/time";
@@ -76,7 +76,6 @@ export function createConversionDocument(project: ImportedProject, formatLabel: 
       stop: ir.animation.events?.stop ?? [],
     };
     normalizeAnimationTimes(ir, project.source !== "emote_json");
-    removeTinyStaticNodes(ir, ir.animation.events);
     const ids = new Map<string, string>();
     for (const sourceId of orderedNodeIds(ir.nodes)) {
       const sourceNode = ir.nodes[sourceId];

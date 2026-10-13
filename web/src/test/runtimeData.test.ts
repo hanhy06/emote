@@ -80,6 +80,43 @@ it("preserves authored v5 animation runtime data through import and export", asy
   expect(JSON.parse(await output.blob.text())).toEqual(animation);
 });
 
+it("prunes only proven static nodes in output while preserving curves, event origins and the editable document", async () => {
+  const authored = structuredClone(animation);
+  const hidden = {
+    transform: [{ id: "scale", op: "scale" as const, value: [0, 0, 0] }],
+    attachments: { display: structuredClone(animation.nodes.arm.attachments!.prop) },
+  };
+  authored.nodes.tiny = structuredClone(hidden);
+  authored.nodes.tiny.attachments!.display = { type: "item_display", item_stack_snbt: '{id:"minecraft:paper",components:{"minecraft:item_model":"probe:unused"}}', item_display: "fixed" };
+  authored.nodes.spline = structuredClone(hidden);
+  authored.nodes.dynamic = structuredClone(hidden);
+  authored.nodes.origin = structuredClone(hidden);
+  authored.animation.tracks.push({ target: { node: "spline", operation: "scale" }, channel: "value", driver: {
+    type: "curve", keys: [{ time: "0t", value: [0, 0, 0] }, { time: "20t", value: [0, 0, 0] }],
+    segments: [{ interpolation: "hermite", out_tangent: [8, 8, 8], in_tangent: [-8, -8, -8] }],
+  } }, { target: { node: "dynamic", operation: "scale" }, channel: "value", driver: {
+    type: "expression", value: [{ molang: "q.anim_time" }, 0, 0],
+  } });
+  authored.animation.events!.start!.push({ source: { type: "server" }, origin: { type: "node", node: "origin" }, action: { type: "commands", commands: ["say protected"] } });
+  const project = await readInput("emote_json", { name: "pruning.json", bytes: new TextEncoder().encode(JSON.stringify(authored)) });
+  project.resources.set("assets/probe/items/unused.json", { kind: "item_model", model: "probe:unused" });
+  const document = createConversionDocument(project, "Emote JSON");
+  const snapshot = structuredClone(document);
+  expect(document.nodes.tiny).toBeDefined();
+  const outputs = await exportAnimation(document, 0);
+  expect(outputs).toHaveLength(1);
+  const actual: AnimationJson = JSON.parse(await outputs[0].blob.text());
+  expect(actual.nodes.tiny).toBeUndefined();
+  expect(actual.nodes.spline).toEqual(authored.nodes.spline);
+  expect(actual.nodes.dynamic).toEqual(authored.nodes.dynamic);
+  expect(actual.nodes.origin).toEqual(authored.nodes.origin);
+  expect(actual.animation.tracks.filter((track) => ["spline", "dynamic"].includes(track.target.node)))
+    .toEqual(authored.animation.tracks.filter((track) => ["spline", "dynamic"].includes(track.target.node)));
+  expect(actual.animation.events).toEqual(authored.animation.events);
+  expect(evaluatePose({ ...actual, animation: { ...actual.animation, tracks: actual.animation.tracks.filter((track) => track.target.node === "spline") } }, 0.5, Number).spline.matrix.elements[0]).toBe(2);
+  expect(document).toEqual(snapshot);
+});
+
 it("omits skin NBT only in output and restores original display data when unassigned", async () => {
   const authored = structuredClone(animation);
   authored.nodes.arm.attachments!.prop = {
