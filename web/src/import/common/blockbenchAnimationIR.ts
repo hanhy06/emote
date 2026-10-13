@@ -40,11 +40,10 @@ export function blockbenchCurveIR(frames: readonly BbKeyframe[]): CurveIR | unde
     const interpolation = left.interpolation === "catmullrom" || right.interpolation === "catmullrom" ? "catmull_rom"
       : left.interpolation === "bezier" || right.interpolation === "bezier" ? "bezier" : "linear";
     const easing = interpolation === "linear" ? blockbenchEasingIR(right.easing, right.easingArgs) : undefined;
-    const common = { interpolation, ...(easing ? { easing } : {}) } as SegmentIR;
     if (interpolation === "catmull_rom") {
       const previous = grouped[index - 1];
       const following = grouped[index + 2];
-      return { ...common, ...(previous && left.data_points.length === 1 ? { previous: values(previous.at(-1)!, true) } : {}),
+      return { interpolation: "catmull_rom", ...(previous && left.data_points.length === 1 ? { previous: values(previous.at(-1)!, true) } : {}),
         ...(following && right.data_points.length === 1 ? { following: values(following[0], false) } : {}) };
     }
     if (interpolation === "bezier") {
@@ -53,12 +52,12 @@ export function blockbenchCurveIR(frames: readonly BbKeyframe[]): CurveIR | unde
         const time = affineScalarIR(scalarIR(raw), 1 / duration, incoming ? 1 : 0);
         return typeof time === "number" ? Math.max(0, Math.min(1, time)) : { molang: mapMolangResult(time.molang, (result) => `math.clamp(${result}, 0, 1)`) };
       };
-      return { ...common, handles: [0, 1, 2].map((axis) => ({
+      return { interpolation: "bezier", handles: [0, 1, 2].map((axis) => ({
         out: { time: handleTime(left.bezier_right_time?.[axis] ?? 0.1, false), value: scalarIR(left.bezier_right_value?.[axis] ?? 0), relative: true },
         in: { time: handleTime(right.bezier_left_time?.[axis] ?? -0.1, true), value: scalarIR(right.bezier_left_value?.[axis] ?? 0), relative: true },
       })) };
     }
-    return common;
+    return { interpolation: "linear", ...(easing ? { easing } : {}) };
   });
   return { type: "curve", before: "first_pre", at_key: "pre", evaluation: "component", keys, segments };
 }

@@ -1,6 +1,6 @@
 import { sourceSecondsTime } from "../../format/time";
 import { importedNodeHints } from "../../domain/conversionSeed";
-import type { AnimationIR, CurveIR, TrackIR } from "../../domain/animationIR";
+import type { AnimationIR, CurveIR, TrackIR, Vector3IR } from "../../domain/animationIR";
 import type { ImportedNode, ImportedProject } from "../../domain/conversionSeed";
 import { createDefaultPlayerBehavior } from "../../domain/emoteDefinition";
 import { sanitizeResourcePath } from "../../format/resourceLocation";
@@ -70,10 +70,10 @@ function createBdAnimationIR(animation: BdDatapackSource["animations"][number], 
         ...animation.nbt[id].map((frame) => ({ time: `${frame.tick}t`, snbt: writeDisplayNbt(frame.value, profile) })),
       ] },
       transform: initial ? [
-        { id: "position", op: "translate", value: initial.position },
-        { id: "left_rotation", op: "rotate_quaternion", value: initial.left_rotation },
-        { id: "scale", op: "scale", value: initial.scale },
-        { id: "right_rotation", op: "rotate_quaternion", value: initial.right_rotation },
+        { id: "position", op: "translate", value: initial.position as Vector3IR },
+        { id: "left_rotation", op: "rotate_quaternion", value: initial.left_rotation as [number, number, number, number] },
+        { id: "scale", op: "scale", value: initial.scale as Vector3IR },
+        { id: "right_rotation", op: "rotate_quaternion", value: initial.right_rotation as [number, number, number, number] },
       ] : [{ id: "matrix", op: "matrix", value: display.defaultMatrix }],
     };
 

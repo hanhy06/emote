@@ -49,11 +49,11 @@ export function normalizeAnimationTimes(animation: AnimationIR | AnimationEntryI
       if (typeof value === "string") clip.playback[field] = formatMinecraftTime(parseMinecraftTime(value));
     }
   }
-  for (const track of [...clip.tracks, ...Object.values(clip.values ?? {}).map((driver) => ({ channel: "value", driver }))]) {
+  for (const track of [...clip.tracks, ...Object.values(clip.values ?? {}).map((driver) => ({ channel: "value" as const, driver }))]) {
     if (track.driver.type === "state") {
-      const keys = [...track.driver.keys].sort((first, second) => parseAnimationSeconds(first.time) - parseAnimationSeconds(second.time))
-        .map((key) => ({ ...key, time: generatedTimes ? formatMinecraftTime(parseMinecraftTime(key.time)) : key.time }));
-      track.driver.keys = track.channel === "visible" ? [...new Map(keys.map((key) => [parseMinecraftTime(key.time), key])).values()] : keys;
+      track.driver.keys.sort((first, second) => parseAnimationSeconds(first.time) - parseAnimationSeconds(second.time));
+      if (generatedTimes) for (const key of track.driver.keys) key.time = formatMinecraftTime(parseMinecraftTime(key.time));
+      if (track.channel === "visible") track.driver.keys = [...new Map(track.driver.keys.map((key) => [parseMinecraftTime(key.time), key])).values()];
       continue;
     }
     if (track.driver.type !== "curve") continue;

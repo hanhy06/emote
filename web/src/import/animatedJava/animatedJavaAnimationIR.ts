@@ -1,5 +1,5 @@
 import { sourceSecondsTime } from "../../format/time";
-import type { AnimationIR, NodeIR, ScalarIR } from "../../domain/animationIR";
+import type { AnimationIR, NodeIR, ScalarIR, Vector3IR } from "../../domain/animationIR";
 import { affineCurveIR, scalarIR, sourceDelayIR } from "../../domain/animationIRConversion";
 import type { ImportedNode } from "../../domain/conversionSeed";
 import type { DisplayNbtPatch } from "../../domain/minecraftData";
@@ -38,11 +38,11 @@ export function createAnimatedJavaAnimationIR(source: AjProjectAnimation, projec
     const id = `group:${uuid}`;
     const parent = hierarchy.groupParents.get(uuid);
     const origin = parent ? hierarchy.groups.get(parent)?.origin ?? [0, 0, 0] : [0, 0, 0];
-    const position = group.origin.map((v, axis) => (v - origin[axis]) / 16);
+    const position = group.origin.map((v, axis) => (v - origin[axis]) / 16) as Vector3IR;
     ir.nodes[id] = { name: group.name, parent: parent ? `group:${parent}` : "scene",
       source: { node_id: uuid },
       transform: [ { id: "position", op: "translate", value: position },
-        { id: "rotation", op: "rotate_euler", order: "ZYX", value: group.rotation }, { id: "scale", op: "scale", value: [1, 1, 1] } ],
+        { id: "rotation", op: "rotate_euler", order: "ZYX", value: group.rotation as Vector3IR }, { id: "scale", op: "scale", value: [1, 1, 1] } ],
     };
     let weight = blendWeight;
     if (typeof weight !== "number" && source.animators[uuid]?.keyframes?.some((frame) => ["position", "rotation", "scale"].includes(frame.channel))) {
@@ -56,7 +56,7 @@ export function createAnimatedJavaAnimationIR(source: AjProjectAnimation, projec
       }));
       const curve = blockbenchCurveIR(frames);
       if (!curve) continue;
-      const base = channel === "position" ? position : channel === "rotation" ? group.rotation : [1, 1, 1];
+      const base: Vector3IR = channel === "position" ? position : channel === "rotation" ? group.rotation as Vector3IR : [1, 1, 1];
       const driver = affineCurveIR(curve, channel === "position" ? [1 / 16, 1 / 16, 1 / 16] : [1, 1, 1], channel === "scale" ? [0, 0, 0] : base);
       ir.animation.tracks.push({ target: { node: id, operation: channel }, channel: "value", driver, ...(weight === 1 ? {} : { blend: { base, weight } }) });
     }
@@ -76,9 +76,9 @@ export function createAnimatedJavaAnimationIR(source: AjProjectAnimation, projec
     const parent = parentUuid ? `group:${parentUuid}` : "scene";
     const parentOrigin = parentUuid ? hierarchy.groups.get(parentUuid)?.origin ?? [0, 0, 0] : [0, 0, 0];
     const raw = element as unknown as Record<string, unknown>;
-    const position = (Array.isArray(raw.position) ? raw.position : Array.isArray(raw.origin) ? raw.origin : [0, 0, 0]) as number[];
-    const rotation = (Array.isArray(raw.rotation) ? raw.rotation : [0, 0, 0]) as number[];
-    const size = (Array.isArray(raw.scale) ? raw.scale : [1, 1, 1]) as number[];
+    const position = (Array.isArray(raw.position) ? raw.position : Array.isArray(raw.origin) ? raw.origin : [0, 0, 0]) as Vector3IR;
+    const rotation = (Array.isArray(raw.rotation) ? raw.rotation : [0, 0, 0]) as Vector3IR;
+    const size = (Array.isArray(raw.scale) ? raw.scale : [1, 1, 1]) as Vector3IR;
     const n = imported[element.uuid];
     const node: NodeIR = n ? importedNodeIR(n, parent) : { parent };
     if (!n) {
@@ -89,7 +89,7 @@ export function createAnimatedJavaAnimationIR(source: AjProjectAnimation, projec
     }
     node.name = element.name; node.source = { node_id: element.uuid, editor_node_id: element.uuid, original_type: element.type };
     if (raw.ignore_inherited_scale) node.inherit = { scale: false };
-    const basePosition = position.map((v, axis) => (v - parentOrigin[axis]) / 16);
+    const basePosition = position.map((v, axis) => (v - parentOrigin[axis]) / 16) as Vector3IR;
     node.transform = [ { id: "position", op: "translate", value: basePosition },
       { id: "rotation", op: "rotate_euler", order: "XYZ", value: rotation }, { id: "scale", op: "scale", value: size } ];
     if (n?.type === "text_display") node.transform.push({ id: "text_orientation", op: "rotate_euler", order: "XYZ", value: [0, 180, 0] });
@@ -106,8 +106,8 @@ export function createAnimatedJavaAnimationIR(source: AjProjectAnimation, projec
       }));
       const curve = blockbenchCurveIR(frames);
       if (!curve) continue;
-      const displayScale = !n || n.type === "item_display" ? [1, 1, 1] : size;
-      const base = channel === "position" ? basePosition : channel === "rotation" ? rotation : displayScale;
+      const displayScale: Vector3IR = !n || n.type === "item_display" ? [1, 1, 1] : size;
+      const base: Vector3IR = channel === "position" ? basePosition : channel === "rotation" ? rotation : displayScale;
       const factors = channel === "position" ? [-1 / 16, 1 / 16, 1 / 16] : channel === "rotation" ? [-1, -1, 1] : displayScale;
       const driver = affineCurveIR(curve, factors, channel === "scale" ? [0, 0, 0] : base);
       ir.animation.tracks.push({ target: { node: element.uuid, operation: channel }, channel: "value", driver, ...(weight === 1 ? {} : { blend: { base, weight } }) });

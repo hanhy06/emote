@@ -242,7 +242,7 @@ public final class AnimationJsonParser {
                 for (int s = 0; s < arraySegments.size(); s++) segments.add(segment(d.requireObject(arraySegments.get(s), p + ".segments[" + s + "]"), size, p + ".segments[" + s + "]", d));
             }
         }
-        return new Driver(type, expression, keys, segments, firstPre, atKey.equals("pre"), evaluation.equals("component"), atKey.equals("segment"));
+        return new Driver(type, expression, keys, segments, firstPre, enumeration(KeyPolicy.class, atKey, p + ".at_key", d), evaluation.equals("component"));
     }
 
     private Segment segment(JsonObject raw, int size, String path, EmoteJsonDocument d) throws EmoteLoadException {

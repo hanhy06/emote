@@ -7,7 +7,7 @@ import type { AnimationJson } from "../format/animation";
 import { readInput } from "../import/formats";
 import MolangParser from "molangjs/dist/molang.esm.js";
 import { evaluatePose } from "../domain/animationIRPose";
-import { attachmentTargetId } from "../domain/animationIR";
+import { attachmentTargetId, type NodeIR, type TrackIR } from "../domain/animationIR";
 import { evaluateEasing, type ScalarEvaluatorIR } from "../domain/animationIRCurves";
 import { PreviewMolangEvaluator } from "../preview/molangEvaluator";
 import { createPreviewModel } from "../preview/previewModel";
@@ -77,6 +77,8 @@ const animation: AnimationJson = {
   },
 };
 
+const nbtTrack = animation.animation.tracks.find((track): track is Extract<TrackIR, { channel: "nbt" }> => track.channel === "nbt")!;
+
 it("preserves authored v5 animation runtime data through import and export", async () => {
   const project = await readInput("emote_json", { name: "runtime.json", bytes: new TextEncoder().encode(JSON.stringify(animation)) });
   const [output] = await exportAnimation(createConversionDocument(project, "Emote JSON"), 0);
@@ -85,7 +87,7 @@ it("preserves authored v5 animation runtime data through import and export", asy
 
 it("prunes only proven static nodes in output while preserving curves, event origins and the editable document", async () => {
   const authored = structuredClone(animation);
-  const hidden = {
+  const hidden: NodeIR = {
     transform: [{ id: "scale", op: "scale" as const, value: [0, 0, 0] }],
     attachments: { display: structuredClone(animation.nodes.arm.attachments!.prop) },
   };
@@ -156,7 +158,7 @@ it("omits skin NBT only in output and restores original display data when unassi
     type: "item_display", item_stack_snbt: '{id:"minecraft:player_head",count:1}', item_display: "none", visible: true, entity_nbt: "{Glowing:1b}",
   };
   authored.nodes.arm.attachments!.other = structuredClone(animation.nodes.arm.attachments!.prop);
-  authored.animation.tracks.push({ ...structuredClone(authored.animation.tracks[3]), target: { node: "arm", attachment: "other" } });
+  authored.animation.tracks.push({ ...structuredClone(nbtTrack), target: { node: "arm", attachment: "other" } });
   authored.animation.tracks.push({ target: { node: "arm", attachment: "prop" }, channel: "visible", driver: { type: "state", keys: [{ time: "0t", value: true }, { time: "1s", value: false }] } });
   const project = await readInput("emote_json", { name: "skin.json", bytes: new TextEncoder().encode(JSON.stringify(authored)) });
   const original = createConversionDocument(project, "Emote JSON");
@@ -183,8 +185,8 @@ it("fits attachments independently without duplicating node expressions and rest
   authored.nodes.locator = { parent: "arm", transform: [{ id: "position", op: "translate", value: [0, 1, 0] }] };
   authored.animation.tracks = [
     { target: { node: "arm", operation: "position" }, channel: "value", driver: { type: "expression", value: [{ molang: "q.scoreboard('motion')" }, 1.5, 0] } },
-    structuredClone(animation.animation.tracks[3]),
-    { ...structuredClone(animation.animation.tracks[3]), target: { node: "arm", attachment: "other" } },
+    structuredClone(nbtTrack),
+    { ...structuredClone(nbtTrack), target: { node: "arm", attachment: "other" } },
     { target: { node: "arm", attachment: "prop" }, channel: "visible", driver: { type: "state", keys: [{ time: "0t", value: true }, { time: "1s", value: false }] } },
   ];
   const project = await readInput("emote_json", { name: "attachments.json", bytes: new TextEncoder().encode(JSON.stringify(authored)) });

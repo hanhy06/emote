@@ -402,20 +402,20 @@ final class AnimationEvaluator {
         List<Keyframe> keys = driver.keys();
         if (tick < keys.getFirst().tick()) return driver.firstPre() ? vector((VectorValue) keys.getFirst().pre(), 0) : this.animation.baseValue(base);
         int index = keyIndex(driver, tick);
-        if (driver.sampleSegment() && keys.size() > 1) index = Math.min(index, keys.size() - 2);
+        if (driver.atKey() == KeyPolicy.SEGMENT && keys.size() > 1) index = Math.min(index, keys.size() - 2);
         Keyframe left = keys.get(index);
-        if (!driver.sampleSegment() && tick == left.tick()) return vector((VectorValue) (driver.keyPre() ? left.pre() : left.post()), 1);
+        if (driver.atKey() != KeyPolicy.SEGMENT && tick == left.tick()) return vector((VectorValue) (driver.atKey() == KeyPolicy.PRE ? left.pre() : left.post()), 1);
         if (index == keys.size() - 1) return vector((VectorValue) left.post(), 1);
         Keyframe right = keys.get(index + 1);
         double progress = Math.min(1, (tick - left.tick()) / (right.tick() - left.tick()));
         Segment segment = driver.segments().get(index);
         VectorValue startValues = (VectorValue) left.post(), endValues = (VectorValue) right.pre();
-        if (segment.interpolation() == Interpolation.STEP && !driver.sampleSegment()) return vector(startValues, progress);
+        if (segment.interpolation() == Interpolation.STEP && driver.atKey() != KeyPolicy.SEGMENT) return vector(startValues, progress);
         boolean component = driver.componentEvaluation();
         double[] start = component ? null : vector(startValues, progress);
         double[] end = component ? null : vector(endValues, progress);
-        if (driver.sampleSegment() && progress == 1) return component ? vector(endValues, progress) : end;
-        if (segment.interpolation() == Interpolation.STEP || driver.sampleSegment() && segment.interpolation() == Interpolation.BEZIER && progress == 0) return component ? vector(startValues, progress) : start;
+        if (driver.atKey() == KeyPolicy.SEGMENT && progress == 1) return component ? vector(endValues, progress) : end;
+        if (segment.interpolation() == Interpolation.STEP || driver.atKey() == KeyPolicy.SEGMENT && segment.interpolation() == Interpolation.BEZIER && progress == 0) return component ? vector(startValues, progress) : start;
         double eased = component ? progress : easing(segment.easing(), progress);
         if (segment.interpolation() == Interpolation.SLERP) {
             Quaterniond rotation = this.slerpStart.set(start[0], start[1], start[2], start[3]).normalize()

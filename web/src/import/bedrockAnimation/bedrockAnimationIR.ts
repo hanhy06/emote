@@ -1,5 +1,5 @@
 import { sourceSecondsTime, parseAnimationSeconds, parseMinecraftTime, MAX_ANIMATION_DURATION_TICKS } from "../../format/time";
-import type { AnimationIR, CurveIR, DriverIR, NodeIR, ScalarIR, TimelineEventIR, VectorValueIR } from "../../domain/animationIR";
+import type { AnimationIR, CurveIR, ValueDriverIR, NodeIR, ScalarIR, TimelineEventIR, VectorValueIR, Vector3IR } from "../../domain/animationIR";
 import { affineCurveIR, affineScalarIR, scalarIR, sourceDelayIR } from "../../domain/animationIRConversion";
 import type { ImportedNode } from "../../domain/conversionSeed";
 import { ConversionError, type ConversionIssue } from "../../foundation/diagnostics";
@@ -57,7 +57,7 @@ export function createBedrockAnimationIR(animation: BedrockAnimation, name: stri
   for (const bone of [...BEDROCK_PLAYER_BONES, ...unknown]) {
     const id = `bone:${bone.id}`;
     const parentPivot = BEDROCK_PLAYER_BONES.find((p) => p.id === bone.parent)?.pivot ?? [0, 0, 0];
-    const position = bedrockPositionToCanonical(bone.pivot.map((v, axis) => v - parentPivot[axis]), (v) => -v).map((v) => v / 16);
+    const position = bedrockPositionToCanonical(bone.pivot.map((v, axis) => v - parentPivot[axis]), (v) => -v).map((v) => v / 16) as Vector3IR;
     const source = sources.get(bone.id);
     nodes[id] = { name: bone.sourceName, parent: bone.parent ? `bone:${bone.parent}` : "scene",
       source: { node_id: bone.sourceName, ...(unknownBoneIds[bone.sourceName] ? { missing_geometry: true, editor_node_id: bone.id } : {}) },
@@ -75,11 +75,11 @@ export function createBedrockAnimationIR(animation: BedrockAnimation, name: stri
     if (!source) continue;
     for (const channel of ["position", "rotation", "scale"] as const) {
       const c = source[channel]; if (c === undefined) continue;
-      const base = channel === "position" ? position : channel === "rotation" ? [0, 0, 0] : [1, 1, 1];
+      const base: Vector3IR = channel === "position" ? position : channel === "rotation" ? [0, 0, 0] : [1, 1, 1];
       const factors = channel === "position" ? [-1 / 16, 1 / 16, 1 / 16] : channel === "rotation" ? [-1, -1, 1] : [1, 1, 1];
       const offsets = channel === "position" ? position : [0, 0, 0];
       const vector = (v: BedrockVector): VectorValueIR => (Array.isArray(v) && v.length !== 1 ? v : Array(3).fill(Array.isArray(v) ? v[0] : v)).map(scalarIR);
-      let driver: DriverIR;
+      let driver: ValueDriverIR;
       if (c === null || typeof c !== "object" || Array.isArray(c)) driver = { type: "expression", value: vector(c as BedrockVector).map((value, axis) => affineScalarIR(value, factors[axis], offsets[axis])) };
       else {
         const entries = Object.entries(c).sort(([a], [b]) => Number(a) - Number(b));

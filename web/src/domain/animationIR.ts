@@ -1,3 +1,4 @@
+import type { Matrix16 } from "./matrix";
 import type { EmoteCallback, EmoteMetadata, EmotePlayerBehavior } from "./emoteDefinition";
 
 export type ScalarIR = number | { molang: string };
@@ -6,12 +7,13 @@ export type VectorValueIR = readonly ScalarIR[];
 export type VisibilityIR = boolean | { molang: string };
 export type RotationOrderIR = "XYZ" | "XZY" | "YXZ" | "YZX" | "ZXY" | "ZYX";
 
-export interface TransformOperationIR {
-  id: string;
-  op: "translate" | "rotate_euler" | "rotate_quaternion" | "scale" | "matrix";
-  order?: RotationOrderIR;
-  value: readonly number[];
-}
+export type Vector3IR = [number, number, number];
+export type TransformOperationIR = { id: string } & (
+  | { op: "translate" | "scale"; value: Readonly<Vector3IR>; order?: never }
+  | { op: "rotate_euler"; value: Readonly<Vector3IR>; order: RotationOrderIR }
+  | { op: "rotate_quaternion"; value: readonly [number, number, number, number]; order?: never }
+  | { op: "matrix"; value: Matrix16; order?: never }
+);
 
 export type AttachmentIR = {
   visible?: boolean;
@@ -34,18 +36,18 @@ export interface NodeIR {
   attachments?: Record<string, AttachmentIR>;
 }
 
-export interface EasingIR {
-  kernel: "linear" | "power" | "sine" | "expo" | "circ" | "back" | "blockbench_elastic" | "blockbench_bounce" | "blockbench_expo" | "blockbench_steps" | "steps";
-  direction?: "in" | "out" | "in_out";
-  exponent?: ScalarIR;
-  overshoot?: ScalarIR;
-  frequency?: ScalarIR;
-  bounciness?: ScalarIR;
-  count?: ScalarIR;
-}
+export type EasingIR = { direction?: "in" | "out" | "in_out" } & (
+  | { kernel: "linear" | "sine" | "expo" | "circ" | "blockbench_expo"; exponent?: never; overshoot?: never; frequency?: never; bounciness?: never; count?: never }
+  | { kernel: "power"; exponent: ScalarIR; overshoot?: never; frequency?: never; bounciness?: never; count?: never }
+  | { kernel: "back"; overshoot?: ScalarIR; exponent?: never; frequency?: never; bounciness?: never; count?: never }
+  | { kernel: "blockbench_elastic"; frequency?: ScalarIR; exponent?: never; overshoot?: never; bounciness?: never; count?: never }
+  | { kernel: "blockbench_bounce"; bounciness?: ScalarIR; exponent?: never; overshoot?: never; frequency?: never; count?: never }
+  | { kernel: "steps" | "blockbench_steps"; count: ScalarIR; exponent?: never; overshoot?: never; frequency?: never; bounciness?: never }
+);
 
-export interface SegmentIR {
-  interpolation: "step" | "linear" | "slerp" | "catmull_rom" | "hermite" | "bezier";
+export type BezierHandleIR = { out: { time: ScalarIR; value: ScalarIR; relative?: boolean; clamp?: "rescale_value" }; in: { time: ScalarIR; value: ScalarIR; relative?: boolean; clamp?: "rescale_value" } };
+
+export type SegmentIR = {
   easing?: EasingIR;
   tension?: number;
   previous?: VectorValueIR;
@@ -53,8 +55,14 @@ export interface SegmentIR {
   out_tangent?: VectorValueIR;
   in_tangent?: VectorValueIR;
   control_order?: "time_value" | "in_out";
-  handles?: { out: { time: ScalarIR; value: ScalarIR; relative?: boolean; clamp?: "rescale_value" }; in: { time: ScalarIR; value: ScalarIR; relative?: boolean; clamp?: "rescale_value" } }[];
-}
+  handles?: BezierHandleIR[];
+} & (
+  | { interpolation: "step"; easing?: never; tension?: never; previous?: never; following?: never; out_tangent?: never; in_tangent?: never; handles?: never; control_order?: never }
+  | { interpolation: "linear" | "slerp"; tension?: never; previous?: never; following?: never; out_tangent?: never; in_tangent?: never; handles?: never; control_order?: never }
+  | { interpolation: "catmull_rom"; out_tangent?: never; in_tangent?: never; handles?: never; control_order?: never }
+  | { interpolation: "hermite"; out_tangent: VectorValueIR; in_tangent: VectorValueIR; tension?: never; previous?: never; following?: never; handles?: never; control_order?: never }
+  | { interpolation: "bezier"; handles: BezierHandleIR[]; tension?: never; previous?: never; following?: never; out_tangent?: never; in_tangent?: never }
+);
 
 export type CurveKeyIR = { time: string } & ({ value: VectorValueIR; pre?: never; post?: never } | { pre: VectorValueIR; post: VectorValueIR; value?: never });
 export interface CurveIR {
@@ -69,15 +77,16 @@ export interface NbtPatchIR {
   merge: string | { molang: string };
   remove?: string[];
 }
-export type DriverIR = CurveIR | { type: "expression"; value: VectorValueIR | VisibilityIR }
-  | { type: "state"; keys: { time: string; value: VisibilityIR | NbtPatchIR }[] };
-export type SharedValueIR = (CurveIR | { type: "expression"; value: VectorValueIR }) & { base: readonly number[]; time_offset?: string };
-export interface TrackIR {
-  target: { node: string; operation?: string; attachment?: string };
-  channel: "value" | "visible" | "nbt";
-  driver: DriverIR;
-  blend?: { base: readonly number[]; weight: ScalarIR };
-}
+export type StateDriverIR<T> = { type: "state"; before?: "base" | "first_pre"; keys: { time: string; value: T }[] };
+export type ValueDriverIR = CurveIR | { type: "expression"; value: VectorValueIR };
+export type VisibilityDriverIR = { type: "expression"; value: VisibilityIR } | StateDriverIR<VisibilityIR>;
+export type NbtDriverIR = StateDriverIR<NbtPatchIR>;
+export type DriverIR = ValueDriverIR | VisibilityDriverIR | NbtDriverIR;
+export type SharedValueIR = ValueDriverIR & { base: readonly number[]; time_offset?: string };
+export type TrackIR =
+  | { target: { node: string; operation: string; attachment?: never }; channel: "value"; driver: ValueDriverIR; blend?: { base: Readonly<Vector3IR>; weight: ScalarIR } }
+  | { target: { node: string; attachment?: string; operation?: never }; channel: "visible"; driver: VisibilityDriverIR; blend?: never }
+  | { target: { node: string; attachment: string; operation?: never }; channel: "nbt"; driver: NbtDriverIR; blend?: never };
 
 export interface EventIR {
   time?: string;

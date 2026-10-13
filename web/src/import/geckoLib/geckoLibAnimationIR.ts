@@ -1,4 +1,4 @@
-import type { AnimationIR, NodeIR, ScalarIR, TimelineEventIR } from "../../domain/animationIR";
+import type { AnimationIR, NodeIR, ScalarIR, TimelineEventIR, Vector3IR } from "../../domain/animationIR";
 import { affineCurveIR, scalarIR, sourceDelayIR } from "../../domain/animationIRConversion";
 import { sourceSecondsTime } from "../../format/time";
 import type { ImportedNode } from "../../domain/conversionSeed";
@@ -40,12 +40,12 @@ export function createGeckoLibAnimationIR(source: GeckoLibAnimationSource, bones
   for (const bone of bones) {
     const id = `group:${bone.uuid}`;
     const parentOrigin = bone.parent?.group.origin ?? [0, 0, 0];
-    const position = [
+    const position: Vector3IR = [
       (bone.group.origin[0] - parentOrigin[0]) / 16,
       (bone.group.origin[1] - parentOrigin[1]) / 16,
       (bone.group.origin[2] - parentOrigin[2]) / 16,
     ];
-    const rotation = [bone.group.rotation[0], bone.group.rotation[1], bone.group.rotation[2]];
+    const rotation: Vector3IR = [bone.group.rotation[0], bone.group.rotation[1], bone.group.rotation[2]];
     nodes[id] = { name: bone.group.name, parent: bone.parent ? `group:${bone.parent.uuid}` : "scene",
       source: { node_id: bone.uuid },
       transform: [
@@ -79,7 +79,7 @@ export function createGeckoLibAnimationIR(source: GeckoLibAnimationSource, bones
       }));
       const curve = blockbenchCurveIR(frames);
       if (!curve) continue;
-      const base = channel === "position" ? position : channel === "rotation" ? rotation : [1, 1, 1];
+      const base: Vector3IR = channel === "position" ? position : channel === "rotation" ? rotation : [1, 1, 1];
       const driver = affineCurveIR(curve, channel === "position" ? [1 / 16, 1 / 16, 1 / 16] : [1, 1, 1], channel === "scale" ? [0, 0, 0] : base);
       ir.animation.tracks.push({ target: { node: id, operation: channel }, channel: "value", driver, ...(weight === 1 ? {} : { blend: { base, weight } }) });
     }

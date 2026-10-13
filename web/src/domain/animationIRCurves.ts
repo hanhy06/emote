@@ -145,5 +145,5 @@ export function blockbenchEasingIR(name: string | undefined, args?: readonly (nu
   if (kind === "elastic") return { kernel: "blockbench_elastic", direction, frequency: scalarIR(args?.[0] ?? 1) };
   if (kind === "bounce") return { kernel: "blockbench_bounce", direction, bounciness: scalarIR(args?.[0] ?? 0.5) };
   if (kind === "expo") return { kernel: "blockbench_expo", direction };
-  return { kernel: kind as EasingIR["kernel"], direction };
+  return { kernel: kind as "sine" | "circ", direction };
 }

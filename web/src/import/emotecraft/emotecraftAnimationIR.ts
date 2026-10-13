@@ -1,4 +1,4 @@
-import type { AnimationIR, CurveIR, CurveKeyIR, NodeIR, ScalarIR, SegmentIR, SharedValueIR, TrackIR } from "../../domain/animationIR";
+import type { AnimationIR, CurveIR, CurveKeyIR, NodeIR, ScalarIR, SegmentIR, SharedValueIR, TrackIR, Vector3IR } from "../../domain/animationIR";
 import { blockbenchEasingIR, evaluateEasing } from "../../domain/animationIRCurves";
 import { affineCurveIR, affineScalarIR, scalarIR } from "../../domain/animationIRConversion";
 import type { ImportedNode } from "../../domain/conversionSeed";
@@ -85,11 +85,12 @@ export function createEmotecraftAnimationIR(animation: PalAnimation, name: strin
     const parentPivot = parent ? animation.pivots[parent] ?? EMOTECRAFT_PIVOTS[parent] ?? [0, 0, 0] : [0, 0, 0];
     const bone = animation.bones[name];
     nodes[id] = { name, source: { node_id: name }, parent: parent ? boneIds.get(parent)! : "scene", transform: [
-      { id: "pivot", op: "translate", value: pivot.map((value, axis) => (value - parentPivot[axis]) / 16) },
+      { id: "pivot", op: "translate", value: pivot.map((value, axis) => (value - parentPivot[axis]) / 16) as Vector3IR },
     ] };
     for (const type of ["position", "rotation", "scale"] as const) {
       if (!bone?.[type].some((frames) => frames.length)) continue;
-      nodes[id].transform!.push({ id: type, op: type === "position" ? "translate" : type === "rotation" ? "rotate_euler" : "scale", ...(type === "rotation" ? { order: "ZYX" as const } : {}), value: type === "scale" ? [1, 1, 1] : [0, 0, 0] });
+      nodes[id].transform!.push(type === "rotation" ? { id: type, op: "rotate_euler", order: "ZYX", value: [0, 0, 0] }
+        : { id: type, op: type === "position" ? "translate" : "scale", value: type === "scale" ? [1, 1, 1] : [0, 0, 0] });
     }
     for (const type of ["rotation", "position", "scale"] as const) {
       if (!bone?.[type].some((frames) => frames.length)) continue;
@@ -125,7 +126,11 @@ export function createEmotecraftAnimationIR(animation: PalAnimation, name: strin
       for (let suffix = 2; usedIds.has(id); suffix++) id = `${original}_inherited_${suffix}`;
       usedIds.add(id); inherited.set(name, id);
       nodes[id] = { ...structuredClone(nodes[original]), parent: inheritParent(animation.parents[name] ?? "body") };
-      tracks.push(...tracks.filter((track) => track.target.node === original).map((track) => ({ ...structuredClone(track), target: { ...track.target, node: id } })));
+      for (const track of tracks.filter((track) => track.target.node === original)) {
+        const inheritedTrack = structuredClone(track);
+        inheritedTrack.target.node = id;
+        tracks.push(inheritedTrack);
+      }
       return id;
     };
     for (const name of ["head", "left_arm", "right_arm", "cape"]) {
