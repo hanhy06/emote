@@ -249,6 +249,7 @@ export function updateLifecycleEvents(document: ConversionDocument, animationInd
 export function replaceTimelineEvents(document: ConversionDocument, animationIndex: number, tick: number, events: EventIR[]): ConversionDocument {
   const animation = document.animations[animationIndex];
   if (!animation) return document;
+  if (!Number.isInteger(tick) || tick < 0 || tick > parseMinecraftTime(animation.clip.duration, 1)) throw new Error("Event tick must be within the animation duration.");
   return updateAnimation(document, animationIndex, { ...animation,
     clip: { ...animation.clip, events: { ...animation.clip.events, timeline: [
       ...(animation.clip.events?.timeline ?? []).filter((event) => parseMinecraftTime(event.time) !== tick),

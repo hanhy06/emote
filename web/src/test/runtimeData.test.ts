@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { expect, it } from "vitest";
 import { combineConversionDocuments } from "../domain/conversionBatch";
-import { assignSkinPart, createConversionDocument } from "../domain/conversionDocument";
+import { assignSkinPart, createConversionDocument, replaceTimelineEvents } from "../domain/conversionDocument";
 import { exportAnimation, exportAnimations } from "../export/projectExporter";
 import type { AnimationJson } from "../format/animation";
 import { readInput } from "../import/formats";
@@ -9,6 +9,8 @@ import MolangParser from "molangjs/dist/molang.esm.js";
 import { evaluatePose } from "../domain/animationIRPose";
 import { evaluateEasing, type ScalarEvaluatorIR } from "../domain/animationIRCurves";
 import { PreviewMolangEvaluator } from "../preview/molangEvaluator";
+import { createPreviewModel } from "../preview/previewModel";
+import { INITIAL_WORKSPACE, workspaceReducer } from "../workspace";
 
 const animation: AnimationJson = {
   type: "animation", schema_version: 5, target_minecraft_version: "26.3", id: "sit:sit_down",
@@ -115,6 +117,36 @@ it("prunes only proven static nodes in output while preserving curves, event ori
   expect(actual.animation.events).toEqual(authored.animation.events);
   expect(evaluatePose({ ...actual, animation: { ...actual.animation, tracks: actual.animation.tracks.filter((track) => track.target.node === "spline") } }, 0.5, Number).spline.matrix.elements[0]).toBe(2);
   expect(document).toEqual(snapshot);
+});
+
+it("edits animation ticks independently of preview delays and keeps generated events within the authored duration", async () => {
+  for (const startDelay of ["10t", { molang: "q.scoreboard('pause')" }]) {
+    const authored = structuredClone(animation);
+    authored.nodes.arm.attachments!.prop = { type: "item_display", item_stack_snbt: '{id:"minecraft:player_head",count:1}', item_display: "none" };
+    authored.animation = { duration: "20t", playback: { start_delay: startDelay }, tracks: [
+      { target: { node: "arm", operation: "position" }, channel: "value", driver: { type: "expression", value: [{ molang: "q.anim_time" }, 1.5, 0] } },
+    ] };
+    const project = await readInput("emote_json", { name: "delay.json", bytes: new TextEncoder().encode(JSON.stringify(authored)) });
+    let state = workspaceReducer(INITIAL_WORKSPACE, { type: "documents_open_succeeded", document: createConversionDocument(project, "Emote JSON") });
+    expect(state.session!.selectedFrame).toEqual({ type: "create" });
+    state = workspaceReducer(state, { type: "frame_selected", frame: { type: "timeline", tick: 5 } });
+    let session = state.session!;
+    const preview = createPreviewModel(session.document, session.document.animations[0], session.selectedFrame);
+    expect(preview.parts[0].matrix[3]).toBe(0.25);
+    expect(preview.availability).toEqual({ status: "full" });
+    const event = { source: { type: "server" as const }, origin: { type: "root" as const }, action: { type: "commands" as const, commands: ["say frame"] } };
+    state = workspaceReducer(state, { type: "timeline_events_changed", tick: 5, events: [event] });
+    state = workspaceReducer(state, { type: "frame_selected", frame: { type: "timeline", tick: 30 } });
+    expect(state.session!.selectedFrame).toEqual({ type: "timeline", tick: 20 });
+    state = workspaceReducer(state, { type: "timeline_events_changed", tick: 20, events: [event] });
+    session = state.session!;
+    const [output] = await exportAnimation(session.document, 0);
+    const actual: AnimationJson = JSON.parse(await output.blob.text());
+    expect(actual.animation.duration).toBe("20t");
+    expect(actual.animation.playback!.start_delay).toEqual(startDelay);
+    expect(actual.animation.events!.timeline).toEqual([{ ...event, time: "5t" }, { ...event, time: "20t" }]);
+    expect(() => replaceTimelineEvents(session.document, 0, 30, [event])).toThrow(/within the animation duration/);
+  }
 });
 
 it("omits skin NBT only in output and restores original display data when unassigned", async () => {

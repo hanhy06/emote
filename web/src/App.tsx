@@ -23,6 +23,7 @@ import {
   type WorkspacePage,
 } from "./workspace";
 import { createPreviewModel } from "./preview/previewModel";
+import { parseMinecraftTime } from "./format/time";
 const PartPreview = lazy(() => import("./components/PartPreview"));
 const ACCEPTED_EXTENSIONS = [...new Set(Object.values(INPUT_FORMATS).map((format) => format.extension))]
   .map((extension) => `.${extension}`)
@@ -61,25 +62,25 @@ export function App() {
 
   const project = session?.document ?? null;
   const animationIndex = session?.animationIndex ?? 0;
-  const previewFrameIndex = session?.previewFrameIndex ?? 0;
+  const selectedAnimation = project?.animations[animationIndex];
+  const selectedTick = session?.selectedFrame.type === "timeline" ? session.selectedFrame.tick : null;
+  const frameIndex = selectedTick === null ? 0 : selectedTick + 1;
+  const durationTicks = selectedAnimation ? parseMinecraftTime(selectedAnimation.clip.duration, 1) : 0;
   const preview = useMemo(() => {
     if (!session) return null;
     const selectedAnimation = session.document.animations[session.animationIndex];
-    return createPreviewModel(session.document, selectedAnimation, session.previewFrameIndex);
+    return createPreviewModel(session.document, selectedAnimation, session.selectedFrame);
   }, [session]);
   const assignments = preview?.assignments ?? {};
   const orders = preview?.orders ?? {};
   const selectedNodeIds = session?.selectedNodeIds ?? EMPTY_SELECTION;
-  const selectedAnimation = project?.animations[animationIndex];
   const availability = preview?.availability ?? null;
-  const previewDurationTicks = preview?.durationTicks ?? 0;
   const eventReview = useMemo(() => eventReviewLocations(project), [project]);
   const eventReviewTypes = [
     ...(eventReview.some((entry) => entry.locations.some((location) => location !== "callbacks")) ? ["commands"] : []),
     ...(eventReview.some((entry) => entry.locations.includes("callbacks")) ? ["callbacks"] : []),
   ];
   const warningGroups = useMemo(() => groupConversionWarnings([...(project?.diagnostics ?? []), ...sequenceReferenceWarnings(project)]), [project]);
-  const previewTick = preview?.tick ?? null;
   const previewParts = preview?.parts ?? [];
   const hasReviewNodes = preview?.hasReviewNodes ?? false;
 
@@ -298,15 +299,14 @@ export function App() {
               </div>
               <div className="preview-controls">
                 {availability?.status === "approximate" && <output title={availability.reason}>Approximate preview</output>}
-                {(availability?.status === "full" || availability?.status === "approximate") && (
-                  <label className="frame-slider">
-                    <span>Preview frame</span>
-                    <input type="range" min="0" max={previewDurationTicks + 1} step="1" value={previewFrameIndex} disabled={!eventJsonValid} onChange={(event) => {
-                      dispatch({ type: "preview_frame_selected", index: Number(event.currentTarget.value) });
-                    }} />
-                    <output>{previewTick === null ? "Create pose" : `${previewTick} tick`}</output>
-                  </label>
-                )}
+                <label className="frame-slider">
+                  <span>Animation frame</span>
+                  <input type="range" min="0" max={durationTicks + 1} step="1" value={frameIndex} disabled={!eventJsonValid} onChange={(event) => {
+                    const index = Number(event.currentTarget.value);
+                    dispatch({ type: "frame_selected", frame: index === 0 ? { type: "create" } : { type: "timeline", tick: index - 1 } });
+                  }} />
+                  <output>{selectedTick === null ? "Create pose" : `${selectedTick} tick`}</output>
+                </label>
               </div>
             </div>
             {availability?.status === "unavailable" ? (
@@ -337,7 +337,7 @@ export function App() {
               <div className="no-skin-parts"><strong>Ready to export</strong><span>No player skin assignments are required.</span></div>
             )}
             <EventPanel
-              key={`${eventEditorRevision}:${animationIndex}:${previewTick === null ? "lifecycle" : previewTick}`}
+              key={`${eventEditorRevision}:${animationIndex}:${selectedTick === null ? "lifecycle" : selectedTick}`}
               events={{
                 start: selectedAnimation.clip.events?.start ?? [],
                 timeline: selectedAnimation.clip.events?.timeline ?? [],
@@ -345,7 +345,7 @@ export function App() {
                 stop: selectedAnimation.clip.events?.stop ?? [],
               }}
               callbacks={selectedAnimation.callbacks}
-              tick={previewTick}
+              tick={selectedTick}
               disabled={busy}
               onLifecycleChange={changeLifecycleEvents}
               onTimelineChange={changeTimelineEvents}

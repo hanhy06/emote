@@ -1,4 +1,4 @@
-import { parseAnimationSeconds } from "./format/time";
+import { parseAnimationSeconds, parseMinecraftTime } from "./format/time";
 import {
   assignSkinOrder,
   assignSkinPart,
@@ -15,11 +15,12 @@ import type { AnimationEntryIR, EventIR } from "./domain/animationIR";
 import { TICKS_PER_SECOND } from "./format/time";
 
 export type WorkspacePage = 0 | 1 | 2;
+export type SelectedFrame = { type: "create" } | { type: "timeline"; tick: number };
 
 export interface ConversionSession {
   document: ConversionDocument;
   animationIndex: number;
-  previewFrameIndex: number;
+  selectedFrame: SelectedFrame;
   selectedNodeIds: Set<string>;
 }
 
@@ -42,7 +43,7 @@ export type WorkspaceAction =
   | { type: "operation_finished" }
   | { type: "page_selected"; page: WorkspacePage }
   | { type: "animation_selected"; index: number }
-  | { type: "preview_frame_selected"; index: number }
+  | { type: "frame_selected"; frame: SelectedFrame }
   | { type: "node_selected"; nodeId: string; additive: boolean }
   | { type: "nodes_selected"; nodeIds: readonly string[]; additive: boolean }
   | { type: "skin_part_assigned"; part: PlayerSkinPart | null }
@@ -68,7 +69,7 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
       return { ...state, openError: "", exportError: "", operation: { type: "opening", message: action.message } };
     case "documents_open_succeeded":
       return { ...state,
-        session: { document: action.document, animationIndex: 0, previewFrameIndex: 0, selectedNodeIds: new Set() },
+        session: { document: action.document, animationIndex: 0, selectedFrame: { type: "create" }, selectedNodeIds: new Set() },
         page: 0, operation: { type: "idle" } };
     case "open_failed":
       return { ...state, openError: action.message, operation: { type: "idle" } };
@@ -82,8 +83,11 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
       return { ...state, page: action.page };
     case "animation_selected":
       return updateSession(state, (session) => selectSessionAnimation(session, action.index));
-    case "preview_frame_selected":
-      return updateSession(state, (session) => ({ ...session, previewFrameIndex: action.index, selectedNodeIds: new Set() }));
+    case "frame_selected":
+      return updateSession(state, (session) => ({ ...session,
+        selectedFrame: action.frame.type === "create" ? action.frame : { type: "timeline",
+          tick: Math.max(0, Math.min(action.frame.tick, parseMinecraftTime(session.document.animations[session.animationIndex].clip.duration, 1))) },
+        selectedNodeIds: new Set() }));
     case "node_selected":
       return updateSession(state, (session) => ({
         ...session,
@@ -187,7 +191,7 @@ function selectNodes(current: ReadonlySet<string>, nodeIds: readonly string[], a
 
 function selectSessionAnimation(session: ConversionSession, animationIndex: number): ConversionSession {
   if (!session.document.animations[animationIndex]) return session;
-  return { ...session, animationIndex, previewFrameIndex: 0, selectedNodeIds: new Set() };
+  return { ...session, animationIndex, selectedFrame: { type: "create" }, selectedNodeIds: new Set() };
 }
 
 function updateSession(

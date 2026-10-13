@@ -1,10 +1,10 @@
-import { parseMinecraftTime } from "../format/time";
 import { skinPartAssignments, skinPartOrders, type ConversionAnimation, type ConversionDocument } from "../domain/conversionDocument";
 import { evaluatePose } from "../domain/animationIRPose";
 import type { PlayerSkinPart } from "../domain/player";
 import { matrix4ToRowMajor } from "../format/matrix";
 import { PreviewMolangEvaluator } from "./molangEvaluator";
 import type { ScalarEvaluatorIR } from "../domain/animationIRCurves";
+import type { SelectedFrame } from "../workspace";
 
 export interface PreviewPart {
   nodeId: string;
@@ -19,8 +19,6 @@ export type PreviewAvailability =
   | { status: "unavailable"; reason: string };
 
 export interface PreviewModel {
-  tick: number | null;
-  durationTicks: number;
   availability: PreviewAvailability | null;
   parts: PreviewPart[];
   assignments: Record<string, PlayerSkinPart | null>;
@@ -28,7 +26,7 @@ export interface PreviewModel {
   hasReviewNodes: boolean;
 }
 
-export function createPreviewModel(document: ConversionDocument, animation: ConversionAnimation | undefined, previewFrameIndex: number): PreviewModel {
+export function createPreviewModel(document: ConversionDocument, animation: ConversionAnimation | undefined, frame: SelectedFrame): PreviewModel {
   const nodeIds = new Set(animation?.nodeIds ?? []);
   const candidates = Object.entries(document.skinCandidates).filter(([id]) => nodeIds.has(id));
   const reasons = new Set<string>();
@@ -36,19 +34,13 @@ export function createPreviewModel(document: ConversionDocument, animation: Conv
   const evaluator = new PreviewMolangEvaluator();
   const evaluate: ScalarEvaluatorIR = (value, progress, base = 0, resolveValue): number => {
     try {
-      return evaluator.evaluate(typeof value === "number" ? value : value.molang, { animationTime: time, keyframeLerpTime: progress, lifeTime: elapsed, resolveValue });
+      return evaluator.evaluate(typeof value === "number" ? value : value.molang, { animationTime: time, keyframeLerpTime: progress, lifeTime: time, resolveValue });
     } catch (reason) {
       approximate(reason instanceof Error ? reason.message : String(reason));
       return base;
     }
   };
-  let time = 0, elapsed = 0;
-  const delay = animation?.clip.playback?.start_delay;
-  const startDelay = delay === undefined ? 0 : Math.max(0, typeof delay === "string" ? parseMinecraftTime(delay) / 20 : evaluate(delay, 0));
-  const durationTicks = animation ? parseMinecraftTime(animation.clip.duration, 1) + Math.ceil(startDelay * 20) : 0;
-  const tick = previewFrameIndex === 0 ? null : Math.min(previewFrameIndex - 1, durationTicks);
-  elapsed = (tick ?? 0) / 20;
-  time = Math.min(animation ? parseMinecraftTime(animation.clip.duration, 1) / 20 : 0, Math.max(0, elapsed - startDelay));
+  const time = frame.type === "timeline" ? frame.tick / 20 : 0;
   const parts: PreviewPart[] = [];
   let availability: PreviewAvailability | null = animation ? { status: "full" } : null;
   if (animation) {
@@ -56,7 +48,7 @@ export function createPreviewModel(document: ConversionDocument, animation: Conv
     if (animation.clip.programs?.initialize || animation.clip.programs?.update) approximate("Runtime programs are preserved; dependent expressions use their base components.");
     try {
       const poses = evaluatePose({ ...animation, nodes: Object.fromEntries(animation.nodeIds.map((id) => [id, document.nodes[id]])),
-        animation: tick === null || elapsed < startDelay ? { ...animation.clip, tracks: [] } : animation.clip }, time, evaluate, approximate);
+        animation: frame.type === "create" ? { ...animation.clip, tracks: [] } : animation.clip }, time, evaluate, approximate);
       const groups = new Map<string, number>();
       for (const [id, candidate] of candidates) {
         if (!groups.has(candidate.groupId)) groups.set(candidate.groupId, groups.size);
@@ -71,7 +63,7 @@ export function createPreviewModel(document: ConversionDocument, animation: Conv
       availability = { status: "unavailable", reason: reason instanceof Error ? reason.message : String(reason) };
     }
   }
-  return { tick, durationTicks, availability, parts,
+  return { availability, parts,
     assignments: Object.fromEntries(Object.entries(skinPartAssignments(document)).filter(([id]) => nodeIds.has(id))),
     orders: Object.fromEntries(Object.entries(skinPartOrders(document)).filter(([id]) => nodeIds.has(id))),
     hasReviewNodes: candidates.length > 0 };
