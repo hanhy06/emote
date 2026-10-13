@@ -177,7 +177,7 @@ function resolveAnimatedJavaAnimationState(
           message: `Variant ${variantId} changes cube textures, which cannot yet be represented by the native importer.`,
           sourcePath: `variants.${variantId}.texture_map`,
         });
-        collectVariantFrames(stateFrames, project, graph, bindings, variantId, variant, frame.time);
+        collectVariantFrames(stateFrames, project, nodes, graph, bindings, variantId, variant, frame.time);
         const onApply = stringField(variant, "on_apply_function") ?? stringField(variant, "onApplyFunction");
         if (onApply) timeline.push({ time: sourceSecondsTime(frame.time), source: { type: "player" }, origin: { type: "root" }, action: { type: "commands", commands: functionCommands(onApply) } });
       }
@@ -269,7 +269,7 @@ function projectEffectEvents(source: AjProjectAnimation, cubes: AnimatedJavaCube
     for (const [index, frame] of (animator.keyframes ?? []).entries()) {
       const path = `animations[${animationIndex}].animators.${animatorId}.keyframes[${index}]`;
       if (!["sound", "particle", "timeline"].includes(frame.channel)) {
-        if (frame.channel !== "function" && frame.channel !== "commands") diagnostics.push({ severity: "warning", code: "animated_java_effect_ignored", message: `${source.name} at ${frame.time * 20}t: an unsupported effect was omitted.`, sourcePath: path });
+        if (!["function", "commands", "variant"].includes(frame.channel)) diagnostics.push({ severity: "warning", code: "animated_java_effect_ignored", message: `${source.name} at ${frame.time * 20}t: an unsupported effect was omitted.`, sourcePath: path });
         continue;
       }
       for (const point of frame.data_points) {
@@ -324,7 +324,7 @@ function nativeFunctionEvents(source: AjProjectAnimation, diagnostics: Conversio
 function nativeVariants(project: AjProject): Map<string, Record<string, unknown>> {
   const variants = new Map<string, Record<string, unknown>>();
   if (!isRecord(project.variants)) return variants;
-  const entries = Array.isArray(project.variants.list) ? project.variants.list : [];
+  const entries = Array.isArray(project.variants.list) ? [...project.variants.list] : [];
   if (isRecord(project.variants.default)) entries.unshift(project.variants.default);
   for (const value of entries) {
     if (!isRecord(value)) continue;
@@ -339,6 +339,7 @@ function nativeVariants(project: AjProject): Map<string, Record<string, unknown>
 function collectVariantFrames(
   frames: ProjectNodeStateFrame[],
   project: AjProject,
+  nodes: Record<string, ImportedNode>,
   graph: ProjectTransformGraph,
   bindings: ProjectNodeBindings,
   variantId: string,
@@ -346,19 +347,20 @@ function collectVariantFrames(
   time: number,
 ): void {
   const excluded = new Set(Array.isArray(variant.excluded_nodes) ? variant.excluded_nodes.filter((value): value is string => typeof value === "string") : []);
-  for (const sourceId of excluded) {
-    for (const nodeId of projectOutputNodeIds(sourceId, graph, bindings)) frames.push({ nodeId, time, visible: false });
-  }
+  const configId = typeof variant.uuid === "string" ? variant.uuid : variantId;
+  const isDefault = variant.is_default === true || project.variants?.default === variant;
   for (const element of project.elements) {
-    if (["cube", "locator", "camera"].includes(element.type)) continue;
+    if (!isDirectDisplay(element.type) || excluded.has(element.uuid)) continue;
     const configs = (element as Record<string, unknown>).configs;
-    const config = isRecord(configs) && isRecord(configs.variants) ? configs.variants[variantId] : undefined;
+    const config = (isRecord(configs) && isRecord(configs.variants) ? configs.variants[configId] : undefined)
+      ?? (isDefault && isRecord(configs) ? configs.default : undefined);
     if (isRecord(config)) collectVariantConfigFrame(frames, element.uuid, config, time);
   }
-  for (const group of project.groups) {
-    const config = group.configs?.variants?.[variantId];
+  for (const group of graph.groups.values()) {
+    if (excluded.has(group.uuid)) continue;
+    const config = group.configs?.variants?.[configId] ?? (isDefault ? group.configs?.default : undefined);
     if (!isRecord(config)) continue;
-    for (const nodeId of projectOutputNodeIds(group.uuid, graph, bindings, false)) collectVariantConfigFrame(frames, nodeId, config, time);
+    for (const nodeId of bindings.get(group.uuid) ?? []) if (nodes[nodeId]?.type === "item_display") collectVariantConfigFrame(frames, nodeId, config, time);
   }
 }
 
