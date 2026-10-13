@@ -46,8 +46,8 @@ export function importGeckoLibProject(project: GeckoLibBbmodelProject, sourceNam
   const bones = buildBoneEntries(project);
   if (bones.length === 0) throw new Error(`${FORMAT_LABEL} cube project does not contain bones.`);
   if (bones.some((bone) => bone.cubes.length > 0)) writeEmbeddedTextures(project.textures, namespace, projectPath, resources);
-  const { playableCubesByBone, skinAssignments } = prepareCubeModels(bones);
-  const diagnostics: ConversionIssue[] = [...(project.animationDiagnostics ?? [])];
+  const { playableCubesByBone, skinAssignments, sourceIds, diagnostics: modelDiagnostics } = prepareCubeModels(bones);
+  const diagnostics: ConversionIssue[] = [...(project.animationDiagnostics ?? []), ...modelDiagnostics];
   const nodes: Record<string, ImportedNode> = {};
   const nodeIds = new Set(bones.map((bone) => bone.id));
   for (const bone of bones) {
@@ -68,14 +68,14 @@ export function importGeckoLibProject(project: GeckoLibBbmodelProject, sourceNam
       };
       const conversionMatrix = hiddenAccessory ? undefined : cubePlayerHeadMatrix(cube, bone, bounds);
       if (!hiddenAccessory && !conversionMatrix) throw new ConversionError(`invalid_${DIAGNOSTIC_PREFIX}_cube`, `Cube ${cube.name ?? cube.uuid} cannot be fitted to a player head.`, cube.uuid);
-      const skin = hiddenAccessory ? undefined : skinAssignments.get(cube.uuid);
+      const skin = hiddenAccessory ? undefined : skinAssignments.get(cube);
       const localMatrix = cubeLocalMatrix(cube, bone);
       bone.nodes.push({ id: nodeId, localMatrix });
       const modelPath = `${projectPath}/${nodeId}`;
       writeCubeResources(cube, bone.group.origin, project.resolution, project.textures, namespace, modelPath, resources);
       nodes[nodeId] = {
         binding: {
-          sourceNodeId: nodeId,
+          sourceNodeId: sourceIds.get(cube)!,
           ...(skin ? { skinGroupId: `${skin.part}_${skin.order}` } : {}),
         },
         type: "item_display",

@@ -5,6 +5,7 @@ import type { ImportedSkinPart } from "../../domain/conversionSeed";
 import type { PlayerSkinPart } from "../../domain/player";
 import type { BbCube } from "./blockbenchCubeSchema";
 import type { BoneEntry } from "./blockbenchCubeModel";
+import type { ConversionIssue } from "../../foundation/diagnostics";
 import {
   humanoidJointFillMatrix,
   humanoidRenderPieces,
@@ -30,12 +31,16 @@ interface SkinCubeSource {
 
 export interface PreparedCubeModels {
   playableCubesByBone: ReadonlyMap<string, BbCube[]>;
-  skinAssignments: ReadonlyMap<string, ImportedSkinPart>;
+  skinAssignments: ReadonlyMap<BbCube, ImportedSkinPart>;
+  sourceIds: ReadonlyMap<BbCube, string>;
+  diagnostics: ConversionIssue[];
 }
 
 export function prepareCubeModels(bones: BoneEntry[]): PreparedCubeModels {
-  const playableCubesByBone = splitPlayerSkinCubesByPoseBone(bones);
-  return { playableCubesByBone, skinAssignments: inferSkinAssignments(bones, playableCubesByBone) };
+  const sourceIds = new Map(bones.flatMap((bone) => bone.cubes.map((cube) => [cube, cube.uuid] as const)));
+  const diagnostics: ConversionIssue[] = [];
+  const playableCubesByBone = splitPlayerSkinCubesByPoseBone(bones, sourceIds, diagnostics);
+  return { playableCubesByBone, skinAssignments: inferSkinAssignments(bones, playableCubesByBone, sourceIds), sourceIds, diagnostics };
 }
 
 export function normalizeBlockbenchName(name: string | undefined): string | undefined {
@@ -72,23 +77,37 @@ export function cubePlayerHeadMatrix(cube: BbCube, bone: BoneEntry, canonical: {
   return matrix4ToRowMajor(conversion, `Blockbench cube ${cube.name ?? cube.uuid} player head conversion`);
 }
 
-function removeDuplicateSkinLayers(cubes: BbCube[]): BbCube[] {
-  return cubes.filter((cube, cubeIndex) => !cubes.some((other, otherIndex) => {
-    if (cubeIndex === otherIndex) return false;
-    if (sameCubeBounds(cube, other)) return isSkinLayerCube(cube) || (cube.inflate ?? 0) > (other.inflate ?? 0);
-    return isSkinLayerCube(cube) && !isSkinLayerCube(other) && nearbySkinLayerBounds(cube, other);
+function removeDuplicateSkinLayers(bone: BoneEntry): BbCube[] {
+  const part = inferSkinPart(bone);
+  if (!part) return bone.cubes;
+  const offsets = part === "head" ? [[32, 0]] : part === "left_arm" ? [[0, 16], [16, 0]] : part === "left_leg" ? [[0, 16], [-16, 0]] : [[0, 16]];
+  return bone.cubes.filter((layer) => !isSkinLayerCube(layer) || !bone.cubes.some((base) => {
+    if (base === layer || isSkinLayerCube(base)) return false;
+    const size = base.to.map((value, axis) => value - base.from[axis]);
+    if (size[1] <= 0 || size[1] > humanoidSkinPartHeight(part)
+      || !isStandardHumanoidPartSize(part, [size[0], humanoidSkinPartHeight(part), size[2]])) return false;
+    if (!sameCubeBounds(layer, base) && !nearbySkinLayerBounds(layer, base)) return false;
+    if (![0, 1, 2].every((axis) => Math.abs((layer.origin ?? bone.group.origin)[axis] - (base.origin ?? bone.group.origin)[axis]) <= 1e-7
+      && Math.abs((layer.rotation ?? [0, 0, 0])[axis] - (base.rotation ?? [0, 0, 0])[axis]) <= 1e-7)) return false;
+    const faces = Object.entries(layer.faces).filter(([, face]) => face.enabled !== false && face.texture !== null && face.uv?.length === 4);
+    return faces.length > 0 && offsets.some(([u, v]) => faces.every(([direction, face]) => {
+      const other = base.faces[direction];
+      return other?.enabled !== false && other?.uv?.length === 4 && face.texture === other.texture
+        && (face.rotation ?? 0) === (other.rotation ?? 0)
+        && face.uv!.every((value, index) => Math.abs(value - other.uv![index] - (index % 2 === 0 ? u : v)) <= 1e-3);
+    }));
   }));
 }
 
-function splitPlayerSkinCubesByPoseBone(bones: BoneEntry[]): Map<string, BbCube[]> {
+function splitPlayerSkinCubesByPoseBone(bones: BoneEntry[], sourceIds: Map<BbCube, string>, diagnostics: ConversionIssue[]): Map<string, BbCube[]> {
   const result = new Map(bones.map((bone) => [bone.uuid, [] as BbCube[]]));
-  const cubesByBone = new Map(bones.map((bone) => [bone.uuid, removeDuplicateSkinLayers(bone.cubes)]));
-  const consumed = splitPresegmentedSkinCubes(bones, cubesByBone, result);
+  const cubesByBone = new Map(bones.map((bone) => [bone.uuid, removeDuplicateSkinLayers(bone)]));
+  const consumed = splitPresegmentedSkinCubes(bones, cubesByBone, result, sourceIds, diagnostics);
   for (const bone of bones) {
     const part = inferSkinPart(bone);
     for (const cube of cubesByBone.get(bone.uuid) ?? []) {
       if (consumed.has(cube.uuid)) continue;
-      if (!part || !isStandardPlayerSkinCube(cube, part)) {
+      if (!part || isSkinLayerCube(cube) || !isStandardPlayerSkinCube(cube, part)) {
         result.get(bone.uuid)!.push(cube);
         continue;
       }
@@ -108,6 +127,7 @@ function splitPlayerSkinCubesByPoseBone(bones: BoneEntry[]): Map<string, BbCube[
           to: [cube.to[0], cube.to[1] - height * piece.startY / skinHeight, cube.to[2]],
           faces: sliceVerticalFaceUvs(cube.faces, piece.startY / skinHeight, piece.endY / skinHeight),
         };
+        sourceIds.set(sliced, cube.uuid);
         result.get(piece.motion === "lower" && lowerBone ? lowerBone.uuid : bone.uuid)!.push(sliced);
       }
     }
@@ -119,6 +139,8 @@ function splitPresegmentedSkinCubes(
   bones: BoneEntry[],
   cubesByBone: ReadonlyMap<string, BbCube[]>,
   result: Map<string, BbCube[]>,
+  sourceIds: Map<BbCube, string>,
+  diagnostics: ConversionIssue[],
 ): Set<string> {
   const consumed = new Set<string>();
   const sources: SkinCubeSource[] = [];
@@ -127,7 +149,7 @@ function splitPresegmentedSkinCubes(
     if (!part || part === "head") continue;
     for (const cube of cubesByBone.get(bone.uuid) ?? []) {
       const height = cube.to[1] - cube.from[1];
-      if (height > 0 && height < humanoidSkinPartHeight(part)) sources.push({ bone, cube, part });
+      if (!isSkinLayerCube(cube) && height > 0 && height < humanoidSkinPartHeight(part)) sources.push({ bone, cube, part });
     }
   }
 
@@ -150,23 +172,30 @@ function splitPresegmentedSkinCubes(
     if (!isCompleteSkinColumn(component)) continue;
     const part = component[0].part;
     const top = Math.max(...component.map((source) => source.cube.to[1]));
-    for (const piece of humanoidRenderPieces(part, component.some((source) => source.bone !== component[0].bone))) {
+    const pieces = humanoidRenderPieces(part, component.some((source) => source.bone !== component[0].bone));
+    const pieceSources = pieces.map((piece) => component.find((candidate) => candidate.cube.from[1] <= top - piece.endY + 1e-3 && candidate.cube.to[1] >= top - piece.startY - 1e-3));
+    if (pieceSources.some((source) => !source)) {
+      diagnostics.push({ severity: "warning", code: "blockbench_skin_split_preserved", message: `${component[0].bone.group.name}: skin segments do not match the source cubes; original geometry is preserved without automatic skin assignment.`, sourcePath: component[0].cube.uuid });
+      continue;
+    }
+    for (const [index, piece] of pieces.entries()) {
       const pieceTop = top - piece.startY;
       const pieceBottom = top - piece.endY;
-      const source = component.find((candidate) => candidate.cube.from[1] <= pieceBottom + 1e-3 && candidate.cube.to[1] >= pieceTop - 1e-3);
-      if (!source) continue;
+      const source = pieceSources[index]!;
       const height = source.cube.to[1] - source.cube.from[1];
       const startRatio = (source.cube.to[1] - pieceTop) / height;
       const endRatio = (source.cube.to[1] - pieceBottom) / height;
       const suffix = piece.kind === "joint_fill" ? `joint_${piece.jointSide}_${piece.order}` : `${piece.order}`;
-      result.get(source.bone.uuid)!.push({
+      const sliced: BbCube = {
         ...source.cube,
         uuid: `${source.cube.uuid}_skin_${suffix}`,
         name: `${source.cube.name ?? "Cube"} Skin ${suffix}`,
         from: [source.cube.from[0], pieceBottom, source.cube.from[2]],
         to: [source.cube.to[0], pieceTop, source.cube.to[2]],
         faces: sliceVerticalFaceUvs(source.cube.faces, startRatio, endRatio),
-      });
+      };
+      sourceIds.set(sliced, source.cube.uuid);
+      result.get(source.bone.uuid)!.push(sliced);
     }
     component.forEach((source) => consumed.add(source.cube.uuid));
   }
@@ -254,14 +283,15 @@ function nearbySkinLayerBounds(layer: BbCube, base: BbCube): boolean {
 function inferSkinAssignments(
   bones: BoneEntry[],
   playableCubesByBone: ReadonlyMap<string, BbCube[]>,
-): Map<string, ImportedSkinPart> {
+  sourceIds: ReadonlyMap<BbCube, string>,
+): Map<BbCube, ImportedSkinPart> {
   const candidates: { cube: BbCube; part: ImportedSkinPart["part"]; centerY: number; sourceOrder: number; explicitOrder?: number }[] = [];
   let sourceOrder = 0;
   for (const bone of bones) {
     const part = inferSkinPart(bone);
     for (const cube of playableCubesByBone.get(bone.uuid) ?? []) {
-      const split = parseSplitSkinCube(cube.uuid);
-      if (!part || (split === null && !isStandardPlayerSkinCube(cube, part))) continue;
+      const split = sourceIds.get(cube) !== cube.uuid ? parseSplitSkinCube(cube.uuid) : null;
+      if (!part || isSkinLayerCube(cube) || (split === null && !isStandardPlayerSkinCube(cube, part))) continue;
       candidates.push({
         cube,
         part,
@@ -272,12 +302,12 @@ function inferSkinAssignments(
     }
   }
 
-  const result = new Map<string, ImportedSkinPart>();
+  const result = new Map<BbCube, ImportedSkinPart>();
   for (const part of ["head", "body", "left_arm", "right_arm", "left_leg", "right_leg"] as const) {
     candidates
       .filter((candidate) => candidate.part === part)
       .sort((first, second) => second.centerY - first.centerY || first.sourceOrder - second.sourceOrder)
-      .forEach((candidate, order) => result.set(candidate.cube.uuid, { part, order: candidate.explicitOrder ?? order }));
+      .forEach((candidate, order) => result.set(candidate.cube, { part, order: candidate.explicitOrder ?? order }));
   }
   return result;
 }

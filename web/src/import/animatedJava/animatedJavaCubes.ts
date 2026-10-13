@@ -10,6 +10,7 @@ import type { BbTexture } from "../common/blockbenchCubeSchema";
 import { cubePlayerHeadMatrix, isHiddenAccessoryBone, prepareCubeModels } from "../common/blockbenchCubeSkin";
 import { uniqueCubeNodeId, writeCubeResources, writeEmbeddedTextures } from "../common/blockbenchCubeResources";
 import type { AjProject, AjProjectCube, AjProjectLocator, ProjectTransformGraph } from "./animatedJavaProjectSchema";
+import type { ConversionIssue } from "../../foundation/diagnostics";
 
 export interface AnimatedJavaCubes {
   namespace: string;
@@ -19,6 +20,7 @@ export interface AnimatedJavaCubes {
   nodes: Record<string, ImportedNode>;
   nodeIdsBySourceUuid: ReadonlyMap<string, readonly string[]>;
   resources: Map<string, GeneratedResource>;
+  diagnostics: ConversionIssue[];
 }
 
 export function importAnimatedJavaCubes(project: AjProject, sourceStem: string, graph: ProjectTransformGraph): AnimatedJavaCubes | undefined {
@@ -53,7 +55,7 @@ export function importAnimatedJavaCubes(project: AjProject, sourceStem: string, 
   }));
   const resources = new Map<string, GeneratedResource>();
   if (bones.some((bone) => bone.cubes.length > 0)) writeEmbeddedTextures(textures, namespace, projectPath, resources);
-  const { playableCubesByBone, skinAssignments } = prepareCubeModels(bones);
+  const { playableCubesByBone, skinAssignments, sourceIds, diagnostics } = prepareCubeModels(bones);
   const nodes: Record<string, ImportedNode> = {};
   const nodeIdsBySourceUuid = new Map<string, string[]>();
   const bindNode = (source: string, id: string) => nodeIdsBySourceUuid.set(source, [...(nodeIdsBySourceUuid.get(source) ?? []), id]);
@@ -78,16 +80,16 @@ export function importAnimatedJavaCubes(project: AjProject, sourceStem: string, 
       bone.nodes.push({ id, localMatrix: cubeMatrix });
       const modelPath = `${projectPath}/${id}`;
       writeCubeResources(cube, bone.group.origin, project.resolution, textures, namespace, modelPath, resources);
-      const skin = hiddenAccessory ? undefined : skinAssignments.get(cube.uuid);
+      const skin = hiddenAccessory ? undefined : skinAssignments.get(cube);
       nodes[id] = {
-        binding: { sourceNodeId: id, ...(skin ? { skinGroupId: `${skin.part}_${skin.order}` } : {}) },
+        binding: { sourceNodeId: sourceIds.get(cube)!, ...(skin ? { skinGroupId: `${skin.part}_${skin.order}` } : {}) },
         type: "item_display",
         visible: true, itemDisplay: "none",
         itemStack: { id: "minecraft:paper", count: 1, components: [{ name: "minecraft:item_model", value: serializeSnbtString(`${namespace}:${modelPath}`) }] },
         ...(conversion ? { playerHeadConversionMatrix: conversion } : {}), ...(skin ? { suggestedSkin: skin } : {}),
       };
       bindNode(bone.uuid, id);
-      bindNode(cube.uuid, id);
+      bindNode(sourceIds.get(cube)!, id);
     }
     for (const [index, locator] of bone.locators.entries()) {
       const name = sanitizeResourcePath(locator.name.trim() || `locator_${index + 1}`, `locator_${index + 1}`).replaceAll("/", "_");
@@ -102,7 +104,7 @@ export function importAnimatedJavaCubes(project: AjProject, sourceStem: string, 
       bindNode(locator.uuid, id);
     }
   }
-  return { namespace, projectPath, textures, bones, nodes, nodeIdsBySourceUuid, resources };
+  return { namespace, projectPath, textures, bones, nodes, nodeIdsBySourceUuid, resources, diagnostics };
 }
 
 export function writeReferencedAnimatedJavaCubeResources(cubes: AnimatedJavaCubes, resolution: AjProject["resolution"], references: ReadonlySet<string>): void {

@@ -71,7 +71,7 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
   applyGroupDefaultConfigs(nodes, project, transformGraph, nodeBindings);
   if (Object.keys(nodes).length === 0 && logicalElements.length === 0) throw new Error("Animated Java project does not contain importable nodes.");
 
-  const diagnostics: ConversionIssue[] = [...(project.animationDiagnostics ?? [])];
+  const diagnostics: ConversionIssue[] = [...(project.animationDiagnostics ?? []), ...(cubeContent?.diagnostics ?? [])];
   appendProjectCapabilityDiagnostics(project, diagnostics);
   const animations = sourceAnimations.flatMap((animation, index) => {
     const sourceIndex = project.animationSourceIndices?.[index] ?? index;
