@@ -63,15 +63,14 @@ public class EmoteMod implements ModInitializer {
         PlayerPlaybackManager playback = new PlayerPlaybackManager(engine, skins);
         MarkerPlaybackManager markerPlayback = new MarkerPlaybackManager(engine, catalog, skins);
         PlaybackCooldownService cooldowns = new PlaybackCooldownService();
-        PlaybackPolicyService playbackPolicy = new PlaybackPolicyService(permissions, catalog, cooldowns);
-        EmoteQueryService queries = new EmoteQueryService(catalog, playbackPolicy);
+        ApiEventDispatcher apiEvents = new ApiEventDispatcher();
+        EmotePlayService play = new EmotePlayService(catalog, permissions, cooldowns, playback, apiEvents);
+        EmoteQueryService queries = new EmoteQueryService(catalog, play);
         PlaybackStateSyncService playbackStateSync = new PlaybackStateSyncService();
         WheelSyncService wheelSync = new WheelSyncService(queries);
         playback.addStateListener(cooldowns);
         playback.addStateListener(playbackStateSync);
 
-        ApiEventDispatcher apiEvents = new ApiEventDispatcher();
-        EmotePlayService play = new EmotePlayService(catalog, playbackPolicy, playback, apiEvents);
         EmoteApiImpl api = new EmoteApiImpl(
             catalog,
             play,
@@ -83,8 +82,8 @@ public class EmoteMod implements ModInitializer {
         engine.setStateListener(apiEvents);
         ExampleCallbacks.registerAll(api);
 
-        IdlePlaybackService idlePlayback = new IdlePlaybackService(playbackPolicy, play, playback, catalog);
-        configManager.addAccessConfigListener(playbackPolicy);
+        IdlePlaybackService idlePlayback = new IdlePlaybackService(play, playback, catalog);
+        configManager.addAccessConfigListener(play);
         configManager.addAccessConfigListener(idlePlayback);
         configManager.addListener(skins);
         configManager.addListener(engine);

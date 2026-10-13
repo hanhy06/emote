@@ -4,7 +4,6 @@ import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaySource;
 import io.github.hanhy06.emote.application.EmotePlayService;
-import io.github.hanhy06.emote.application.PlaybackPolicyService;
 import io.github.hanhy06.emote.config.AccessConfig;
 import io.github.hanhy06.emote.config.AccessConfigListener;
 import io.github.hanhy06.emote.content.EmoteCatalog;
@@ -23,7 +22,6 @@ public final class IdlePlaybackService implements AccessConfigListener {
     private static final long RETRY_INTERVAL_MILLIS = TimeUnit.SECONDS.toMillis(1);
     private static final long RESOLUTION_CACHE_MILLIS = TimeUnit.SECONDS.toMillis(1);
 
-    private final PlaybackPolicyService playbackPolicy;
     private final EmotePlayService playService;
     private final PlayerPlaybackManager playerPlaybackManager;
     private final EmoteCatalog emoteCatalog;
@@ -35,12 +33,10 @@ public final class IdlePlaybackService implements AccessConfigListener {
     private int ticksUntilCheck;
 
     public IdlePlaybackService(
-        PlaybackPolicyService playbackPolicy,
         EmotePlayService playService,
         PlayerPlaybackManager playerPlaybackManager,
         EmoteCatalog emoteCatalog
     ) {
-        this.playbackPolicy = Objects.requireNonNull(playbackPolicy, "playback policy");
         this.playService = Objects.requireNonNull(playService, "play service");
         this.playerPlaybackManager = Objects.requireNonNull(playerPlaybackManager, "player playback manager");
         this.emoteCatalog = Objects.requireNonNull(emoteCatalog, "emote catalog");
@@ -132,7 +128,7 @@ public final class IdlePlaybackService implements AccessConfigListener {
         if (resolution != null && now < resolution.expiresAt()) {
             return resolution.idle();
         }
-        Optional<AccessConfig.IdleSettings> idle = this.playbackPolicy.findIdleSettings(player);
+        Optional<AccessConfig.IdleSettings> idle = this.playService.findIdleSettings(player);
         this.idleResolutions.put(playerUuid, new IdleResolution(idle, now + RESOLUTION_CACHE_MILLIS));
         return idle;
     }

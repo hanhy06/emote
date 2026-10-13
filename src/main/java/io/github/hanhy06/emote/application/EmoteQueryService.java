@@ -10,16 +10,16 @@ import io.github.hanhy06.emote.content.PreparedEmote;
 
 public class EmoteQueryService {
     private final EmoteCatalog emoteCatalog;
-    private final PlaybackPolicyService playbackPolicy;
+    private final EmotePlayService playService;
 
-    public EmoteQueryService(EmoteCatalog emoteCatalog, PlaybackPolicyService playbackPolicy) {
+    public EmoteQueryService(EmoteCatalog emoteCatalog, EmotePlayService playService) {
         this.emoteCatalog = emoteCatalog;
-        this.playbackPolicy = playbackPolicy;
+        this.playService = playService;
     }
 
     public List<EmoteSummary> getAll(ServerPlayer player) {
         return this.emoteCatalog.emotes().stream()
-            .filter(emote -> this.playbackPolicy.isVisibleForCommand(player, emote))
+            .filter(emote -> this.playService.isVisibleForCommand(player, emote))
             .sorted(Comparator.comparing(PreparedEmote::name).thenComparing(PreparedEmote::id))
             .map(emote -> new EmoteSummary(emote.id(), emote.name(), emote.description(), emote.tags()))
             .toList();
@@ -59,7 +59,7 @@ public class EmoteQueryService {
     }
 
     public List<String> getPlayableIds(ServerPlayer player) {
-        return collectPlayIds(emote -> this.playbackPolicy.isVisibleForCommand(player, emote));
+        return collectPlayIds(emote -> this.playService.isVisibleForCommand(player, emote));
     }
 
     private List<String> collectPlayIds(Predicate<PreparedEmote> filter) {
