@@ -312,12 +312,10 @@ function importEffectEvents(
 function effectOrigin(locator: string | undefined, bones: BoneEntry[]): EventIR["origin"] {
   const name = normalizeBlockbenchName(locator);
   if (!name) return { type: "root" };
-  for (const bone of bones) {
-    const locatorNode = bone.nodes.find((node) => normalizeBlockbenchName(node.locatorName) === name);
-    if (locatorNode) return { type: "node", node: locatorNode.id };
-  }
-  const bone = bones.find((candidate) => normalizeBlockbenchName(candidate.group.name) === name);
-  return bone?.nodes[0] ? { type: "node", node: bone.nodes[0].id } : { type: "root" };
+  const locators = bones.flatMap((bone) => bone.nodes.filter((node) => normalizeBlockbenchName(node.locatorName) === name));
+  if (locators.length) return locators.length === 1 ? { type: "node", node: locators[0].id } : { type: "root" };
+  const matchingBones = bones.filter((candidate) => normalizeBlockbenchName(candidate.group.name) === name);
+  return matchingBones.length === 1 ? { type: "node", node: `group:${matchingBones[0].uuid}` } : { type: "root" };
 }
 
 function appendTimelineEvent(events: TimelineEventIR[], time: number, event: EventIR): void {
