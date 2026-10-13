@@ -84,7 +84,7 @@ export function createEmotecraftAnimationIR(animation: PalAnimation, name: strin
     const pivot = animation.pivots[name] ?? EMOTECRAFT_PIVOTS[name] ?? [0, 0, 0];
     const parentPivot = parent ? animation.pivots[parent] ?? EMOTECRAFT_PIVOTS[parent] ?? [0, 0, 0] : [0, 0, 0];
     const bone = animation.bones[name];
-    nodes[id] = { name, source: { node_id: name, ...(bone ? { channels: structuredClone(bone) } : {}) }, parent: parent ? boneIds.get(parent)! : "scene", transform: [
+    nodes[id] = { name, source: { node_id: name }, parent: parent ? boneIds.get(parent)! : "scene", transform: [
       { id: "pivot", op: "translate", value: pivot.map((value, axis) => (value - parentPivot[axis]) / 16) },
     ] };
     for (const type of ["position", "rotation", "scale"] as const) {

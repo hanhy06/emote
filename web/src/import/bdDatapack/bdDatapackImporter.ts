@@ -65,8 +65,10 @@ function createBdAnimationIR(animation: BdDatapackSource["animations"][number], 
       ...importedNodeIR(node),
       visible: node.type === "anchor" ? true : node.visible,
       inherit: { visibility: false },
-      source: { node_id: display.tag, editor_node_id: id, entity_snbt: display.originalNbt, matrix: display.defaultMatrix,
-        updates: structuredClone(sourceTransforms), state_updates: structuredClone(animation.nbt[id]) },
+      source: { node_id: display.tag, editor_node_id: id, nbt: [
+        { time: "0t", snbt: display.originalNbt },
+        ...animation.nbt[id].map((frame) => ({ time: `${frame.tick}t`, snbt: writeDisplayNbt(frame.value, profile) })),
+      ] },
       transform: initial ? [
         { id: "position", op: "translate", value: initial.position },
         { id: "left_rotation", op: "rotate_quaternion", value: initial.left_rotation },
