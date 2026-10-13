@@ -120,4 +120,17 @@ class EmotecraftBoundaryTest {
         assertEquals(-0.625, pose(hold, "pal_body", 30, 0).m30(), 1e-5);
         assertEquals(-0.3125, pose(hold, "pal_body", 40, 0).m30(), 1e-5);
     }
+
+    @Test
+    void preservesCapeBendingAndTheExportedEffectOrigin() throws Exception {
+        var cape = animation("emotecraft-cape");
+        var expected = new Matrix4f().scale(0.9375f).translate(0, 18 / 16f, 0)
+            .rotateX((float) (-Math.PI / 3)).translate(0, 6 / 16f, 2 / 16f);
+        assertMatrix(expected, pose(cape, "pal_cape", 10, 0));
+        var origin = cape.model().clip().events().timeline().getFirst().event().origin();
+        assertEquals("pal_cape", origin.node());
+        var disabled = animation("emotecraft-cape-off");
+        assertEquals(24 / 16.0 * 0.9375, pose(disabled, "pal_cape", 10, 0).m31(), 1e-5);
+        assertEquals(2 / 16.0 * 0.9375, pose(disabled, "pal_cape", 10, 0).m32(), 1e-5);
+    }
 }

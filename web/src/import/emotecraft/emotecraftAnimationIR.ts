@@ -128,7 +128,10 @@ export function createEmotecraftAnimationIR(animation: PalAnimation, name: strin
       tracks.push(...tracks.filter((track) => track.target.node === original).map((track) => ({ ...structuredClone(track), target: { ...track.target, node: id } })));
       return id;
     };
-    for (const name of ["head", "left_arm", "right_arm"]) nodes[boneIds.get(name)!].parent = inheritParent(animation.parents[name] ?? "body");
+    for (const name of ["head", "left_arm", "right_arm", "cape"]) {
+      const id = boneIds.get(name);
+      if (id) nodes[id].parent = inheritParent(animation.parents[name] ?? "body");
+    }
   }
   const imported = createEmotecraftNodes(slices);
   for (const slice of slices) nodes[slice.id] = { ...importedNodeIR(imported[slice.id], `${boneIds.get(slice.source.bone)!}${slice.lower ? "_lower" : ""}`), source: { editor_node_id: slice.id, node_id: slice.source.bone } };

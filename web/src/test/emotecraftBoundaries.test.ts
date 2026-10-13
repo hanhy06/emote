@@ -10,6 +10,7 @@ import type { PalAnimation } from "../import/emotecraft/emotecraftBinary";
 import { importEmotecraftFile } from "../import/emotecraft/emotecraftImporter";
 import loopSource from "./fixtures/emotecraft-loop-source.json";
 import fadeSource from "./fixtures/emotecraft-fade-source.json";
+import capeSource from "./fixtures/emotecraft-cape-source.json";
 
 async function exported(source: PalAnimation, name: string): Promise<AnimationIR> {
   const project = importEmotecraftFile({ animation: source, metadata: { name, badges: [] } }, `${name}.emotecraft`);
@@ -118,4 +119,21 @@ it("omits end fade for loop and hold modes, retaining the PAL hold seam", async 
   const hold = await exported(heldSource, "emotecraft-loop-hold");
   expect(pose(hold, 30).pal_body.matrix.elements[12]).toBeCloseTo(-0.625, 10);
   expect(pose(hold, 40).pal_body.matrix.elements[12]).toBeCloseTo(-0.3125, 10);
+});
+
+it("inherits torso bending for the logical cape and its effect origin only when enabled", async () => {
+  const source = structuredClone(capeSource as unknown as PalAnimation);
+  const animation = await exported(source, "emotecraft-cape");
+  const expected = new Matrix4().makeScale(0.9375, 0.9375, 0.9375).multiply(new Matrix4().makeTranslation(0, 18 / 16, 0))
+    .multiply(new Matrix4().makeRotationX(-Math.PI / 3)).multiply(new Matrix4().makeTranslation(0, 6 / 16, 2 / 16));
+  const actual = pose(animation, 10).pal_cape.matrix;
+  for (const [index, value] of expected.elements.entries()) expect(actual.elements[index]).toBeCloseTo(value, 10);
+  expect(animation.nodes.pal_cape.parent).toBe("inherited_torso_bend");
+  expect(animation.nodes.pal_cape.attachments).toBeUndefined();
+  expect(animation.animation.events!.timeline![0].origin).toEqual({ type: "node", node: "pal_cape" });
+  source.applyBendToOtherBones = false;
+  const disabled = await exported(source, "emotecraft-cape-off");
+  expect(disabled.nodes.pal_cape.parent).toBe("pal_body");
+  expect(pose(disabled, 10).pal_cape.matrix.elements[13]).toBeCloseTo(24 / 16 * 0.9375, 10);
+  expect(pose(disabled, 10).pal_cape.matrix.elements[14]).toBeCloseTo(2 / 16 * 0.9375, 10);
 });

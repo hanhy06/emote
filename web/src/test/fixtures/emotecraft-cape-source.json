@@ -1,0 +1,17 @@
+{
+  "uuid": "00000000-0000-0000-0000-000000000005",
+  "lengthTicks": 40, "loop": "once", "loopStartTick": 0,
+  "format": "geckolib", "applyBendToOtherBones": true, "easeBeforeKeyframe": true,
+  "effects": {
+    "sounds": [], "instructions": [],
+    "particles": [{ "tick": 10, "effect": "minecraft:test", "locator": "cape", "script": "" }]
+  },
+  "pivots": {}, "parents": {},
+  "bones": {
+    "torso": {
+      "position": [[], [], []], "rotation": [[], [], []], "scale": [[], [], []],
+      "bend": [{ "startTick": 0, "endTick": 20, "start": 1.0471975511965976, "end": 1.0471975511965976, "easing": "linear", "easingArgs": [] }]
+    },
+    "cape": { "position": [[], [], []], "rotation": [[], [], []], "scale": [[], [], []], "bend": [] }
+  }
+}
