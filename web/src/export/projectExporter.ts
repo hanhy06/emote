@@ -3,7 +3,7 @@ import type { ConversionDocument } from "../domain/conversionDocument";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { EMOTE_SCHEMA_VERSION } from "../format/emote";
 import type { ExportResult } from "./types";
-import { isSequenceControlId, type SequenceWeightedChoice, type SequenceStep } from "../domain/emoteDefinition";
+import { animationReferenceTargets, isSequenceControlId, type SequenceWeightedChoice, type SequenceStep } from "../domain/emoteDefinition";
 
 export async function exportAnimation(document: ConversionDocument, animationIndex: number): Promise<ExportResult[]> {
   const compiled = compileAnimation(document, animationIndex);
@@ -36,8 +36,7 @@ export async function exportAnimations(document: ConversionDocument, includeSequ
   });
   if (includeSequence) {
     const sequenceOutput = structuredClone(document.sequence);
-    const outputIdBySourceId = new Map(document.animations.flatMap((entry, index) => entry.sourceReferenceId
-      ? [[entry.sourceReferenceId, animations[index].id] as const] : []));
+    const references = animationReferenceTargets(document.animations);
     const baseSequenceId = `${sanitizeNamespace(sequenceOutput.namespace)}:${sanitizeResourcePath(sequenceOutput.idPath ?? sequenceOutput.name)}`;
     let sequenceId = baseSequenceId;
     let suffix = 1;
@@ -51,7 +50,7 @@ export async function exportAnimations(document: ConversionDocument, includeSequ
       metadata: { ...sequenceOutput.additionalMetadata, name: sequenceOutput.name, description: sequenceOutput.description },
       settings: { cooldown: sequenceOutput.cooldown, player: sequenceOutput.player },
       steps: sequenceOutput.steps
-        ? sequenceOutput.steps.map((step) => remapSequenceStep(step, outputIdBySourceId))
+        ? sequenceOutput.steps.map((step) => remapSequenceStep(step, references))
         : animations.map((animation) => ({ emote: animation.id })),
     };
     const baseFileName = emoteFileName(sequence.id);
@@ -87,11 +86,11 @@ function animationFileNames(animationIds: readonly string[]): string[] {
   });
 }
 
-function remapSequenceStep(step: SequenceStep, outputIdBySourceId: ReadonlyMap<string, string>): Record<string, unknown> {
+function remapSequenceStep(step: SequenceStep, references: ReadonlyMap<string, readonly string[]>): Record<string, unknown> {
   if ("wait" in step) return { wait: step.wait };
   const emote = Array.isArray(step.emote)
-    ? flattenSequenceChoices(step.emote, outputIdBySourceId)
-    : remapAnimationId(step.emote, outputIdBySourceId);
+    ? flattenSequenceChoices(step.emote, references)
+    : remapAnimationId(step.emote, references);
   return {
     emote,
     ...(step.repeat === undefined ? {} : { repeat: step.repeat }),
@@ -99,16 +98,17 @@ function remapSequenceStep(step: SequenceStep, outputIdBySourceId: ReadonlyMap<s
   };
 }
 
-function flattenSequenceChoices(choices: readonly SequenceWeightedChoice[], outputIdBySourceId: ReadonlyMap<string, string>): unknown[] {
+function flattenSequenceChoices(choices: readonly SequenceWeightedChoice[], references: ReadonlyMap<string, readonly string[]>): unknown[] {
   const weighted = choices.some((choice) => choice.chance !== undefined);
   return choices.flatMap((choice) => weighted
-    ? [remapAnimationId(choice.id, outputIdBySourceId), choice.chance]
-    : [remapAnimationId(choice.id, outputIdBySourceId)]);
+    ? [remapAnimationId(choice.id, references), choice.chance]
+    : [remapAnimationId(choice.id, references)]);
 }
 
-function remapAnimationId(sourceId: string, outputIdBySourceId: ReadonlyMap<string, string>): string {
+function remapAnimationId(sourceId: string, references: ReadonlyMap<string, readonly string[]>): string {
   if (isSequenceControlId(sourceId)) return sourceId;
-  return outputIdBySourceId.get(sourceId) ?? sourceId;
+  const targets = references.get(sourceId);
+  return targets?.length === 1 ? targets[0] : sourceId;
 }
 
 export function emoteFileName(id: string): string {

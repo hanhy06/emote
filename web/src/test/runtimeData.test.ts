@@ -10,7 +10,7 @@ import { evaluatePose } from "../domain/animationIRPose";
 import { evaluateEasing, type ScalarEvaluatorIR } from "../domain/animationIRCurves";
 import { PreviewMolangEvaluator } from "../preview/molangEvaluator";
 import { createPreviewModel } from "../preview/previewModel";
-import { INITIAL_WORKSPACE, workspaceReducer } from "../workspace";
+import { INITIAL_WORKSPACE, sequenceReferenceWarnings, workspaceReducer } from "../workspace";
 
 const animation: AnimationJson = {
   type: "animation", schema_version: 5, target_minecraft_version: "26.3", id: "sit:sit_down",
@@ -235,6 +235,42 @@ it("preserves sequence timing, choices, controls, callbacks and external referen
   const exported = await Promise.all(outputs.filter((output) => output.fileName.endsWith(".json")).map(async (output) => JSON.parse(await output.blob.text())));
   expect(exported.find((output) => output.type === "sequence")).toEqual(expected);
   expect(exported.find((output) => output.type === "animation")).toEqual({ ...animation, settings: { ...animation.settings, standalone: false } });
+});
+
+it("reserves authored IDs and preserves ambiguous sequence references instead of selecting the last input", async () => {
+  const documents = await Promise.all(["probe:a", "probe:a", "probe:a_2", "probe:unique"].map(async (id, index) => {
+    const authored = { ...structuredClone(animation), id };
+    const project = await readInput("emote_json", { name: `input_${index}.json`, bytes: new TextEncoder().encode(JSON.stringify(authored)) });
+    return createConversionDocument(project, "Emote JSON");
+  }));
+  const document = combineConversionDocuments(documents);
+  expect(document.animations.map((entry) => entry.id)).toEqual(["probe:a", "probe:a_3", "probe:a_2", "probe:unique"]);
+  document.sequence.steps = [
+    { emote: "probe:a" },
+    { emote: [{ id: "probe:a_2", chance: 3 }, { id: "probe:a", chance: 1 }] },
+    { emote: "probe:unique" }, { emote: "external:unknown" }, { emote: "emote:break" },
+  ];
+  let outputs = await exportAnimations(document, true);
+  let exported = await Promise.all(outputs.map(async (output) => JSON.parse(await output.blob.text())));
+  expect(exported.find((entry) => entry.type === "sequence").steps).toEqual([
+    { emote: "probe:a" }, { emote: ["probe:a_2", 3, "probe:a", 1] },
+    { emote: "probe:unique" }, { emote: "external:unknown" }, { emote: "emote:break" },
+  ]);
+  expect(sequenceReferenceWarnings(document).map((issue) => issue.code)).toEqual(["sequence_external_reference"]);
+  document.animations[0].id = "probe:first";
+  document.animations[1].id = "probe:second";
+  document.animations[3].id = "probe:renamed";
+  const snapshot = structuredClone(document);
+  outputs = await exportAnimations(document, true);
+  exported = await Promise.all(outputs.map(async (output) => JSON.parse(await output.blob.text())));
+  expect(exported.find((entry) => entry.type === "sequence").steps).toEqual([
+    { emote: "probe:a" }, { emote: ["probe:a_2", 3, "probe:a", 1] },
+    { emote: "probe:renamed" }, { emote: "external:unknown" }, { emote: "emote:break" },
+  ]);
+  expect(sequenceReferenceWarnings(document).map((issue) => issue.code)).toEqual([
+    "sequence_ambiguous_reference", "sequence_ambiguous_reference", "sequence_external_reference",
+  ]);
+  expect(document).toEqual(snapshot);
 });
 
 it("rejects invalid shared dependencies and dynamic curve parameters", async () => {

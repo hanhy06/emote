@@ -70,3 +70,15 @@ export interface SequenceWaitStep {
 export function isSequenceControlId(id: string): boolean {
   return id === "emote:break" || id === "emote:continue";
 }
+
+export function animationReferenceTargets(animations: readonly { id: string; sourceReferenceId?: string }[]): Map<string, string[]> {
+  const references = new Map<string, string[]>();
+  for (const animation of animations) {
+    if (!animation.sourceReferenceId) continue;
+    const targets = references.get(animation.sourceReferenceId);
+    if (targets) targets.push(animation.id);
+    else references.set(animation.sourceReferenceId, [animation.id]);
+  }
+  for (const animation of animations) references.set(animation.id, [animation.id]);
+  return references;
+}

@@ -8,7 +8,7 @@ import {
   updateAnimation,
   type ConversionDocument,
 } from "./domain/conversionDocument";
-import { isSequenceControlId, type EmoteCallback } from "./domain/emoteDefinition";
+import { animationReferenceTargets, isSequenceControlId, type EmoteCallback } from "./domain/emoteDefinition";
 import type { ConversionIssue } from "./foundation/diagnostics";
 import type { PlayerSkinPart } from "./domain/player";
 import type { AnimationEntryIR, EventIR } from "./domain/animationIR";
@@ -162,16 +162,23 @@ export function eventReviewLocations(document: ConversionDocument | null): { own
 
 export function sequenceReferenceWarnings(document: ConversionDocument | null): ConversionIssue[] {
   if (!document) return [];
-  const knownIds = new Set(document.animations.flatMap((animation) => animation.sourceReferenceId ? [animation.id, animation.sourceReferenceId] : [animation.id]));
+  const references = animationReferenceTargets(document.animations);
   return (document.sequence.steps ?? []).flatMap((step, index) => {
     if ("wait" in step) return [];
     const ids = typeof step.emote === "string" ? [step.emote] : step.emote.map((choice) => choice.id);
-    return [...new Set(ids)].filter((id) => !knownIds.has(id) && !isSequenceControlId(id)).map((id) => ({
-      severity: "warning" as const,
-      code: "sequence_external_reference",
-      message: `Sequence ${document.sequence.name}, step ${index + 1}: ${id} is not included in this export. The reference is preserved; make sure this emote is available on the server.`,
-      sourcePath: `$.steps[${index}].emote`,
-    }));
+    return [...new Set(ids)].flatMap((id) => {
+      if (isSequenceControlId(id)) return [];
+      const targets = references.get(id);
+      if (targets?.length === 1) return [];
+      return [{
+        severity: "warning" as const,
+        code: targets ? "sequence_ambiguous_reference" : "sequence_external_reference",
+        message: targets
+          ? `Sequence ${document.sequence.name}, step ${index + 1}: ${id} matches multiple imported animations. The reference is preserved; choose an output animation ID.`
+          : `Sequence ${document.sequence.name}, step ${index + 1}: ${id} is not included in this export. The reference is preserved; make sure this emote is available on the server.`,
+        sourcePath: `$.steps[${index}].emote`,
+      }];
+    });
   });
 }
 

@@ -16,6 +16,10 @@ export function combineConversionDocuments(documents: readonly ConversionDocumen
   const skinCandidates: Record<string, SkinCandidate> = {};
   const animations: ConversionAnimation[] = [];
   const animationIds = new Set<string>();
+  const reservedAnimationIds = new Set(documents.flatMap((document) => document.animations.map((animation) => {
+    const separator = animation.id.indexOf(":");
+    return `${sanitizeNamespace(animation.id.slice(0, separator))}:${sanitizeResourcePath(animation.id.slice(separator + 1))}`;
+  })));
   const resources = new Map(documents[0].resources);
 
   documents.forEach((document, index) => {
@@ -33,7 +37,7 @@ export function combineConversionDocuments(documents: readonly ConversionDocumen
     }
     animations.push(...document.animations.map((animation) => {
       const separator = animation.id.indexOf(":");
-      const id = uniqueAnimationId(animation.id.slice(0, separator), animation.id.slice(separator + 1), animationIds);
+      const id = uniqueAnimationId(animation.id.slice(0, separator), animation.id.slice(separator + 1), animationIds, reservedAnimationIds);
       return {
         ...animation,
         id: `${animation.id.slice(0, separator)}:${id}`,
@@ -82,10 +86,11 @@ function applyImportedSequence(document: ConversionDocument, sequence: ImportedS
   };
 }
 
-function uniqueAnimationId(namespace: string, sourceId: string, usedIds: Set<string>): string {
+function uniqueAnimationId(namespace: string, sourceId: string, usedIds: Set<string>, reservedIds: ReadonlySet<string>): string {
   let id = sourceId;
   let suffix = 2;
-  while (usedIds.has(`${sanitizeNamespace(namespace)}:${sanitizeResourcePath(id)}`)) id = `${sourceId}_${suffix++}`;
+  while (usedIds.has(`${sanitizeNamespace(namespace)}:${sanitizeResourcePath(id)}`)
+    || id !== sourceId && reservedIds.has(`${sanitizeNamespace(namespace)}:${sanitizeResourcePath(id)}`)) id = `${sourceId}_${suffix++}`;
   usedIds.add(`${sanitizeNamespace(namespace)}:${sanitizeResourcePath(id)}`);
   return id;
 }
