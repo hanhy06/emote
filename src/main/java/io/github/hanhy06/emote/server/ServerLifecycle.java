@@ -99,19 +99,11 @@ public class ServerLifecycle {
             }
         );
         ServerPlayConnectionEvents.DISCONNECT.register(
-            (handler, ignoredServer) -> {
-                if (EmoteMod.SERVER.isSameThread()) {
-                    this.playerPlaybackManager.stop(handler.player, PlaybackStopReason.DISCONNECTED);
-                    this.idlePlaybackService.removePlayer(handler.player);
-                    this.playerSkinManager.removePlayer(handler.player.getUUID());
-                } else {
-                    EmoteMod.SERVER.execute(() -> {
-                        this.playerPlaybackManager.stop(handler.player, PlaybackStopReason.DISCONNECTED);
-                        this.idlePlaybackService.removePlayer(handler.player);
-                        this.playerSkinManager.removePlayer(handler.player.getUUID());
-                    });
-                }
-            }
+            (handler, ignoredServer) -> EmoteMod.SERVER.execute(() -> {
+                this.playerPlaybackManager.stop(handler.player, PlaybackStopReason.DISCONNECTED);
+                this.idlePlaybackService.removePlayer(handler.player);
+                this.playerSkinManager.removePlayer(handler.player.getUUID());
+            })
         );
     }
 
