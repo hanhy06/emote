@@ -3,6 +3,7 @@ import { ConversionError } from "../../foundation/diagnostics";
 import { itemModelResourcePath, type GeneratedResource } from "../../domain/generatedResource";
 import type { BbCube, BbTexture } from "./blockbenchCubeSchema";
 import type { BoneEntry } from "./blockbenchCubeModel";
+import { Matrix4, Vector3 } from "three";
 
 const SUPPORTED_FACES = new Set(["north", "south", "east", "west", "up", "down"]);
 
@@ -24,11 +25,21 @@ export function referencedTextureIndexes(cube: BbCube, textures: BbTexture[]): S
   return result;
 }
 
-export function writeCubeResources(cube: BbCube, boneOrigin: readonly number[], resolution: { width: number; height: number }, textures: BbTexture[], namespace: string, modelPath: string, resources: Map<string, GeneratedResource>): void {
+export function writeCubeResources(cube: BbCube, boneOrigin: readonly number[], resolution: { width: number; height: number }, textures: BbTexture[], namespace: string, modelPath: string, resources: Map<string, GeneratedResource>): Matrix4 | undefined {
   const sourceTextures = textures.length ? textures : [{}];
   const used = referencedTextureIndexes(cube, sourceTextures);
   const modelTextures = textures.length ? Object.fromEntries([...used].map((index) => [`layer${index}`, `${namespace}:item/${modelPath.split("/").slice(0, -1).join("/")}/${textureFileStem(textures.length, index)}`])) : { layer0: "minecraft:block/white_concrete" };
   const inflate = cube.inflate ?? 0;
+  let from = cube.from.map((value, axis) => value - boneOrigin[axis] - inflate + 8);
+  let to = cube.to.map((value, axis) => value - boneOrigin[axis] + inflate + 8);
+  let modelGeometry: Matrix4 | undefined;
+  if ([...from, ...to].some((value) => value < -16 || value > 32)) {
+    const center = from.map((value, axis) => (value + to[axis]) / 2);
+    const scale = Math.max(1, ...to.map((value, axis) => Math.abs(value - from[axis]) / 16));
+    from = from.map((value, axis) => (value - center[axis]) / scale + 8);
+    to = to.map((value, axis) => (value - center[axis]) / scale + 8);
+    modelGeometry = new Matrix4().makeTranslation((center[0] - 8) / 16, (center[1] - 8) / 16, (center[2] - 8) / 16).scale(new Vector3(scale, scale, scale));
+  }
   const faces = Object.fromEntries(Object.entries(cube.faces).flatMap(([direction, face]) => {
     if (!SUPPORTED_FACES.has(direction) || face.enabled === false || face.texture === null || face.uv == null) return [];
     return [[direction, {
@@ -37,10 +48,10 @@ export function writeCubeResources(cube: BbCube, boneOrigin: readonly number[], 
     }]];
   }));
   resources.set(`assets/${namespace}/models/item/${modelPath}.json`, { kind: "cuboid_model", textures: modelTextures, elements: [{
-    from: cube.from.map((value, axis) => value - boneOrigin[axis] - inflate + 8),
-    to: cube.to.map((value, axis) => value - boneOrigin[axis] + inflate + 8), faces,
+    from, to, faces,
   }] });
   resources.set(itemModelResourcePath(namespace, modelPath), { kind: "item_model", model: `${namespace}:item/${modelPath}` });
+  return modelGeometry;
 }
 
 export function writeEmbeddedTextures(textures: BbTexture[], namespace: string, projectPath: string, resources: Map<string, GeneratedResource>): void {

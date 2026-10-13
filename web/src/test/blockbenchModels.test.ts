@@ -5,6 +5,10 @@ import { compileAnimation } from "../compiler/animationCompiler";
 import { readInput } from "../import/formats";
 import type { BbCube } from "../import/common/blockbenchCubeSchema";
 import { orderedNodeIds } from "../domain/animationIR";
+import { evaluatePose } from "../domain/animationIRPose";
+import { exportAnimation } from "../export/projectExporter";
+import { strFromU8, unzipSync } from "fflate";
+import { Euler, Matrix4, Vector3 } from "three";
 
 const formats = ["geckolib_bbmodel", "animated_java_blueprint"] as const;
 
@@ -102,4 +106,65 @@ it("keeps reserved IDs distinct and routes source cube state to every generated 
   expect(slices).toHaveLength(2);
   expect(output.animation.tracks.filter((track) => track.channel === "visible").map((track) => track.target.node).sort()).toEqual(slices.map(([id]) => id).sort());
   expect(input.diagnostics).toEqual([]);
+});
+
+it("normalizes oversized or displaced models without changing their animated geometry or skin fitting", async () => {
+  const groupOrigin = [16, 32, -16];
+  const groupRotation = [10, -20, 5];
+  const radians = (degrees: number) => degrees * Math.PI / 180;
+  for (const format of formats) for (const source of [
+    cube("wide", [0, 0, 0], [64, 2, 2]),
+    cube("displaced", [100, 20, 30], [102, 22, 32]),
+    cube("rotated", [-80, -16, 8], [64, 24, 40], { origin: [-16, 8, 24], rotation: [25, 35, -15], inflate: 0.5 }),
+  ]) {
+    const input = await importModel(format, "prop", [source], {
+      groups: [{ uuid: "bone", name: "prop", origin: groupOrigin, rotation: groupRotation }],
+      animations: [{ name: "idle", length: 1, loop: "once", animators: { bone: { keyframes: [
+        { channel: "rotation", time: 0, data_points: [{ x: 0, y: 0, z: 0 }] },
+        { channel: "rotation", time: 1, data_points: [{ x: 0, y: 30, z: 0 }] },
+      ] } } }],
+    });
+    const document = createConversionDocument(input, format);
+    const original = compileAnimation(document, 0).animation;
+    const nodeId = Object.keys(original.nodes).find((id) => original.nodes[id].attachments?.display)!;
+    expect(original.nodes[nodeId].transform?.some((operation) => operation.id === "model_geometry")).toBe(true);
+    const model = [...document.resources.values()].find((resource) => !(resource instanceof Uint8Array) && resource.kind === "cuboid_model");
+    if (!model || model instanceof Uint8Array || model.kind !== "cuboid_model") throw new Error("Expected generated model");
+    const from = model.elements[0].from as number[], to = model.elements[0].to as number[];
+    expect([...from, ...to].every((value) => Number.isFinite(value) && value >= -16 && value <= 32)).toBe(true);
+    expect(model.elements[0].faces).toEqual({ north: { uv: [0, 0, 4, 4], texture: "#layer0" } });
+    const pivot = (source.origin ?? groupOrigin).map((value, axis) => (value - groupOrigin[axis]) / 16);
+    const rotation = source.rotation ?? [0, 0, 0];
+    const cubeRotation = new Matrix4().makeTranslation(...pivot as [number, number, number])
+      .multiply(new Matrix4().makeRotationFromEuler(new Euler(...rotation.map(radians) as [number, number, number], "ZYX")))
+      .multiply(new Matrix4().makeTranslation(-pivot[0], -pivot[1], -pivot[2]));
+    const skinned = compileAnimation(assignSkinPart(document, new Set([nodeId]), "head"), 0).animation;
+    for (const time of [0, 0.5, 1]) {
+      const expected = new Matrix4().makeScale(0.9375, 0.9375, 0.9375)
+        .multiply(new Matrix4().makeTranslation(groupOrigin[0] / 16, groupOrigin[1] / 16, groupOrigin[2] / 16))
+        .multiply(new Matrix4().makeRotationFromEuler(new Euler(radians(groupRotation[0]), radians(groupRotation[1] + time * 30), radians(groupRotation[2]), "ZYX")))
+        .multiply(cubeRotation);
+      const actual = evaluatePose(original, time, (value) => { if (typeof value !== "number") throw new Error("Unexpected expression"); return value; })[nodeId].matrix;
+      for (let corner = 0; corner < 8; corner++) {
+        const coordinates = [0, 1, 2].map((axis) => (corner & (1 << axis)) !== 0);
+        const point = new Vector3(...coordinates.map((upper, axis) => ((upper ? to : from)[axis] - 8) / 16) as [number, number, number]).applyMatrix4(actual);
+        const reference = new Vector3(...coordinates.map((upper, axis) => ((upper ? source.to : source.from)[axis] - groupOrigin[axis] + (upper ? 1 : -1) * (source.inflate ?? 0)) / 16) as [number, number, number]).applyMatrix4(expected);
+        expect(point.distanceTo(reference)).toBeLessThan(1e-8);
+      }
+      const center = source.from.map((value, axis) => ((value + source.to[axis]) / 2 - groupOrigin[axis]) / 16);
+      const size = source.to.map((value, axis) => (value - source.from[axis] + (source.inflate ?? 0) * 2) / 8);
+      const fitting = expected.clone().multiply(new Matrix4().makeTranslation(...center as [number, number, number]))
+        .multiply(new Matrix4().makeScale(...size as [number, number, number])).multiply(new Matrix4().makeTranslation(0, 0.25, 0));
+      const skinPose = evaluatePose(skinned, time, (value) => { if (typeof value !== "number") throw new Error("Unexpected expression"); return value; })[nodeId].matrix;
+      expect(skinPose.elements.every((value, axis) => Math.abs(value - fitting.elements[axis]) < 1e-8)).toBe(true);
+    }
+    const restored = assignSkinPart(assignSkinPart(document, new Set([nodeId]), "head"), new Set([nodeId]), null);
+    expect(compileAnimation(restored, 0).animation).toEqual(original);
+    const outputs = await exportAnimation(restored, 0);
+    const zip = outputs.find((output) => output.fileName.endsWith(".zip"));
+    expect(zip).toBeDefined();
+    const files = unzipSync(new Uint8Array(await zip!.blob.arrayBuffer()));
+    const modelPath = Object.keys(files).find((path) => path.includes("]models]item]"))!;
+    expect(JSON.parse(strFromU8(files[modelPath])).elements).toEqual(model.elements);
+  }
 });

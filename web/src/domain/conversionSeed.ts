@@ -39,6 +39,7 @@ export type ImportedNode =
     skin?: ImportedSkinPart;
     suggestedSkin?: ImportedSkinPart;
     playerHeadConversionMatrix?: Matrix16;
+    modelGeometryMatrix?: Matrix16;
   })
   | (ImportedNodeBase & { type: "block_display"; blockState: BlockStateData })
   | (ImportedNodeBase & { type: "text_display"; text: unknown })

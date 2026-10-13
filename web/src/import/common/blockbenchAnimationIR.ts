@@ -15,7 +15,10 @@ export function importedNodeIR(node: ImportedNode, parent?: string): NodeIR {
   const content = node.type === "item_display" ? { type: "item_display" as const, item_stack_snbt: writeItemStack(node.itemStack, profile), item_display: node.itemDisplay }
     : node.type === "block_display" ? { type: "block_display" as const, block_state_snbt: writeBlockState(node.blockState, profile) }
     : { type: "text_display" as const, text: node.text };
-  return { ...common, attachments: { display: { ...content, ...(node.entityNbt ? { entity_nbt: node.entityNbt } : {}) } } };
+  return { ...common,
+    ...(node.type === "item_display" && node.modelGeometryMatrix ? { transform: [{ id: "model_geometry", op: "matrix" as const, value: node.modelGeometryMatrix }] } : {}),
+    attachments: { display: { ...content, ...(node.entityNbt ? { entity_nbt: node.entityNbt } : {}) } },
+  };
 }
 
 export function blockbenchCurveIR(frames: readonly BbKeyframe[]): CurveIR | undefined {

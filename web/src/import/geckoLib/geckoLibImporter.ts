@@ -3,7 +3,7 @@ import type { GeneratedResource } from "../../domain/generatedResource";
 import { Matrix4 } from "three";
 import { importedNodeHints } from "../../domain/conversionSeed";
 import type { EventIR, TimelineEventIR } from "../../domain/animationIR";
-import { composeDegreesTransform } from "../../format/matrix";
+import { composeDegreesTransform, matrix4ToRowMajor } from "../../format/matrix";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { serializeSnbtString } from "../../format/snbt";
 import { ConversionError, skippedAnimationIssue, type ConversionIssue } from "../../foundation/diagnostics";
@@ -66,13 +66,14 @@ export function importGeckoLibProject(project: GeckoLibBbmodelProject, sourceNam
         from: [cube.from[0] - bone.group.origin[0] - inflate, cube.from[1] - bone.group.origin[1] - inflate, cube.from[2] - bone.group.origin[2] - inflate],
         to: [cube.to[0] - bone.group.origin[0] + inflate, cube.to[1] - bone.group.origin[1] + inflate, cube.to[2] - bone.group.origin[2] + inflate],
       };
-      const conversionMatrix = hiddenAccessory ? undefined : cubePlayerHeadMatrix(cube, bone, bounds);
+      let conversionMatrix = hiddenAccessory ? undefined : cubePlayerHeadMatrix(cube, bone, bounds);
       if (!hiddenAccessory && !conversionMatrix) throw new ConversionError(`invalid_${DIAGNOSTIC_PREFIX}_cube`, `Cube ${cube.name ?? cube.uuid} cannot be fitted to a player head.`, cube.uuid);
       const skin = hiddenAccessory ? undefined : skinAssignments.get(cube);
       const localMatrix = cubeLocalMatrix(cube, bone);
       bone.nodes.push({ id: nodeId, localMatrix });
       const modelPath = `${projectPath}/${nodeId}`;
-      writeCubeResources(cube, bone.group.origin, project.resolution, project.textures, namespace, modelPath, resources);
+      const modelGeometry = writeCubeResources(cube, bone.group.origin, project.resolution, project.textures, namespace, modelPath, resources);
+      if (modelGeometry && conversionMatrix) conversionMatrix = matrix4ToRowMajor(modelGeometry.clone().invert().multiply(new Matrix4().fromArray(conversionMatrix).transpose()), `Cube ${cube.uuid} skin fitting`);
       nodes[nodeId] = {
         binding: {
           sourceNodeId: sourceIds.get(cube)!,
@@ -87,6 +88,7 @@ export function importGeckoLibProject(project: GeckoLibBbmodelProject, sourceNam
           components: [{ name: "minecraft:item_model", value: serializeSnbtString(`${namespace}:${modelPath}`) }],
         },
         ...(conversionMatrix ? { playerHeadConversionMatrix: conversionMatrix } : {}),
+        ...(modelGeometry ? { modelGeometryMatrix: matrix4ToRowMajor(modelGeometry, `Cube ${cube.uuid} model geometry`) } : {}),
         ...(skin ? { suggestedSkin: skin } : {}),
       };
     }

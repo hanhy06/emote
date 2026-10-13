@@ -1,7 +1,7 @@
 import { Matrix4 } from "three";
 import type { ImportedNode } from "../../domain/conversionSeed";
 import { itemModelResourcePath, type GeneratedResource } from "../../domain/generatedResource";
-import { composeDegreesTransform } from "../../format/matrix";
+import { composeDegreesTransform, matrix4ToRowMajor } from "../../format/matrix";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { serializeSnbtString } from "../../format/snbt";
 import { ConversionError } from "../../foundation/diagnostics";
@@ -72,7 +72,7 @@ export function importAnimatedJavaCubes(project: AjProject, sourceStem: string, 
       const inflate = cube.inflate ?? 0;
       const bounds = { from: cube.from.map((value, axis) => value - bone.group.origin[axis] - inflate), to: cube.to.map((value, axis) => value - bone.group.origin[axis] + inflate) };
       const hiddenAccessory = isHiddenAccessoryBone(bone);
-      const conversion = hiddenAccessory ? undefined : cubePlayerHeadMatrix(cube, bone, bounds);
+      let conversion = hiddenAccessory ? undefined : cubePlayerHeadMatrix(cube, bone, bounds);
       if (!hiddenAccessory && !conversion) throw new ConversionError("invalid_animated_java_cube", `Cube ${cube.name ?? cube.uuid} cannot be fitted to a player head.`, cube.uuid);
       const rotation = cube.rotation ?? [0, 0, 0];
       const origin = (cube.origin ?? bone.group.origin).map((value, axis) => (value - bone.group.origin[axis]) / 16);
@@ -80,7 +80,8 @@ export function importAnimatedJavaCubes(project: AjProject, sourceStem: string, 
         : composeDegreesTransform(origin, rotation, [1, 1, 1]).multiply(new Matrix4().makeTranslation(-origin[0], -origin[1], -origin[2]));
       bone.nodes.push({ id, localMatrix: cubeMatrix });
       const modelPath = `${projectPath}/${id}`;
-      writeCubeResources(cube, bone.group.origin, project.resolution, textures, namespace, modelPath, resources);
+      const modelGeometry = writeCubeResources(cube, bone.group.origin, project.resolution, textures, namespace, modelPath, resources);
+      if (modelGeometry && conversion) conversion = matrix4ToRowMajor(modelGeometry.clone().invert().multiply(new Matrix4().fromArray(conversion).transpose()), `Cube ${cube.uuid} skin fitting`);
       const skin = hiddenAccessory ? undefined : skinAssignments.get(cube);
       nodes[id] = {
         binding: { sourceNodeId: sourceIds.get(cube)!, ...(skin ? { skinGroupId: `${skin.part}_${skin.order}` } : {}) },
@@ -88,6 +89,7 @@ export function importAnimatedJavaCubes(project: AjProject, sourceStem: string, 
         visible: true, itemDisplay: "none",
         itemStack: { id: "minecraft:paper", count: 1, components: [{ name: "minecraft:item_model", value: serializeSnbtString(`${namespace}:${modelPath}`) }] },
         ...(conversion ? { playerHeadConversionMatrix: conversion } : {}), ...(skin ? { suggestedSkin: skin } : {}),
+        ...(modelGeometry ? { modelGeometryMatrix: matrix4ToRowMajor(modelGeometry, `Cube ${cube.uuid} model geometry`) } : {}),
       };
       bindNode(bone.uuid, id);
       bindNode(sourceIds.get(cube)!, id);
