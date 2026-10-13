@@ -6,6 +6,7 @@ import io.github.hanhy06.emote.config.ConfigListener;
 import io.github.hanhy06.emote.skin.account.AccountBakeQueue;
 import io.github.hanhy06.emote.skin.account.MinecraftAccountManager;
 import io.github.hanhy06.emote.skin.account.MinecraftSkinClient;
+import io.github.hanhy06.emote.skin.mineskin.MineSkinProvider;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
@@ -26,7 +27,7 @@ public final class SkinBakeCoordinator implements ConfigListener {
     private final MinecraftSkinClient skinClient;
     private final SkinCache cache;
     private final AccountBakeQueue accountUploads;
-    private final FallbackUploader fallbackUploader;
+    private final MineSkinProvider mineSkin;
     private final Map<PlayerSkinSource.Key, Bake> bakes = new HashMap<>();
     private final Map<String, CompletableFuture<String>> uploads = new HashMap<>();
     private final Map<PlayerSkinSource.Key, Long> failures = new LinkedHashMap<>();
@@ -47,14 +48,14 @@ public final class SkinBakeCoordinator implements ConfigListener {
         MinecraftSkinClient skinClient,
         SkinCache cache,
         AccountBakeQueue accountUploads,
-        FallbackUploader fallbackUploader
+        MineSkinProvider mineSkin
     ) {
         this.accounts = Objects.requireNonNull(accounts, "accounts");
         this.baker = Objects.requireNonNull(baker, "baker");
         this.skinClient = Objects.requireNonNull(skinClient, "skinClient");
         this.cache = Objects.requireNonNull(cache, "cache");
         this.accountUploads = Objects.requireNonNull(accountUploads, "accountUploads");
-        this.fallbackUploader = Objects.requireNonNull(fallbackUploader, "fallbackUploader");
+        this.mineSkin = Objects.requireNonNull(mineSkin, "mineSkin");
     }
 
     public synchronized Map<PlayerSkinRegion, String> defaultSkin() { return this.defaultSkin; }
@@ -141,7 +142,7 @@ public final class SkinBakeCoordinator implements ConfigListener {
 
     @Override
     public synchronized void onConfigReload(Config config) {
-        this.fallbackUploader.configure(config);
+        this.mineSkin.configure(config);
         this.defaultName = config.defaultSkin();
         this.defaultSource = null;
         this.defaultSkin = null;
@@ -209,7 +210,7 @@ public final class SkinBakeCoordinator implements ConfigListener {
                 queued++;
             }
         }
-        String provider = hasUsableAccount() ? "Account" : this.fallbackUploader.available() ? "MineSkin" : "Unavailable";
+        String provider = hasUsableAccount() ? "Account" : this.mineSkin.available() ? "MineSkin" : "Unavailable";
         return new SkinProcessingStats(provider, active, queued, this.failures.size());
     }
 
@@ -330,8 +331,8 @@ public final class SkinBakeCoordinator implements ConfigListener {
             try {
                 return this.accountUploads.submit(png, slimModel).get();
             } catch (ExecutionException exception) {
-                if (!this.accounts.hasAccounts() && this.fallbackUploader.available()) {
-                    return this.fallbackUploader.upload(contentKey, png, slimModel);
+                if (!this.accounts.hasAccounts() && this.mineSkin.available()) {
+                    return this.mineSkin.upload(contentKey, png, slimModel);
                 }
                 throw exception;
             }
@@ -339,8 +340,8 @@ public final class SkinBakeCoordinator implements ConfigListener {
         if (this.accounts.hasAccounts()) {
             throw new IOException("No usable bake account; run /emote account login");
         }
-        if (this.fallbackUploader.available()) {
-            return this.fallbackUploader.upload(contentKey, png, slimModel);
+        if (this.mineSkin.available()) {
+            return this.mineSkin.upload(contentKey, png, slimModel);
         }
         throw new IOException("No skin upload provider is available");
     }
@@ -430,7 +431,7 @@ public final class SkinBakeCoordinator implements ConfigListener {
 
     private boolean hasUploadProvider() {
         return this.accounts.storageError() == null
-            && (hasUsableAccount() || (!this.accounts.hasAccounts() && this.fallbackUploader.available()));
+            && (hasUsableAccount() || (!this.accounts.hasAccounts() && this.mineSkin.available()));
     }
 
     private boolean hasUsableAccount() {
@@ -478,11 +479,4 @@ public final class SkinBakeCoordinator implements ConfigListener {
         default void onFailed(UUID playerUuid) {}
     }
 
-    public interface FallbackUploader {
-        void configure(Config config);
-
-        boolean available();
-
-        String upload(String contentKey, byte[] png, boolean slimModel) throws IOException, InterruptedException;
-    }
 }

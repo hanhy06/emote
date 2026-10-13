@@ -2,13 +2,12 @@ package io.github.hanhy06.emote.skin.mineskin;
 
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.config.Config;
-import io.github.hanhy06.emote.skin.SkinBakeCoordinator;
 import io.github.hanhy06.emote.skin.SkinCache;
 
 import java.io.IOException;
 import java.util.Objects;
 
-public final class MineSkinProvider implements SkinBakeCoordinator.FallbackUploader {
+public final class MineSkinProvider {
     private static final long FAILED_JOB_RETRY_DELAY_MILLIS = 5L * 60L * 1000L;
     private static final long RATE_LIMIT_RETRY_DELAY_MILLIS = 2L * 60L * 1000L;
     private static final int RATE_LIMIT_RETRY_LIMIT = 3;
@@ -22,18 +21,15 @@ public final class MineSkinProvider implements SkinBakeCoordinator.FallbackUploa
         this.client = Objects.requireNonNull(client, "client");
     }
 
-    @Override
     public void configure(Config config) {
         this.apiKey = config.mineSkinApiKey();
         this.client.setJobPollIntervalSeconds(config.mineSkinPollIntervalSeconds());
     }
 
-    @Override
     public boolean available() {
         return MineSkinClient.hasApiKey(this.apiKey);
     }
 
-    @Override
     public String upload(String contentHash, byte[] png, boolean slimModel) throws IOException, InterruptedException {
         for (int attempt = 0; attempt <= RATE_LIMIT_RETRY_LIMIT; attempt++) {
             TextureResolution resolution = resolveTextureUrl(this.apiKey, contentHash, png, slimModel);
