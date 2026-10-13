@@ -1,8 +1,6 @@
 import { parseMinecraftTime } from "../format/time";
 import { Quaternion } from "three";
 import type { CurveIR, EasingIR, ScalarIR, VectorValueIR } from "./animationIR";
-import { affineScalarIR, scalarIR } from "./animationIRConversion";
-import { mapMolangResult } from "../format/molang/sourceTransformer";
 
 export type SharedValueResolverIR = (id: string, component: number) => number;
 export type ScalarEvaluatorIR = (value: ScalarIR, progress: number, base?: number, resolveValue?: SharedValueResolverIR) => number;
@@ -125,25 +123,4 @@ export function sampleCurve(curve: CurveIR, time: number, base: readonly number[
     return (2 * t ** 3 - 3 * t * t + 1) * a + (t ** 3 - 2 * t * t + t) * m0
       + (-2 * t ** 3 + 3 * t * t) * b + (t ** 3 - t * t) * m1;
   });
-}
-
-export function blockbenchEasingIR(name: string | undefined, args?: readonly (number | string)[]): EasingIR | undefined {
-  const normalized = (name ?? "linear").replaceAll("_", "").toLowerCase();
-  if (normalized === "linear" || normalized === "none") return undefined;
-  if (normalized === "step") {
-    const raw = scalarIR(args?.[0] ?? 5);
-    const count = typeof raw === "number" ? Math.max(2, Math.floor(raw)) : { molang: mapMolangResult(raw.molang, (result) => `math.max(2, math.floor(${result}))`) };
-    return { kernel: "blockbench_steps", direction: "in", count };
-  }
-  const match = /^ease(inout|in|out)(sine|quad|cubic|quart|quint|expo|circ|back|elastic|bounce)$/.exec(normalized);
-  if (!match) throw new Error(`Unsupported easing ${name}.`);
-  const direction = match[1] === "inout" ? "in_out" : match[1] as "in" | "out";
-  const kind = match[2];
-  const exponent = ({ quad: 2, cubic: 3, quart: 4, quint: 5 } as Record<string, number>)[kind];
-  if (exponent) return { kernel: "power", direction, exponent };
-  if (kind === "back") return { kernel: "back", direction, overshoot: affineScalarIR(scalarIR(args?.[0] ?? 1), 1.70158) };
-  if (kind === "elastic") return { kernel: "blockbench_elastic", direction, frequency: scalarIR(args?.[0] ?? 1) };
-  if (kind === "bounce") return { kernel: "blockbench_bounce", direction, bounciness: scalarIR(args?.[0] ?? 0.5) };
-  if (kind === "expo") return { kernel: "blockbench_expo", direction };
-  return { kernel: kind as "sine" | "circ", direction };
 }

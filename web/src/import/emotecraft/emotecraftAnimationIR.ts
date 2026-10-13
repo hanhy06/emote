@@ -1,11 +1,11 @@
 import type { AnimationIR, CurveIR, CurveKeyIR, NodeIR, ScalarIR, SegmentIR, SharedValueIR, TrackIR, Vector3IR } from "../../domain/animationIR";
-import { blockbenchEasingIR, evaluateEasing } from "../../domain/animationIRCurves";
+import { evaluateEasing } from "../../domain/animationIRCurves";
 import { affineCurveIR, affineScalarIR, scalarIR } from "../../domain/animationIRConversion";
 import type { ImportedNode } from "../../domain/conversionSeed";
 import type { ConversionIssue } from "../../foundation/diagnostics";
 import { sanitizeResourcePath } from "../../format/resourceLocation";
 import { MAX_ANIMATION_DURATION_TICKS, parseMinecraftTime, sourceSecondsTime } from "../../format/time";
-import { importedNodeIR } from "../common/blockbenchAnimationIR";
+import { blockbenchEasingIR, importedNodeIR } from "../common/blockbenchAnimationIR";
 import { rewriteMolangIdentifiers } from "../../format/molang/sourceTransformer";
 import type { PalAnimation, PalExpression, PalKeyframe } from "./emotecraftBinary";
 import { createEmotecraftNodes, createEmotecraftSlices, EMOTECRAFT_PIVOTS, EMOTECRAFT_PLAYER_PARTS, EMOTECRAFT_RENDER_SCALE } from "./emotecraftPlayerRig";

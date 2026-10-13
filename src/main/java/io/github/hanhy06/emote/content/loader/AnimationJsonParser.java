@@ -49,7 +49,7 @@ public final class AnimationJsonParser {
         if (!Set.of("elapsed", "molang").contains(clockType)) throw d.error("$.animation.clock.type", "unknown clock");
         String expression = clockType.equals("molang") ? program(clock, "expression", "$.animation.clock", d) : null;
         if (clockType.equals("molang") && expression == null) throw d.error("$.animation.clock.expression", "is required");
-        Map<String, Track> tracks = tracks(d.requireArray(clip, "tracks", "$.animation"), nodes, durationTicks, d);
+        List<Track> tracks = tracks(d.requireArray(clip, "tracks", "$.animation"), nodes, durationTicks, d);
         Events events = events(object(clip, "events", "$.animation", d), nodes, durationTicks, d);
         return new LoadedAnimation(d.sourcePath(), new EmoteAnimation(id,
             d.metadata(),
@@ -145,8 +145,8 @@ public final class AnimationJsonParser {
         return nodes;
     }
 
-    private Map<String, Track> tracks(JsonArray input, Map<String, Node> nodes, int durationTicks, EmoteJsonDocument d) throws EmoteLoadException {
-        Map<String, Track> result = new LinkedHashMap<>();
+    private List<Track> tracks(JsonArray input, Map<String, Node> nodes, int durationTicks, EmoteJsonDocument d) throws EmoteLoadException {
+        List<Track> result = new ArrayList<>();
         Set<List<String>> signatures = new HashSet<>();
         for (int i = 0; i < input.size(); i++) {
             String path = "$.animation.tracks[" + i + "]";
@@ -176,7 +176,7 @@ public final class AnimationJsonParser {
                 blend = new Blend(vector(d.requireElement(b, "base", path + ".blend"), size, true, path + ".blend.base", d).components().stream()
                     .map(v -> ((ConstantValue) v).value()).toList(), scalar(d.requireElement(b, "weight", path + ".blend"), path + ".blend.weight", d));
             }
-            result.put(path, new Track(destination, channel, driver(d.requireObject(raw, "driver", path), channel, size, durationTicks, path + ".driver", d), blend));
+            result.add(new Track(destination, channel, driver(d.requireObject(raw, "driver", path), channel, size, durationTicks, path + ".driver", d), blend));
         }
         return result;
     }

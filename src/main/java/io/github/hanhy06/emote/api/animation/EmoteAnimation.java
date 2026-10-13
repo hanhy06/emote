@@ -92,11 +92,11 @@ public record EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings set
     public record TextAttachment(boolean visible, CompoundTag entityNbt, JsonElement text) implements Attachment {}
     public record SkinAttachment(boolean visible, PlayerSkinPart part, double from, double to) implements Attachment {}
     public record ExternalAttachment(boolean visible, Identifier key, JsonElement data) implements Attachment {}
-    public record Clip(int durationTicks, Map<String, Track> tracks, Events events, String clock, Map<String, SharedValue> values) {
-        public Clip(int durationTicks, Map<String, Track> tracks, Events events) { this(durationTicks, tracks, events, null, Map.of()); }
+    public record Clip(int durationTicks, List<Track> tracks, Events events, String clock, Map<String, SharedValue> values) {
+        public Clip(int durationTicks, List<Track> tracks, Events events) { this(durationTicks, tracks, events, null, Map.of()); }
         public Clip {
             if (durationTicks <= 0) throw new IllegalArgumentException("Invalid duration");
-            tracks = Collections.unmodifiableMap(new LinkedHashMap<>(tracks));
+            tracks = List.copyOf(tracks);
             values = Map.copyOf(values); Objects.requireNonNull(events);
         }
     }

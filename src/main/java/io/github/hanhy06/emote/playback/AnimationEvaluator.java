@@ -27,11 +27,7 @@ final class AnimationEvaluator {
     private long sampleGeneration, transitionGeneration;
     private final Quaternionf[] orientations;
     private final boolean[] visibility;
-    private final Track[][] tracks;
-    private final Track[] nodeVisibilityTracks;
-    private final List<Map<String, Track>> attachmentVisibilityTracks = new ArrayList<>();
     private final List<Map<String, Boolean>> attachmentVisibility = new ArrayList<>();
-    private final Map<Track, Boolean> defaultVisibility = new IdentityHashMap<>();
     private final Map<Track, double[]> sampledValues = new IdentityHashMap<>();
     private final Map<Track, Boolean> sampledVisibility = new IdentityHashMap<>();
     private final Map<Track, double[]> blendedValues = new IdentityHashMap<>();
@@ -41,7 +37,6 @@ final class AnimationEvaluator {
     private final Matrix4f inherited = new Matrix4f(), residual = new Matrix4f(), parentLinear = new Matrix4f();
     private final Quaternionf operationRotation = new Quaternionf();
     private final Quaterniond quaternion = new Quaterniond(), slerpStart = new Quaterniond(), slerpEnd = new Quaterniond();
-    private final Map<String, Map<String, Track>> nbtTracks = new HashMap<>();
     private final Map<String, Map<String, CompoundTag>> nbt = new HashMap<>();
     private final Map<String, Map<String, Set<String>>> nbtRemoved = new HashMap<>();
     private final Map<String, CompoundTag> nbtCaptures = new HashMap<>();
@@ -64,37 +59,12 @@ final class AnimationEvaluator {
         this.transitionEnds = new Transformation[count];
         this.orientations = new Quaternionf[count];
         this.visibility = new boolean[count];
-        this.tracks = new Track[count][];
-        this.nodeVisibilityTracks = new Track[count];
-        Map<String, Map<String, Track>> valueTracks = new HashMap<>();
-        Map<String, Track> visibilityTracks = new HashMap<>();
-        Map<String, Map<String, Track>> attachmentTracks = new HashMap<>();
-        for (var track : animation.model().clip().tracks().values()) {
-            String node = track.target().node();
-            if (track.channel() == Channel.VALUE) {
-                valueTracks.computeIfAbsent(node, ignored -> new HashMap<>()).put(track.target().operation(), track);
-                if (track.blend() != null) this.blendedValues.put(track, new double[track.blend().base().size()]);
-            } else if (track.channel() == Channel.NBT) {
-                this.nbtTracks.computeIfAbsent(node, ignored -> new TreeMap<>()).put(track.target().attachment(), track);
-            } else if (track.target().attachment() == null) {
-                visibilityTracks.put(node, track);
-                this.defaultVisibility.put(track, animation.nodes().get(node).visible());
-            } else {
-                attachmentTracks.computeIfAbsent(node, ignored -> new HashMap<>()).put(track.target().attachment(), track);
-                this.defaultVisibility.put(track, animation.nodes().get(node).attachments().get(track.target().attachment()).visible());
-            }
+        for (Track track : animation.model().clip().tracks()) {
+            if (track.blend() != null) this.blendedValues.put(track, new double[track.blend().base().size()]);
         }
         for (int index = 0; index < count; index++) {
-            String id = this.nodeIds.get(index);
-            Node node = animation.node(index);
             this.matrices[index] = new Matrix4f();
             this.orientations[index] = new Quaternionf();
-            this.tracks[index] = new Track[node.transform().size()];
-            for (int operation = 0; operation < this.tracks[index].length; operation++) {
-                this.tracks[index][operation] = valueTracks.getOrDefault(id, Map.of()).get(node.transform().get(operation).id());
-            }
-            this.nodeVisibilityTracks[index] = visibilityTracks.get(id);
-            this.attachmentVisibilityTracks.add(attachmentTracks.getOrDefault(id, Map.of()));
             this.attachmentVisibility.add(new LinkedHashMap<>());
         }
     }
@@ -177,7 +147,7 @@ final class AnimationEvaluator {
         if (update && this.animation.model().molang().update() != null) {
             this.session.evaluate(this.animation.expression("$.animation.programs.update"));
         }
-        if (this.nbtTracks.isEmpty() || this.animation.playbackMode() == PlaybackMode.SERVER_SYNC) this.nbtCycle = loopCount;
+        if (!this.animation.hasNbtTracks() || this.animation.playbackMode() == PlaybackMode.SERVER_SYNC) this.nbtCycle = loopCount;
         Map<String, double[]> frameValues = captureNbt && this.nbtCycle < loopCount ? new HashMap<>(this.sharedValues) : null;
         while (captureNbt && this.nbtCycle < loopCount) {
             setFrameQueries(this.animation.model().clip().durationTicks(), this.nbtCycle, deltaTicks, lifetimeTicks);
@@ -194,7 +164,7 @@ final class AnimationEvaluator {
         }
         this.sampledValues.clear();
         this.sampledVisibility.clear();
-        for (Track track : this.animation.model().clip().tracks().values()) {
+        for (Track track : this.animation.model().clip().tracks()) {
             if (track.channel() == Channel.VALUE) {
                 Operation operation = this.animation.operation(track);
                 double weight = track.blend() == null ? 1 : scalar(track.blend().weight(), 0);
@@ -209,7 +179,7 @@ final class AnimationEvaluator {
                 }
                 this.sampledValues.put(track, value);
             } else if (track.channel() == Channel.VISIBLE) {
-                this.sampledVisibility.put(track, sampleVisibility(track, tick, this.defaultVisibility.get(track)));
+                this.sampledVisibility.put(track, sampleVisibility(track, tick, this.animation.defaultVisibility(track)));
             }
         }
     }
@@ -261,7 +231,7 @@ final class AnimationEvaluator {
                 Quaternionf orientation = this.orientations[index].identity();
                 for (int operationIndex = 0; operationIndex < node.transform().size(); operationIndex++) {
                     Operation operation = node.transform().get(operationIndex);
-                    Track track = this.tracks[index][operationIndex];
+                    Track track = this.animation.track(index, operationIndex);
                     boolean rotation = operation.op() == OperationType.ROTATE_EULER || operation.op() == OperationType.ROTATE_QUATERNION;
                     if (track == null) {
                         this.local.mul(this.animation.operationMatrix(operation));
@@ -313,13 +283,13 @@ final class AnimationEvaluator {
                 transformation.rightRotation();
                 this.transformations[index] = transformation;
             }
-            boolean visible = pose.sampledVisibility.getOrDefault(this.nodeVisibilityTracks[index], node.visible());
+            boolean visible = pose.sampledVisibility.getOrDefault(this.animation.visibilityTrack(index), node.visible());
             if (parentIndex >= 0 && node.inherit().visibility()) visible &= this.visibility[parentIndex];
             this.visibility[index] = visible;
             Map<String, Boolean> attachments = this.attachmentVisibility.get(index);
             for (String attachmentId : this.animation.attachmentIds(index)) {
                 attachments.put(attachmentId, pose.sampledVisibility.getOrDefault(
-                    this.attachmentVisibilityTracks.get(index).get(attachmentId), node.attachments().get(attachmentId).visible()));
+                    this.animation.visibilityTrack(index, attachmentId), node.attachments().get(attachmentId).visible()));
             }
             pose.matrices[index] = new Matrix4f(matrix);
             pose.transformations[index] = this.transformations[index];
@@ -337,8 +307,9 @@ final class AnimationEvaluator {
     private void evaluateNbt(double tick) {
         this.sampleProgress = 0;
         this.session.setQuery("key_frame_lerp_time", 0);
-        for (String nodeId : this.nodeIds) {
-            Map<String, Track> tracks = this.nbtTracks.getOrDefault(nodeId, Map.of());
+        for (int index = 0; index < this.nodeIds.size(); index++) {
+            String nodeId = this.nodeIds.get(index);
+            Map<String, Track> tracks = this.animation.nbtTracks(index);
             Map<String, CompoundTag> states = this.nbt.computeIfAbsent(nodeId, ignored -> new LinkedHashMap<>());
             Map<String, Set<String>> removedStates = this.nbtRemoved.computeIfAbsent(nodeId, ignored -> new HashMap<>());
             for (String attachmentId : tracks.keySet()) {

@@ -36,6 +36,12 @@ public final class PreparedAnimation implements PreparedEmote {
     private final List<Node> orderedNodes;
     private final int[] parentIndices;
     private final List<List<String>> attachmentIds;
+    private final Track[][] operationTracks;
+    private final Track[] nodeVisibilityTracks;
+    private final List<Map<String, Track>> attachmentVisibilityTracks = new ArrayList<>();
+    private final List<Map<String, Track>> nbtTracks = new ArrayList<>();
+    private final boolean hasNbtTracks;
+    private final Map<Track, Boolean> defaultVisibility = new IdentityHashMap<>();
     private final Map<Track, Operation> trackOperations = new IdentityHashMap<>();
     private final Map<List<Double>, double[]> baseValues = new IdentityHashMap<>();
     private final Map<VectorValue, double[]> constantVectors = new IdentityHashMap<>();
@@ -55,12 +61,17 @@ public final class PreparedAnimation implements PreparedEmote {
         this.nodeOrder = nodeOrder(this.model.nodes());
         this.orderedNodes = this.nodeOrder.stream().map(this.model.nodes()::get).toList();
         this.parentIndices = new int[this.nodeOrder.size()];
+        this.operationTracks = new Track[this.nodeOrder.size()][];
+        this.nodeVisibilityTracks = new Track[this.nodeOrder.size()];
         Map<String, Integer> nodeIndices = new HashMap<>();
         for (int index = 0; index < this.nodeOrder.size(); index++) nodeIndices.put(this.nodeOrder.get(index), index);
         List<List<String>> attachments = new ArrayList<>(this.nodeOrder.size());
         Map<String, Matrix4f> matrices = new HashMap<>();
         for (int index = 0; index < this.orderedNodes.size(); index++) {
             Node node = this.orderedNodes.get(index);
+            this.operationTracks[index] = new Track[node.transform().size()];
+            this.attachmentVisibilityTracks.add(new HashMap<>());
+            this.nbtTracks.add(new TreeMap<>());
             this.parentIndices[index] = node.parentId() == null ? -1 : nodeIndices.get(node.parentId());
             attachments.add(node.attachments().keySet().stream().sorted().toList());
             Matrix4f matrix = new Matrix4f();
@@ -77,12 +88,24 @@ public final class PreparedAnimation implements PreparedEmote {
             matrices.put(this.nodeOrder.get(index), matrix);
         }
         this.attachmentIds = List.copyOf(attachments);
-        for (Track track : this.model.clip().tracks().values()) {
-            if (track.channel() != Channel.VALUE) continue;
-            Operation operation = this.model.nodes().get(track.target().node()).transform().stream()
-                .filter(op -> op.id().equals(track.target().operation())).findFirst().orElseThrow();
-            this.trackOperations.put(track, operation);
+        for (Track track : this.model.clip().tracks()) {
+            int index = nodeIndices.get(track.target().node());
+            Node node = this.orderedNodes.get(index);
+            if (track.channel() == Channel.VALUE) {
+                Operation operation = node.transform().stream().filter(op -> op.id().equals(track.target().operation())).findFirst().orElseThrow();
+                this.trackOperations.put(track, operation);
+                this.operationTracks[index][node.transform().indexOf(operation)] = track;
+            } else if (track.channel() == Channel.NBT) {
+                this.nbtTracks.get(index).put(track.target().attachment(), track);
+            } else if (track.target().attachment() == null) {
+                this.nodeVisibilityTracks[index] = track;
+                this.defaultVisibility.put(track, node.visible());
+            } else {
+                this.attachmentVisibilityTracks.get(index).put(track.target().attachment(), track);
+                this.defaultVisibility.put(track, node.attachments().get(track.target().attachment()).visible());
+            }
         }
+        this.hasNbtTracks = this.nbtTracks.stream().anyMatch(tracks -> !tracks.isEmpty());
         for (SharedValue value : this.model.clip().values().values()) {
             this.baseValues.put(value.base(), value.base().stream().mapToDouble(Double::doubleValue).toArray());
         }
@@ -166,6 +189,12 @@ public final class PreparedAnimation implements PreparedEmote {
     public Node node(int index) { return this.orderedNodes.get(index); }
     public int parentIndex(int index) { return this.parentIndices[index]; }
     public List<String> attachmentIds(int index) { return this.attachmentIds.get(index); }
+    public @Nullable Track track(int index, int operation) { return this.operationTracks[index][operation]; }
+    public @Nullable Track visibilityTrack(int index) { return this.nodeVisibilityTracks[index]; }
+    public @Nullable Track visibilityTrack(int index, String attachment) { return this.attachmentVisibilityTracks.get(index).get(attachment); }
+    public Map<String, Track> nbtTracks(int index) { return this.nbtTracks.get(index); }
+    public boolean hasNbtTracks() { return this.hasNbtTracks; }
+    public boolean defaultVisibility(Track track) { return this.defaultVisibility.get(track); }
     public Operation operation(Track track) { return this.trackOperations.get(track); }
     public double[] baseValue(List<Double> value) { return this.baseValues.get(value); }
     public double[] constantVector(VectorValue value) { return this.constantVectors.get(value); }
@@ -194,7 +223,7 @@ public final class PreparedAnimation implements PreparedEmote {
         EmoteAnimation animation, Map<VectorValue, double[]> constantVectors) {
         Map<String, io.github.hanhy06.emote.molang.MolangEngine.CompiledExpression> result = new HashMap<>();
         List<Driver> drivers = new ArrayList<>();
-        for (var track : animation.clip().tracks().values()) {
+        for (var track : animation.clip().tracks()) {
             drivers.add(track.driver());
             if (track.blend() != null && track.blend().weight() instanceof MolangValue m) compileExpression(result, m.source(), m.path(), false);
         }
@@ -272,7 +301,7 @@ public final class PreparedAnimation implements PreparedEmote {
             }
             if (parentUnknown || node.transform().stream().anyMatch(op -> op.op() == EmoteAnimation.OperationType.MATRIX)) unknownOrientations.add(id);
         }
-        for (var track : model.clip().tracks().values()) {
+        for (var track : model.clip().tracks()) {
             if (playback.mode() == EmoteAnimation.PlaybackMode.SERVER_SYNC && track.driver().keys().stream().anyMatch(key -> key.post() instanceof EmoteAnimation.MolangNbtValue)) {
                 throw new IllegalArgumentException("$.animation.playback: server_sync cannot reconstruct dynamic NBT");
             }

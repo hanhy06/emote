@@ -195,7 +195,7 @@ public final class EmotePlayback {
         var playback = this.model.settings().playback();
         if ( this.model.clip().clock() != null || this.model.molang().update() != null
             || !(playback.startDelay() instanceof EmoteAnimation.ConstantValue) || !(playback.loopDelay() instanceof EmoteAnimation.ConstantValue delay)
-            || this.model.clip().tracks().values().stream().flatMap(track -> track.driver().keys().stream()).anyMatch(key -> key.post() instanceof EmoteAnimation.MolangNbtValue)) {
+            || this.model.clip().tracks().stream().flatMap(track -> track.driver().keys().stream()).anyMatch(key -> key.post() instanceof EmoteAnimation.MolangNbtValue)) {
             throw new IllegalStateException("Cycle phase placement requires a reconstructible clock and fixed delays");
         }
         resetTarget();

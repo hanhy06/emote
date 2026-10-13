@@ -1,6 +1,5 @@
-import type { CurveIR, CurveKeyIR, NodeIR, SegmentIR, VectorValueIR } from "../../domain/animationIR";
+import type { CurveIR, CurveKeyIR, EasingIR, NodeIR, SegmentIR, VectorValueIR } from "../../domain/animationIR";
 import { affineScalarIR, scalarIR } from "../../domain/animationIRConversion";
-import { blockbenchEasingIR } from "../../domain/animationIRCurves";
 import type { ImportedNode } from "../../domain/conversionSeed";
 import { minecraftVersionProfile } from "../../format/minecraftVersionProfiles";
 import { writeBlockState, writeItemStack } from "../../format/minecraftData";
@@ -60,4 +59,25 @@ export function blockbenchCurveIR(frames: readonly BbKeyframe[]): CurveIR | unde
     return { interpolation: "linear", ...(easing ? { easing } : {}) };
   });
   return { type: "curve", before: "first_pre", at_key: "pre", evaluation: "component", keys, segments };
+}
+
+export function blockbenchEasingIR(name: string | undefined, args?: readonly (number | string)[]): EasingIR | undefined {
+  const normalized = (name ?? "linear").replaceAll("_", "").toLowerCase();
+  if (normalized === "linear" || normalized === "none") return undefined;
+  if (normalized === "step") {
+    const raw = scalarIR(args?.[0] ?? 5);
+    const count = typeof raw === "number" ? Math.max(2, Math.floor(raw)) : { molang: mapMolangResult(raw.molang, (result) => `math.max(2, math.floor(${result}))`) };
+    return { kernel: "blockbench_steps", direction: "in", count };
+  }
+  const match = /^ease(inout|in|out)(sine|quad|cubic|quart|quint|expo|circ|back|elastic|bounce)$/.exec(normalized);
+  if (!match) throw new Error(`Unsupported easing ${name}.`);
+  const direction = match[1] === "inout" ? "in_out" : match[1] as "in" | "out";
+  const kind = match[2];
+  const exponent = ({ quad: 2, cubic: 3, quart: 4, quint: 5 } as Record<string, number>)[kind];
+  if (exponent) return { kernel: "power", direction, exponent };
+  if (kind === "back") return { kernel: "back", direction, overshoot: affineScalarIR(scalarIR(args?.[0] ?? 1), 1.70158) };
+  if (kind === "elastic") return { kernel: "blockbench_elastic", direction, frequency: scalarIR(args?.[0] ?? 1) };
+  if (kind === "bounce") return { kernel: "blockbench_bounce", direction, bounciness: scalarIR(args?.[0] ?? 0.5) };
+  if (kind === "expo") return { kernel: "blockbench_expo", direction };
+  return { kernel: kind as "sine" | "circ", direction };
 }
