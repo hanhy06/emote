@@ -1,5 +1,10 @@
 package io.github.hanhy06.emote.playback;
 
+import com.google.common.collect.ImmutableMultimap;
+import com.google.gson.JsonObject;
+import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.properties.Property;
+import com.mojang.authlib.properties.PropertyMap;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
@@ -9,7 +14,6 @@ import io.github.hanhy06.emote.mixin.accessor.BlockDisplayAccessor;
 import io.github.hanhy06.emote.mixin.accessor.DisplayAccessor;
 import io.github.hanhy06.emote.mixin.accessor.ItemDisplayAccessor;
 import io.github.hanhy06.emote.mixin.accessor.TextDisplayAccessor;
-import io.github.hanhy06.emote.skin.PlayerHeadProfileFactory;
 import io.github.hanhy06.emote.skin.SkinBinding;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import net.minecraft.core.component.DataComponents;
@@ -28,6 +32,7 @@ import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.SlotAccess;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.ResolvableProfile;
 import net.minecraft.world.item.component.TypedEntityData;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.storage.TagValueInput;
@@ -35,6 +40,8 @@ import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4fc;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -42,6 +49,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 
 public final class PlaybackScene implements EmotePlayback.PoseTarget {
     private final ServerLevel level;
@@ -163,13 +171,13 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
                 continue;
             }
             ItemStack skinnedStack = itemStack.copy();
-            skinnedStack.set(DataComponents.PROFILE, PlayerHeadProfileFactory.createProfile(textureUrl));
+            skinnedStack.set(DataComponents.PROFILE, createSkinProfile(textureUrl));
             attachment.setItemStack(skinnedStack);
             TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, itemDisplay.registryAccess());
             ItemStack initialItem = TagValueInput.create(ProblemReporter.DISCARDING, itemDisplay.registryAccess(), attachment.initialEntityData())
                 .read("item", ItemStack.CODEC).orElse(ItemStack.EMPTY);
             if (initialItem.is(Items.PLAYER_HEAD)) {
-                initialItem.set(DataComponents.PROFILE, PlayerHeadProfileFactory.createProfile(textureUrl));
+                initialItem.set(DataComponents.PROFILE, createSkinProfile(textureUrl));
                 output.store("item", ItemStack.CODEC, initialItem);
                 attachment.setInitialItem(output.buildResult().get("item"));
             }
@@ -180,7 +188,25 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
         }
     }
 
+    private static ResolvableProfile createSkinProfile(String textureUrl) {
+        UUID profileId = UUID.nameUUIDFromBytes(textureUrl.getBytes(StandardCharsets.UTF_8));
+        JsonObject rootObject = new JsonObject();
+        rootObject.addProperty("timestamp", System.currentTimeMillis());
+        rootObject.addProperty("profileId", profileId.toString().replace("-", ""));
+        rootObject.addProperty("profileName", SKIN_PROFILE_NAME);
+
+        JsonObject texturesObject = new JsonObject();
+        JsonObject skinObject = new JsonObject();
+        skinObject.addProperty("url", textureUrl);
+        texturesObject.add("SKIN", skinObject);
+        rootObject.add("textures", texturesObject);
+        String textureValue = Base64.getEncoder().encodeToString(rootObject.toString().getBytes(StandardCharsets.UTF_8));
+        PropertyMap properties = new PropertyMap(ImmutableMultimap.of("textures", new Property("textures", textureValue)));
+        return ResolvableProfile.createResolved(new GameProfile(profileId, SKIN_PROFILE_NAME, properties));
+    }
+
     public static final String RUNTIME_TAG = "emote.runtime";
+    private static final String SKIN_PROFILE_NAME = "emote";
     private static final int RESPONSIVE_INTERPOLATION_TICKS = 1;
     private static final int VIEW_ROTATION_INTERPOLATION_TICKS = 3;
     private static final float TRANSFORM_UPDATE_EPSILON = 1e-5F;
