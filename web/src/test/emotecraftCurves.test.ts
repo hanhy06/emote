@@ -103,7 +103,7 @@ it("preserves independent axes and reuses one bend sample for joint translation,
 
 it("connects a binary packet to the same IR", async () => {
   const parser = new MolangParser();
-  const evaluate: ScalarEvaluatorIR = (value, u, _base, resolveValue) => typeof value === "number" ? value : parser.parse(value.molang, { "query.key_frame_lerp_time": u, "query.value": resolveValue, "query.scoreboard": (id: string) => Number(id.slice(id.lastIndexOf(":") + 1)) });
+  const evaluate: ScalarEvaluatorIR = (value, u, _base, resolveValue) => typeof value === "number" ? value : parser.parse(value.molang, { "query.key_frame_lerp_time": u, "query.value": resolveValue });
   const bytes = Uint8Array.from([0,0,0,8,16,1,153,6,0,0,0,47,0,0,0,0,4,65,160,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,4,98,111,100,121,1,1,1,63,201,15,219,65,160,0,0,0,0,0,0,0]);
   const project = await readInput("emotecraft_binary", { name: "binary.emotecraft", bytes });
   const pose = evaluatePose(project.animations[0].ir, 0.5, evaluate);
