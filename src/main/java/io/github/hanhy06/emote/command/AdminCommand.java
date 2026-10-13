@@ -71,69 +71,51 @@ public final class AdminCommand {
     }
 
     private int info(CommandSourceStack source) {
-        SkinProcessingStats skinStats = this.playerSkinManager.processingStats();
-        AdminInfoSnapshot snapshot = new AdminInfoSnapshot(
-            this.playerPlaybackManager.engine().activeSessionCount(),
-            this.playerPlaybackManager.activePlayerCount(),
-            this.playerPlaybackManager.engine().activeDisplayEntityCount(),
-            this.configManager.getConfig().maxActiveDisplayEntities(),
-            skinStats,
-            this.emoteCatalog.size(),
-            this.configManager.getAccessConfig().disabled().size()
-        );
-        source.sendSuccess(() -> createInfoSummary(snapshot), false);
-        return snapshot.activeSessions();
-    }
+        SkinProcessingStats skin = this.playerSkinManager.processingStats();
+        int activeSessions = this.playerPlaybackManager.engine().activeSessionCount();
+        int activeParticipants = this.playerPlaybackManager.activePlayerCount();
+        int activeDisplays = this.playerPlaybackManager.engine().activeDisplayEntityCount();
+        int displayLimit = this.configManager.getConfig().maxActiveDisplayEntities();
+        int loadedEmotes = this.emoteCatalog.size();
+        int disableRules = this.configManager.getAccessConfig().disabled().size();
+        source.sendSuccess(() -> {
+            String displayUsage = displayLimit == 0
+                ? activeDisplays + " / unlimited"
+                : String.format(
+                    Locale.ROOT,
+                    "%d / %d (%.1f%%)",
+                    activeDisplays,
+                    displayLimit,
+                    activeDisplays * 100.0D / displayLimit
+                );
+            ChatFormatting displayColor = displayUsageColor(activeDisplays, displayLimit);
 
-    static Component createInfoSummary(AdminInfoSnapshot snapshot) {
-        int displayLimit = snapshot.displayLimit();
-        String displayUsage = displayLimit == 0
-            ? snapshot.activeDisplays() + " / unlimited"
-            : String.format(
-                Locale.ROOT,
-                "%d / %d (%.1f%%)",
-                snapshot.activeDisplays(),
-                displayLimit,
-                snapshot.activeDisplays() * 100.0D / displayLimit
-            );
-        ChatFormatting displayColor = displayUsageColor(snapshot.activeDisplays(), displayLimit);
-        SkinProcessingStats skin = snapshot.skin();
-
-        return Component.literal("\n\n\n\n\nEmote server info").withStyle(ChatFormatting.GRAY)
-            .append(Component.literal("\n\nPlayback").withStyle(ChatFormatting.GRAY))
-            .append(Component.literal("\n• Sessions: ").withStyle(ChatFormatting.YELLOW))
-            .append(Component.literal(Integer.toString(snapshot.activeSessions())).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal("\n• Players: ").withStyle(ChatFormatting.GREEN))
-            .append(Component.literal(Integer.toString(snapshot.activeParticipants())).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal("\n• Displays: ").withStyle(displayColor))
-            .append(Component.literal(displayUsage).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal("\n\nSkin processing").withStyle(ChatFormatting.GRAY))
-            .append(Component.literal("\n• Provider: ").withStyle(ChatFormatting.AQUA))
-            .append(Component.literal(skin.provider()).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal("\n• Jobs: ").withStyle(ChatFormatting.YELLOW))
-            .append(Component.literal(skin.activeJobs() + " active · " + skin.queuedJobs() + " queued").withStyle(ChatFormatting.WHITE))
-            .append(Component.literal("\n• Retries: ").withStyle(ChatFormatting.GOLD))
-            .append(Component.literal(Integer.toString(skin.retryingJobs())).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal("\n\nContent").withStyle(ChatFormatting.GRAY))
-            .append(Component.literal("\n• Emotes: ").withStyle(ChatFormatting.LIGHT_PURPLE))
-            .append(Component.literal(snapshot.loadedEmotes() + " loaded · " + snapshot.disableRules() + " disable rules").withStyle(ChatFormatting.WHITE));
+            return Component.literal("\n\n\n\n\nEmote server info").withStyle(ChatFormatting.GRAY)
+                .append(Component.literal("\n\nPlayback").withStyle(ChatFormatting.GRAY))
+                .append(Component.literal("\n• Sessions: ").withStyle(ChatFormatting.YELLOW))
+                .append(Component.literal(Integer.toString(activeSessions)).withStyle(ChatFormatting.WHITE))
+                .append(Component.literal("\n• Players: ").withStyle(ChatFormatting.GREEN))
+                .append(Component.literal(Integer.toString(activeParticipants)).withStyle(ChatFormatting.WHITE))
+                .append(Component.literal("\n• Displays: ").withStyle(displayColor))
+                .append(Component.literal(displayUsage).withStyle(ChatFormatting.WHITE))
+                .append(Component.literal("\n\nSkin processing").withStyle(ChatFormatting.GRAY))
+                .append(Component.literal("\n• Provider: ").withStyle(ChatFormatting.AQUA))
+                .append(Component.literal(skin.provider()).withStyle(ChatFormatting.WHITE))
+                .append(Component.literal("\n• Jobs: ").withStyle(ChatFormatting.YELLOW))
+                .append(Component.literal(skin.activeJobs() + " active · " + skin.queuedJobs() + " queued").withStyle(ChatFormatting.WHITE))
+                .append(Component.literal("\n• Retries: ").withStyle(ChatFormatting.GOLD))
+                .append(Component.literal(Integer.toString(skin.retryingJobs())).withStyle(ChatFormatting.WHITE))
+                .append(Component.literal("\n\nContent").withStyle(ChatFormatting.GRAY))
+                .append(Component.literal("\n• Emotes: ").withStyle(ChatFormatting.LIGHT_PURPLE))
+                .append(Component.literal(loadedEmotes + " loaded · " + disableRules + " disable rules").withStyle(ChatFormatting.WHITE));
+        }, false);
+        return activeSessions;
     }
 
     static ChatFormatting displayUsageColor(int activeDisplays, int displayLimit) {
         if (displayLimit == 0 || activeDisplays * 10L < displayLimit * 7L) return ChatFormatting.GREEN;
         if (activeDisplays * 10L < displayLimit * 9L) return ChatFormatting.YELLOW;
         return ChatFormatting.RED;
-    }
-
-    record AdminInfoSnapshot(
-        int activeSessions,
-        int activeParticipants,
-        int activeDisplays,
-        int displayLimit,
-        SkinProcessingStats skin,
-        int loadedEmotes,
-        int disableRules
-    ) {
     }
 
     LiteralArgumentBuilder<CommandSourceStack> createReloadCommand() {
