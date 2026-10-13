@@ -183,6 +183,7 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
     public static final String RUNTIME_TAG = "emote.runtime";
     private static final int RESPONSIVE_INTERPOLATION_TICKS = 1;
     private static final int VIEW_ROTATION_INTERPOLATION_TICKS = 3;
+    private static final float TRANSFORM_UPDATE_EPSILON = 0.00001F;
 
     public static PlaybackScene create(ServerLevel level, RootTransform root, PreparedEmote emote) {
         LinkedHashMap<String, NodeInstance> instances = new LinkedHashMap<>();
@@ -365,7 +366,7 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
     }
 
     private void applyTransformation(AttachmentInstance attachment, Transformation transformation, int interpolationDurationTicks, boolean force) {
-        if (!force && attachment.appliedTransformation != null && transformation.getMatrix().equals(attachment.appliedTransformation.getMatrix())
+        if (!force && attachment.appliedTransformation != null && transformation.getMatrix().equals(attachment.appliedTransformation.getMatrix(), TRANSFORM_UPDATE_EPSILON)
             && interpolationDurationTicks == attachment.appliedInterpolationDuration) return;
         DisplayAccessor accessor = (DisplayAccessor) attachment.entity();
         accessor.emote$setTransformation(transformation);
