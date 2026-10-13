@@ -48,3 +48,29 @@ it("keeps AJ source size with and without cube groups and keeps direct display c
     }
   }
 });
+
+it("imports independent sky and block brightness and only applies enabled brightness and glow overrides", async () => {
+  const cases = [
+    { uuid: "enabled", config: { override_brightness: true, sky_brightness: 12, block_brightness: 3, glowing: true, override_glow_color: true, glow_color: "#123456" }, expected: { brightness: "{sky:12,block:3}", Glowing: "1b", glow_color_override: "1193046" } },
+    { uuid: "disabled", config: { override_brightness: false, sky_brightness: 12, block_brightness: 3, brightness_override: 15, glowing: false, override_glow_color: false, glow_color: "#123456" }, expected: { Glowing: "0b" } },
+    { uuid: "implicit", config: { sky_brightness: 12, block_brightness: 3, glow_color: "#123456" }, expected: {} },
+    { uuid: "defaults", config: { override_brightness: true, override_glow_color: true }, expected: { brightness: "{sky:0,block:0}", glow_color_override: "16777215" } },
+  ];
+  const { input, output } = await importProject({ elements: cases.map(({ uuid, config }) => ({ ...display(uuid), configs: { default: config } })), outliner: cases.map(({ uuid }) => uuid) });
+  expect(input.diagnostics).toEqual([]);
+  for (const { uuid, expected } of cases) expect(nbtFields(output.nodes[uuid].attachments?.display.entity_nbt)).toEqual(expected);
+
+  const direct = display("item");
+  const bright = await importProject({
+    elements: [{ ...direct, configs: { variants: { bright: { override_brightness: true, sky_brightness: 5, block_brightness: 2 } } } }],
+    outliner: ["item"], variants: { list: [{ uuid: "bright", name: "bright" }] },
+    animations: [{ name: "motion", length: 1, loop: "once", animators: { effects: { type: "effect", keyframes: [
+      { channel: "variant", time: 0.5, data_points: [{ variant: "bright" }] },
+    ] } } }],
+  });
+  const track = bright.output.animation.tracks.find((track) => track.channel === "nbt" && track.target.node === "item");
+  expect(track?.driver).toEqual({ type: "state", keys: [
+    { time: "0t", value: { merge: "{}", remove: ["brightness"] } },
+    { time: "10t", value: { merge: "{brightness:{sky:5,block:2}}" } },
+  ] });
+});

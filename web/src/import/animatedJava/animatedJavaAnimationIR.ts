@@ -3,7 +3,7 @@ import type { AnimationIR, NodeIR, ScalarIR } from "../../domain/animationIR";
 import { affineCurveIR, scalarIR, sourceDelayIR } from "../../domain/animationIRConversion";
 import type { ImportedNode } from "../../domain/conversionSeed";
 import type { DisplayNbtPatch } from "../../domain/minecraftData";
-import { writeDisplayNbt } from "../../format/minecraftData";
+import { readDisplayNbt, writeDisplayNbt } from "../../format/minecraftData";
 import { minecraftVersionProfile } from "../../format/minecraftVersionProfiles";
 import { importedNodeIR, blockbenchCurveIR } from "../common/blockbenchAnimationIR";
 import { mapMolangResult } from "../../format/molang/sourceTransformer";
@@ -131,12 +131,19 @@ export function createAnimatedJavaAnimationIR(source: AjProjectAnimation, projec
       ir.animation.tracks.push({ target: { node: id }, channel: "visible", driver: { type: "state", keys: visible.map((frame) => ({ ...frame, time: sourceSecondsTime(frame.time) })) } });
     }
     const nbt = frames.flatMap((frame) => frame.nbt ? [{ time: frame.time, value: frame.nbt }] : []).sort((a, b) => a.time - b.time);
-    if (nbt.length && node.attachments?.display) {
-      const initial = { time: 0, value: initialDisplayNbt(imported[id], nbt.map((frame) => frame.value), nbt[0].time === 0 ? nbt[0].value : undefined) };
+    const importedNode = imported[id];
+    if (nbt.length && node.attachments?.display && importedNode.type !== "anchor") {
+      const atZero = nbt[0].time === 0 ? nbt[0].value : undefined;
+      const removeBrightness = nbt.some((frame) => frame.value.rawFields.some((field) => field.name === "brightness"))
+        && ![...readDisplayNbt(importedNode.entityNbt ?? "{}").rawFields, ...(atZero?.rawFields ?? [])].some((field) => field.name === "brightness");
+      const initial = { time: 0, value: initialDisplayNbt(importedNode, nbt.map((frame) => removeBrightness
+        ? { ...frame.value, rawFields: frame.value.rawFields.filter((field) => field.name !== "brightness") } : frame.value), atZero) };
       if (nbt[0].time === 0) nbt[0] = initial;
       else nbt.unshift(initial);
       ir.animation.tracks.push({ target: { node: id, attachment: "display" }, channel: "nbt", driver: {
-        type: "state", keys: nbt.map((frame) => ({ time: sourceSecondsTime(frame.time), value: { merge: writeDisplayNbt(frame.value, profile) } })),
+        type: "state", keys: nbt.map((frame, index) => ({ time: sourceSecondsTime(frame.time), value: {
+          merge: writeDisplayNbt(frame.value, profile), ...(index === 0 && removeBrightness ? { remove: ["brightness"] } : {}),
+        } })),
       } });
     }
   }

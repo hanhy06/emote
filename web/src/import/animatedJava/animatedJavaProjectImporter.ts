@@ -412,10 +412,12 @@ function nativeDisplayConfigNbt(config: Record<string, unknown> | undefined): st
   if (typeof config.billboard === "string") fields.set("billboard", serializeSnbtString(config.billboard));
   for (const key of ["shadow_radius", "shadow_strength"] as const) if (typeof config[key] === "number" && Number.isFinite(config[key])) fields.set(key, String(config[key]));
   if (typeof config.glowing === "boolean") fields.set("Glowing", config.glowing ? "1b" : "0b");
-  if (typeof config.glow_color === "string" && /^#[0-9a-f]{6}$/i.test(config.glow_color)) fields.set("glow_color_override", String(Number.parseInt(config.glow_color.slice(1), 16)));
-  const brightness = typeof config.brightness_override === "number" ? config.brightness_override : undefined;
-  if ((config.override_brightness === true || brightness !== undefined) && brightness !== undefined) {
-    fields.set("brightness", serializeSnbtCompound([["sky", String(brightness)], ["block", String(brightness)]]));
+  if (config.override_glow_color === true) {
+    const color = typeof config.glow_color === "string" ? config.glow_color : "#ffffff";
+    if (/^#[0-9a-f]{6}$/i.test(color)) fields.set("glow_color_override", String(Number.parseInt(color.slice(1), 16)));
+  }
+  if (config.override_brightness === true) {
+    fields.set("brightness", serializeSnbtCompound([["sky", String(config.sky_brightness ?? config.brightness_override ?? 0)], ["block", String(config.block_brightness ?? config.brightness_override ?? 0)]]));
   }
   if (config.use_nbt === true && typeof config.nbt === "string" && config.nbt.trim()) {
     for (const field of parseSnbtCompound(config.nbt, "Animated Java display config NBT")) fields.set(field.name, field.value);
