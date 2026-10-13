@@ -190,7 +190,8 @@ public final class AnimationJsonParser {
             JsonArray base = d.requireArray(raw, "base", path);
             if (base.size() != 1 && base.size() != 3) throw d.error(path + ".base", "must contain one or three components");
             List<Double> components = vector(base, base.size(), true, path + ".base", d).components().stream().map(v -> ((ConstantValue) v).value()).toList();
-            result.put(entry.getKey(), new SharedValue(components, driver(raw, Channel.VALUE, base.size(), durationTicks, path, d)));
+            int timeOffsetTicks = raw.has("time_offset") ? d.requireTime(raw, "time_offset", path, 0) : 0;
+            result.put(entry.getKey(), new SharedValue(components, driver(raw, Channel.VALUE, base.size(), durationTicks, path, d), timeOffsetTicks));
         }
         return result;
     }

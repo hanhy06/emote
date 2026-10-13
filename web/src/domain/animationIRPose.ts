@@ -26,15 +26,15 @@ export function evaluatePose(animation: AnimationIR, time: number, evaluate: Sca
       if (evaluatingValues.has(id)) throw new Error(`Cyclic shared value ${id}.`);
       evaluatingValues.add(id);
       try {
-        cached = value(definition, definition.base);
+        cached = value(definition, definition.base, time + (definition.time_offset ? parseMinecraftTime(definition.time_offset) / 20 : 0));
         sharedValues.set(id, cached);
       } finally { evaluatingValues.delete(id); }
     }
     return cached[component];
   };
-  const value = (driver: DriverIR | undefined, base: readonly number[]): number[] => {
+  const value = (driver: DriverIR | undefined, base: readonly number[], sampleTime = time): number[] => {
     if (!driver) return [...base];
-    if (driver.type === "curve") return sampleCurve(driver, time, base, scalar);
+    if (driver.type === "curve") return sampleCurve(driver, sampleTime, base, scalar);
     if (driver.type !== "expression" || !Array.isArray(driver.value)) throw new Error("Transform requires an expression vector or curve.");
     return (driver.value as readonly ScalarIR[]).map((raw, axis) => scalar(raw, 0, base[axis]));
   };

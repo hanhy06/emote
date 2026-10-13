@@ -580,7 +580,7 @@ final class AnimationEvaluator {
             if (!this.evaluatingValues.add(id)) throw new IllegalStateException("Cyclic shared value " + id);
             double progress = this.sampleProgress;
             try {
-                value = sample(definition.driver(), this.sampleTick, definition.base());
+                value = sample(definition.driver(), Math.addExact(this.sampleTick, definition.timeOffsetTicks()), definition.base());
                 this.sharedValues.put(id, value);
             } finally {
                 this.evaluatingValues.remove(id);

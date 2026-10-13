@@ -104,7 +104,7 @@ public record EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings set
     public enum Channel { VALUE, VISIBLE, NBT }
     public record Track(Target target, Channel channel, Driver driver, Blend blend) {}
     public record Blend(List<Double> base, ScalarValue weight) { public Blend { base = List.copyOf(base); } }
-    public record SharedValue(List<Double> base, Driver driver) { public SharedValue { base = List.copyOf(base); } }
+    public record SharedValue(List<Double> base, Driver driver, int timeOffsetTicks) { public SharedValue { base = List.copyOf(base); } }
     public enum DriverType { EXPRESSION, CURVE, STATE }
     public record Driver(DriverType type, Value value, List<Keyframe> keys, List<Segment> segments, boolean firstPre, boolean keyPre, boolean componentEvaluation, boolean sampleSegment) {
         public Driver { keys = List.copyOf(keys); segments = List.copyOf(segments); }

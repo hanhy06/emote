@@ -71,7 +71,7 @@ export interface NbtPatchIR {
 }
 export type DriverIR = CurveIR | { type: "expression"; value: VectorValueIR | VisibilityIR }
   | { type: "state"; keys: { time: string; value: VisibilityIR | NbtPatchIR }[] };
-export type SharedValueIR = (CurveIR | { type: "expression"; value: VectorValueIR }) & { base: readonly number[] };
+export type SharedValueIR = (CurveIR | { type: "expression"; value: VectorValueIR }) & { base: readonly number[]; time_offset?: string };
 export interface TrackIR {
   target: { node: string; operation?: string; attachment?: string };
   channel: "value" | "visible" | "nbt";

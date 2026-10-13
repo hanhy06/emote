@@ -38,10 +38,26 @@ export function createEmotecraftAnimationIR(animation: PalAnimation, name: strin
   const channelValue = (id: string, frames: readonly PalKeyframe[], fallback: number, angular: boolean, factor: number): ScalarIR => {
     if (!frames.length) return fallback;
     const curve = affineCurveIR(channelDriver(frames, angular), [factor], [0]);
-    if (fades.length) {
+    let sampleId = `${id}_sample`;
+    if (animation.format === "player_animator" && animation.loop === "loop_from_tick") {
+      const first = frames.find((frame) => frame.endTick > animation.loopStartTick) ?? frames.at(-1)!;
+      const last = frames.at(-1)!;
+      const loopLength = animation.lengthTicks - animation.loopStartTick;
+      const startTick = Math.min(last.endTick, animation.lengthTicks);
+      const easing = animation.easeBeforeKeyframe ? first : last;
+      const seam = affineCurveIR(channelDriver([{ startTick, endTick: first.endTick + loopLength,
+        start: last.end, end: first.end, easing: easing.easing, easingArgs: easing.easingArgs }], angular), [factor], [0]);
       values[`${id}_sample`] = { ...curve, base: [fallback] };
-      values[id] = { type: "expression", base: [fallback], value: [{ molang: `return ${fallback} + (q.value('${id}_sample', 0) - ${fallback}) * (${fades.join(" * ")});` }] };
-    } else values[id] = { ...curve, base: [fallback] };
+      values[`${id}_loop_tail`] = { ...seam, base: [fallback] };
+      values[`${id}_loop_start`] = { ...structuredClone(seam), base: [fallback], time_offset: `${loopLength}t` };
+      sampleId = `${id}_loop_sample`;
+      values[sampleId] = { type: "expression", base: [fallback], value: [{ molang:
+        `return q.loop_count > 0 && q.anim_time_ticks >= ${first.startTick} && q.anim_time_ticks < ${first.endTick} ? q.value('${id}_loop_start', 0) : q.anim_time_ticks >= ${last.endTick} ? q.value('${id}_loop_tail', 0) : q.value('${id}_sample', 0);` }] };
+    }
+    if (fades.length) {
+      values[`${id}_sample`] ??= { ...curve, base: [fallback] };
+      values[id] = { type: "expression", base: [fallback], value: [{ molang: `return ${fallback} + (q.value('${sampleId}', 0) - ${fallback}) * (${fades.join(" * ")});` }] };
+    } else values[id] = values[sampleId] ?? { ...curve, base: [fallback] };
     return { molang: `q.value('${id}', 0)` };
   };
   for (const name of names) {
