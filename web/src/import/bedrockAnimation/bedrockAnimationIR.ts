@@ -1,8 +1,9 @@
-import { sourceSecondsTime, parseAnimationSeconds } from "../../format/time";
+import { sourceSecondsTime, parseAnimationSeconds, parseMinecraftTime, MAX_ANIMATION_DURATION_TICKS } from "../../format/time";
 import type { AnimationIR, CurveIR, DriverIR, NodeIR, ScalarIR, TimelineEventIR, VectorValueIR } from "../../domain/animationIR";
 import { affineCurveIR, affineScalarIR, scalarIR, sourceDelayIR } from "../../domain/animationIRConversion";
 import type { ImportedNode } from "../../domain/conversionSeed";
-import type { ConversionIssue } from "../../foundation/diagnostics";
+import { ConversionError, type ConversionIssue } from "../../foundation/diagnostics";
+import { scanMolangSource } from "../../format/molang/sourceScanner";
 import { importedNodeIR } from "../common/blockbenchAnimationIR";
 import type { BedrockAnimation, BedrockChannel, BedrockExpression, BedrockKeyframe, BedrockKeyframeValue, BedrockVector } from "./bedrockAnimationSchema";
 import { BEDROCK_PLAYER_BONES, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_SLICES, resolveBedrockPlayerBone } from "./bedrockPlayerRig";
@@ -11,19 +12,18 @@ import { isRecord } from "../../format/runtimeValue";
 
 export function createBedrockAnimationIR(animation: BedrockAnimation, name: string, imported: Record<string, ImportedNode>, unknownBoneIds: Record<string, string>, diagnostics: ConversionIssue[]): AnimationIR {
   const sourceDuration = bedrockAnimationDurationSeconds(animation);
-  const assumedDuration = sourceDuration === 0 && bedrockAnimationUsesTime(animation);
-  if (assumedDuration) diagnostics.push({
-    severity: "warning", code: "bedrock_animation_duration_assumed",
-    message: `${name}: no animation_length. Duration: 600 seconds. To change it, edit animations.${name}.animation_length.`,
-    sourcePath: `animations.${name}.animation_length`,
-  });
+  if (animation.animation_length === undefined && sourceDuration === 0 && bedrockAnimationUsesTime(animation)) {
+    throw new ConversionError("bedrock_animation_duration_missing", `${name}: a time-dependent animation without key or event timing requires animation_length.`, `animations.${name}.animation_length`);
+  }
+  const duration = sourceSecondsTime(animation.animation_length !== undefined && typeof animation.animation_length !== "number" ? animation.animation_length : Math.max(0.05, sourceDuration));
+  const durationTicks = parseMinecraftTime(duration, 1);
+  if (durationTicks > MAX_ANIMATION_DURATION_TICKS) throw new ConversionError("animation_duration_unsupported", `${name} duration must not exceed ${MAX_ANIMATION_DURATION_TICKS} ticks.`, `animations.${name}.animation_length`);
   const nodes: Record<string, NodeIR> = { scene: { transform: [{ id: "scale", op: "scale", value: [BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE] }] } };
   const timeline: TimelineEventIR[] = [];
   const ir: AnimationIR = {
     id: "emote:imported", metadata: { name, description: `${name} emote.` }, nodes,
     animation: {
-      duration: sourceSecondsTime(animation.animation_length !== undefined && typeof animation.animation_length !== "number" ? animation.animation_length : Math.max(0.05, sourceDuration || (assumedDuration ? 600 : 0.05),
-        ...[animation.particle_effects, animation.sound_effects, animation.timeline].flatMap((events) => events && typeof events === "object" && !Array.isArray(events) ? Object.keys(events).map(Number) : []))),
+      duration,
       ...(animation.anim_time_update !== undefined ? { clock: { type: "molang", expression: String(animation.anim_time_update) } as const } : {}),
       playback: { mode: animation.loop === true ? "loop" : animation.loop === "hold_on_last_frame" ? "hold" : "once",
         start_delay: sourceDelayIR(animation.start_delay ?? 0), loop_delay: sourceDelayIR(animation.loop_delay ?? 0) },
@@ -86,6 +86,10 @@ export function createBedrockAnimationIR(animation: BedrockAnimation, name: stri
     for (const [timestamp, value] of Object.entries(data)) {
       const time = Number(timestamp);
       const sourcePath = `animations.${name}.${property}.${timestamp}`;
+      if (time < 0 || parseMinecraftTime(sourceSecondsTime(time)) > durationTicks) {
+        diagnostics.push({ severity: "warning", code: "bedrock_event_outside_duration", message: `${name} at ${time * 20}t: an event outside the animation duration was omitted.`, sourcePath });
+        continue;
+      }
       for (const entry of Array.isArray(value) ? value : [value]) {
         if (property === "timeline") {
           const lines = typeof entry === "string" ? entry.split(/\r?\n/).map((line) => line.trim()).filter(Boolean) : [];
@@ -113,19 +117,26 @@ export function createBedrockAnimationIR(animation: BedrockAnimation, name: stri
 }
 
 function bedrockAnimationDurationSeconds(animation: BedrockAnimation): number {
-  let duration = animation.animation_length ?? 0;
+  if (animation.animation_length !== undefined) return parseAnimationSeconds(sourceSecondsTime(animation.animation_length));
+  let duration = 0;
   for (const bone of Object.values(animation.bones ?? {})) {
     for (const channel of [bone.position, bone.rotation, bone.scale]) {
       if (!isKeyframedChannel(channel)) continue;
       for (const timestamp of Object.keys(channel)) duration = Math.max(duration, Number(timestamp));
     }
   }
+  for (const events of [animation.particle_effects, animation.sound_effects, animation.timeline]) {
+    if (!isRecord(events)) continue;
+    for (const timestamp of Object.keys(events)) duration = Math.max(duration, Number(timestamp));
+  }
   return duration;
 }
 
 function bedrockAnimationUsesTime(animation: BedrockAnimation): boolean {
-  return Object.values(animation.bones ?? {}).some((bone) => [bone.position, bone.rotation, bone.scale]
-    .some((channel) => channelExpressions(channel).some((expression) => typeof expression === "string" && /(?:q|query)\.anim_time\b/i.test(expression))));
+  const expressions = [animation.blend_weight, animation.anim_time_update, ...Object.values(animation.bones ?? {})
+    .flatMap((bone) => [bone.position, bone.rotation, bone.scale].flatMap(channelExpressions))];
+  return expressions.some((expression) => typeof expression === "string" && scanMolangSource(expression)
+    .some((token) => token.kind === "identifier" && /^(?:q|query)\.(?:anim_time|anim_time_ticks|life_time|loop_count)$/i.test(token.value)));
 }
 
 function channelExpressions(channel: BedrockChannel | undefined): BedrockExpression[] {

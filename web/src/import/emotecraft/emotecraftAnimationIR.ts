@@ -4,6 +4,7 @@ import { affineCurveIR, affineScalarIR, scalarIR } from "../../domain/animationI
 import type { ImportedNode } from "../../domain/conversionSeed";
 import type { ConversionIssue } from "../../foundation/diagnostics";
 import { sanitizeResourcePath } from "../../format/resourceLocation";
+import { MAX_ANIMATION_DURATION_TICKS, parseMinecraftTime, sourceSecondsTime } from "../../format/time";
 import { importedNodeIR } from "../common/blockbenchAnimationIR";
 import { rewriteMolangIdentifiers } from "../../format/molang/sourceTransformer";
 import type { PalAnimation, PalExpression, PalKeyframe } from "./emotecraftBinary";
@@ -11,7 +12,7 @@ import { createEmotecraftNodes, createEmotecraftSlices, EMOTECRAFT_PIVOTS, EMOTE
 
 export function createEmotecraftAnimationIR(animation: PalAnimation, name: string, diagnostics: ConversionIssue[]): { ir: AnimationIR; imported: Record<string, ImportedNode> } {
   const duration = Math.max(0.05, animation.lengthTicks / 20);
-  if (!Number.isFinite(duration) || duration > 600) throw new Error(`${name} duration must be within (0, 600] seconds.`);
+  if (parseMinecraftTime(sourceSecondsTime(duration), 1) > MAX_ANIMATION_DURATION_TICKS) throw new Error(`${name} duration must not exceed ${MAX_ANIMATION_DURATION_TICKS} ticks.`);
   const nodes: Record<string, NodeIR> = { scene: { transform: [{ id: "scale", op: "scale", value: [EMOTECRAFT_RENDER_SCALE, EMOTECRAFT_RENDER_SCALE, EMOTECRAFT_RENDER_SCALE] }] } };
   const tracks: TrackIR[] = [];
   const values: Record<string, SharedValueIR> = {};

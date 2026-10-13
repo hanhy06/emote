@@ -1,4 +1,4 @@
-import { formatMinecraftTime, parseAnimationSeconds, TICKS_PER_SECOND } from "../../format/time";
+import { formatMinecraftTime, parseAnimationSeconds, parseMinecraftTime } from "../../format/time";
 import { importedNodeHints } from "../../domain/conversionSeed";
 import type { ImportedProject } from "../../domain/conversionSeed";
 import type { ConversionIssue } from "../../foundation/diagnostics";
@@ -13,9 +13,14 @@ export function importEmotecraftFile(file: EmotecraftFile, sourceName: string): 
   const name = file.metadata.name?.trim() || sourceName.replace(/\.emotecraft$/i, "").trim() || "Emotecraft Emote";
   const diagnostics: ConversionIssue[] = [];
   const { ir, imported: nodes } = createEmotecraftAnimationIR(file.animation, name, diagnostics);
+  const durationTicks = parseMinecraftTime(ir.animation.duration, 1);
   const effects = file.animation.effects;
   const timeline: TimelineEventIR[] = [];
   for (const [index, sound] of effects.sounds.entries()) {
+    if (sound.tick < 0 || sound.tick >= file.animation.lengthTicks) {
+      diagnostics.push({ severity: "warning", code: "emotecraft_event_outside_duration", message: `${name} at ${sound.tick}t: an effect outside the animation duration was omitted.`, sourcePath: `effects.sounds[${index}]` });
+      continue;
+    }
     if (!sound.sound.trim()) {
       diagnostics.push({ severity: "warning", code: "emotecraft_effect_ignored", message: `${name} at ${sound.tick}t: an effect without a resource identifier was omitted.`, sourcePath: `effects.sounds[${index}]` });
       continue;
@@ -24,6 +29,10 @@ export function importEmotecraftFile(file: EmotecraftFile, sourceName: string): 
   }
   for (const [index, particle] of effects.particles.entries()) {
     const sourcePath = `effects.particles[${index}]`;
+    if (particle.tick < 0 || particle.tick >= file.animation.lengthTicks) {
+      diagnostics.push({ severity: "warning", code: "emotecraft_event_outside_duration", message: `${name} at ${particle.tick}t: an effect outside the animation duration was omitted.`, sourcePath });
+      continue;
+    }
     if (!particle.effect.trim()) {
       diagnostics.push({ severity: "warning", code: "emotecraft_effect_ignored", message: `${name} at ${particle.tick}t: an effect without a resource identifier was omitted.`, sourcePath });
       continue;
@@ -34,12 +43,15 @@ export function importEmotecraftFile(file: EmotecraftFile, sourceName: string): 
     if (particle.script.trim()) diagnostics.push({ severity: "warning", code: "emotecraft_particle_script_ignored", message: `${name} at ${particle.tick}t: particle pre-effect script was omitted. Review and edit the event.`, sourcePath });
   }
   for (const [index, instruction] of effects.instructions.entries()) {
+    if (instruction.tick < 0 || instruction.tick >= file.animation.lengthTicks) {
+      diagnostics.push({ severity: "warning", code: "emotecraft_event_outside_duration", message: `${name} at ${instruction.tick}t: an effect outside the animation duration was omitted.`, sourcePath: `effects.instructions[${index}]` });
+      continue;
+    }
     const lines = instruction.instruction.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
     const commands = lines.map((line) => line.replace(/^\//, "").trim()).filter(Boolean);
     if (commands.length) timeline.push({ time: `${instruction.tick}t`, source: { type: "player" }, origin: { type: "root" }, action: { type: "commands", commands } });
     if (lines.some((line) => !line.startsWith("/"))) diagnostics.push({ severity: "warning", code: "emotecraft_instruction_approximated", message: `${name} at ${instruction.tick}t: uninterpreted instructions were kept as commands; behavior may differ. Review and edit them.`, sourcePath: `effects.instructions[${index}]` });
   }
-  const durationTicks = Math.ceil(Math.max(parseAnimationSeconds(ir.animation.duration), ...timeline.map((event) => parseAnimationSeconds(event.time))) * TICKS_PER_SECOND);
   ir.animation.duration = formatMinecraftTime(durationTicks);
   const song = file.song ? convertEmotecraftSong(file.song, durationTicks) : { events: [], diagnostics: [] };
   diagnostics.push(...song.diagnostics);
