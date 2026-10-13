@@ -200,8 +200,8 @@ public final class PlayerSkinBaker {
 
     private BufferedImage expandSlimArmToWideAtlas(BufferedImage sourceImage, PlayerSkinPart skinPart) {
         BufferedImage expandedImage = copyImage(sourceImage);
-        copyFaceMap(expandedImage, sourceImage, slimBaseFaces(skinPart), PARTS.get(skinPart).base());
-        copyFaceMap(expandedImage, sourceImage, slimOverlayFaces(skinPart), PARTS.get(skinPart).overlay());
+        copyFaceMap(expandedImage, sourceImage, requireSlimFaces(skinPart, PARTS.get(skinPart).slimBase()), PARTS.get(skinPart).base());
+        copyFaceMap(expandedImage, sourceImage, requireSlimFaces(skinPart, PARTS.get(skinPart).slimOverlay()), PARTS.get(skinPart).overlay());
         return expandedImage;
     }
 
@@ -224,14 +224,6 @@ public final class PlayerSkinBaker {
 
     private void copyFace(BufferedImage targetImage, BufferedImage sourceImage, FaceRect sourceRect, FaceRect targetRect) {
         drawFace(targetImage, sourceImage, sourceRect, new FaceTarget(targetRect.x(), targetRect.y(), targetRect.width(), targetRect.height()));
-    }
-
-    private static FaceMap slimBaseFaces(PlayerSkinPart part) {
-        return requireSlimFaces(part, PARTS.get(part).slimBase());
-    }
-
-    private static FaceMap slimOverlayFaces(PlayerSkinPart part) {
-        return requireSlimFaces(part, PARTS.get(part).slimOverlay());
     }
 
     private static FaceMap requireSlimFaces(PlayerSkinPart part, FaceMap faces) {

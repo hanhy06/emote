@@ -118,7 +118,7 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
     @Override
     public Transformation createTransformation(String nodeId, Matrix4fc matrix) {
         requiredNode(nodeId);
-        return this.root.displayTransformation(matrix);
+        return new Transformation(this.root.displayMatrix(matrix));
     }
 
     @Override

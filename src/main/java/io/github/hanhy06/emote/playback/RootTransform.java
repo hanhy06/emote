@@ -1,6 +1,5 @@
 package io.github.hanhy06.emote.playback;
 
-import com.mojang.math.Transformation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
@@ -24,10 +23,6 @@ public record RootTransform(Vec3 position, float yaw, Matrix4f rotationMatrix) {
 
     public Matrix4f displayMatrix(Matrix4fc nodeMatrix) {
         return new Matrix4f(this.rotationMatrix).mul(nodeMatrix);
-    }
-
-    public Transformation displayTransformation(Matrix4fc matrix) {
-        return new Transformation(displayMatrix(matrix));
     }
 
     public float relativeYaw(float currentYaw) {

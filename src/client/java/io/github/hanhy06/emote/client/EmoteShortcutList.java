@@ -139,19 +139,15 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
             int controlY = getContentY() + CONTROL_Y_OFFSET;
             boolean showControls = hovered || EmoteShortcutList.this.getSelected() == this && EmoteShortcutList.this.isFocused();
 
-            extractTransferArrow(graphics, showControls, controlX, controlY);
+            Identifier sprite = selectedList
+                ? showControls ? SELECT_HIGHLIGHTED_SPRITE : SELECT_SPRITE
+                : showControls ? UNSELECT_HIGHLIGHTED_SPRITE : UNSELECT_SPRITE;
+            graphics.blitSprite(RenderPipelines.GUI_TEXTURED, sprite, controlX, controlY, CONTROL_SIZE, CONTROL_SIZE);
 
             int textX = controlX + CONTROL_SIZE + TEXT_GAP;
             int textWidth = Math.max(0, getContentRight() - textX - TEXT_GAP);
             graphics.text(minecraft.font, fitText(this.emote.name(), textWidth), textX, controlY + 3, 0xFFFFFFFF);
             graphics.text(minecraft.font, fitText(this.emote.description(), textWidth), textX, controlY + 16, 0xFF9DAAB3);
-        }
-
-        private void extractTransferArrow(GuiGraphicsExtractor graphics, boolean highlighted, int x, int y) {
-            Identifier sprite = selectedList
-                ? highlighted ? SELECT_HIGHLIGHTED_SPRITE : SELECT_SPRITE
-                : highlighted ? UNSELECT_HIGHLIGHTED_SPRITE : UNSELECT_SPRITE;
-            graphics.blitSprite(RenderPipelines.GUI_TEXTURED, sprite, x, y, CONTROL_SIZE, CONTROL_SIZE);
         }
 
         @Override

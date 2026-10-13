@@ -135,9 +135,6 @@ public record EmoteSequence(
     }
 
     private static void validateLinearSteps(List<Step> steps, String name) {
-        if (steps.isEmpty()) {
-            throw new IllegalArgumentException(name + " steps must not be empty");
-        }
         if (steps.getFirst() instanceof WaitStep || steps.getLast() instanceof WaitStep) {
             throw new IllegalArgumentException(name + " wait steps must be between emote steps");
         }

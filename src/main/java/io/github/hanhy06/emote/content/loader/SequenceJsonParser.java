@@ -69,7 +69,9 @@ public final class SequenceJsonParser {
                 throw document.error(path, "must contain exactly one of emote or wait");
             }
             if (hasWait) {
-                rejectTransition(stepObject, path, document);
+                if (stepObject.has("transition")) {
+                    throw document.error(path + ".transition", "is supported only on an emote step");
+                }
                 if (stepObject.has("repeat")) {
                     throw document.error(path + ".repeat", "is not supported on a wait step");
                 }
@@ -95,13 +97,6 @@ public final class SequenceJsonParser {
             steps.add(new EmoteSequence.AnimationStep(choices, repeat, transitionTicks));
         }
         return List.copyOf(steps);
-    }
-
-    private void rejectTransition(JsonObject stepObject, String path, EmoteJsonDocument document)
-        throws EmoteLoadException {
-        if (stepObject.has("transition")) {
-            throw document.error(path + ".transition", "is supported only on an emote step");
-        }
     }
 
     private List<EmoteSequence.Choice> readEmoteChoices(JsonObject stepObject, String path, EmoteJsonDocument document)

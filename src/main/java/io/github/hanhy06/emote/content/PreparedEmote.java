@@ -55,8 +55,6 @@ public sealed interface PreparedEmote permits PreparedAnimation, PreparedSequenc
 
     EmoteAnimation.PlaybackMode playbackMode();
 
-    default int nodeCount() { return nodes().size(); }
-
     Map<String, EmoteAnimation.Node> nodes();
     List<String> nodeOrder();
     Map<String, Map<String, DisplayData>> displayContents();

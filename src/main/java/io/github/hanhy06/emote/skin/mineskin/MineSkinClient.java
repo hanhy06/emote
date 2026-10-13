@@ -355,10 +355,6 @@ public final class MineSkinClient {
     static final class JobFailedException extends IOException {
         private final long retryDelayMillis;
 
-        JobFailedException(String message) {
-            this(message, 0L);
-        }
-
         JobFailedException(String message, long retryDelayMillis) {
             super(message);
             this.retryDelayMillis = Math.max(0L, retryDelayMillis);

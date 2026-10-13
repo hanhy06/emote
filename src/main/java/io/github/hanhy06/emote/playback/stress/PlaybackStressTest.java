@@ -80,7 +80,7 @@ public final class PlaybackStressTest {
             throw new IllegalArgumentException("Stress-test display count must be positive");
         }
         Random random = new Random(RANDOM_SEED);
-        List<PreparedAnimation> selection = createDisplayLimitedSelection(emotes, random, targetDisplayEntityCount);
+        List<PreparedAnimation> selection = createDisplayLimitedSelection(emotes, random, targetDisplayEntityCount, PreparedAnimation::displayEntityCount);
         if (selection.isEmpty()) {
             throw new IllegalArgumentException("No registered emote fits within the requested display count: " + targetDisplayEntityCount);
         }
@@ -383,14 +383,6 @@ public final class PlaybackStressTest {
             }
         } while (added && selection.size() < MAX_INSTANCE_COUNT);
         return List.copyOf(selection);
-    }
-
-    private static List<PreparedAnimation> createDisplayLimitedSelection(
-        List<PreparedAnimation> emotes,
-        Random random,
-        int displayLimit
-    ) {
-        return createDisplayLimitedSelection(emotes, random, displayLimit, PreparedAnimation::displayEntityCount);
     }
 
     public record StartResult(int instanceCount, int displayEntityCount) {
