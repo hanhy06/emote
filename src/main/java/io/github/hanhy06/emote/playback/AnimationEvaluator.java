@@ -37,9 +37,11 @@ final class AnimationEvaluator {
     private final Matrix4f inherited = new Matrix4f(), residual = new Matrix4f(), parentLinear = new Matrix4f();
     private final Quaternionf operationRotation = new Quaternionf();
     private final Quaterniond quaternion = new Quaterniond(), slerpStart = new Quaterniond(), slerpEnd = new Quaterniond();
-    private final Map<String, Map<String, CompoundTag>> nbt = new HashMap<>();
-    private final Map<String, Map<String, Set<String>>> nbtRemoved = new HashMap<>();
+    private final Map<String, Map<String, NbtTrackState>> nbtTracks = new LinkedHashMap<>();
+    private Map<String, Map<String, CompoundTag>> nbt = Map.of();
+    private Map<String, Map<String, Set<String>>> nbtRemoved = Map.of();
     private final Map<String, CompoundTag> nbtCaptures = new HashMap<>();
+    private long nbtGeneration;
     private int nbtCycle;
     private MolangEngine.Session session;
     private final Map<String, double[]> sharedValues = new HashMap<>();
@@ -66,6 +68,11 @@ final class AnimationEvaluator {
             this.matrices[index] = new Matrix4f();
             this.orientations[index] = new Quaternionf();
             this.attachmentVisibility.add(new LinkedHashMap<>());
+            if (!animation.nbtTracks(index).isEmpty()) {
+                Map<String, NbtTrackState> tracks = new LinkedHashMap<>();
+                animation.nbtTracks(index).forEach((attachment, track) -> tracks.put(attachment, new NbtTrackState(track)));
+                this.nbtTracks.put(this.nodeIds.get(index), tracks);
+            }
         }
     }
 
@@ -117,7 +124,7 @@ final class AnimationEvaluator {
     boolean visible(int index) { return this.visibility[index]; }
     Map<String, Boolean> attachmentVisibility(int index) { return this.attachmentVisibility.get(index); }
     Map<String, CompoundTag> nbt(int index) { return this.nbt.getOrDefault(nodeId(index), Map.of()); }
-    Set<String> nbtRemoved(int index, String attachmentId) { return this.nbtRemoved.get(nodeId(index)).get(attachmentId); }
+    Set<String> nbtRemoved(int index, String attachmentId) { return this.nbtRemoved.getOrDefault(nodeId(index), Map.of()).getOrDefault(attachmentId, Set.of()); }
 
     private void setFrameQueries(int tick, int loopCount, int deltaTicks, long lifetimeTicks) {
         if (tick != this.sampleTick || loopCount != this.sampleLoop) this.sharedValues.clear();
@@ -153,6 +160,7 @@ final class AnimationEvaluator {
             setFrameQueries(this.animation.model().clip().durationTicks(), this.nbtCycle, deltaTicks, lifetimeTicks);
             evaluateNbt(this.animation.model().clip().durationTicks());
             this.nbtCaptures.clear();
+            this.nbtGeneration++;
             this.nbtCycle++;
             setFrameQueries(this.animation.model().settings().playback().loopStartTick(), this.nbtCycle, deltaTicks, lifetimeTicks);
             evaluateNbt(this.animation.model().settings().playback().loopStartTick());
@@ -185,19 +193,9 @@ final class AnimationEvaluator {
     }
 
     Pose capturePose() {
-        Pose pose = new Pose(this.sampleGeneration, this.nodeIds.size());
+        Pose pose = new Pose(this.sampleGeneration, this.nodeIds.size(), this.nbt, this.nbtRemoved);
         this.sampledValues.forEach((track, values) -> pose.values.put(track, values.clone()));
         pose.sampledVisibility.putAll(this.sampledVisibility);
-        this.nbt.forEach((node, attachments) -> {
-            Map<String, CompoundTag> states = new HashMap<>();
-            attachments.forEach((attachment, state) -> states.put(attachment, state.copy()));
-            pose.nbt.put(node, states);
-        });
-        this.nbtRemoved.forEach((node, attachments) -> {
-            Map<String, Set<String>> removed = new HashMap<>();
-            attachments.forEach((attachment, fields) -> removed.put(attachment, Set.copyOf(fields)));
-            pose.nbtRemoved.put(node, removed);
-        });
         return pose;
     }
 
@@ -209,11 +207,13 @@ final class AnimationEvaluator {
         final Transformation[] transformations;
         final boolean[] visibility;
         final List<Map<String, Boolean>> attachmentVisibility = new ArrayList<>();
-        final Map<String, Map<String, CompoundTag>> nbt = new HashMap<>();
-        final Map<String, Map<String, Set<String>>> nbtRemoved = new HashMap<>();
+        final Map<String, Map<String, CompoundTag>> nbt;
+        final Map<String, Map<String, Set<String>>> nbtRemoved;
 
-        private Pose(long generation, int count) {
+        private Pose(long generation, int count, Map<String, Map<String, CompoundTag>> nbt, Map<String, Map<String, Set<String>>> nbtRemoved) {
             this.generation = generation;
+            this.nbt = nbt;
+            this.nbtRemoved = nbtRemoved;
             this.matrices = new Matrix4fc[count];
             this.transformations = new Transformation[count];
             this.visibility = new boolean[count];
@@ -307,16 +307,23 @@ final class AnimationEvaluator {
     private void evaluateNbt(double tick) {
         this.sampleProgress = 0;
         this.session.setQuery("key_frame_lerp_time", 0);
-        for (int index = 0; index < this.nodeIds.size(); index++) {
-            String nodeId = this.nodeIds.get(index);
-            Map<String, Track> tracks = this.animation.nbtTracks(index);
-            Map<String, CompoundTag> states = this.nbt.computeIfAbsent(nodeId, ignored -> new LinkedHashMap<>());
-            Map<String, Set<String>> removedStates = this.nbtRemoved.computeIfAbsent(nodeId, ignored -> new HashMap<>());
-            for (String attachmentId : tracks.keySet()) {
-                CompoundTag state = new CompoundTag();
-                Set<String> removed = new HashSet<>();
-                for (Keyframe key : tracks.get(attachmentId).driver().keys()) {
-                    if (key.tick() > tick) break;
+        if (this.nbtTracks.isEmpty()) return;
+        Map<String, Map<String, CompoundTag>> nextNbt = null;
+        Map<String, Map<String, Set<String>>> nextRemoved = null;
+        for (var node : this.nbtTracks.entrySet()) {
+            Map<String, CompoundTag> states = null;
+            Map<String, Set<String>> removedStates = null;
+            for (var attachment : node.getValue().entrySet()) {
+                NbtTrackState track = attachment.getValue();
+                List<Keyframe> keys = track.track.driver().keys();
+                boolean reset = track.generation != this.nbtGeneration || tick < track.tick;
+                track.tick = tick;
+                if (!reset && (track.nextKey == keys.size() || keys.get(track.nextKey).tick() > tick)) continue;
+                CompoundTag state = reset ? new CompoundTag() : this.nbt.get(node.getKey()).get(attachment.getKey()).copy();
+                Set<String> removed = reset ? new HashSet<>() : new HashSet<>(this.nbtRemoved.get(node.getKey()).get(attachment.getKey()));
+                int nextKey = reset ? 0 : track.nextKey;
+                while (nextKey < keys.size() && keys.get(nextKey).tick() <= tick) {
+                    Keyframe key = keys.get(nextKey++);
                     NbtValue patch = (NbtValue) key.post();
                     List<String> remove = patch instanceof ConstantNbtValue constant ? constant.remove() : ((MolangNbtValue) patch).remove();
                     remove.forEach(state::remove);
@@ -340,10 +347,37 @@ final class AnimationEvaluator {
                     }
                     state.merge(merge);
                 }
-                states.put(attachmentId, state);
-                removedStates.put(attachmentId, removed);
+                track.nextKey = nextKey;
+                track.generation = this.nbtGeneration;
+                if (states == null) {
+                    states = new HashMap<>(this.nbt.getOrDefault(node.getKey(), Map.of()));
+                    removedStates = new HashMap<>(this.nbtRemoved.getOrDefault(node.getKey(), Map.of()));
+                }
+                states.put(attachment.getKey(), state);
+                removedStates.put(attachment.getKey(), Set.copyOf(removed));
+            }
+            if (states != null) {
+                if (nextNbt == null) {
+                    nextNbt = new HashMap<>(this.nbt);
+                    nextRemoved = new HashMap<>(this.nbtRemoved);
+                }
+                nextNbt.put(node.getKey(), Map.copyOf(states));
+                nextRemoved.put(node.getKey(), Map.copyOf(removedStates));
             }
         }
+        if (nextNbt != null) {
+            this.nbt = Map.copyOf(nextNbt);
+            this.nbtRemoved = Map.copyOf(nextRemoved);
+        }
+    }
+
+    private static final class NbtTrackState {
+        private final Track track;
+        private int nextKey;
+        private double tick;
+        private long generation = -1;
+
+        private NbtTrackState(Track track) { this.track = track; }
     }
 
     private boolean sampleVisibility(Track track, double tick, boolean base) {
