@@ -25,7 +25,10 @@ export function convertEmotecraftSong(packet: NonNullable<EmotecraftFile["song"]
   };
   const bytes = packet.bytes;
   let song;
+  let vanillaInstrumentCount: number;
   try {
+    const header = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    vanillaInstrumentCount = header.getUint16(0, true) === 0 ? header.getUint8(3) : 10;
     song = fromArrayBuffer(bytes.slice().buffer);
   } catch (error) {
     return {
@@ -47,7 +50,7 @@ export function convertEmotecraftSong(packet: NonNullable<EmotecraftFile["song"]
     if (solo && !layer.isSolo) continue;
     const layerVolume = layer.volume ?? 100;
     for (const [songTick, note] of layer.notes) {
-      const instrument = MINECRAFT_INSTRUMENTS[note.instrument];
+      const instrument = note.instrument < vanillaInstrumentCount ? MINECRAFT_INSTRUMENTS[note.instrument] : undefined;
       if (!instrument) {
         ignoredCustomNotes++;
         continue;

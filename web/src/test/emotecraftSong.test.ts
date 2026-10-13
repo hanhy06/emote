@@ -70,3 +70,15 @@ it("exports supported NBS music as a timeline command", async () => {
   }]);
   expect(result.project.diagnostics).toEqual([]);
 });
+
+it.each([[5, 16], [0, 10]])("uses the NBS version %i instrument boundary instead of the library's fixed boundary", async (version, vanillaCount) => {
+  const result = await exportSong(2, nbs([{ instrument: 0, key: 45 }, { instrument: vanillaCount, key: 45 }], vanillaCount, version));
+  expect(result.animation.animation.events.timeline[0].action.commands).toEqual(["playsound minecraft:block.note_block.harp record @a ~ ~ ~ 1 1 0"]);
+  expect(result.project.diagnostics).toEqual([expect.objectContaining({ code: "emotecraft_song_custom_instruments_ignored", message: expect.stringContaining("1 embedded NBS note(s)") })]);
+});
+
+it("keeps instrument 16 when the NBS header declares twenty built-in instruments", async () => {
+  const result = await exportSong(2, nbs([{ instrument: 16, key: 45 }], 20));
+  expect(result.animation.animation.events.timeline[0].action.commands).toEqual(["playsound minecraft:block.note_block.trumpet record @a ~ ~ ~ 1 1 0"]);
+  expect(result.project.diagnostics).toEqual([]);
+});
