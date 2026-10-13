@@ -65,7 +65,7 @@ export function createAnimatedJavaAnimationIR(source: AjProjectAnimation, projec
     const node = imported[entry.id];
     if (!node) continue;
     ir.nodes[entry.id] = { ...importedNodeIR(node, `group:${bone.uuid}`), name: entry.locatorName ?? entry.id,
-      source: { editor_node_id: entry.id }, ...(entry.ignoreInheritedScale ? { inherit: { scale: false } } : {}),
+      source: { node_id: node.binding.sourceNodeId, editor_node_id: entry.id }, ...(entry.ignoreInheritedScale ? { inherit: { scale: false } } : {}),
       transform: [{ id: "content", op: "matrix", value: matrix4ToRowMajor(entry.localMatrix, `IR ${entry.id}`) }],
     };
   }

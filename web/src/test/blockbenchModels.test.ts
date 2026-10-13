@@ -4,6 +4,7 @@ import { createConversionDocument, assignSkinPart } from "../domain/conversionDo
 import { compileAnimation } from "../compiler/animationCompiler";
 import { readInput } from "../import/formats";
 import type { BbCube } from "../import/common/blockbenchCubeSchema";
+import { orderedNodeIds } from "../domain/animationIR";
 
 const formats = ["geckolib_bbmodel", "animated_java_blueprint"] as const;
 
@@ -70,4 +71,35 @@ it("excludes actual skin overlays while preserving skin assignment and restorati
   const output = compileAnimation(document, index);
   expect(output.generatedResourceReferences.size).toBe(0);
   expect(Object.values(output.animation.nodes).flatMap((node) => Object.values(node.attachments ?? {})).filter((attachment) => attachment.type === "player_skin")).toHaveLength(27);
+});
+
+it("keeps reserved IDs distinct and routes source cube state to every generated slice", async () => {
+  for (const format of formats) {
+    const input = await importModel(format, "scene", [cube("cube", [0, 0, 0], [2, 2, 2])]);
+    const document = createConversionDocument(input, format);
+    const output = compileAnimation(document, 0).animation;
+    expect(orderedNodeIds(output.nodes)).toHaveLength(3);
+    expect(output.nodes.scene.parent).toBeUndefined();
+    expect(output.nodes["group:bone"].parent).toBe("scene");
+    const content = Object.values(output.nodes).find((node) => node.attachments?.display);
+    expect(content?.parent).toBe("group:bone");
+    expect(content?.source?.node_id).toBe("cube");
+  }
+  const input = await importModel("animated_java_blueprint", "left_arm", [cube("limb", [0, 0, 0], [4, 12, 4])], {
+    elements: [cube("limb", [0, 0, 0], [4, 12, 4]), {
+      uuid: "left_arm", name: "separate display", type: "animated_java:vanilla_item_display",
+      position: [16, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], visibility: true, item: "minecraft:stone",
+    }],
+    outliner: [{ uuid: "bone", children: ["limb"] }, "left_arm"],
+    animations: [{ name: "idle", length: 1, loop: "once", animators: {
+      limb: { keyframes: [{ channel: "visibility", time: 0.5, data_points: [{ x: 0 }] }] },
+    } }],
+  });
+  const document = createConversionDocument(input, "AJ");
+  const output = compileAnimation(document, 0).animation;
+  expect(output.nodes.left_arm.attachments?.display).toMatchObject({ type: "item_display", item_stack_snbt: '{id:"minecraft:stone",count:1}' });
+  const slices = Object.entries(output.nodes).filter(([, node]) => node.source?.node_id === "limb");
+  expect(slices).toHaveLength(2);
+  expect(output.animation.tracks.filter((track) => track.channel === "visible").map((track) => track.target.node).sort()).toEqual(slices.map(([id]) => id).sort());
+  expect(input.diagnostics).toEqual([]);
 });

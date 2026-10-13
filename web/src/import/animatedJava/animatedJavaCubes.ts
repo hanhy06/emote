@@ -30,7 +30,8 @@ export function importAnimatedJavaCubes(project: AjProject, sourceStem: string, 
   const projectPath = sanitizeResourcePath(project.name?.trim() || sourceStem, "model");
   const bones: BoneEntry[] = [];
   const bonesByUuid = new Map<string, BoneEntry>();
-  const ids = new Set<string>();
+  const ids = new Set(["scene", ...[...graph.groups.keys()].map((uuid) => `group:${uuid}`),
+    ...project.elements.filter((element) => element.type !== "cube" && element.type !== "locator").map((element) => element.uuid)]);
   for (const [uuid, group] of graph.groups) {
     const base = sanitizeResourcePath(group.name, "bone").replaceAll("/", "_");
     let id = base;
@@ -62,7 +63,7 @@ export function importAnimatedJavaCubes(project: AjProject, sourceStem: string, 
   for (const bone of bones) {
     const cubes = playableCubesByBone.get(bone.uuid) ?? [];
     if (cubes.length === 0) {
-      nodes[bone.id] = { binding: { sourceNodeId: bone.id }, type: "anchor" };
+      nodes[bone.id] = { binding: { sourceNodeId: bone.uuid }, type: "anchor" };
       bone.nodes.push({ id: bone.id, localMatrix: new Matrix4() });
       bindNode(bone.uuid, bone.id);
     }
@@ -99,7 +100,7 @@ export function importAnimatedJavaCubes(project: AjProject, sourceStem: string, 
       ids.add(id);
       const locatorMatrix = composeDegreesTransform(locator.position.map((value, axis) => (value - bone.group.origin[axis]) / 16), locator.rotation, [1, 1, 1]);
       bone.nodes.push({ id, localMatrix: locatorMatrix, ignoreInheritedScale: locator.ignore_inherited_scale, locatorName: locator.name });
-      nodes[id] = { binding: { sourceNodeId: id }, type: "anchor" };
+      nodes[id] = { binding: { sourceNodeId: locator.uuid }, type: "anchor" };
       bindNode(bone.uuid, id);
       bindNode(locator.uuid, id);
     }

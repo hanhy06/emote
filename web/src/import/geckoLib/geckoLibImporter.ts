@@ -49,12 +49,12 @@ export function importGeckoLibProject(project: GeckoLibBbmodelProject, sourceNam
   const { playableCubesByBone, skinAssignments, sourceIds, diagnostics: modelDiagnostics } = prepareCubeModels(bones);
   const diagnostics: ConversionIssue[] = [...(project.animationDiagnostics ?? []), ...modelDiagnostics];
   const nodes: Record<string, ImportedNode> = {};
-  const nodeIds = new Set(bones.map((bone) => bone.id));
+  const nodeIds = new Set(["scene", ...bones.flatMap((bone) => [bone.id, `group:${bone.uuid}`])]);
   for (const bone of bones) {
     const playableCubes = playableCubesByBone.get(bone.uuid) ?? [];
     if (playableCubes.length === 0) {
       const localMatrix = bone.sourceElement ? new Matrix4().makeScale(...(bone.sourceElement.scale ?? [1, 1, 1]) as [number, number, number]) : new Matrix4();
-      if (!bone.sourceElement) nodes[bone.id] = { binding: { sourceNodeId: bone.id }, type: "anchor" };
+      if (!bone.sourceElement) nodes[bone.id] = { binding: { sourceNodeId: bone.uuid }, type: "anchor" };
       bone.nodes.push({ id: bone.id, localMatrix });
       if (bone.sourceElement) diagnostics.push({ severity: "warning", code: `${DIAGNOSTIC_PREFIX}_logical_node`, message: `${bone.group.name} (${bone.sourceElement.type}) is preserved as a logical node; geometry is unavailable.`, sourcePath: bone.uuid });
       if (bone.sourceElement?.type === "camera") diagnostics.push({ severity: "warning", code: `${DIAGNOSTIC_PREFIX}_camera_ignored`, message: "Camera control was omitted; camera transforms remain as logical nodes.", sourcePath: bone.uuid });
@@ -95,7 +95,7 @@ export function importGeckoLibProject(project: GeckoLibBbmodelProject, sourceNam
       const localMatrix = locatorLocalMatrix(locator, bone);
       bone.nodes.push({ id: nodeId, localMatrix, ignoreInheritedScale: locator.ignore_inherited_scale, locatorName: locator.name });
       nodes[nodeId] = {
-        binding: { sourceNodeId: nodeId},
+        binding: { sourceNodeId: locator.uuid },
         type: "anchor",
         };
     }
@@ -139,7 +139,7 @@ function buildBoneEntries(project: BlockbenchCubeProject): BoneEntry[] {
   const groups = new Map(project.groups.map((group) => [group.uuid, group]));
   const elements = new Map(project.elements.map((element) => [element.uuid, element]));
   const entries: BoneEntry[] = [];
-  const ids = new Set<string>();
+  const ids = new Set(["scene", ...project.groups.map((group) => `group:${group.uuid}`)]);
   const visit = (entry: BbOutlinerEntry, parent?: BoneEntry) => {
     if (typeof entry === "string") {
       const element = elements.get(entry);

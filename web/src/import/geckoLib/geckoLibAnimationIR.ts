@@ -58,7 +58,7 @@ export function createGeckoLibAnimationIR(source: GeckoLibAnimationSource, bones
       const n = imported[entry.id]; if (!n && !bone.sourceElement) continue;
       const child = n ? importedNodeIR(n, id) : { parent: id, visible: true };
       nodes[entry.id] = { ...child, name: entry.locatorName ?? entry.id,
-        source: { editor_node_id: entry.id, ...(bone.sourceElement ? { original_type: bone.sourceElement.type } : {}) },
+        source: { node_id: n?.binding.sourceNodeId ?? bone.sourceElement!.uuid, editor_node_id: entry.id, ...(bone.sourceElement ? { original_type: bone.sourceElement.type } : {}) },
         ...(entry.ignoreInheritedScale ? { inherit: { scale: false } } : {}),
         transform: [{ id: "content", op: "matrix", value: matrix4ToRowMajor(entry.localMatrix, `IR ${entry.id}`) }],
       };
