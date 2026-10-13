@@ -112,3 +112,31 @@ it("applies the same final tick limit to both formats without clamping their sou
   expect(() => importEmotecraftFile({ animation: source, metadata: { badges: [] } }, "limit.emotecraft")).toThrow("12000 ticks");
   await expect(bedrock({ tooLong: { animation_length: 601 } })).rejects.toThrow("12000 ticks");
 });
+
+it("merges distinct channels of Bedrock aliases independently of their input order", async () => {
+  const aliases = { rightArm: { rotation: [45, 0, 0] }, right_arm: { position: [16, 0, 0] } };
+  const project = await bedrock({ test: { animation_length: 1, bones: aliases } });
+  const animation = await exported(project);
+  const reversed = await exported(await bedrock({ test: { animation_length: 1, bones: Object.fromEntries(Object.entries(aliases).reverse()) } }));
+  expect(reversed).toEqual(animation);
+  expect(animation.animation.tracks.filter((track) => track.target.node === "bone:right_arm").map((track) => track.target.operation)).toEqual(["position", "rotation"]);
+  const parser = new MolangParser();
+  const pose = evaluatePose(animation, 0.5, (value) => typeof value === "number" ? value : parser.parse(value.molang));
+  expect(pose["bone:right_arm"].matrix.elements[12]).toBeCloseTo((5 - 16) / 16 * 0.9375, 12);
+  expect(pose["bone:right_arm"].matrix.elements[6]).toBeCloseTo(-Math.SQRT1_2 * 0.9375, 12);
+  expect(project.diagnostics).toEqual([]);
+});
+
+it("skips only ambiguous Bedrock animations instead of choosing an alias channel or relative rotation", async () => {
+  const project = await bedrock({
+    valid: { bones: { rightArm: { rotation: [45, 0, 0] }, right_arm: { relative_to: { rotation: "entity" }, position: [16, 0, 0] } } },
+    duplicate: { bones: { rightArm: { rotation: [45, 0, 0] }, right_arm: { rotation: [0, 0, 0] } } },
+    relative: { bones: { rightArm: { relative_to: { rotation: "entity" }, rotation: [45, 0, 0] }, right_arm: { relative_to: {}, position: [16, 0, 0] } } },
+  });
+  expect(project.animations.map((animation) => animation.name)).toEqual(["valid"]);
+  expect((await exported(project)).nodes["bone:right_arm"].inherit).toEqual({ rotation: "entity" });
+  expect(project.diagnostics.filter((issue) => issue.code === "animation_skipped").map((issue) => issue.sourcePath)).toEqual([
+    "animations.duplicate.bones.right_arm.rotation", "animations.relative.bones.right_arm.relative_to",
+  ]);
+  await expect(bedrock({ only: { bones: { rightArm: { position: [1, 0, 0] }, right_arm: { position: [2, 0, 0] } } } })).rejects.toThrow("define position more than once");
+});

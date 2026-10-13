@@ -5,7 +5,7 @@ import type { ImportedNode } from "../../domain/conversionSeed";
 import { ConversionError, type ConversionIssue } from "../../foundation/diagnostics";
 import { scanMolangSource } from "../../format/molang/sourceScanner";
 import { importedNodeIR } from "../common/blockbenchAnimationIR";
-import type { BedrockAnimation, BedrockChannel, BedrockExpression, BedrockKeyframe, BedrockKeyframeValue, BedrockVector } from "./bedrockAnimationSchema";
+import type { BedrockAnimation, BedrockBoneAnimation, BedrockChannel, BedrockExpression, BedrockKeyframe, BedrockKeyframeValue, BedrockVector } from "./bedrockAnimationSchema";
 import { BEDROCK_PLAYER_BONES, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_SLICES, resolveBedrockPlayerBone } from "./bedrockPlayerRig";
 import { bedrockPositionToCanonical } from "./coordinateSpace";
 import { isRecord } from "../../format/runtimeValue";
@@ -31,6 +31,24 @@ export function createBedrockAnimationIR(animation: BedrockAnimation, name: stri
     },
   };
   const unknown = Object.entries(unknownBoneIds).map(([sourceName, id]) => ({ id, sourceName, parent: undefined, pivot: [0, 0, 0] as const }));
+  const sources = new Map<string, BedrockBoneAnimation>();
+  for (const [sourceName, source] of Object.entries(animation.bones ?? {})) {
+    const id = resolveBedrockPlayerBone(sourceName)?.id ?? unknownBoneIds[sourceName];
+    if (!id) continue;
+    const merged = sources.get(id);
+    if (!merged) { sources.set(id, { ...source }); continue; }
+    for (const channel of ["position", "rotation", "scale"] as const) {
+      if (source[channel] === undefined) continue;
+      if (merged[channel] !== undefined) throw new ConversionError("bedrock_bone_alias_conflict", `${name}: bone aliases for ${id} define ${channel} more than once.`, `animations.${name}.bones.${sourceName}.${channel}`);
+      merged[channel] = source[channel];
+    }
+    if (source.relative_to !== undefined) {
+      if (merged.relative_to !== undefined && JSON.stringify(merged.relative_to) !== JSON.stringify(source.relative_to)) {
+        throw new ConversionError("bedrock_bone_alias_conflict", `${name}: bone aliases for ${id} have conflicting relative_to settings.`, `animations.${name}.bones.${sourceName}.relative_to`);
+      }
+      merged.relative_to = source.relative_to;
+    }
+  }
   let weight: ScalarIR = scalarIR(animation.blend_weight ?? 1);
   if (typeof weight !== "number") {
     ir.animation.values = { blend: { type: "expression", base: [1], value: [weight] } };
@@ -40,7 +58,7 @@ export function createBedrockAnimationIR(animation: BedrockAnimation, name: stri
     const id = `bone:${bone.id}`;
     const parentPivot = BEDROCK_PLAYER_BONES.find((p) => p.id === bone.parent)?.pivot ?? [0, 0, 0];
     const position = bedrockPositionToCanonical(bone.pivot.map((v, axis) => v - parentPivot[axis]), (v) => -v).map((v) => v / 16);
-    const source = Object.entries(animation.bones ?? {}).find(([name]) => (resolveBedrockPlayerBone(name)?.id ?? unknownBoneIds[name]) === bone.id)?.[1];
+    const source = sources.get(bone.id);
     nodes[id] = { name: bone.sourceName, parent: bone.parent ? `bone:${bone.parent}` : "scene",
       source: { node_id: bone.sourceName, ...(unknownBoneIds[bone.sourceName] ? { missing_geometry: true, editor_node_id: bone.id } : {}) },
       ...(source?.relative_to?.rotation === "entity" ? { inherit: { rotation: "entity" } as const } : {}),
