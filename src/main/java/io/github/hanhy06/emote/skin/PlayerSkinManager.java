@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 public class PlayerSkinManager implements ConfigListener {
-    private final PlayerSkinProvider provider;
+    private final SkinBakeCoordinator provider;
     private final Map<String, CompletableFuture<PlayerSkinSource>> namedSources = new HashMap<>();
     private final List<Runnable> defaultReadyListeners = new CopyOnWriteArrayList<>();
     private final List<Consumer<UUID>> readyListeners = new CopyOnWriteArrayList<>();
@@ -26,9 +26,9 @@ public class PlayerSkinManager implements ConfigListener {
     private Set<PlayerSkinRegion> modelRegions = Set.of();
     private long sourceGeneration;
 
-    public PlayerSkinManager(PlayerSkinProvider provider) {
+    public PlayerSkinManager(SkinBakeCoordinator provider) {
         this.provider = Objects.requireNonNull(provider, "provider");
-        this.provider.setListener(new PlayerSkinProvider.Listener() {
+        this.provider.setListener(new SkinBakeCoordinator.Listener() {
             @Override
             public void onDefaultReady() {
                 EmoteMod.SERVER.execute(() -> {

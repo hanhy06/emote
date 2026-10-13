@@ -2,6 +2,7 @@ package io.github.hanhy06.emote.skin;
 
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.config.Config;
+import io.github.hanhy06.emote.config.ConfigListener;
 import io.github.hanhy06.emote.skin.account.AccountBakeQueue;
 import io.github.hanhy06.emote.skin.account.MinecraftAccountManager;
 import io.github.hanhy06.emote.skin.account.MinecraftSkinClient;
@@ -14,7 +15,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
 
-public final class SkinBakeCoordinator implements PlayerSkinProvider {
+public final class SkinBakeCoordinator implements ConfigListener {
     private static final long FAILED_BAKE_RETRY_MILLIS = TimeUnit.MINUTES.toMillis(5);
     private static final long CACHE_CLEANUP_INTERVAL_MILLIS = TimeUnit.DAYS.toMillis(1);
     private static final long MEBIBYTE_BYTES = 1_024L * 1_024L;
@@ -56,15 +57,13 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
         this.fallbackUploader = Objects.requireNonNull(fallbackUploader, "fallbackUploader");
     }
 
-    @Override public synchronized Map<PlayerSkinRegion, String> defaultSkin() { return this.defaultSkin; }
+    public synchronized Map<PlayerSkinRegion, String> defaultSkin() { return this.defaultSkin; }
 
-    @Override
     public synchronized void setDefaultRegions(Set<PlayerSkinRegion> regions) {
         this.defaultRegions = Set.copyOf(regions);
         prepareDefault();
     }
 
-    @Override
     public synchronized void setDefaultSource(PlayerSkinSource source) {
         if (this.defaultName.isEmpty()) return;
         this.defaultSource = new PlayerSkinSource(DEFAULT_SUBSCRIBER, this.defaultName,
@@ -106,7 +105,6 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
         }
     }
 
-    @Override
     public synchronized PlayerSkinPreparation prepare(PlayerSkinSource source, Set<PlayerSkinRegion> requiredRegions) {
         Map<PlayerSkinRegion, String> ready = loadReady(source, requiredRegions);
         int progress = requiredRegions.isEmpty() ? 100 : ready.size() * 100 / requiredRegions.size();
@@ -170,12 +168,10 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
         );
     }
 
-    @Override
     public synchronized void setListener(Listener listener) {
         this.listener = Objects.requireNonNull(listener, "listener");
     }
 
-    @Override
     public void cancelPendingBakes() {
         List<CompletableFuture<String>> pendingUploads;
         synchronized (this) {
@@ -202,7 +198,6 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
         this.cache.clearMemory();
     }
 
-    @Override
     public synchronized SkinProcessingStats processingStats() {
         removeExpiredFailures();
         int active = 0;
@@ -475,6 +470,12 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
             this.source = source;
             this.generation = generation;
         }
+    }
+
+    public interface Listener {
+        default void onDefaultReady() {}
+        default void onReady(UUID playerUuid) {}
+        default void onFailed(UUID playerUuid) {}
     }
 
     public interface FallbackUploader {
