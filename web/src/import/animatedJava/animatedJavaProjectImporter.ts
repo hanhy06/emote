@@ -177,9 +177,26 @@ function resolveAnimatedJavaAnimationState(
           message: `Variant ${variantId} changes cube textures, which cannot yet be represented by the native importer.`,
           sourcePath: `variants.${variantId}.texture_map`,
         });
+        const stateCount = stateFrames.length;
+        const eventCount = timeline.length;
         collectVariantFrames(stateFrames, timeline, project, nodes, graph, bindings, variantId, variant, frame.time);
         const onApply = stringField(variant, "on_apply_function") ?? stringField(variant, "onApplyFunction");
         if (onApply) timeline.push({ time: sourceSecondsTime(frame.time), source: { type: "player" }, origin: { type: "root" }, action: { type: "commands", commands: functionCommands(onApply) } });
+        const condition = point.execute_condition?.trim();
+        if (condition) {
+          const sourcePath = `animations[${animationIndex}].animators.${animatorId}.keyframes[${keyframeIndex}]`;
+          if (stateFrames.length !== stateCount || isRecord(variant.texture_map) && Object.keys(variant.texture_map).length > 0) throw new ConversionError(
+            "unsupported_animated_java_conditional_variant", `${source.name} at ${frame.time * 20}t: conditional variant state changes cannot be represented by Animation v5.`, sourcePath,
+          );
+          const events = timeline.slice(eventCount);
+          if (events.some((event) => event.source.type === "node")) throw new ConversionError(
+            "unsupported_animated_java_conditional_variant", `${source.name} at ${frame.time * 20}t: conditional variant node functions require root condition evaluation before changing the command source and cannot be represented by Animation v5.`, sourcePath,
+          );
+          if (events.reduce((count, event) => count + (event.action.type === "commands" ? event.action.commands.length : 0), 0) > 1) throw new ConversionError(
+            "unsupported_animated_java_conditional_commands", `${source.name} at ${frame.time * 20}t: a conditional command batch requires one shared condition evaluation and cannot be represented by Animation v5.`, sourcePath,
+          );
+          for (const event of events) if (event.action.type === "commands") event.action.commands = event.action.commands.map((command) => `execute ${condition} run ${command}`);
+        }
       }
     }
   }
@@ -310,11 +327,12 @@ function nativeFunctionEvents(source: AjProjectAnimation, diagnostics: Conversio
       const sourcePath = `animations[${animationIndex}].animators.${animatorId}.keyframes[${keyframeIndex}]`;
       for (const point of frame.data_points) {
         const text = point.function ?? point.commands ?? "";
-        const commands = text.split(/\r?\n/).map((line) => line.trim().replace(/^\//, "")).filter(Boolean);
+        const commands = functionCommands(text);
         if (commands.length === 0) continue;
-        if (point.execute_condition?.trim()) diagnostics.push({ severity: "warning", code: "animated_java_execute_condition_ignored", message: `${source.name} at ${frame.time * 20}t: execution condition was omitted. Review and edit the event.`, sourcePath });
+        const condition = point.execute_condition?.trim();
+        if (condition && commands.length > 1) throw new ConversionError("unsupported_animated_java_conditional_commands", `${source.name} at ${frame.time * 20}t: a conditional command batch requires one shared condition evaluation and cannot be represented by Animation v5.`, sourcePath);
         if (point.repeat) diagnostics.push({ severity: "warning", code: "animated_java_repeating_function_ignored", message: `${source.name} at ${frame.time * 20}t: repeating function behavior was converted to a single timeline event. Review and edit the event.`, sourcePath });
-        result.push({ time: sourceSecondsTime(frame.time), source: { type: "player" }, origin: { type: "root" }, action: { type: "commands", commands } });
+        result.push({ time: sourceSecondsTime(frame.time), source: { type: "player" }, origin: { type: "root" }, action: { type: "commands", commands: condition ? commands.map((command) => `execute ${condition} run ${command}`) : commands } });
       }
     }
   }

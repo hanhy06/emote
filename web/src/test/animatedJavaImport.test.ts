@@ -195,3 +195,48 @@ it("keeps variant config functions bound to their display entities including gen
   const [json] = await exportAnimation(document, 0);
   expect(JSON.parse(await json.blob.text()).animation.events.timeline).toEqual(events);
 });
+
+it("preserves single-command conditions and skips only animations with conditional state or shared command batches", async () => {
+  const project: Partial<AjProject> = {
+    elements: [{ ...display("item"), configs: { variants: { state: { invisible: true }, node_command: { on_apply_function: "/say private node" } } } }], outliner: ["item"],
+    variants: { list: [
+      { uuid: "commands", name: "commands", on_apply_function: "/say conditional variant" }, { uuid: "state", name: "state" },
+      { uuid: "batch", name: "batch", on_apply_function: "/tag @s remove private\n/say private batch" },
+      { uuid: "node_command", name: "node_command" },
+    ] },
+    animations: [
+      { name: "healthy", length: 1, loop: "once", animators: { effects: { type: "effect", keyframes: [
+        { channel: "function", time: 0.1, data_points: [{ function: "/say conditional function", execute_condition: " if entity @s[tag=private] " }] },
+        { channel: "commands", time: 0.2, data_points: [{ commands: "/say first\n/say second" }] },
+        { channel: "variant", time: 0.4, data_points: [{ variant: "commands", execute_condition: "unless entity @s[tag=private]" }] },
+      ] } } },
+      { name: "conditional_state", length: 1, loop: "once", animators: { effects: { type: "effect", keyframes: [
+        { channel: "variant", time: 0.2, data_points: [{ variant: "state", execute_condition: "if entity @s[tag=private]" }] },
+      ] } } },
+      { name: "conditional_function_batch", length: 1, loop: "once", animators: { effects: { type: "effect", keyframes: [
+        { channel: "function", time: 0.2, data_points: [{ function: "/tag @s remove private\n/say private batch", execute_condition: "if entity @s[tag=private]" }] },
+      ] } } },
+      { name: "conditional_variant_batch", length: 1, loop: "once", animators: { effects: { type: "effect", keyframes: [
+        { channel: "variant", time: 0.2, data_points: [{ variant: "batch", execute_condition: "if entity @s[tag=private]" }] },
+      ] } } },
+      { name: "conditional_node_command", length: 1, loop: "once", animators: { effects: { type: "effect", keyframes: [
+        { channel: "variant", time: 0.2, data_points: [{ variant: "node_command", execute_condition: "if entity @s[tag=private]" }] },
+      ] } } },
+    ],
+  };
+  const { input, document, output } = await importProject(project);
+  expect(document.animations.map((animation) => animation.sourceName)).toEqual(["Healthy"]);
+  expect(output.animation.events!.timeline!.map((event) => event.action)).toEqual([
+    { type: "commands", commands: ["execute if entity @s[tag=private] run say conditional function"] },
+    { type: "commands", commands: ["say first", "say second"] },
+    { type: "commands", commands: ["execute unless entity @s[tag=private] run say conditional variant"] },
+  ]);
+  expect(input.diagnostics.map((issue) => issue.code)).toEqual(Array(4).fill("animation_skipped"));
+  expect(input.diagnostics.map((issue) => issue.sourcePath)).toEqual([1, 2, 3, 4].map((index) => `animations[${index}].animators.effects.keyframes[0]`));
+  expect(input.diagnostics[0].message).toContain("4t: conditional variant state changes");
+  expect(input.diagnostics[1].message).toContain("one shared condition evaluation");
+  expect(JSON.stringify(input.diagnostics)).not.toContain("private");
+  const [json] = await exportAnimation(document, 0);
+  expect(JSON.parse(await json.blob.text()).animation.events).toEqual(output.animation.events);
+  await expect(importProject({ ...project, animations: project.animations!.slice(1, 2) })).rejects.toThrow("No Animated Java animations could be imported");
+});
