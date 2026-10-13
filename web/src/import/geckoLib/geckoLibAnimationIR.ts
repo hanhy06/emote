@@ -24,16 +24,16 @@ export function createGeckoLibAnimationIR(source: GeckoLibAnimationSource, bones
   const nodes: Record<string, NodeIR> = {
     scene: { transform: [{ id: "scale", op: "scale", value: [PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE] }] },
   };
-  const ir: AnimationIR = {
-    id: "emote:imported", metadata: { name: source.animation.name, description: `${source.animation.name} emote.` }, nodes,
-    animation: { duration: sourceSecondsTime(typeof source.animation.length === "number" ? Math.max(0.05, source.animation.length, ...Object.values(source.animation.animators).flatMap((a) => (a.keyframes ?? []).map((f) => f.time))) : source.animation.length),
-      playback: { mode: source.playbackMode, start_delay: sourceDelayIR(source.animation.start_delay || 0), loop_delay: sourceDelayIR(source.animation.loop_delay || 0) },
-      tracks: [], events: { start: [], timeline: source.events, loop: [], stop: [] } },
-  };
   const corrected = (value: MolangScalar): MolangScalar => typeof value !== "string" ? value : rewriteMolangIdentifiers(value, (identifier) => {
     const match = /^(?:q|query)\.([A-Za-z_][A-Za-z0-9_]*)$/i.exec(identifier);
     return match && PLAYER_ROTATION_QUERY_VALUE_NAMES.has(match[1].toLowerCase()) ? `-(${identifier})` : undefined;
   });
+  const ir: AnimationIR = {
+    id: "emote:imported", metadata: { name: source.animation.name, description: `${source.animation.name} emote.` }, nodes,
+    animation: { duration: sourceSecondsTime(typeof source.animation.length === "number" ? Math.max(0.05, source.animation.length, ...Object.values(source.animation.animators).flatMap((a) => (a.keyframes ?? []).map((f) => f.time))) : source.animation.length),
+      playback: { mode: source.playbackMode, start_delay: sourceDelayIR(corrected(source.animation.start_delay || 0)), loop_delay: sourceDelayIR(corrected(source.animation.loop_delay || 0)) },
+      tracks: [], events: { start: [], timeline: source.events, loop: [], stop: [] } },
+  };
   const rawWeight = scalarIR(corrected(source.blendWeight));
   const blendWeight: ScalarIR = typeof rawWeight === "number" ? Math.max(0, rawWeight)
     : { molang: mapMolangResult(rawWeight.molang, (result) => `math.max(0, ${result})`) };

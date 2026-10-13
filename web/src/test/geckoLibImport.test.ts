@@ -1,4 +1,5 @@
 import { expect, it } from "vitest";
+import MolangParser from "molangjs/dist/molang.esm.js";
 import { createConversionDocument } from "../domain/conversionDocument";
 import { compileAnimation } from "../compiler/animationCompiler";
 import { evaluatePose } from "../domain/animationIRPose";
@@ -45,4 +46,26 @@ it("matches accessory and ordinary animators consistently while UUIDs take prece
     "motion: an animator was omitted because the bone name is ambiguous.",
     "motion: an animator was omitted because no matching bone was found.",
   ]);
+});
+
+it("corrects player rotation queries in both delays while preserving seconds, quoted identifiers and defaults", async () => {
+  const { output } = await importAnimation([group("bone", "Prop")], {
+    start_delay: "t.delay = 2 + q.target_x_rotation / 30 + q.scoreboard('q.target_x_rotation'); return t.delay;",
+    loop_delay: "return 3 + query.target_y_rotation / 90 + q.target_x_rotation / 30;",
+  });
+  const playback = output.animation.playback!;
+  expect(playback.start_delay).toEqual({ molang: "t.delay = 2 + -(q.target_x_rotation) / 30 + q.scoreboard('q.target_x_rotation'); return t.delay;" });
+  expect(playback.loop_delay).toEqual({ molang: "return 3 + -(query.target_y_rotation) / 90 + -(q.target_x_rotation) / 30;" });
+  const parser = new MolangParser();
+  for (const value of [playback.start_delay, playback.loop_delay]) {
+    if (!value || typeof value === "string") throw new Error("Expected preserved Molang delay");
+    expect(parser.parse(value.molang, { "query.target_x_rotation": 30, "query.target_y_rotation": 90, "query.scoreboard": () => 0 })).toBeCloseTo(1, 12);
+  }
+  for (const values of [{}, { start_delay: "", loop_delay: "", blend_weight: "" }, { start_delay: 0, loop_delay: "0" }]) {
+    const { output } = await importAnimation([group("bone", "Prop")], { ...values, animators: { bone: movement(16) } });
+    expect(output.animation.playback).toEqual({ mode: "loop", start_delay: "0t", loop_delay: "0t" });
+    expect(output.animation.tracks[0].blend).toBeUndefined();
+  }
+  const numeric = await importAnimation([group("bone", "Prop")], { start_delay: 0.15, loop_delay: "0.25" });
+  expect(numeric.output.animation.playback).toEqual({ mode: "loop", start_delay: "3t", loop_delay: "5t" });
 });
