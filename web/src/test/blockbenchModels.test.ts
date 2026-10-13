@@ -140,7 +140,8 @@ it("normalizes oversized or displaced models without changing their animated geo
       .multiply(new Matrix4().makeTranslation(-pivot[0], -pivot[1], -pivot[2]));
     const skinned = compileAnimation(assignSkinPart(document, new Set([nodeId]), "head"), 0).animation;
     for (const time of [0, 0.5, 1]) {
-      const expected = new Matrix4().makeScale(0.9375, 0.9375, 0.9375)
+      const sceneScale = format === "geckolib_bbmodel" ? 0.9375 : 1;
+      const expected = new Matrix4().makeScale(sceneScale, sceneScale, sceneScale)
         .multiply(new Matrix4().makeTranslation(groupOrigin[0] / 16, groupOrigin[1] / 16, groupOrigin[2] / 16))
         .multiply(new Matrix4().makeRotationFromEuler(new Euler(radians(groupRotation[0]), radians(groupRotation[1] + time * 30), radians(groupRotation[2]), "ZYX")))
         .multiply(cubeRotation);

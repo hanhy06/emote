@@ -10,7 +10,6 @@ import { parseSnbtCompound, serializeSnbtCompound, serializeSnbtString, splitSnb
 import type { ImportInput } from "../input";
 import { ConversionError, skippedAnimationIssue, type ConversionIssue } from "../../foundation/diagnostics";
 import { importAnimatedJavaCubes, writeReferencedAnimatedJavaCubeResources, type AnimatedJavaCubes } from "./animatedJavaCubes";
-import { PLAYER_RENDER_SCALE } from "../common/blockbenchCubeModel";
 import { normalizeBlockbenchName } from "../common/blockbenchCubeSkin";
 import { createAnimatedJavaAnimationIR, type ProjectNodeStateFrame } from "./animatedJavaAnimationIR";
 import type { EventIR, TimelineEventIR } from "../../domain/animationIR";
@@ -48,7 +47,6 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
   const sourceAnimations = project.animations.length > 0 ? project.animations : [staticProjectAnimation()];
   const transformGraph = buildProjectTransformGraph(project);
   const cubeContent = importAnimatedJavaCubes(project, sourceStem, transformGraph);
-  const sceneScale = cubeContent ? PLAYER_RENDER_SCALE : 1;
   const displayElements = project.elements.filter((element): element is AjProjectDisplayElement => isDirectDisplay(element.type));
   const logicalElements = project.elements.filter((element) => !["cube", "locator", "camera"].includes(element.type) && !isDirectDisplay(element.type));
   const locatorElements = project.elements.filter((element): element is AjProjectLocator => element.type === "camera");
@@ -68,7 +66,7 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
     if (nodes[element.uuid] || nodeBindings.get(element.uuid)?.includes(element.uuid)) throw new ConversionError("animated_java_node_collision", `Animated Java project produces more than one node named ${element.uuid}.`, `elements.${element.uuid}`);
     bindOutputNode(element.uuid, element.uuid);
   }
-  applyGroupDefaultConfigs(nodes, project, transformGraph, nodeBindings);
+  applyGroupDefaultConfigs(nodes, transformGraph, nodeBindings);
   if (Object.keys(nodes).length === 0 && logicalElements.length === 0) throw new Error("Animated Java project does not contain importable nodes.");
 
   const diagnostics: ConversionIssue[] = [...(project.animationDiagnostics ?? []), ...(cubeContent?.diagnostics ?? [])];
@@ -79,7 +77,7 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
     try {
       const effects = projectEffectEvents(animation, cubeContent, animationDiagnostics, sourceIndex);
       const state = resolveAnimatedJavaAnimationState(effects, animation, project, nodes, transformGraph, nodeBindings, animationDiagnostics, sourceIndex);
-      const ir = createAnimatedJavaAnimationIR(animation, project, transformGraph, nodes, sceneScale, state.nodeFrames, cubeContent);
+      const ir = createAnimatedJavaAnimationIR(animation, project, transformGraph, nodes, 1, state.nodeFrames, cubeContent);
       ir.animation.events = { start: state.startEvents, timeline: state.timelineEvents, loop: [], stop: [] };
       diagnostics.push(...animationDiagnostics);
       return [{ ir, id: sanitizeResourcePath(animation.name, `animation_${sourceIndex + 1}`), name: cubeContent ? animation.name : prettify(animation.name) }];
@@ -389,12 +387,12 @@ function projectGroupDescendsFrom(id: string, ancestorId: string, graph: Project
   return false;
 }
 
-function applyGroupDefaultConfigs(nodes: Record<string, ImportedNode>, project: AjProject, graph: ProjectTransformGraph, bindings: ProjectNodeBindings): void {
-  for (const group of project.groups) {
+function applyGroupDefaultConfigs(nodes: Record<string, ImportedNode>, graph: ProjectTransformGraph, bindings: ProjectNodeBindings): void {
+  for (const group of graph.groups.values()) {
     const config = group.configs?.default;
     if (!isRecord(config)) continue;
     const nbt = nativeDisplayConfigNbt(config);
-    for (const nodeId of projectOutputNodeIds(group.uuid, graph, bindings, false)) {
+    for (const nodeId of bindings.get(group.uuid) ?? []) {
       const node = nodes[nodeId];
       if (!node || node.type === "anchor") continue;
       if (config.invisible === true) node.visible = false;

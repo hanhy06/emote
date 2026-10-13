@@ -8,7 +8,7 @@ import { exportAnimation } from "../export/projectExporter";
 import { parseMinecraftTime } from "../format/time";
 import { readInput } from "../import/formats";
 
-it("preserves the matrices of the 11 documentation samples after reference conversion", async () => {
+it("preserves the 11 documentation sample matrices with AJ's explicit source-scale correction", async () => {
   const converted = new Map<string, AnimationIR>();
   for (const [path, format, names] of [
     ["docs/reference/aj/emote.ajblueprint", "animated_java_blueprint", ["anvil"]],
@@ -30,6 +30,10 @@ it("preserves the matrices of the 11 documentation samples after reference conve
   for (const [name, actual] of converted) {
     const path = `docs/sample/${actual.id.startsWith("sit:") ? "sit/" : ""}${actual.id.replaceAll(":", ".")}.json`;
     const expected: AnimationIR = JSON.parse(await readFile(new URL(`../../../${path}`, import.meta.url), "utf8"));
+    if (name === "anvil" || actual.id.startsWith("sit:")) {
+      expect(expected.nodes.scene.transform?.[0]).toEqual({ id: "scale", op: "scale", value: [0.9375, 0.9375, 0.9375] });
+      expected.nodes.scene.transform![0].value = [1, 1, 1];
+    }
     if (name === "indicate") {
       const head = expected.animation.tracks.find((track) => track.target.node === "group:e6d94dbf-09d0-91b4-b6f9-741dcc8a6641" && track.target.operation === "rotation");
       expect(head?.driver.type).toBe("curve");
