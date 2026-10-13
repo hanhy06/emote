@@ -25,7 +25,6 @@ import { uniqueCubeNodeId, writeCubeResources, writeEmbeddedTextures } from "../
 import {
   cubePlayerHeadMatrix,
   isHiddenAccessoryBone,
-  isHiddenAccessoryName,
   normalizeBlockbenchName,
   prepareCubeModels,
 } from "../common/blockbenchCubeSkin";
@@ -241,16 +240,17 @@ function resolveBoneAnimators(animation: BbAnimation, animationIndex: number, bo
   }
 
   for (const [animatorId, animator] of Object.entries(animation.animators)) {
-    if (boneByUuid.has(animatorId) || isEffectAnimator(animatorId, animator) || isHiddenAccessoryName(animator.name ?? animatorId) || (animator.keyframes?.length ?? 0) === 0) continue;
+    if (boneByUuid.has(animatorId) || isEffectAnimator(animatorId, animator) || (animator.keyframes?.length ?? 0) === 0) continue;
     const normalizedName = normalizeBlockbenchName(animator.name);
     const matchingBones = normalizedName
-      ? bones.filter((bone) => !result.has(bone.uuid) && normalizeBlockbenchName(bone.group.name) === normalizedName)
+      ? bones.filter((bone) => normalizeBlockbenchName(bone.group.name) === normalizedName)
       : [];
-    if (matchingBones.length === 1) {
+    if (matchingBones.length === 1 && !result.has(matchingBones[0].uuid)) {
       result.set(matchingBones[0].uuid, animator);
       continue;
     }
-    diagnostics.push({ severity: "warning", code: `${DIAGNOSTIC_PREFIX}_animator_ignored`, message: `${animation.name}: an unsupported animator was omitted.`, sourcePath: `animations[${animationIndex}].animators.${animatorId}` });
+    const reason = matchingBones.length > 1 ? "the bone name is ambiguous" : matchingBones.length === 1 ? "the bone already has an animator" : "no matching bone was found";
+    diagnostics.push({ severity: "warning", code: `${DIAGNOSTIC_PREFIX}_animator_ignored`, message: `${animation.name}: an animator was omitted because ${reason}.`, sourcePath: `animations[${animationIndex}].animators.${animatorId}` });
   }
   return result;
 }
