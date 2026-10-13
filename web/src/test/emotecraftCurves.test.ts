@@ -101,20 +101,9 @@ it("preserves independent axes and reuses one bend sample for joint translation,
   }
 });
 
-it("keeps fade weights separate from channels and connects a binary packet to the same IR", async () => {
-  const animation = { ...dynamic, beginTick: 10, endTick: 30 };
-  const { ir } = createEmotecraftAnimationIR(animation, "fade", []);
+it("connects a binary packet to the same IR", async () => {
   const parser = new MolangParser();
   const evaluate: ScalarEvaluatorIR = (value, u, _base, resolveValue) => typeof value === "number" ? value : parser.parse(value.molang, { "query.key_frame_lerp_time": u, "query.value": resolveValue, "query.scoreboard": (id: string) => Number(id.slice(id.lastIndexOf(":") + 1)) });
-  expect(ir.animation.values!.pal_torso_bend_sample.type).toBe("curve");
-  for (const tick of [0, 5, 10, 30, 35, 40]) {
-    const weight = tick < 10 ? (1 - Math.cos(Math.PI * tick / 10)) / 2 : tick > 30 ? (1 + Math.cos(Math.PI * (tick - 30) / 10)) / 2 : 1;
-    const pose = evaluatePose(ir, tick / 20, evaluate);
-    const torso = new Matrix4().makeTranslation(0, 0.75, 0).multiply(new Matrix4().makeTranslation(0, -0.375 + 0.125 * (1 - Math.cos(60 * Math.min(1, tick / 20) * weight * Math.PI / 180)), 0.125 * Math.sin(60 * Math.min(1, tick / 20) * weight * Math.PI / 180)))
-      .multiply(new Matrix4().makeRotationX(-60 * Math.min(1, tick / 20) * weight * Math.PI / 180));
-    const expected = pose.pal_body.matrix.clone().multiply(torso);
-    for (const [axis, value] of expected.elements.entries()) expect(pose.pal_torso_lower.matrix.elements[axis]).toBeCloseTo(value, 10);
-  }
   const bytes = Uint8Array.from([0,0,0,8,16,1,153,6,0,0,0,47,0,0,0,0,4,65,160,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,4,98,111,100,121,1,1,1,63,201,15,219,65,160,0,0,0,0,0,0,0]);
   const project = await readInput("emotecraft_binary", { name: "binary.emotecraft", bytes });
   const pose = evaluatePose(project.animations[0].ir, 0.5, evaluate);

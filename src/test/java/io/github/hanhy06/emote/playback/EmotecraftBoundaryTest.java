@@ -3,6 +3,7 @@ package io.github.hanhy06.emote.playback;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.loader.AnimationJsonParser;
 import io.github.hanhy06.emote.playback.molang.MolangQuerySource;
+import io.github.hanhy06.emote.molang.MolangEngine;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponentInitializers;
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
 import java.util.Objects;
+import java.util.ArrayList;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -64,5 +66,58 @@ class EmotecraftBoundaryTest {
         var dynamic = animation("emotecraft-loop-dynamic");
         assertEquals(-35.0 / 48, pose(dynamic, "pal_body", 30, 0).m30(), 1e-5);
         assertEquals(-5.0 / 12, pose(dynamic, "pal_body", 0, 1).m30(), 1e-5);
+    }
+
+    private static void assertMatrix(Matrix4f expected, Matrix4f actual) {
+        for (int row = 0; row < 4; row++) for (int column = 0; column < 4; column++) {
+            assertEquals(expected.get(column, row), actual.get(column, row), 1e-5);
+        }
+    }
+
+    @Test
+    void preservesChannelSpecificBeginTransitionsAndEvaluatesEachEndpointOnce() throws Exception {
+        var fade = animation("emotecraft-fade");
+        float weight = (float) ((1 - Math.cos(Math.PI / 4)) / 2);
+        var expected = new Matrix4f().scale(0.9375f).translate(-weight, 1.25f, 0)
+            .rotateX((float) (-Math.PI / 2 * weight)).scale(1 + 2 * weight, 1, 1);
+        assertMatrix(expected, pose(fade, "pal_body", 5, 0));
+        assertEquals(-0.46875, pose(fade, "pal_body", 10, 0).m30(), 1e-5);
+        assertEquals(-0.46875, pose(fade, "pal_body", 35, 0).m30(), 1e-5);
+        var calls = new ArrayList<String>();
+        var evaluator = new AnimationEvaluator(animation("emotecraft-fade-dynamic"), session -> {
+            MolangQuerySource.EMPTY.apply(session);
+            session.setQueryFunction("scoreboard", arguments -> {
+                calls.add(arguments.string(0));
+                return MolangEngine.QueryValue.number(0);
+            });
+        });
+        evaluator.initialize(0, 0);
+        evaluator.prepareFrame(5, 0, 1, 5);
+        evaluator.evaluateFrame(5, 0, 1, 5, false);
+        for (int index = 0; index < evaluator.nodeCount(); index++) if (evaluator.nodeId(index).equals("pal_body")) {
+            assertEquals(-18.0 / 16 * weight * 0.9375, evaluator.matrix(index).m30(), 1e-5);
+        }
+        assertEquals(java.util.List.of("start", "end"), calls);
+    }
+
+    @Test
+    void preservesPerChannelEndEasingAndItsLoopAndHoldExclusions() throws Exception {
+        var fade = animation("emotecraft-fade-after");
+        float weight = (float) ((1 + Math.cos(Math.PI / 5)) / 2);
+        var body = new Matrix4f().scale(0.9375f).translate(-0.8f, 1.71f, 0)
+            .rotateX((float) (-Math.PI / 2 * weight)).scale(3, 1, 1);
+        assertMatrix(body, pose(fade, "pal_body", 32, 0));
+        float bend = (float) (Math.PI / 3 * weight);
+        var lower = new Matrix4f(body).translate(0, 0.75f, 0)
+            .translate(0, (float) (-0.375 + 0.125 * (1 - Math.cos(bend))), (float) (0.125 * Math.sin(bend)))
+            .rotateX(-bend);
+        assertMatrix(lower, pose(fade, "pal_torso_lower", 32, 0));
+        var steps = animation("emotecraft-fade-steps");
+        assertEquals(-0.9375, pose(steps, "pal_body", 32, 0).m30(), 1e-5);
+        assertEquals(-0.46875, pose(steps, "pal_body", 40, 0).m30(), 1e-5);
+        assertEquals(-0.9375, pose(animation("emotecraft-fade-loop"), "pal_body", 32, 0).m30(), 1e-5);
+        var hold = animation("emotecraft-loop-hold");
+        assertEquals(-0.625, pose(hold, "pal_body", 30, 0).m30(), 1e-5);
+        assertEquals(-0.3125, pose(hold, "pal_body", 40, 0).m30(), 1e-5);
     }
 }

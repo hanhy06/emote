@@ -1,5 +1,5 @@
 import type { AnimationIR, CurveIR, CurveKeyIR, NodeIR, ScalarIR, SegmentIR, SharedValueIR, TrackIR } from "../../domain/animationIR";
-import { blockbenchEasingIR } from "../../domain/animationIRCurves";
+import { blockbenchEasingIR, evaluateEasing } from "../../domain/animationIRCurves";
 import { affineCurveIR, affineScalarIR, scalarIR } from "../../domain/animationIRConversion";
 import type { ImportedNode } from "../../domain/conversionSeed";
 import type { ConversionIssue } from "../../foundation/diagnostics";
@@ -26,38 +26,56 @@ export function createEmotecraftAnimationIR(animation: PalAnimation, name: strin
     for (let suffix = 2; usedIds.has(id) || usedIds.has(`${id}_lower`); suffix++) id = `${base}_${suffix}`;
     usedIds.add(id); usedIds.add(`${id}_lower`); boneIds.set(name, id);
   }
-  const fades: string[] = [];
-  if (animation.beginTick && animation.beginTick > 0) {
-    values.fade_in = { type: "curve", base: [1], before: "first_pre", keys: [{ time: "0t", value: [0] }, { time: `${animation.beginTick}t`, value: [1] }], segments: [{ interpolation: "linear", easing: { kernel: "sine", direction: "in_out" } }] };
-    fades.push("q.value('fade_in', 0)");
-  }
-  if (animation.endTick !== undefined && animation.lengthTicks > animation.endTick) {
-    values.fade_out = { type: "curve", base: [1], before: "first_pre", keys: [{ time: `${animation.endTick}t`, value: [1] }, { time: `${animation.lengthTicks}t`, value: [0] }], segments: [{ interpolation: "linear", easing: { kernel: "sine", direction: "in_out" } }] };
-    fades.push("q.value('fade_out', 0)");
-  }
   const channelValue = (id: string, frames: readonly PalKeyframe[], fallback: number, angular: boolean, factor: number): ScalarIR => {
     if (!frames.length) return fallback;
     const curve = affineCurveIR(channelDriver(frames, angular), [factor], [0]);
-    let sampleId = `${id}_sample`;
-    if (animation.format === "player_animator" && animation.loop === "loop_from_tick") {
-      const first = frames.find((frame) => frame.endTick > animation.loopStartTick) ?? frames.at(-1)!;
-      const last = frames.at(-1)!;
-      const loopLength = animation.lengthTicks - animation.loopStartTick;
+    const first = frames[0], last = frames.at(-1)!;
+    const loop = animation.format === "player_animator" && animation.loop !== "once";
+    const returnTick = animation.loop === "loop_from_tick" ? animation.loopStartTick : 0;
+    const returned = frames.find((frame) => frame.endTick > returnTick) ?? last;
+    const begin = animation.beginTick !== undefined && animation.beginTick > 0;
+    const end = animation.loop === "once" && animation.endTick !== undefined && animation.lengthTicks > animation.endTick;
+    if (!loop && !begin && !end) {
+      values[id] = { ...curve, base: [fallback] };
+      return { molang: `q.value('${id}', 0)` };
+    }
+    values[`${id}_sample`] = { ...curve, base: [fallback] };
+    let sample = `q.value('${id}_sample', 0)`;
+    if (loop) {
+      const loopLength = animation.lengthTicks - returnTick;
       const startTick = Math.min(last.endTick, animation.lengthTicks);
-      const easing = animation.easeBeforeKeyframe ? first : last;
-      const seam = affineCurveIR(channelDriver([{ startTick, endTick: first.endTick + loopLength,
-        start: last.end, end: first.end, easing: easing.easing, easingArgs: easing.easingArgs }], angular), [factor], [0]);
-      values[`${id}_sample`] = { ...curve, base: [fallback] };
+      const easing = animation.easeBeforeKeyframe ? returned : last;
+      const seam = affineCurveIR(channelDriver([{ startTick, endTick: returned.endTick + loopLength,
+        start: last.end, end: returned.end, easing: easing.easing, easingArgs: easing.easingArgs }], angular), [factor], [0]);
       values[`${id}_loop_tail`] = { ...seam, base: [fallback] };
       values[`${id}_loop_start`] = { ...structuredClone(seam), base: [fallback], time_offset: `${loopLength}t` };
-      sampleId = `${id}_loop_sample`;
-      values[sampleId] = { type: "expression", base: [fallback], value: [{ molang:
-        `return q.loop_count > 0 && q.anim_time_ticks >= ${first.startTick} && q.anim_time_ticks < ${first.endTick} ? q.value('${id}_loop_start', 0) : q.anim_time_ticks >= ${last.endTick} ? q.value('${id}_loop_tail', 0) : q.value('${id}_sample', 0);` }] };
+      sample = `(q.loop_count > 0 && q.anim_time_ticks >= ${returned.startTick} && q.anim_time_ticks < ${returned.endTick} ? q.value('${id}_loop_start', 0) : q.anim_time_ticks >= ${last.endTick} ? q.value('${id}_loop_tail', 0) : ${sample})`;
     }
-    if (fades.length) {
-      values[`${id}_sample`] ??= { ...curve, base: [fallback] };
-      values[id] = { type: "expression", base: [fallback], value: [{ molang: `return ${fallback} + (q.value('${sampleId}', 0) - ${fallback}) * (${fades.join(" * ")});` }] };
-    } else values[id] = values[sampleId] ?? { ...curve, base: [fallback] };
+    let result = sample;
+    if (end) {
+      const easing = animation.easeBeforeKeyframe || last.easing === "bezier" || last.easing === "catmullrom" ? "easeinoutsine" : last.easing;
+      values[`${id}_fade_out`] = { ...channelDriver([{ startTick: animation.endTick!, endTick: animation.lengthTicks,
+        start: 1, end: 0, easing, easingArgs: [] }], false), base: [1] };
+      const finalWeight = easing === "constant" ? 1 : 1 - evaluateEasing(blockbenchEasingIR(easing, [easing === "step" ? 2 : /bounce$/.test(easing) ? 0.5 : 1]), 1);
+      const weight = `(q.anim_time_ticks >= ${animation.lengthTicks} ? ${finalWeight} : q.value('${id}_fade_out', 0))`;
+      result = `(q.anim_time_ticks >= ${animation.endTick} ? ${fallback} + (${sample} - ${fallback}) * ${weight} : ${sample})`;
+    }
+    if (begin) {
+      let incoming = sample;
+      const length = first.endTick - first.startTick;
+      if (length > 0) {
+        const progress = `(math.clamp((q.anim_time_ticks - ${first.startTick}) / ${length}, 0, 1))`;
+        values[`${id}_begin_start`] = { type: "expression", base: [fallback], value: [affineScalarIR(scalar(first.start, angular, false, progress), factor)] };
+        values[`${id}_begin_target`] = { type: "expression", base: [fallback], value: [affineScalarIR(scalar(first.end, angular, false, progress), factor)] };
+        values[`${id}_fade_in`] = { ...channelDriver([{ startTick: 0, endTick: length, start: 0, end: 1, easing: "easeinoutsine", easingArgs: [] }], false), base: [1] };
+        values[`${id}_begin`] = { type: "expression", base: [fallback], value: [{ molang:
+          `q.value('${id}_begin_start', 0); return ${fallback} + (q.value('${id}_begin_target', 0) - ${fallback}) * q.value('${id}_fade_in', 0);` }] };
+        const active = `q.anim_time_ticks >= ${first.startTick} && q.anim_time_ticks < ${first.endTick}${loop && returned === first ? " && q.loop_count == 0" : ""}`;
+        incoming = `(${active} ? q.value('${id}_begin', 0) : ${sample})`;
+      }
+      result = `(q.anim_time_ticks < ${animation.beginTick} ? ${incoming} : ${result})`;
+    }
+    values[id] = { type: "expression", base: [fallback], value: [{ molang: `return ${result};` }] };
     return { molang: `q.value('${id}', 0)` };
   };
   for (const name of names) {
@@ -125,8 +143,8 @@ export function createEmotecraftAnimationIR(animation: PalAnimation, name: strin
   return { ir, imported };
 }
 
-function scalar(value: PalExpression, angular: boolean, control = false): ScalarIR {
-  const raw = scalarIR(typeof value === "string" ? rewriteMolangIdentifiers(value, (id) => /^global\.key_frame_lerp_time$/i.test(id) ? "q.key_frame_lerp_time" : undefined) : value);
+function scalar(value: PalExpression, angular: boolean, control = false, progress = "q.key_frame_lerp_time"): ScalarIR {
+  const raw = scalarIR(typeof value === "string" ? rewriteMolangIdentifiers(value, (id) => /^global\.key_frame_lerp_time$/i.test(id) || progress !== "q.key_frame_lerp_time" && /^(?:q|query)\.key_frame_lerp_time$/i.test(id) ? progress : undefined) : value);
   return angular && (typeof raw === "number" || control) ? affineScalarIR(raw, 180 / Math.PI) : raw;
 }
 
