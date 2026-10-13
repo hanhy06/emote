@@ -337,10 +337,10 @@ export function App() {
                   parts={candidateParts}
                   assignments={assignments}
                   orders={orders}
-                          selectedCandidateIds={selectedCandidateIds}
+                  selectedCandidateIds={selectedCandidateIds}
                   onAssignPart={assignSelected}
                   onAssignOrder={assignOrder}
-                          onSelectCandidate={handleCandidateSelect}
+                  onSelectCandidate={handleCandidateSelect}
                 />
               </div>
             ) : (

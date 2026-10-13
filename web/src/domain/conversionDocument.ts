@@ -158,7 +158,7 @@ export function assignSkinPart(document: ConversionDocument, selectedCandidateId
   const targetOrders = new Map([...scenes].map((scene) => [scene, part ? orderedSkinGroups(document, part, scene) : new Map<string, number>()]));
   const previousParts = new Set<PlayerSkinPart>();
   const nodes = { ...document.nodes };
-  for (const [id, candidate] of Object.entries(document.skinCandidates)) {
+  for (const candidate of Object.values(document.skinCandidates)) {
     if (!groups.has(candidate.groupId)) continue;
     const node = nodes[candidate.nodeId];
     const attachment = node.attachments?.[candidate.attachmentId];
@@ -202,7 +202,7 @@ export function assignSkinOrder(document: ConversionDocument, selectedCandidateI
 }
 
 function orderedSkinGroups(document: ConversionDocument, part: PlayerSkinPart, scene: string): Map<string, number> {
-  const groups = Object.entries(document.skinCandidates).flatMap(([id, candidate]) => {
+  const groups = Object.values(document.skinCandidates).flatMap((candidate) => {
     if (candidate.sceneId !== scene) return [];
     const attachment = document.nodes[candidate.nodeId].attachments?.[candidate.attachmentId];
     return attachment?.type === "player_skin" && attachment.part === part ? [{ id: candidate.groupId, order: candidate.order, from: attachment.region.from }] : [];

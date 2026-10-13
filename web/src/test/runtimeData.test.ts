@@ -209,7 +209,11 @@ it("fits attachments independently without duplicating node expressions and rest
   expect(event.source).toEqual({ type: "node", node: childId, attachment: "prop" });
   expect(event.origin).toEqual(authored.animation.events!.timeline![0].origin);
   let calls = 0;
-  const poses = evaluatePose(actual, 0.5, (value) => typeof value === "number" ? value : (++calls, 7));
+  const poses = evaluatePose(actual, 0.5, (value) => {
+    if (typeof value === "number") return value;
+    calls++;
+    return 7;
+  });
   expect(calls).toBe(1);
   expect(poses.arm.matrix.elements[12]).toBe(7);
   expect(poses[childId].matrix.elements[12]).toBe(8);
