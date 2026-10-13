@@ -352,10 +352,12 @@ public final class AnimationJsonParser {
                     var v = vector(origin.get("offset"), 3, true, p + ".origin.offset", d).components();
                     offset = new Vec3(((ConstantValue) v.get(0)).value(), ((ConstantValue) v.get(1)).value(), ((ConstantValue) v.get(2)).value());
                 }
+                boolean useOriginRotation = origin.has("rotation");
+                if (useOriginRotation && !nonempty(origin, "rotation", p + ".origin", d).equals("origin")) throw d.error(p + ".origin.rotation", "must be origin");
                 String type = nonempty(action, "type", p + ".action", d);
                 Event parsed;
-                if (type.equals("commands")) parsed = new Event(new CommandSource(st, sourceNode, attachment), new CommandOrigin(ot, originNode, offset), strings(d.requireArray(action, "commands", p + ".action"), p + ".action.commands", d));
-                else if (type.equals("external")) parsed = new Event(new CommandSource(st, sourceNode, attachment), new CommandOrigin(ot, originNode, offset), List.of(), d.requireIdentifier(nonempty(action, "key", p + ".action", d), p + ".action.key"), d.requireElement(action, "data", p + ".action"));
+                if (type.equals("commands")) parsed = new Event(new CommandSource(st, sourceNode, attachment), new CommandOrigin(ot, originNode, offset, useOriginRotation), strings(d.requireArray(action, "commands", p + ".action"), p + ".action.commands", d));
+                else if (type.equals("external")) parsed = new Event(new CommandSource(st, sourceNode, attachment), new CommandOrigin(ot, originNode, offset, useOriginRotation), List.of(), d.requireIdentifier(nonempty(action, "key", p + ".action", d), p + ".action.key"), d.requireElement(action, "data", p + ".action"));
                 else throw d.error(p + ".action.type", "unknown action");
                 if (phase.equals("timeline")) {
                     int tick = d.requireTime(event, "time", p, 0);

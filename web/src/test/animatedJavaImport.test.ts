@@ -1,4 +1,5 @@
 import { expect, it } from "vitest";
+import { readFile } from "node:fs/promises";
 import { Euler, Matrix4 } from "three";
 import { createConversionDocument } from "../domain/conversionDocument";
 import { compileAnimation } from "../compiler/animationCompiler";
@@ -187,7 +188,7 @@ it("keeps variant config functions bound to their display entities including gen
     const phaseEvents = events.filter((event) => event.time === time);
     expect(phaseEvents).toHaveLength(4);
     for (const id of ["item", ...slices]) expect(phaseEvents).toContainEqual({
-      time, source: { type: "node", node: id, attachment: "display" }, origin: { type: "root" }, action: { type: "commands", commands: id === "item"
+      time, source: { type: "node", node: id, attachment: "display" }, origin: { type: "root", rotation: "origin" }, action: { type: "commands", commands: id === "item"
         ? [`say item ${phase}`] : phase === "active" ? ["data merge entity @s {Glowing:1b}", "say bone active"] : ["say bone default"] },
     });
     expect(phaseEvents.at(-1)).toEqual({ time, source: { type: "player" }, origin: { type: "root" }, action: { type: "commands", commands: [`say root ${phase}`] } });
@@ -239,4 +240,27 @@ it("preserves single-command conditions and skips only animations with condition
   const [json] = await exportAnimation(document, 0);
   expect(JSON.parse(await json.blob.text()).animation.events).toEqual(output.animation.events);
   await expect(importProject({ ...project, animations: project.animations!.slice(1, 2) })).rejects.toThrow("No Animated Java animations could be imported");
+});
+
+it("exports locator functions with animated node origins and keeps the exact v5 artifact consumed by the mod test", async () => {
+  const path = new URL("../../../src/test/resources/aj-function-source.ajblueprint", import.meta.url);
+  const input = await readInput("animated_java_blueprint", { name: "aj-function-source.ajblueprint", bytes: await readFile(path) });
+  const document = createConversionDocument(input, "AJ");
+  const [json] = await exportAnimation(document, 0);
+  const output = JSON.parse(await json.blob.text());
+  expect(output).toEqual(JSON.parse(await readFile(new URL("../../../src/test/resources/aj-function-export.json", import.meta.url), "utf8")));
+  expect(input.diagnostics).toEqual([]);
+  const locatorEvents = output.animation.events.timeline.filter((event: { origin: { type: string } }) => event.origin.type === "node");
+  expect(locatorEvents.map((event: { time: string; origin: unknown; action: unknown }) => [event.time, event.origin, event.action])).toEqual([
+    ["0t", { type: "node", node: "left_arm_tip", rotation: "origin" }, { type: "commands", commands: ["say locator start"] }],
+    ["10t", { type: "node", node: "left_arm_tip", rotation: "origin" }, { type: "commands", commands: ["execute if entity @s[tag=probe] run say locator middle"] }],
+    ["20t", { type: "node", node: "left_arm_tip", rotation: "origin" }, { type: "commands", commands: ["say locator end"] }],
+  ]);
+  for (const time of [0, 0.5, 1]) {
+    const pose = evaluatePose(output, time, (value) => { if (typeof value !== "number") throw new Error("Unexpected expression"); return value; });
+    const expected = new Matrix4().makeTranslation(1, 2, 3).multiply(new Matrix4().makeRotationY((30 + 60 * time) * Math.PI / 180))
+      .multiply(new Matrix4().makeScale(2, 2, 2)).multiply(new Matrix4().makeTranslation(0.5, 0.25, -0.5))
+      .multiply(new Matrix4().makeRotationFromEuler(new Euler(20 * Math.PI / 180, 10 * Math.PI / 180, 15 * Math.PI / 180, "ZYX")));
+    expect(pose.left_arm_tip.matrix.elements.every((value, axis) => Math.abs(value - expected.elements[axis]) < 1e-10)).toBe(true);
+  }
 });

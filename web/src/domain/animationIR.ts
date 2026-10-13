@@ -83,7 +83,7 @@ export interface EventIR {
   time?: string;
   direction?: "forward" | "backward" | "both";
   source: { type: "server" | "player" } | { type: "node"; node: string; attachment: string };
-  origin: { type: "root"; offset?: readonly [number, number, number] } | { type: "node"; node: string; offset?: readonly [number, number, number] };
+  origin: { type: "root"; offset?: readonly [number, number, number]; rotation?: "origin" } | { type: "node"; node: string; offset?: readonly [number, number, number]; rotation?: "origin" };
   action: { type: "commands"; commands: string[] } | { type: "external"; key: string; data: unknown };
 }
 

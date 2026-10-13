@@ -148,7 +148,7 @@ function resolveAnimatedJavaAnimationState(
   diagnostics: ConversionIssue[],
   animationIndex: number,
 ): AnimatedJavaAnimationState {
-  const timeline = [...effects, ...nativeFunctionEvents(source, diagnostics, animationIndex)];
+  const timeline = [...effects, ...nativeFunctionEvents(source, project, bindings, diagnostics, animationIndex)];
   const start = nativeStartEvents(project, nodes, graph, bindings);
   const variants = nativeVariants(project);
   const stateFrames: ProjectNodeStateFrame[] = [];
@@ -319,9 +319,11 @@ function projectEffectEvents(source: AjProjectAnimation, cubes: AnimatedJavaCube
   return events.sort((first, second) => parseAnimationSeconds(first.time) - parseAnimationSeconds(second.time));
 }
 
-function nativeFunctionEvents(source: AjProjectAnimation, diagnostics: ConversionIssue[], animationIndex: number): TimelineEventIR[] {
+function nativeFunctionEvents(source: AjProjectAnimation, project: AjProject, bindings: ProjectNodeBindings, diagnostics: ConversionIssue[], animationIndex: number): TimelineEventIR[] {
   const result: TimelineEventIR[] = [];
   for (const [animatorId, animator] of Object.entries(source.animators)) {
+    const locator = project.elements.find((element) => element.uuid === animatorId && element.type === "locator");
+    const locatorNode = locator ? bindings.get(locator.uuid)?.[0] : undefined;
     for (const [keyframeIndex, frame] of (animator.keyframes ?? []).entries()) {
       if (frame.channel !== "function" && frame.channel !== "commands") continue;
       const sourcePath = `animations[${animationIndex}].animators.${animatorId}.keyframes[${keyframeIndex}]`;
@@ -332,7 +334,8 @@ function nativeFunctionEvents(source: AjProjectAnimation, diagnostics: Conversio
         const condition = point.execute_condition?.trim();
         if (condition && commands.length > 1) throw new ConversionError("unsupported_animated_java_conditional_commands", `${source.name} at ${frame.time * 20}t: a conditional command batch requires one shared condition evaluation and cannot be represented by Animation v5.`, sourcePath);
         if (point.repeat) diagnostics.push({ severity: "warning", code: "animated_java_repeating_function_ignored", message: `${source.name} at ${frame.time * 20}t: repeating function behavior was converted to a single timeline event. Review and edit the event.`, sourcePath });
-        result.push({ time: sourceSecondsTime(frame.time), source: { type: "player" }, origin: { type: "root" }, action: { type: "commands", commands: condition ? commands.map((command) => `execute ${condition} run ${command}`) : commands } });
+        if (locator && !locatorNode) throw new ConversionError("animated_java_function_origin_missing", `${source.name} at ${frame.time * 20}t: locator function has no output node.`, sourcePath);
+        result.push({ time: sourceSecondsTime(frame.time), source: { type: "player" }, origin: locatorNode ? { type: "node", node: locatorNode, rotation: "origin" } : { type: "root" }, action: { type: "commands", commands: condition ? commands.map((command) => `execute ${condition} run ${command}`) : commands } });
       }
     }
   }
@@ -388,7 +391,7 @@ function collectVariantConfigFrame(frames: ProjectNodeStateFrame[], events: Time
   const nbt = nativeDisplayConfigNbt(config);
   if (visible !== undefined || nbt) frames.push({ nodeId, time, ...(visible === undefined ? {} : { visible }), ...(nbt ? { nbt: readDisplayNbt(nbt) } : {}) });
   const onApply = stringField(config, "on_apply_function") ?? stringField(config, "onApplyFunction");
-  if (onApply) events.push({ time: sourceSecondsTime(time), source: { type: "node", node: nodeId, attachment: "display" }, origin: { type: "root" }, action: { type: "commands", commands: functionCommands(onApply) } });
+  if (onApply) events.push({ time: sourceSecondsTime(time), source: { type: "node", node: nodeId, attachment: "display" }, origin: { type: "root", rotation: "origin" }, action: { type: "commands", commands: functionCommands(onApply) } });
 }
 
 function projectOutputNodeIds(sourceId: string, graph: ProjectTransformGraph, bindings: ProjectNodeBindings, includeDescendants = true): string[] {

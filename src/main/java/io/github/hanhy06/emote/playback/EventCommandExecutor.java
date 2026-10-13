@@ -7,7 +7,10 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.Vec2;
+import net.minecraft.util.Mth;
 import org.joml.Matrix4fc;
+import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.jspecify.annotations.Nullable;
 
@@ -32,13 +35,14 @@ public final class EventCommandExecutor implements EmotePlayback.EventExecutor {
     public void execute(EmotePlayback.EventOccurrence preparedEvent) {
         EmoteAnimation.Event event = preparedEvent.event();
         if (event.externalKey() != null) throw new IllegalStateException("No resolver for external action " + event.externalKey());
-        Vec3 origin = resolveOrigin(event.origin(), this.scene, preparedEvent.pose());
+        Vec3 origin = resolveOrigin(event.origin(), preparedEvent.pose());
         if (!event.commands().isEmpty()) {
             CommandSourceStack source = createSource(event.source())
                 .withPosition(origin)
                 .withLevel(this.level)
                 .withPermission(LevelBasedPermissionSet.GAMEMASTER)
                 .withSuppressedOutput();
+            if (event.origin().useOriginRotation()) source = source.withRotation(resolveRotation(event.origin(), preparedEvent.pose()));
             for (String command : event.commands()) {
                 EmoteMod.SERVER.getCommands().performPrefixedCommand(source, command);
             }
@@ -63,13 +67,12 @@ public final class EventCommandExecutor implements EmotePlayback.EventExecutor {
         };
     }
 
-    static Vec3 resolveOrigin(EmoteAnimation.CommandOrigin origin, PlaybackScene scene, EmotePlayback.PoseView pose) {
+    static Vec3 resolveOrigin(EmoteAnimation.CommandOrigin origin, EmotePlayback.PoseView pose) {
         RootTransform root = pose.root();
         Matrix4fc displayMatrix;
         if (origin.type() == EmoteAnimation.OriginType.ROOT) {
             displayMatrix = root.rotationMatrix();
         } else {
-            if (!scene.nodes().containsKey(origin.node())) throw new IllegalStateException("Command references missing playback node: " + origin.node());
             displayMatrix = pose.nodeMatrix(origin.node());
         }
         Matrix4fc matrix = root.worldMatrix(pose.orientationYaw(), displayMatrix);
@@ -79,6 +82,13 @@ public final class EventCommandExecutor implements EmotePlayback.EventExecutor {
             (float) origin.offset().z()
         ), new Vector3f());
         return root.position().add(position.x, position.y, position.z);
+    }
+
+    static Vec2 resolveRotation(EmoteAnimation.CommandOrigin origin, EmotePlayback.PoseView pose) {
+        Matrix4fc displayMatrix = origin.type() == EmoteAnimation.OriginType.ROOT ? pose.root().rotationMatrix() : pose.nodeMatrix(origin.node());
+        Vector3f angles = pose.root().worldMatrix(pose.orientationYaw(), displayMatrix)
+            .getUnnormalizedRotation(new Quaternionf()).normalize().getEulerAnglesYXZ(new Vector3f());
+        return new Vec2((float) -Math.toDegrees(angles.x), Mth.wrapDegrees(180.0F - (float) Math.toDegrees(angles.y)));
     }
 
     private Entity requiredEntity(String nodeId, String attachmentId) {

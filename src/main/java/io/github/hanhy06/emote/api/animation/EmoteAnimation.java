@@ -151,7 +151,7 @@ public record EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings set
         public CommandSource(SourceType type, String node) { this(type, node, null); }
     }
     public enum SourceType { PLAYER, SERVER, NODE }
-    public record CommandOrigin(OriginType type, String node, Vec3 offset) {}
+    public record CommandOrigin(OriginType type, String node, Vec3 offset, boolean useOriginRotation) {}
     public enum OriginType { ROOT, NODE }
 
 }

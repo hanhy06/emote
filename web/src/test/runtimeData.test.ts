@@ -67,7 +67,7 @@ const animation: AnimationJson = {
     ],
     events: {
       start: [{ source: { type: "server" }, origin: { type: "root" }, action: { type: "commands", commands: ["say start"] } }],
-      timeline: [{ time: "0.15s", direction: "both", source: { type: "node", node: "arm", attachment: "prop" }, origin: { type: "node", node: "arm", offset: [0, 0.5, 0] }, action: { type: "commands", commands: ["say first", "say second"] } }],
+      timeline: [{ time: "0.15s", direction: "both", source: { type: "node", node: "arm", attachment: "prop" }, origin: { type: "node", node: "arm", offset: [0, 0.5, 0], rotation: "origin" }, action: { type: "commands", commands: ["say first", "say second"] } }],
       loop: [{ source: { type: "player" }, origin: { type: "root" }, action: { type: "external", key: "example:loop", data: { payload: "keep" } } }],
       stop: [{ source: { type: "server" }, origin: { type: "root" }, action: { type: "commands", commands: ["say stop"] } }],
     },
