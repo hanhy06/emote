@@ -168,31 +168,10 @@ public final class PreparedSequence implements PreparedEmote {
     public record AnimationStep(List<Choice> choices, int repeat, int transitionTicks) implements Step {
         public AnimationStep {
             choices = List.copyOf(choices);
-            if (choices.isEmpty()) {
-                throw new IllegalArgumentException("sequence animation choices must not be empty");
-            }
-            if (choices.stream().anyMatch(Objects::isNull)) {
-                throw new NullPointerException("choices");
-            }
-            if (repeat < 1) {
-                throw new IllegalArgumentException("sequence repeat must be at least 1");
-            }
-            if (transitionTicks < 0) {
-                throw new IllegalArgumentException("sequence transition must not be negative");
-            }
-        }
-
-        public AnimationStep(List<Choice> choices, int repeat) {
-            this(choices, repeat, 0);
         }
     }
 
     public record WaitStep(int ticks) implements Step {
-        public WaitStep {
-            if (ticks < 1) {
-                throw new IllegalArgumentException("sequence wait must be at least 1 tick");
-            }
-        }
     }
 
     public sealed interface Choice permits AnimationChoice, ControlChoice {
