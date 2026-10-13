@@ -2,7 +2,6 @@ package io.github.hanhy06.emote.playback.molang;
 
 import io.github.hanhy06.emote.playback.molang.MolangQueries.*;
 import io.github.hanhy06.emote.molang.MolangEngine;
-import io.github.hanhy06.emote.molang.MolangQueryCatalog;
 import net.minecraft.world.phys.Vec3;
 import java.util.Set;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -25,10 +24,7 @@ public final class PlayerMolangQueries {
     private PlayerMolangQueries() {}
     public static MolangQuerySource forPlayer(ServerPlayer player) {
         Objects.requireNonNull(player, "player");
-        return new MolangQuerySource() {
-            @Override public void apply(MolangEngine.Session session) { apply(session, MolangQueryCatalog.queryNames()); }
-            @Override public void apply(MolangEngine.Session session, Set<String> queries) { PlayerMolangQueries.apply(player, session, queries); }
-        };
+        return (session, queries) -> apply(player, session, queries);
     }
 
     private static void apply(ServerPlayer player, MolangEngine.Session session, Set<String> queries) {

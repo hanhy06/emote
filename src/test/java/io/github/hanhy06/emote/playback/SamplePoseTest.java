@@ -69,7 +69,7 @@ class SamplePoseTest {
         for (var runElement : sample.getAsJsonArray("runs")) {
             var run = runElement.getAsJsonObject();
             var queries = run.getAsJsonObject("queries");
-            MolangQuerySource querySource = session -> {
+            MolangQuerySource querySource = (session, queryNames) -> {
                 MolangQuerySource.EMPTY.apply(session);
                 queries.entrySet().forEach(query -> session.setQuery(query.getKey(), query.getValue().getAsDouble()));
             };
@@ -114,7 +114,7 @@ class SamplePoseTest {
         var loaded = new AnimationJsonParser().parse(Path.of("common-curves.json"), bytes);
         var animation = PreparedAnimation.prepare(loaded, registries);
         Map<String, Integer> calls = new HashMap<>();
-        MolangQuerySource querySource = session -> {
+        MolangQuerySource querySource = (session, queries) -> {
             MolangQuerySource.EMPTY.apply(session);
             session.setQueryFunction("scoreboard", arguments -> {
                 String id = arguments.string(0);
@@ -228,7 +228,7 @@ class SamplePoseTest {
         try (var input = Objects.requireNonNull(getClass().getResourceAsStream("/blockbench-curves.json"))) { bytes = input.readAllBytes(); }
         var animation = PreparedAnimation.prepare(new AnimationJsonParser().parse(Path.of("blockbench-curves.json"), bytes), registries);
         List<String> calls = new ArrayList<>();
-        var evaluator = new AnimationEvaluator(animation, session -> {
+        var evaluator = new AnimationEvaluator(animation, (session, queries) -> {
             MolangQuerySource.EMPTY.apply(session);
             session.setQueryFunction("scoreboard", arguments -> {
                 String id = arguments.string(0);
@@ -263,7 +263,7 @@ class SamplePoseTest {
             try (var input = Objects.requireNonNull(getClass().getResourceAsStream("/bedrock-" + name + ".json"))) { bytes = input.readAllBytes(); }
             var animation = PreparedAnimation.prepare(new AnimationJsonParser().parse(Path.of("bedrock-" + name + ".json"), bytes), registries);
             List<String> calls = new ArrayList<>();
-            var evaluator = new AnimationEvaluator(animation, session -> {
+            var evaluator = new AnimationEvaluator(animation, (session, queries) -> {
                 MolangQuerySource.EMPTY.apply(session);
                 session.setQueryFunction("scoreboard", arguments -> {
                     String id = arguments.string(0);
@@ -325,7 +325,7 @@ class SamplePoseTest {
             try (var input = Objects.requireNonNull(getClass().getResourceAsStream("/emotecraft-" + name + ".json"))) { bytes = input.readAllBytes(); }
             var animation = PreparedAnimation.prepare(new AnimationJsonParser().parse(Path.of("emotecraft-" + name + ".json"), bytes), registries);
             List<String> calls = new ArrayList<>();
-            var evaluator = new AnimationEvaluator(animation, session -> {
+            var evaluator = new AnimationEvaluator(animation, (session, queries) -> {
                 MolangQuerySource.EMPTY.apply(session);
                 session.setQueryFunction("scoreboard", arguments -> {
                     String id = arguments.string(0);
@@ -486,7 +486,7 @@ class SamplePoseTest {
         var workerThread = new java.util.concurrent.atomic.AtomicReference<Thread>();
         var release = new java.util.concurrent.CountDownLatch(1);
         var queryThreads = new ArrayList<Thread>();
-        MolangQuerySource queries = session -> {
+        MolangQuerySource queries = (session, queryNames) -> {
             queryThreads.add(Thread.currentThread());
             MolangQuerySource.EMPTY.apply(session);
         };

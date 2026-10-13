@@ -84,7 +84,7 @@ class EmotecraftBoundaryTest {
         assertEquals(-0.46875, pose(fade, "pal_body", 10, 0).m30(), 1e-5);
         assertEquals(-0.46875, pose(fade, "pal_body", 35, 0).m30(), 1e-5);
         var calls = new ArrayList<String>();
-        var evaluator = new AnimationEvaluator(animation("emotecraft-fade-dynamic"), session -> {
+        var evaluator = new AnimationEvaluator(animation("emotecraft-fade-dynamic"), (session, queries) -> {
             MolangQuerySource.EMPTY.apply(session);
             session.setQueryFunction("scoreboard", arguments -> {
                 calls.add(arguments.string(0));
