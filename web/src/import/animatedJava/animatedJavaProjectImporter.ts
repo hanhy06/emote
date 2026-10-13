@@ -177,7 +177,7 @@ function resolveAnimatedJavaAnimationState(
           message: `Variant ${variantId} changes cube textures, which cannot yet be represented by the native importer.`,
           sourcePath: `variants.${variantId}.texture_map`,
         });
-        collectVariantFrames(stateFrames, project, nodes, graph, bindings, variantId, variant, frame.time);
+        collectVariantFrames(stateFrames, timeline, project, nodes, graph, bindings, variantId, variant, frame.time);
         const onApply = stringField(variant, "on_apply_function") ?? stringField(variant, "onApplyFunction");
         if (onApply) timeline.push({ time: sourceSecondsTime(frame.time), source: { type: "player" }, origin: { type: "root" }, action: { type: "commands", commands: functionCommands(onApply) } });
       }
@@ -338,6 +338,7 @@ function nativeVariants(project: AjProject): Map<string, Record<string, unknown>
 
 function collectVariantFrames(
   frames: ProjectNodeStateFrame[],
+  events: TimelineEventIR[],
   project: AjProject,
   nodes: Record<string, ImportedNode>,
   graph: ProjectTransformGraph,
@@ -354,20 +355,22 @@ function collectVariantFrames(
     const configs = (element as Record<string, unknown>).configs;
     const config = (isRecord(configs) && isRecord(configs.variants) ? configs.variants[configId] : undefined)
       ?? (isDefault && isRecord(configs) ? configs.default : undefined);
-    if (isRecord(config)) collectVariantConfigFrame(frames, element.uuid, config, time);
+    if (isRecord(config)) collectVariantConfigFrame(frames, events, element.uuid, config, time);
   }
   for (const group of graph.groups.values()) {
     if (excluded.has(group.uuid)) continue;
     const config = group.configs?.variants?.[configId] ?? (isDefault ? group.configs?.default : undefined);
     if (!isRecord(config)) continue;
-    for (const nodeId of bindings.get(group.uuid) ?? []) if (nodes[nodeId]?.type === "item_display") collectVariantConfigFrame(frames, nodeId, config, time);
+    for (const nodeId of bindings.get(group.uuid) ?? []) if (nodes[nodeId]?.type === "item_display") collectVariantConfigFrame(frames, events, nodeId, config, time);
   }
 }
 
-function collectVariantConfigFrame(frames: ProjectNodeStateFrame[], nodeId: string, config: Record<string, unknown>, time: number): void {
+function collectVariantConfigFrame(frames: ProjectNodeStateFrame[], events: TimelineEventIR[], nodeId: string, config: Record<string, unknown>, time: number): void {
   const visible = typeof config.invisible === "boolean" ? !config.invisible : undefined;
   const nbt = nativeDisplayConfigNbt(config);
   if (visible !== undefined || nbt) frames.push({ nodeId, time, ...(visible === undefined ? {} : { visible }), ...(nbt ? { nbt: readDisplayNbt(nbt) } : {}) });
+  const onApply = stringField(config, "on_apply_function") ?? stringField(config, "onApplyFunction");
+  if (onApply) events.push({ time: sourceSecondsTime(time), source: { type: "node", node: nodeId, attachment: "display" }, origin: { type: "root" }, action: { type: "commands", commands: functionCommands(onApply) } });
 }
 
 function projectOutputNodeIds(sourceId: string, graph: ProjectTransformGraph, bindings: ProjectNodeBindings, includeDescendants = true): string[] {

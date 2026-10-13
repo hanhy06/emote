@@ -157,3 +157,41 @@ it("skips excluded variant nodes, preserves partial patches and reapplies defaul
     "animated_java_effect_ignored", "animated_java_unknown_variant", "animated_java_variant_texture_map_ignored",
   ]);
 });
+
+it("keeps variant config functions bound to their display entities including generated skin slices and default configs", async () => {
+  const bone = { ...group("limb"), name: "left_arm", configs: {
+    default: { on_apply_function: "/say bone default" },
+    variants: { active: { on_apply_function: "/data merge entity @s {Glowing:1b}\n/say bone active" } },
+  } };
+  const item = { ...display("item"), configs: {
+    default: { on_apply_function: "/say item default" }, variants: { active: { on_apply_function: "/say item active" } },
+  } };
+  const excluded = { ...display("excluded"), configs: { variants: { active: { on_apply_function: "/say excluded" } } } };
+  const { input, document, output } = await importProject({
+    elements: [{ uuid: "limb_cube", name: "arm", type: "cube", from: [16, 32, 48], to: [20, 44, 52], faces: {} }, item, excluded], groups: [bone],
+    outliner: [{ uuid: "limb", children: ["limb_cube", "item", "excluded"] }],
+    variants: { default: { uuid: "default", name: "default", is_default: true, on_apply_function: "/say root default" }, list: [
+      { uuid: "active", name: "active", excluded_nodes: ["excluded"], on_apply_function: "/say root active" },
+    ] },
+    animations: [{ name: "motion", length: 1, loop: "once", animators: { effects: { type: "effect", keyframes: [
+      { channel: "variant", time: 0.2, data_points: [{ variant: "active" }] },
+      { channel: "variant", time: 0.8, data_points: [{ variant: "default" }] },
+    ] } } }],
+  });
+  expect(input.diagnostics).toEqual([]);
+  const slices = Object.keys(output.nodes).filter((id) => output.nodes[id].source?.node_id === "limb_cube");
+  expect(slices).toHaveLength(2);
+  expect(slices.every((id) => output.nodes[id].attachments?.display.type === "player_skin")).toBe(true);
+  const events = output.animation.events!.timeline!;
+  for (const [time, phase] of [["4t", "active"], ["16t", "default"]] as const) {
+    const phaseEvents = events.filter((event) => event.time === time);
+    expect(phaseEvents).toHaveLength(4);
+    for (const id of ["item", ...slices]) expect(phaseEvents).toContainEqual({
+      time, source: { type: "node", node: id, attachment: "display" }, origin: { type: "root" }, action: { type: "commands", commands: id === "item"
+        ? [`say item ${phase}`] : phase === "active" ? ["data merge entity @s {Glowing:1b}", "say bone active"] : ["say bone default"] },
+    });
+    expect(phaseEvents.at(-1)).toEqual({ time, source: { type: "player" }, origin: { type: "root" }, action: { type: "commands", commands: [`say root ${phase}`] } });
+  }
+  const [json] = await exportAnimation(document, 0);
+  expect(JSON.parse(await json.blob.text()).animation.events.timeline).toEqual(events);
+});
