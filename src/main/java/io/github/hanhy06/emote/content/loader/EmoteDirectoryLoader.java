@@ -13,20 +13,8 @@ import java.util.stream.Stream;
 import io.github.hanhy06.emote.api.EmoteLoadException;
 
 public final class EmoteDirectoryLoader {
-    private final AnimationJsonParser animationParser;
-    private final SequenceJsonParser sequenceParser;
-
-    public EmoteDirectoryLoader() {
-        this(new AnimationJsonParser(), new SequenceJsonParser());
-    }
-
-    EmoteDirectoryLoader(
-        AnimationJsonParser animationParser,
-        SequenceJsonParser sequenceParser
-    ) {
-        this.animationParser = animationParser;
-        this.sequenceParser = sequenceParser;
-    }
+    private final AnimationJsonParser animationParser = new AnimationJsonParser();
+    private final SequenceJsonParser sequenceParser = new SequenceJsonParser();
 
     public LoadResult load(Path directory) {
         List<LoadedAnimation> candidates = new ArrayList<>();

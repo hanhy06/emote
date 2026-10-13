@@ -308,12 +308,6 @@ public final class PreparedAnimation implements PreparedEmote {
         }
     }
 
-    public static Matrix4f baseMatrix(EmoteAnimation.Node node) {
-        Matrix4f matrix = new Matrix4f();
-        for (var operation : node.transform()) matrix.mul(operationMatrix(operation, operation.value().stream().mapToDouble(Double::doubleValue).toArray()));
-        return matrix;
-    }
-
     public static Matrix4f operationMatrix(EmoteAnimation.Operation operation, double[] value) {
         return operationMatrix(operation, value, new Matrix4f());
     }
