@@ -44,6 +44,7 @@ export function convertEmotecraftSong(packet: NonNullable<EmotecraftFile["song"]
   const commandsByTime = new Map<number, string[]>();
   const solo = song.hasSolo();
   let ignoredCustomNotes = 0;
+  let ignoredPitchNotes = 0;
   let truncatedNotes = 0;
   let ignoredPanning = false;
   for (const layer of song.layers) {
@@ -62,8 +63,12 @@ export function convertEmotecraftSong(packet: NonNullable<EmotecraftFile["song"]
       }
       const volume = layerVolume * (note.velocity ?? 100) / 10_000;
       if (volume <= 0) continue;
-      ignoredPanning ||= (layer.stereo ?? 0) !== 0 || (note.panning ?? 0) !== 0;
       const pitch = 2 ** (((note.key ?? 45) - 45 + (note.pitch ?? 0) / 100) / 12);
+      if (pitch > 2) {
+        ignoredPitchNotes++;
+        continue;
+      }
+      ignoredPanning ||= (layer.stereo ?? 0) !== 0 || (note.panning ?? 0) !== 0;
       const command = `playsound minecraft:block.note_block.${instrument} record @a ~ ~ ~ ${formatNumber(volume)} ${formatNumber(pitch)} 0`;
       const commands = commandsByTime.get(time) ?? [];
       commands.push(command);
@@ -76,6 +81,11 @@ export function convertEmotecraftSong(packet: NonNullable<EmotecraftFile["song"]
     severity: "warning",
     code: "emotecraft_song_custom_instruments_ignored",
     message: `${ignoredCustomNotes} embedded NBS note(s) use custom instruments whose audio is not stored in the Emotecraft file and were ignored.`,
+  });
+  if (ignoredPitchNotes > 0) diagnostics.push({
+    severity: "warning",
+    code: "emotecraft_song_pitch_ignored",
+    message: `${ignoredPitchNotes} embedded NBS note(s) exceed the Minecraft playsound pitch limit of 2 and were ignored.`,
   });
   if (truncatedNotes > 0) diagnostics.push({
     severity: "warning",

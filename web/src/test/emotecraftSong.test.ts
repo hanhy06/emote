@@ -82,3 +82,16 @@ it("keeps instrument 16 when the NBS header declares twenty built-in instruments
   expect(result.animation.animation.events.timeline[0].action.commands).toEqual(["playsound minecraft:block.note_block.trumpet record @a ~ ~ ~ 1 1 0"]);
   expect(result.project.diagnostics).toEqual([]);
 });
+
+it("omits unrepresentable pitches without clamping and keeps boundary pitches after detuning", async () => {
+  const result = await exportSong(2, nbs([
+    { instrument: 0, key: 33 }, { instrument: 0, key: 57 }, { instrument: 0, key: 69 },
+    { instrument: 0, key: 57, pitch: 1 }, { instrument: 0, key: 58, pitch: -100 },
+  ]));
+  expect(result.animation.animation.events.timeline[0].action.commands).toEqual([
+    "playsound minecraft:block.note_block.harp record @a ~ ~ ~ 1 0.5 0",
+    "playsound minecraft:block.note_block.harp record @a ~ ~ ~ 1 2 0",
+    "playsound minecraft:block.note_block.harp record @a ~ ~ ~ 1 2 0",
+  ]);
+  expect(result.project.diagnostics).toEqual([expect.objectContaining({ code: "emotecraft_song_pitch_ignored", message: expect.stringContaining("2 embedded NBS note(s)") })]);
+});
