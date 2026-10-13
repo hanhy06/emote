@@ -10,7 +10,7 @@ export interface EmotecraftFile {
     badges: string[];
   };
   icon?: Uint8Array;
-  song?: Uint8Array;
+  song?: { version: number; bytes: Uint8Array };
 }
 
 export interface PalAnimation {
@@ -62,7 +62,6 @@ const HEADER_VERSION = 2;
 const ICON_PACKET = 0x12;
 const ICON_VERSION = 0x12;
 const SONG_PACKET = 3;
-const SONG_VERSION = 2;
 const MAX_COLLECTION_SIZE = 100_000;
 const MAX_STRING_BYTES = 1_048_576;
 const LEGACY_PLAYER_BONES = ["head", "body", "right_arm", "left_arm", "right_leg", "left_leg"] as const;
@@ -116,7 +115,7 @@ export function decodeEmotecraft(bytes: Uint8Array): EmotecraftFile {
   let animation: PalAnimation | undefined;
   const metadata: EmotecraftFile["metadata"] = { badges: [] };
   let icon: Uint8Array | undefined;
-  let song: Uint8Array | undefined;
+  let song: EmotecraftFile["song"];
 
   for (let index = 0; index < subPacketCount; index++) {
     const id = reader.readUint8();
@@ -150,8 +149,7 @@ export function decodeEmotecraft(bytes: Uint8Array): EmotecraftFile {
       if (iconSize < 0 || iconSize > packet.remaining) throw new Error(`Invalid Emotecraft icon size ${iconSize}.`);
       if (iconSize > 0) icon = packet.readBytes(iconSize);
     } else if (id === SONG_PACKET) {
-      if (version !== SONG_VERSION) throw new Error(`Emotecraft song version must be ${SONG_VERSION}, received ${version}.`);
-      song = packet.readBytes(packet.remaining);
+      song = { version, bytes: packet.readBytes(packet.remaining) };
     }
     packet.skip(packet.remaining);
   }

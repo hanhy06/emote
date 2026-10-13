@@ -2,6 +2,7 @@ import { sourceSecondsTime } from "../../format/time";
 import { fromArrayBuffer } from "@nbsjs/core";
 import type { ConversionIssue } from "../../foundation/diagnostics";
 import type { TimelineEventIR } from "../../domain/animationIR";
+import type { EmotecraftFile } from "./emotecraftBinary";
 
 const MINECRAFT_INSTRUMENTS = [
   "harp", "bass", "basedrum", "snare", "hat", "guitar", "flute", "bell", "chime", "xylophone",
@@ -14,7 +15,15 @@ export interface EmotecraftSongConversion {
   diagnostics: ConversionIssue[];
 }
 
-export function convertEmotecraftSong(bytes: Uint8Array, durationTicks: number): EmotecraftSongConversion {
+export function convertEmotecraftSong(packet: NonNullable<EmotecraftFile["song"]>, durationTicks: number): EmotecraftSongConversion {
+  if (packet.version !== 2) return {
+    events: [],
+    diagnostics: [{
+      severity: "warning", code: "emotecraft_song_version_unsupported",
+      message: `Embedded Emotecraft music version ${packet.version} is unsupported and was ignored; the animation was preserved.`,
+    }],
+  };
+  const bytes = packet.bytes;
   let song;
   try {
     song = fromArrayBuffer(bytes.slice().buffer);
