@@ -47,48 +47,43 @@ public final class ReloadService {
         ConfigManager.PreparedConfig preparedConfig = this.configManager.prepare();
         if (preparedConfig == null) {
             EmoteMod.LOGGER.warn("Emote reload failed; keeping the current state because the configuration is invalid");
-            return result(ReloadStats.failed(this.emoteCatalog.fileEmotes().size(), ReloadResult.Failure.CONFIG_LOAD));
+            return result(0, this.emoteCatalog.fileEmotes().size(), ReloadResult.Failure.CONFIG_LOAD);
         }
 
-        ReloadStats stats = reloadPreparedConfig(preparedConfig);
-        return result(stats);
-    }
-
-    private ReloadResult result(ReloadStats stats) {
-        var accessConfig = this.configManager.getAccessConfig();
-        return new ReloadResult(
-            accessConfig.disabled().size(),
-            accessConfig.permissions().size(),
-            stats.detectedFileCount(),
-            stats.loadedEmoteCount(),
-            stats.failure()
-        );
-    }
-
-    private ReloadStats reloadPreparedConfig(ConfigManager.PreparedConfig preparedConfig) {
         PreparedRegistry prepared;
         try {
             prepared = prepareRegistry();
         } catch (UncheckedIOException exception) {
             EmoteMod.LOGGER.warn("Emote reload failed; keeping the current registry and active playbacks");
-            return ReloadStats.failed(this.emoteCatalog.fileEmotes().size(), ReloadResult.Failure.EMOTE_LOAD);
+            return result(0, this.emoteCatalog.fileEmotes().size(), ReloadResult.Failure.EMOTE_LOAD);
         }
         ResourcePackService.BuildResult resourcePackResult = this.resources.rebuild();
         if (resourcePackResult == ResourcePackService.BuildResult.FAILED) {
             EmoteMod.LOGGER.warn("Emote reload failed because the resource pack could not be built; keeping the current state");
-            return ReloadStats.failed(this.emoteCatalog.fileEmotes().size(), ReloadResult.Failure.RESOURCE_PACK_BUILD);
+            return result(0, this.emoteCatalog.fileEmotes().size(), ReloadResult.Failure.RESOURCE_PACK_BUILD);
         }
 
         this.configManager.apply(preparedConfig);
-        ReloadStats stats = replaceRegistry(prepared);
+        int loadedEmoteCount = replaceRegistry(prepared);
         this.playbackEngine.stopAll(PlaybackStopReason.RELOAD);
         if (resourcePackResult == ResourcePackService.BuildResult.BUILT) {
             this.resources.pushToOnlinePlayers();
         }
         this.wheelSyncService.syncAll();
-        EmoteMod.LOGGER.info("Loaded {} emotes from {} files", stats.loadedEmoteCount(), stats.detectedFileCount());
+        EmoteMod.LOGGER.info("Loaded {} emotes from {} files", loadedEmoteCount, prepared.detectedFileCount());
         this.resources.notifyOnlinePlayers();
-        return stats;
+        return result(prepared.detectedFileCount(), loadedEmoteCount, ReloadResult.Failure.NONE);
+    }
+
+    private ReloadResult result(int detectedFileCount, int loadedEmoteCount, ReloadResult.Failure failure) {
+        var accessConfig = this.configManager.getAccessConfig();
+        return new ReloadResult(
+            accessConfig.disabled().size(),
+            accessConfig.permissions().size(),
+            detectedFileCount,
+            loadedEmoteCount,
+            failure
+        );
     }
 
     private PreparedRegistry prepareRegistry() {
@@ -110,7 +105,7 @@ public final class ReloadService {
         return new PreparedRegistry(contents.detectedFileCount(), definitions);
     }
 
-    private ReloadStats replaceRegistry(PreparedRegistry prepared) {
+    private int replaceRegistry(PreparedRegistry prepared) {
         int ignoredCount = this.emoteCatalog.replace(prepared.definitions());
         if (ignoredCount > 0) {
             EmoteMod.LOGGER.warn(
@@ -119,7 +114,7 @@ public final class ReloadService {
                 EmoteCatalog.MAX_EMOTE_COUNT
             );
         }
-        return new ReloadStats(prepared.detectedFileCount(), this.emoteCatalog.fileEmotes().size(), ReloadResult.Failure.NONE);
+        return this.emoteCatalog.fileEmotes().size();
     }
 
     private PreparedAnimation prepareAnimation(LoadedAnimation animation) {
@@ -140,12 +135,6 @@ public final class ReloadService {
         } catch (io.github.hanhy06.emote.api.EmoteLoadException exception) {
             EmoteMod.LOGGER.warn("Ignoring invalid emote sequence {}: {}", sequence.sourcePath(), exception.getMessage());
             return null;
-        }
-    }
-
-    private record ReloadStats(int detectedFileCount, int loadedEmoteCount, ReloadResult.Failure failure) {
-        private static ReloadStats failed(int retainedEmoteCount, ReloadResult.Failure failure) {
-            return new ReloadStats(0, retainedEmoteCount, failure);
         }
     }
 
