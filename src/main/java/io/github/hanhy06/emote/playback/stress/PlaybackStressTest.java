@@ -521,7 +521,7 @@ public final class PlaybackStressTest {
                 : nanosToMillis(this.maximumServerTickNanos);
             double percentile95Mspt = this.serverTickSamples == 0
                 ? baselineMspt
-                : nanosToMillis(StressTestStatistics.percentile95(this.serverTickNanosSamples));
+                : nanosToMillis(percentile95(this.serverTickNanosSamples));
             double averageEmoteProcessingMillis = this.processingSamples == 0
                 ? 0.0D
                 : nanosToMillis(this.emoteProcessingNanos) / this.processingSamples;
@@ -549,6 +549,17 @@ public final class PlaybackStressTest {
                 nanosToMillis(this.maximumNetworkProcessingNanos),
                 packetLoad
             );
+        }
+
+        private static long percentile95(List<Long> samples) {
+            if (samples.isEmpty()) {
+                return 0L;
+            }
+
+            List<Long> sorted = new ArrayList<>(samples);
+            sorted.sort(Long::compareTo);
+            int index = Math.max(0, (int) Math.ceil(sorted.size() * 0.95D) - 1);
+            return sorted.get(index);
         }
 
         private static double nanosToMillis(long nanos) {
