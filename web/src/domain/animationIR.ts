@@ -129,6 +129,10 @@ export interface AnimationSetIR {
   targetMinecraftVersion: string;
 }
 
+export function attachmentTargetId(nodeId: string, attachmentId: string): string {
+  return JSON.stringify([nodeId, attachmentId]);
+}
+
 export function orderedNodeIds(nodes: Record<string, NodeIR>): string[] {
   const result: string[] = [];
   const pending = new Set(Object.keys(nodes));

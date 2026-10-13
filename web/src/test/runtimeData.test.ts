@@ -7,6 +7,7 @@ import type { AnimationJson } from "../format/animation";
 import { readInput } from "../import/formats";
 import MolangParser from "molangjs/dist/molang.esm.js";
 import { evaluatePose } from "../domain/animationIRPose";
+import { attachmentTargetId } from "../domain/animationIR";
 import { evaluateEasing, type ScalarEvaluatorIR } from "../domain/animationIRCurves";
 import { PreviewMolangEvaluator } from "../preview/molangEvaluator";
 import { createPreviewModel } from "../preview/previewModel";
@@ -159,7 +160,7 @@ it("omits skin NBT only in output and restores original display data when unassi
   authored.animation.tracks.push({ target: { node: "arm", attachment: "prop" }, channel: "visible", driver: { type: "state", keys: [{ time: "0t", value: true }, { time: "1s", value: false }] } });
   const project = await readInput("emote_json", { name: "skin.json", bytes: new TextEncoder().encode(JSON.stringify(authored)) });
   const original = createConversionDocument(project, "Emote JSON");
-  const document = assignSkinPart(original, new Set(["arm"]), "head");
+  const document = assignSkinPart(original, new Set([attachmentTargetId("arm", "prop")]), "head");
   const snapshot = structuredClone(document);
   const expected = structuredClone(authored);
   expected.nodes.arm.attachments!.prop = { type: "player_skin", part: "head", region: { from: 0, to: 1 }, visible: true };
@@ -169,9 +170,61 @@ it("omits skin NBT only in output and restores original display data when unassi
     expect(JSON.parse(await files[0].blob.text())).toEqual(expected);
   }
   expect(document).toEqual(snapshot);
-  const restored = assignSkinPart(document, new Set(["arm"]), null);
+  const restored = assignSkinPart(document, new Set([attachmentTargetId("arm", "prop")]), null);
   const [output] = await exportAnimation(restored, 0);
   expect(JSON.parse(await output.blob.text())).toEqual(authored);
+});
+
+it("fits attachments independently without duplicating node expressions and restores their authored tracks and data", async () => {
+  const authored = structuredClone(animation);
+  authored.nodes.arm.attachments!.prop = { type: "item_display", item_stack_snbt: '{id:"minecraft:player_head",count:1}', item_display: "none", entity_nbt: "{Glowing:1b}" };
+  authored.nodes.arm.attachments!.other = structuredClone(authored.nodes.arm.attachments!.prop);
+  authored.nodes.arm.attachments!.decoration = structuredClone(animation.nodes.arm.attachments!.prop);
+  authored.nodes.locator = { parent: "arm", transform: [{ id: "position", op: "translate", value: [0, 1, 0] }] };
+  authored.animation.tracks = [
+    { target: { node: "arm", operation: "position" }, channel: "value", driver: { type: "expression", value: [{ molang: "q.scoreboard('motion')" }, 1.5, 0] } },
+    structuredClone(animation.animation.tracks[3]),
+    { ...structuredClone(animation.animation.tracks[3]), target: { node: "arm", attachment: "other" } },
+    { target: { node: "arm", attachment: "prop" }, channel: "visible", driver: { type: "state", keys: [{ time: "0t", value: true }, { time: "1s", value: false }] } },
+  ];
+  const project = await readInput("emote_json", { name: "attachments.json", bytes: new TextEncoder().encode(JSON.stringify(authored)) });
+  project.nodeHints.arm.skinCandidates!.prop.fittingMatrix = [2, 0, 0, 1, 0, 2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1];
+  project.nodeHints.arm.skinCandidates!.other.fittingMatrix = [3, 0, 0, -1, 0, 3, 0, 0, 0, 0, 3, 0, 0, 0, 0, 1];
+  const original = createConversionDocument(project, "Emote JSON");
+  expect(Object.keys(original.skinCandidates)).toEqual([attachmentTargetId("arm", "prop"), attachmentTargetId("arm", "other")]);
+  let document = assignSkinPart(original, new Set([attachmentTargetId("arm", "prop")]), "head");
+  const [output] = await exportAnimation(document, 0);
+  const actual: AnimationJson = JSON.parse(await output.blob.text());
+  const childId = Object.keys(actual.nodes).find((id) => id !== "arm" && actual.nodes[id].attachments?.prop)!;
+  expect(actual.nodes[childId].parent).toBe("arm");
+  expect(actual.nodes[childId].attachments!.prop).toEqual({ type: "player_skin", part: "head", region: { from: 0, to: 1 } });
+  expect(actual.nodes.arm.attachments!.other).toEqual(authored.nodes.arm.attachments!.other);
+  expect(actual.nodes.arm.attachments!.decoration).toEqual(authored.nodes.arm.attachments!.decoration);
+  expect(actual.animation.tracks.filter((track) => track.channel === "value")).toEqual([authored.animation.tracks[0]]);
+  expect(actual.animation.tracks.find((track) => track.channel === "visible")!.target).toEqual({ node: childId, attachment: "prop" });
+  expect(actual.animation.tracks.filter((track) => track.channel === "nbt")).toEqual([authored.animation.tracks[2]]);
+  const event = actual.animation.events!.timeline![0];
+  expect(event.source).toEqual({ type: "node", node: childId, attachment: "prop" });
+  expect(event.origin).toEqual(authored.animation.events!.timeline![0].origin);
+  let calls = 0;
+  const poses = evaluatePose(actual, 0.5, (value) => typeof value === "number" ? value : (++calls, 7));
+  expect(calls).toBe(1);
+  expect(poses.arm.matrix.elements[12]).toBe(7);
+  expect(poses[childId].matrix.elements[12]).toBe(8);
+  expect(poses[childId].matrix.elements[0]).toBe(2);
+  expect(poses.locator.matrix.elements[13]).toBe(2.5);
+  document = assignSkinPart(document, new Set([attachmentTargetId("arm", "other")]), "body");
+  const [both] = await exportAnimation(document, 0);
+  const bothOutput: AnimationJson = JSON.parse(await both.blob.text());
+  expect(Object.values(bothOutput.nodes).flatMap((node) => Object.values(node.attachments ?? {})).filter((attachment) => attachment.type === "player_skin").map((attachment) => attachment.part).sort()).toEqual(["body", "head"]);
+  const restored = assignSkinPart(document, new Set(Object.keys(document.skinCandidates)), null);
+  const [restoredOutput] = await exportAnimation(restored, 0);
+  expect(JSON.parse(await restoredOutput.blob.text())).toEqual(authored);
+  const batch = combineConversionDocuments([original, original]);
+  expect(batch.skinCandidates[attachmentTargetId("input_2__arm", "other")].nodeId).toBe("input_2__arm");
+  const assignedBatch = assignSkinPart(batch, new Set([attachmentTargetId("input_2__arm", "other")]), "body");
+  expect(assignedBatch.nodes.input_1__arm.attachments!.other.type).toBe("item_display");
+  expect(assignedBatch.nodes.input_2__arm.attachments!.other.type).toBe("player_skin");
 });
 
 it("preserves and evaluates shared v5 curves, dynamic arguments and blend in track order", async () => {

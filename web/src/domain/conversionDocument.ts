@@ -1,6 +1,6 @@
 import type { ConversionIssue } from "../foundation/diagnostics";
 import type { PlayerSkinPart } from "./player";
-import { orderedNodeIds, type AnimationEntryIR, type AnimationIR, type AttachmentIR, type AnimationSetIR, type ClipIR, type EventIR, type NodeIR, type TransformOperationIR } from "./animationIR";
+import { attachmentTargetId, orderedNodeIds, type AnimationEntryIR, type AnimationIR, type AttachmentIR, type AnimationSetIR, type ClipIR, type EventIR, type NodeIR, type TransformOperationIR } from "./animationIR";
 import { normalizeAnimationTimes, remapClip } from "./animationIRConversion";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
@@ -12,6 +12,7 @@ import type { ImportedProject, ImportedSkinPart, InputFormat } from "./conversio
 export const DEFAULT_TARGET_MINECRAFT_VERSION = "26.3";
 
 export interface SkinCandidate {
+  nodeId: string;
   groupId: string;
   sceneId: string;
   attachmentId: string;
@@ -93,21 +94,21 @@ export function createConversionDocument(project: ImportedProject, formatLabel: 
         while (nodes[id] || (id !== sourceId && reservedIds.has(id))) id = `${sourceId}_${suffix++}`;
         nodes[id] = node;
         variants.set(sourceId, [...(variants.get(sourceId) ?? []), id]);
-        const candidate = project.nodeHints[importedId]?.skinCandidate;
-        const attachmentId = Object.keys(node.attachments ?? {}).find((key) => node.attachments![key].type === "item_display");
-        if (candidate && attachmentId) {
+        for (const [attachmentId, candidate] of Object.entries(project.nodeHints[importedId]?.skinCandidates ?? {})) {
+          if (node.attachments?.[attachmentId]?.type !== "item_display") continue;
           let operationId = "skin_conversion";
           let operationSuffix = 2;
           while (node.transform?.some((operation) => operation.id === operationId)) operationId = `skin_conversion_${operationSuffix++}`;
-          skinCandidates[id] = {
-            groupId: candidate.groupId, sceneId: "input", attachmentId,
-            originalAttachment: structuredClone(node.attachments![attachmentId]),
+          const candidateId = attachmentTargetId(id, attachmentId);
+          skinCandidates[candidateId] = {
+            nodeId: id, groupId: candidate.groupId, sceneId: "input", attachmentId,
+            originalAttachment: structuredClone(node.attachments[attachmentId]),
             ...(candidate.fittingMatrix ? { fittingOperation: { id: operationId, op: "matrix", value: candidate.fittingMatrix } } : {}),
           };
           const suggested = candidate.suggestion;
           if (suggested) {
-            suggestions[id] = suggested;
-            skinCandidates[id].order = suggested.order;
+            suggestions[candidateId] = suggested;
+            skinCandidates[candidateId].order = suggested.order;
           }
         }
       }
@@ -137,29 +138,29 @@ export function createConversionDocument(project: ImportedProject, formatLabel: 
 
 export function skinPartAssignments(document: ConversionDocument): Record<string, PlayerSkinPart | null> {
   return Object.fromEntries(Object.entries(document.skinCandidates).map(([id, candidate]) => {
-    const attachment = document.nodes[id].attachments?.[candidate.attachmentId];
+    const attachment = document.nodes[candidate.nodeId].attachments?.[candidate.attachmentId];
     return [id, attachment?.type === "player_skin" ? attachment.part : null];
   }));
 }
 
 export function skinPartOrders(document: ConversionDocument): Record<string, number | null> {
   return Object.fromEntries(Object.entries(document.skinCandidates).map(([id, candidate]) => {
-    const attachment = document.nodes[id].attachments?.[candidate.attachmentId];
+    const attachment = document.nodes[candidate.nodeId].attachments?.[candidate.attachmentId];
     if (attachment?.type !== "player_skin") return [id, null];
     return [id, candidate.order ?? orderedSkinGroups(document, attachment.part, candidate.sceneId).get(candidate.groupId)!];
   }));
 }
 
-export function assignSkinPart(document: ConversionDocument, selectedNodeIds: ReadonlySet<string>, part: PlayerSkinPart | null): ConversionDocument {
-  const groups = new Set([...selectedNodeIds].flatMap((id) => document.skinCandidates[id] ? [document.skinCandidates[id].groupId] : []));
+export function assignSkinPart(document: ConversionDocument, selectedCandidateIds: ReadonlySet<string>, part: PlayerSkinPart | null): ConversionDocument {
+  const groups = new Set([...selectedCandidateIds].flatMap((id) => document.skinCandidates[id] ? [document.skinCandidates[id].groupId] : []));
   if (!groups.size) return document;
-  const scenes = new Set([...selectedNodeIds].flatMap((id) => document.skinCandidates[id] ? [document.skinCandidates[id].sceneId] : []));
+  const scenes = new Set([...selectedCandidateIds].flatMap((id) => document.skinCandidates[id] ? [document.skinCandidates[id].sceneId] : []));
   const targetOrders = new Map([...scenes].map((scene) => [scene, part ? orderedSkinGroups(document, part, scene) : new Map<string, number>()]));
   const previousParts = new Set<PlayerSkinPart>();
   const nodes = { ...document.nodes };
   for (const [id, candidate] of Object.entries(document.skinCandidates)) {
     if (!groups.has(candidate.groupId)) continue;
-    const node = nodes[id];
+    const node = nodes[candidate.nodeId];
     const attachment = node.attachments?.[candidate.attachmentId];
     if (attachment?.type !== "player_skin") continue;
     previousParts.add(attachment.part);
@@ -168,8 +169,7 @@ export function assignSkinPart(document: ConversionDocument, selectedNodeIds: Re
     else restored.visible = attachment.visible;
     if (attachment.entity_nbt === undefined) delete restored.entity_nbt;
     else restored.entity_nbt = attachment.entity_nbt;
-    nodes[id] = { ...node, attachments: { ...node.attachments, [candidate.attachmentId]: restored },
-      ...(part === null && candidate.fittingOperation ? { transform: node.transform?.filter((operation) => operation.id !== candidate.fittingOperation!.id) } : {}) };
+    nodes[candidate.nodeId] = { ...node, attachments: { ...node.attachments, [candidate.attachmentId]: restored } };
   }
   let result = { ...document, nodes };
   for (const scene of scenes) {
@@ -188,9 +188,9 @@ export function assignSkinPart(document: ConversionDocument, selectedNodeIds: Re
   return result;
 }
 
-export function assignSkinOrder(document: ConversionDocument, selectedNodeIds: ReadonlySet<string>, order: number): ConversionDocument {
-  const selected = new Set([...selectedNodeIds].flatMap((id) => document.skinCandidates[id] ? [document.skinCandidates[id].groupId] : []));
-  const scenes = new Set([...selectedNodeIds].flatMap((id) => document.skinCandidates[id] ? [document.skinCandidates[id].sceneId] : []));
+export function assignSkinOrder(document: ConversionDocument, selectedCandidateIds: ReadonlySet<string>, order: number): ConversionDocument {
+  const selected = new Set([...selectedCandidateIds].flatMap((id) => document.skinCandidates[id] ? [document.skinCandidates[id].groupId] : []));
+  const scenes = new Set([...selectedCandidateIds].flatMap((id) => document.skinCandidates[id] ? [document.skinCandidates[id].sceneId] : []));
   let result = document;
   for (const scene of scenes) for (const part of [...new Set(Object.values(skinPartAssignments(document)).filter((part): part is PlayerSkinPart => part !== null))]) {
     const groups = orderedSkinGroups(document, part, scene);
@@ -204,7 +204,7 @@ export function assignSkinOrder(document: ConversionDocument, selectedNodeIds: R
 function orderedSkinGroups(document: ConversionDocument, part: PlayerSkinPart, scene: string): Map<string, number> {
   const groups = Object.entries(document.skinCandidates).flatMap(([id, candidate]) => {
     if (candidate.sceneId !== scene) return [];
-    const attachment = document.nodes[id].attachments?.[candidate.attachmentId];
+    const attachment = document.nodes[candidate.nodeId].attachments?.[candidate.attachmentId];
     return attachment?.type === "player_skin" && attachment.part === part ? [{ id: candidate.groupId, order: candidate.order, from: attachment.region.from }] : [];
   }).sort((first, second) => first.from - second.from);
   const orders = new Map<string, number>();
@@ -221,16 +221,11 @@ function applySkinGroups(document: ConversionDocument, part: PlayerSkinPart, gro
     const order = groups.get(candidate.groupId);
     if (order === undefined) continue;
     const index = orders.indexOf(order);
-    const node = nodes[id];
+    const node = nodes[candidate.nodeId];
     const attachment = node.attachments?.[candidate.attachmentId] ?? candidate.originalAttachment;
-    const fitting = candidate.fittingOperation;
-    const transform = fitting ? (node.transform?.some((operation) => operation.id === fitting.id)
-      ? node.transform.map((operation) => operation.id === fitting.id ? structuredClone(fitting) : operation)
-      : [...(node.transform ?? []), structuredClone(fitting)]) : node.transform;
-    nodes[id] = { ...node,
+    nodes[candidate.nodeId] = { ...node,
       attachments: { ...node.attachments, [candidate.attachmentId]: { type: "player_skin", part, region: { from: index / orders.length, to: (index + 1) / orders.length },
         ...(attachment.visible === undefined ? {} : { visible: attachment.visible }), ...(attachment.entity_nbt === undefined ? {} : { entity_nbt: attachment.entity_nbt }) } },
-      ...(fitting ? { transform } : {}),
     };
     skinCandidates[id] = { ...candidate, order };
   }

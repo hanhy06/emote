@@ -21,7 +21,7 @@ export interface ConversionSession {
   document: ConversionDocument;
   animationIndex: number;
   selectedFrame: SelectedFrame;
-  selectedNodeIds: Set<string>;
+  selectedCandidateIds: Set<string>;
 }
 
 export interface WorkspaceState {
@@ -44,8 +44,8 @@ export type WorkspaceAction =
   | { type: "page_selected"; page: WorkspacePage }
   | { type: "animation_selected"; index: number }
   | { type: "frame_selected"; frame: SelectedFrame }
-  | { type: "node_selected"; nodeId: string; additive: boolean }
-  | { type: "nodes_selected"; nodeIds: readonly string[]; additive: boolean }
+  | { type: "candidate_selected"; candidateId: string; additive: boolean }
+  | { type: "candidates_selected"; candidateIds: readonly string[]; additive: boolean }
   | { type: "skin_part_assigned"; part: PlayerSkinPart | null }
   | { type: "skin_order_assigned"; order: number }
   | { type: "animation_changed"; ir: AnimationEntryIR }
@@ -69,7 +69,7 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
       return { ...state, openError: "", exportError: "", operation: { type: "opening", message: action.message } };
     case "documents_open_succeeded":
       return { ...state,
-        session: { document: action.document, animationIndex: 0, selectedFrame: { type: "create" }, selectedNodeIds: new Set() },
+        session: { document: action.document, animationIndex: 0, selectedFrame: { type: "create" }, selectedCandidateIds: new Set() },
         page: 0, operation: { type: "idle" } };
     case "open_failed":
       return { ...state, openError: action.message, operation: { type: "idle" } };
@@ -87,26 +87,26 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
       return updateSession(state, (session) => ({ ...session,
         selectedFrame: action.frame.type === "create" ? action.frame : { type: "timeline",
           tick: Math.max(0, Math.min(action.frame.tick, parseMinecraftTime(session.document.animations[session.animationIndex].clip.duration, 1))) },
-        selectedNodeIds: new Set() }));
-    case "node_selected":
+        selectedCandidateIds: new Set() }));
+    case "candidate_selected":
       return updateSession(state, (session) => ({
         ...session,
-        selectedNodeIds: selectNode(session.selectedNodeIds, action.nodeId, action.additive),
+        selectedCandidateIds: selectCandidate(session.selectedCandidateIds, action.candidateId, action.additive),
       }));
-    case "nodes_selected":
+    case "candidates_selected":
       return updateSession(state, (session) => ({
         ...session,
-        selectedNodeIds: selectNodes(session.selectedNodeIds, action.nodeIds, action.additive),
+        selectedCandidateIds: selectCandidates(session.selectedCandidateIds, action.candidateIds, action.additive),
       }));
     case "skin_part_assigned":
       return updateSession(state, (session) => ({
         ...session,
-        document: assignSkinPart(session.document, session.selectedNodeIds, action.part),
+        document: assignSkinPart(session.document, session.selectedCandidateIds, action.part),
       }));
     case "skin_order_assigned":
       return updateSession(state, (session) => ({
         ...session,
-        document: assignSkinOrder(session.document, session.selectedNodeIds, action.order),
+        document: assignSkinOrder(session.document, session.selectedCandidateIds, action.order),
       }));
     case "animation_changed":
       return updateSession(state, (session) => ({
@@ -182,23 +182,23 @@ export function sequenceReferenceWarnings(document: ConversionDocument | null): 
   });
 }
 
-function selectNode(current: ReadonlySet<string>, nodeId: string, additive: boolean): Set<string> {
-  if (!additive) return current.has(nodeId) ? new Set() : new Set([nodeId]);
+function selectCandidate(current: ReadonlySet<string>, candidateId: string, additive: boolean): Set<string> {
+  if (!additive) return current.has(candidateId) ? new Set() : new Set([candidateId]);
   const next = new Set(current);
-  if (next.has(nodeId)) next.delete(nodeId);
-  else next.add(nodeId);
+  if (next.has(candidateId)) next.delete(candidateId);
+  else next.add(candidateId);
   return next;
 }
 
-function selectNodes(current: ReadonlySet<string>, nodeIds: readonly string[], additive: boolean): Set<string> {
+function selectCandidates(current: ReadonlySet<string>, candidateIds: readonly string[], additive: boolean): Set<string> {
   const next = additive ? new Set(current) : new Set<string>();
-  nodeIds.forEach((nodeId) => next.add(nodeId));
+  candidateIds.forEach((candidateId) => next.add(candidateId));
   return next;
 }
 
 function selectSessionAnimation(session: ConversionSession, animationIndex: number): ConversionSession {
   if (!session.document.animations[animationIndex]) return session;
-  return { ...session, animationIndex, selectedFrame: { type: "create" }, selectedNodeIds: new Set() };
+  return { ...session, animationIndex, selectedFrame: { type: "create" }, selectedCandidateIds: new Set() };
 }
 
 function updateSession(

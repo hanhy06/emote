@@ -4,7 +4,7 @@ import { createConversionDocument, assignSkinPart } from "../domain/conversionDo
 import { compileAnimation } from "../compiler/animationCompiler";
 import { readInput } from "../import/formats";
 import type { BbCube } from "../import/common/blockbenchCubeSchema";
-import { orderedNodeIds } from "../domain/animationIR";
+import { attachmentTargetId, orderedNodeIds } from "../domain/animationIR";
 import { evaluatePose } from "../domain/animationIRPose";
 import { exportAnimation } from "../export/projectExporter";
 import { strFromU8, unzipSync } from "fflate";
@@ -138,7 +138,7 @@ it("normalizes oversized or displaced models without changing their animated geo
     const cubeRotation = new Matrix4().makeTranslation(...pivot as [number, number, number])
       .multiply(new Matrix4().makeRotationFromEuler(new Euler(...rotation.map(radians) as [number, number, number], "ZYX")))
       .multiply(new Matrix4().makeTranslation(-pivot[0], -pivot[1], -pivot[2]));
-    const skinned = compileAnimation(assignSkinPart(document, new Set([nodeId]), "head"), 0).animation;
+    const skinned = compileAnimation(assignSkinPart(document, new Set([attachmentTargetId(nodeId, "display")]), "head"), 0).animation;
     for (const time of [0, 0.5, 1]) {
       const sceneScale = format === "geckolib_bbmodel" ? 0.9375 : 1;
       const expected = new Matrix4().makeScale(sceneScale, sceneScale, sceneScale)
@@ -159,7 +159,7 @@ it("normalizes oversized or displaced models without changing their animated geo
       const skinPose = evaluatePose(skinned, time, (value) => { if (typeof value !== "number") throw new Error("Unexpected expression"); return value; })[nodeId].matrix;
       expect(skinPose.elements.every((value, axis) => Math.abs(value - fitting.elements[axis]) < 1e-8)).toBe(true);
     }
-    const restored = assignSkinPart(assignSkinPart(document, new Set([nodeId]), "head"), new Set([nodeId]), null);
+    const restored = assignSkinPart(assignSkinPart(document, new Set([attachmentTargetId(nodeId, "display")]), "head"), new Set([attachmentTargetId(nodeId, "display")]), null);
     expect(compileAnimation(restored, 0).animation).toEqual(original);
     const outputs = await exportAnimation(restored, 0);
     const zip = outputs.find((output) => output.fileName.endsWith(".zip"));

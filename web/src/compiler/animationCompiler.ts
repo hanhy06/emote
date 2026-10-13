@@ -30,6 +30,28 @@ export function compileAnimation(document: ConversionDocument, index: number, st
   if (standalone !== undefined) ir.settings = { ...ir.settings, standalone };
   ir.animation.tracks = ir.animation.tracks.filter((track) => track.channel !== "nbt"
     || !track.target.attachment || ir.nodes[track.target.node]?.attachments?.[track.target.attachment]?.type !== "player_skin");
+  for (const candidate of Object.values(document.skinCandidates)) {
+    const node = ir.nodes[candidate.nodeId];
+    const attachment = node?.attachments?.[candidate.attachmentId];
+    if (attachment?.type !== "player_skin" || !candidate.fittingOperation) continue;
+    const fitting = structuredClone(candidate.fittingOperation);
+    if (Object.keys(node.attachments!).length === 1 && !Object.values(ir.nodes).some((child) => child.parent === candidate.nodeId)) {
+      node.transform = [...(node.transform ?? []), fitting];
+      continue;
+    }
+    const baseId = `${candidate.nodeId}__skin_${candidate.attachmentId}`;
+    let childId = baseId;
+    let suffix = 2;
+    while (ir.nodes[childId] || document.nodes[childId]) childId = `${baseId}_${suffix++}`;
+    ir.nodes[childId] = { parent: candidate.nodeId, transform: [fitting], attachments: { [candidate.attachmentId]: attachment } };
+    delete node.attachments![candidate.attachmentId];
+    for (const track of ir.animation.tracks) {
+      if (track.target.node === candidate.nodeId && track.target.attachment === candidate.attachmentId) track.target.node = childId;
+    }
+    for (const events of Object.values(ir.animation.events ?? {})) for (const event of events ?? []) {
+      if (event.source.type === "node" && event.source.node === candidate.nodeId && event.source.attachment === candidate.attachmentId) event.source.node = childId;
+    }
+  }
   const profile = minecraftVersionProfile(document.targetMinecraftVersion);
   function formatNbt(value: string): string {
     try {

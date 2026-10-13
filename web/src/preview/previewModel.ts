@@ -1,13 +1,12 @@
-import { skinPartAssignments, skinPartOrders, type ConversionAnimation, type ConversionDocument } from "../domain/conversionDocument";
+import type { ConversionAnimation, ConversionDocument } from "../domain/conversionDocument";
 import { evaluatePose } from "../domain/animationIRPose";
-import type { PlayerSkinPart } from "../domain/player";
 import { matrix4ToRowMajor } from "../format/matrix";
 import { PreviewMolangEvaluator } from "./molangEvaluator";
 import type { ScalarEvaluatorIR } from "../domain/animationIRCurves";
 import type { SelectedFrame } from "../workspace";
 
 export interface PreviewPart {
-  nodeId: string;
+  candidateId: string;
   partIndex: number;
   matrix: readonly number[];
   conversionMatrix?: readonly number[];
@@ -21,14 +20,11 @@ export type PreviewAvailability =
 export interface PreviewModel {
   availability: PreviewAvailability | null;
   parts: PreviewPart[];
-  assignments: Record<string, PlayerSkinPart | null>;
-  orders: Record<string, number | null>;
-  hasReviewNodes: boolean;
 }
 
 export function createPreviewModel(document: ConversionDocument, animation: ConversionAnimation | undefined, frame: SelectedFrame): PreviewModel {
   const nodeIds = new Set(animation?.nodeIds ?? []);
-  const candidates = Object.entries(document.skinCandidates).filter(([id]) => nodeIds.has(id));
+  const candidates = Object.entries(document.skinCandidates).filter(([, candidate]) => nodeIds.has(candidate.nodeId));
   const reasons = new Set<string>();
   const approximate = (reason: string) => { reasons.add(reason); };
   const evaluator = new PreviewMolangEvaluator();
@@ -52,19 +48,15 @@ export function createPreviewModel(document: ConversionDocument, animation: Conv
       const groups = new Map<string, number>();
       for (const [id, candidate] of candidates) {
         if (!groups.has(candidate.groupId)) groups.set(candidate.groupId, groups.size);
-        const pose = poses[id];
+        const pose = poses[candidate.nodeId];
         if (!pose?.attachments[candidate.attachmentId]) continue;
-        const fitted = document.nodes[id].transform?.some((operation) => operation.id === candidate.fittingOperation?.id);
-        parts.push({ nodeId: id, partIndex: groups.get(candidate.groupId)!, matrix: matrix4ToRowMajor(pose.matrix, id),
-          ...(!fitted && candidate.fittingOperation ? { conversionMatrix: candidate.fittingOperation.value } : {}) });
+        parts.push({ candidateId: id, partIndex: groups.get(candidate.groupId)!, matrix: matrix4ToRowMajor(pose.matrix, id),
+          ...(candidate.fittingOperation ? { conversionMatrix: candidate.fittingOperation.value } : {}) });
       }
       if (reasons.size) availability = { status: "approximate", reason: [...reasons].join(" ") };
     } catch (reason) {
       availability = { status: "unavailable", reason: reason instanceof Error ? reason.message : String(reason) };
     }
   }
-  return { availability, parts,
-    assignments: Object.fromEntries(Object.entries(skinPartAssignments(document)).filter(([id]) => nodeIds.has(id))),
-    orders: Object.fromEntries(Object.entries(skinPartOrders(document)).filter(([id]) => nodeIds.has(id))),
-    hasReviewNodes: candidates.length > 0 };
+  return { availability, parts };
 }

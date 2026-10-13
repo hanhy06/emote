@@ -60,22 +60,22 @@ export interface ImportedAnimation {
 
 export interface ImportedNodeHint {
   sourceNodeId: string;
-  skinCandidate?: {
+  skinCandidates?: Record<string, {
     groupId: string;
     fittingMatrix?: Matrix16;
     suggestion?: ImportedSkinPart;
-  };
+  }>;
 }
 
 export function importedNodeHints(nodes: Record<string, ImportedNode>): Record<string, ImportedNodeHint> {
   return Object.fromEntries(Object.entries(nodes).map(([id, node]) => [id, {
     sourceNodeId: node.binding.sourceNodeId,
     ...(node.type === "item_display" && (node.skin || node.suggestedSkin || node.playerHeadConversionMatrix || normalizeResourceLocation(node.itemStack.id) === "minecraft:player_head") ? {
-      skinCandidate: {
+      skinCandidates: { display: {
         groupId: node.binding.skinGroupId ?? id,
         ...(node.playerHeadConversionMatrix ? { fittingMatrix: node.playerHeadConversionMatrix } : {}),
         ...(node.suggestedSkin ?? node.skin ? { suggestion: node.suggestedSkin ?? node.skin } : {}),
-      },
+      } },
     } : {}),
   }]));
 }

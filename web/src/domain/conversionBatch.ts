@@ -3,7 +3,7 @@ import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocat
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
 import type { GeneratedResource } from "./generatedResource";
 import type { ConversionAnimation, ConversionDocument, SkinCandidate } from "./conversionDocument";
-import type { NodeIR } from "./animationIR";
+import { attachmentTargetId, type NodeIR } from "./animationIR";
 import { remapClip } from "./animationIRConversion";
 import type { ImportedSequence } from "./emoteDefinition";
 
@@ -32,8 +32,9 @@ export function combineConversionDocuments(documents: readonly ConversionDocumen
         ...(node.parent ? { parent: prefixId(node.parent) } : {}),
       };
     }
-    for (const [id, candidate] of Object.entries(document.skinCandidates)) {
-      skinCandidates[prefixId(id)] = { ...candidate, groupId: prefixId(candidate.groupId), sceneId: prefixId(candidate.sceneId) };
+    for (const candidate of Object.values(document.skinCandidates)) {
+      const nodeId = prefixId(candidate.nodeId);
+      skinCandidates[attachmentTargetId(nodeId, candidate.attachmentId)] = { ...candidate, nodeId, groupId: prefixId(candidate.groupId), sceneId: prefixId(candidate.sceneId) };
     }
     animations.push(...document.animations.map((animation) => {
       const separator = animation.id.indexOf(":");

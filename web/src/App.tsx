@@ -24,6 +24,7 @@ import {
 } from "./workspace";
 import { createPreviewModel } from "./preview/previewModel";
 import { parseMinecraftTime } from "./format/time";
+import { skinPartAssignments, skinPartOrders } from "./domain/conversionDocument";
 const PartPreview = lazy(() => import("./components/PartPreview"));
 const ACCEPTED_EXTENSIONS = [...new Set(Object.values(INPUT_FORMATS).map((format) => format.extension))]
   .map((extension) => `.${extension}`)
@@ -71,9 +72,18 @@ export function App() {
     const selectedAnimation = session.document.animations[session.animationIndex];
     return createPreviewModel(session.document, selectedAnimation, session.selectedFrame);
   }, [session]);
-  const assignments = preview?.assignments ?? {};
-  const orders = preview?.orders ?? {};
-  const selectedNodeIds = session?.selectedNodeIds ?? EMPTY_SELECTION;
+  const candidateParts = useMemo(() => {
+    if (!project || !selectedAnimation) return [];
+    const nodeIds = new Set(selectedAnimation.nodeIds);
+    const groups = new Map<string, number>();
+    return Object.entries(project.skinCandidates).filter(([, candidate]) => nodeIds.has(candidate.nodeId)).map(([candidateId, candidate]) => {
+      if (!groups.has(candidate.groupId)) groups.set(candidate.groupId, groups.size);
+      return { candidateId, partIndex: groups.get(candidate.groupId)! };
+    });
+  }, [project, selectedAnimation]);
+  const assignments = useMemo(() => project ? skinPartAssignments(project) : {}, [project]);
+  const orders = useMemo(() => project ? skinPartOrders(project) : {}, [project]);
+  const selectedCandidateIds = session?.selectedCandidateIds ?? EMPTY_SELECTION;
   const availability = preview?.availability ?? null;
   const eventReview = useMemo(() => eventReviewLocations(project), [project]);
   const eventReviewTypes = [
@@ -82,7 +92,7 @@ export function App() {
   ];
   const warningGroups = useMemo(() => groupConversionWarnings([...(project?.diagnostics ?? []), ...sequenceReferenceWarnings(project)]), [project]);
   const previewParts = preview?.parts ?? [];
-  const hasReviewNodes = preview?.hasReviewNodes ?? false;
+  const hasReviewNodes = candidateParts.length > 0;
 
   async function handleFileChange(event: TargetedEvent<HTMLInputElement>) {
     const inputElement = event.currentTarget;
@@ -139,16 +149,16 @@ export function App() {
     }, "File export failed.", includeSequence ? "Creating sequence files" : "Creating animation files");
   }
 
-  const handleNodeSelect = useCallback((nodeId: string, additive: boolean) => {
-    dispatch({ type: "node_selected", nodeId, additive });
+  const handleCandidateSelect = useCallback((candidateId: string, additive: boolean) => {
+    dispatch({ type: "candidate_selected", candidateId, additive });
   }, []);
 
-  const handleNodesSelect = useCallback((nodeIds: readonly string[], additive: boolean) => {
-    dispatch({ type: "nodes_selected", nodeIds, additive });
+  const handleCandidatesSelect = useCallback((candidateIds: readonly string[], additive: boolean) => {
+    dispatch({ type: "candidates_selected", candidateIds, additive });
   }, []);
 
   function assignSelected(part: PlayerSkinPart | null) {
-    if (selectedNodeIds.size === 0) return;
+    if (selectedCandidateIds.size === 0) return;
     dispatch({ type: "skin_part_assigned", part });
   }
 
@@ -309,28 +319,28 @@ export function App() {
                 </label>
               </div>
             </div>
-            {availability?.status === "unavailable" ? (
-              <div className="no-skin-parts"><strong>3D preview unavailable</strong><span>{availability.reason}</span></div>
-            ) : hasReviewNodes ? (
+            {hasReviewNodes ? (
               <div className="editor">
-                <Suspense fallback={<div className="preview-loading" role="status">Loading 3D preview…</div>}>
+                {availability?.status === "unavailable" ? (
+                  <div className="no-skin-parts"><strong>3D preview unavailable</strong><span>{availability.reason}</span></div>
+                ) : <Suspense fallback={<div className="preview-loading" role="status">Loading 3D preview…</div>}>
                   <PartPreview
                     key={project.origin.sourceName}
                     parts={previewParts}
                     assignments={assignments}
-                    selectedNodeIds={selectedNodeIds}
-                    onSelectNode={handleNodeSelect}
-                    onSelectNodes={handleNodesSelect}
+                    selectedCandidateIds={selectedCandidateIds}
+                    onSelectCandidate={handleCandidateSelect}
+                    onSelectCandidates={handleCandidatesSelect}
                   />
-                </Suspense>
+                </Suspense>}
                 <AssignmentPanel
-                  parts={previewParts}
+                  parts={candidateParts}
                   assignments={assignments}
                   orders={orders}
-                          selectedNodeIds={selectedNodeIds}
+                          selectedCandidateIds={selectedCandidateIds}
                   onAssignPart={assignSelected}
                   onAssignOrder={assignOrder}
-                          onSelectNode={handleNodeSelect}
+                          onSelectCandidate={handleCandidateSelect}
                 />
               </div>
             ) : (

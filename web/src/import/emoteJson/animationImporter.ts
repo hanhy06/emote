@@ -1,5 +1,5 @@
 import type { ImportedNodeHint, ImportedProject } from "../../domain/conversionSeed";
-import type { AnimationIR } from "../../domain/animationIR";
+import { attachmentTargetId, type AnimationIR } from "../../domain/animationIR";
 import { createDefaultPlayerBehavior } from "../../domain/emoteDefinition";
 import { normalizeResourceLocation } from "../../format/resourceLocation";
 import { readItemStack } from "../../format/minecraftData";
@@ -8,11 +8,13 @@ export function importAnimation(value: unknown, sourceName: string): ImportedPro
   const ir = value as AnimationIR;
   const nodeHints: Record<string, ImportedNodeHint> = {};
   for (const [id, node] of Object.entries(ir.nodes)) {
-    const attachment = Object.values(node.attachments ?? {}).find((value) => ["item_display", "block_display", "text_display"].includes(value.type));
     nodeHints[id] = { sourceNodeId: id };
-    if (attachment?.type === "item_display" && typeof attachment.item_stack_snbt === "string" && attachment.item_stack_snbt.trim()) {
+    for (const [attachmentId, attachment] of Object.entries(node.attachments ?? {})) {
+      if (attachment.type !== "item_display" || !attachment.item_stack_snbt?.trim()) continue;
       try {
-        if (normalizeResourceLocation(readItemStack(attachment.item_stack_snbt).id) === "minecraft:player_head") nodeHints[id].skinCandidate = { groupId: id };
+        if (normalizeResourceLocation(readItemStack(attachment.item_stack_snbt).id) === "minecraft:player_head") {
+          (nodeHints[id].skinCandidates ??= {})[attachmentId] = { groupId: attachmentTargetId(id, attachmentId) };
+        }
       } catch {
         // Hints do not change the input passed to the mod.
       }

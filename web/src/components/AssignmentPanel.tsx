@@ -9,32 +9,32 @@ import {
 } from "../preview/skinParts";
 
 interface AssignmentPanelProps {
-  parts: PreviewPart[];
+  parts: Pick<PreviewPart, "candidateId" | "partIndex">[];
   assignments: PartAssignments;
   orders: PartOrders;
-  selectedNodeIds: ReadonlySet<string>;
+  selectedCandidateIds: ReadonlySet<string>;
   onAssignPart: (skinPart: PlayerSkinPart | null) => void;
   onAssignOrder: (order: number) => void;
-  onSelectNode: (nodeId: string, additive: boolean) => void;
+  onSelectCandidate: (candidateId: string, additive: boolean) => void;
 }
 
 export function AssignmentPanel({
   parts,
   assignments,
   orders,
-  selectedNodeIds,
+  selectedCandidateIds,
   onAssignPart,
   onAssignOrder,
-  onSelectNode,
+  onSelectCandidate,
 }: AssignmentPanelProps) {
-  const hasSelectedSkinPart = parts.some((part) => selectedNodeIds.has(part.nodeId));
-  const hasSelectedAssignment = [...selectedNodeIds].some((nodeId) => assignments[nodeId] != null);
-  const selectableItems = parts.map((part) => ({ nodeId: part.nodeId, label: `#${part.partIndex}`, detail: assignmentLabel(assignments[part.nodeId], orders[part.nodeId]) }));
+  const hasSelectedSkinPart = parts.some((part) => selectedCandidateIds.has(part.candidateId));
+  const hasSelectedAssignment = [...selectedCandidateIds].some((candidateId) => assignments[candidateId] != null);
+  const selectableItems = parts.map((part) => ({ candidateId: part.candidateId, label: `#${part.partIndex}`, detail: assignmentLabel(assignments[part.candidateId], orders[part.candidateId]) }));
   const partItems = useRef(new Map<string, HTMLLIElement>());
   const partList = useRef<HTMLUListElement>(null);
-  const selectedOrders = [...selectedNodeIds]
-    .filter((nodeId) => assignments[nodeId] != null && orders[nodeId] != null)
-    .map((nodeId) => orders[nodeId]!);
+  const selectedOrders = [...selectedCandidateIds]
+    .filter((candidateId) => assignments[candidateId] != null && orders[candidateId] != null)
+    .map((candidateId) => orders[candidateId]!);
   const selectedOrder = selectedOrders.length > 0 && selectedOrders.every((order) => order === selectedOrders[0])
     ? String(selectedOrders[0])
     : "";
@@ -42,8 +42,8 @@ export function AssignmentPanel({
   useEffect(() => {
     const list = partList.current;
     const selectedItems = selectableItems
-      .filter((item) => selectedNodeIds.has(item.nodeId))
-      .map((item) => partItems.current.get(item.nodeId))
+      .filter((item) => selectedCandidateIds.has(item.candidateId))
+      .map((item) => partItems.current.get(item.candidateId))
       .filter((item): item is HTMLLIElement => item != null);
     if (!list || selectedItems.length === 0) return;
     const firstItem = selectedItems[0];
@@ -58,23 +58,23 @@ export function AssignmentPanel({
         behavior: "smooth",
       });
     }
-  }, [parts, selectedNodeIds]);
+  }, [parts, selectedCandidateIds]);
 
-  function handleNodeClick(event: TargetedMouseEvent<HTMLButtonElement>, nodeId: string) {
-    onSelectNode(nodeId, event.ctrlKey || event.metaKey || event.shiftKey);
+  function handleCandidateClick(event: TargetedMouseEvent<HTMLButtonElement>, candidateId: string) {
+    onSelectCandidate(candidateId, event.ctrlKey || event.metaKey || event.shiftKey);
   }
 
   function assignOrderAndScroll(order: number) {
     onAssignOrder(order);
     const lastSelectedPosition = parts.reduce(
-      (last, part, index) => selectedNodeIds.has(part.nodeId) ? index : last,
+      (last, part, index) => selectedCandidateIds.has(part.candidateId) ? index : last,
       -1,
     );
     const nextPart = parts[lastSelectedPosition + 1];
     if (nextPart) {
       requestAnimationFrame(() => {
         const list = partList.current;
-        const item = partItems.current.get(nextPart.nodeId);
+        const item = partItems.current.get(nextPart.candidateId);
         if (!list || !item) return;
         const itemBottom = item.offsetTop + item.offsetHeight;
         if (itemBottom > list.scrollTop + list.clientHeight) {
@@ -120,16 +120,16 @@ export function AssignmentPanel({
       <ul className="part-list" ref={partList}>
         {selectableItems.map((item) => (
           <li
-            key={item.nodeId}
+            key={item.candidateId}
             ref={(element) => {
-              if (element) partItems.current.set(item.nodeId, element);
-              else partItems.current.delete(item.nodeId);
+              if (element) partItems.current.set(item.candidateId, element);
+              else partItems.current.delete(item.candidateId);
             }}
           >
             <button
               type="button"
-              className={selectedNodeIds.has(item.nodeId) ? "selected" : ""}
-              onClick={(event) => handleNodeClick(event, item.nodeId)}
+              className={selectedCandidateIds.has(item.candidateId) ? "selected" : ""}
+              onClick={(event) => handleCandidateClick(event, item.candidateId)}
             >
               <span>{item.label}</span>
               <span>{item.detail}</span>
