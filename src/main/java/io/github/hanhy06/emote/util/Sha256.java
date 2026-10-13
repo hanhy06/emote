@@ -2,7 +2,6 @@ package io.github.hanhy06.emote.util;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
 
 public final class Sha256 {
     private Sha256() {
@@ -16,7 +15,4 @@ public final class Sha256 {
         }
     }
 
-    public static String toHex(byte[] digest) {
-        return HexFormat.of().formatHex(digest);
-    }
 }

@@ -5,7 +5,6 @@ import io.github.hanhy06.emote.util.EmoteTags;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.*;
-import java.util.function.Predicate;
 import io.github.hanhy06.emote.content.PreparedEmote;
 
 public class EmoteQueryService {
@@ -26,10 +25,7 @@ public class EmoteQueryService {
     }
 
     public List<EmoteSummary> search(ServerPlayer player, String query) {
-        return filter(getAll(player), query);
-    }
-
-    static List<EmoteSummary> filter(List<EmoteSummary> emotes, String query) {
+        List<EmoteSummary> emotes = getAll(player);
         SearchQuery searchQuery = parseQuery(query);
         if (searchQuery.isEmpty()) {
             return List.copyOf(emotes);
@@ -55,21 +51,14 @@ public class EmoteQueryService {
     }
 
     public List<String> getAllIds() {
-        return collectPlayIds(PreparedEmote::standalone);
+        return this.emoteCatalog.emotes().stream().filter(PreparedEmote::standalone).map(PreparedEmote::id).toList();
     }
 
     public List<String> getPlayableIds(ServerPlayer player) {
-        return collectPlayIds(emote -> this.playService.isVisibleForCommand(player, emote));
-    }
-
-    private List<String> collectPlayIds(Predicate<PreparedEmote> filter) {
-        List<String> ids = new java.util.ArrayList<>();
-        for (PreparedEmote emote : this.emoteCatalog.emotes()) {
-            if (filter.test(emote)) {
-                ids.add(emote.id());
-            }
-        }
-        return List.copyOf(ids);
+        return this.emoteCatalog.emotes().stream()
+            .filter(emote -> this.playService.isVisibleForCommand(player, emote))
+            .map(PreparedEmote::id)
+            .toList();
     }
 
     private static int searchRank(EmoteSummary emote, SearchQuery query) {

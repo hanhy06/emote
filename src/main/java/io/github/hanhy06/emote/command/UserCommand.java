@@ -43,7 +43,7 @@ public final class UserCommand {
 
     public LiteralArgumentBuilder<CommandSourceStack> createRoot() {
         return Commands.literal("emote")
-            .executes(context -> openMenu(context.getSource()))
+            .executes(context -> openMenu(context.getSource(), 1))
             .then(Commands.argument("page", IntegerArgumentType.integer(1))
                 .executes(context -> openMenu(
                     context.getSource(),
@@ -95,10 +95,6 @@ public final class UserCommand {
         return player == null
             ? this.emoteQueryService.getAllIds()
             : this.emoteQueryService.getPlayableIds(player);
-    }
-
-    private int openMenu(CommandSourceStack source) throws CommandSyntaxException {
-        return openMenu(source, 1);
     }
 
     private int openMenu(

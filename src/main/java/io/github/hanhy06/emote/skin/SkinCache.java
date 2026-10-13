@@ -52,7 +52,7 @@ public final class SkinCache {
         MessageDigest digest = Sha256.newDigest();
         digest.update((byte) (slimModel ? 1 : 0));
         digest.update(pngBytes);
-        return Sha256.toHex(digest.digest());
+        return HexFormat.of().formatHex(digest.digest());
     }
 
     public synchronized Map<PlayerSkinRegion, String> load(String textureHash, boolean slimModel) {

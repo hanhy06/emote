@@ -367,10 +367,6 @@ public final class PreparedAnimation implements PreparedEmote {
         return this.sourcePath;
     }
 
-    public int nodeCount() {
-        return model().nodes().size();
-    }
-
     @Override
     public @Nullable Integer durationTicks() {
         return this.model.clip().clock() == null ? this.model.clip().durationTicks() : null;

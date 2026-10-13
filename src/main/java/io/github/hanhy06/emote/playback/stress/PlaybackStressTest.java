@@ -319,7 +319,7 @@ public final class PlaybackStressTest {
         this.packetLoad.sampleRuntimeTick();
         current.recordCompletedServerTick(System.nanoTime() - endTickStartedNanos);
         current.completedTicks++;
-        if (hasCompletedDuration(current.completedTicks, current.durationTicks)) {
+        if (current.completedTicks >= current.durationTicks) {
             PlaybackStressTestReport report = stop();
             if (report != null) {
                 current.completion.accept(report);
@@ -333,12 +333,8 @@ public final class PlaybackStressTest {
         this.frameSession = null;
     }
 
-    static int gridSize(int instanceCount) {
-        return (int) Math.ceil(Math.sqrt(instanceCount));
-    }
-
     static Vec3 gridPosition(Vec3 origin, int index, int instanceCount) {
-        int gridSize = gridSize(instanceCount);
+        int gridSize = (int) Math.ceil(Math.sqrt(instanceCount));
         int column = index % gridSize;
         int row = index / gridSize;
         double halfSpan = (gridSize - 1) / 2.0D;
@@ -421,14 +417,6 @@ public final class PlaybackStressTest {
         return playback.prepareStartAtCyclePhase(target, initialTick);
     }
 
-    static boolean hasCompletedDuration(int completedTicks, int durationTicks) {
-        return completedTicks >= durationTicks;
-    }
-
-    static long measureCompletedTickNanos(int completedTick, long[] tickTimesNanos, long stressTickNanos) {
-        return tickTimesNanos[Math.floorMod(completedTick, tickTimesNanos.length)] + stressTickNanos;
-    }
-
     private static final class Session {
         private final ServerLevel level;
         private final List<StressTestInstance> instances;
@@ -496,7 +484,7 @@ public final class PlaybackStressTest {
             }
 
             long[] tickTimesNanos = EmoteMod.SERVER.getTickTimesNanos();
-            long elapsedNanos = measureCompletedTickNanos(completedTick, tickTimesNanos, stressTickNanos);
+            long elapsedNanos = tickTimesNanos[Math.floorMod(completedTick, tickTimesNanos.length)] + stressTickNanos;
             this.lastSampledServerTick = completedTick;
             if (elapsedNanos <= 0L) {
                 return;

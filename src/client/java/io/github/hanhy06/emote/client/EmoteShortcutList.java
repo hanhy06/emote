@@ -162,7 +162,7 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
 
             int relX = (int) event.x() - getContentX();
             int relY = (int) event.y() - (getContentY() + CONTROL_Y_OFFSET);
-            if (!isInside(relX, relY, 0, 0, CONTROL_SIZE, CONTROL_SIZE)) {
+            if (relX < 0 || relX >= CONTROL_SIZE || relY < 0 || relY >= CONTROL_SIZE) {
                 return super.mouseClicked(event, doubleClick);
             }
 
@@ -214,8 +214,5 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
             return Component.literal(minecraft.font.plainSubstrByWidth(text, Math.max(0, maxWidth - minecraft.font.width(ellipsis))) + ellipsis);
         }
 
-        private boolean isInside(int x, int y, int areaX, int areaY, int width, int height) {
-            return x >= areaX && x < areaX + width && y >= areaY && y < areaY + height;
-        }
     }
 }

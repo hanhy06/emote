@@ -47,10 +47,6 @@ public class EmotePlayService implements AccessConfigListener {
         this.emoteCatalog.addListener(this::onEmoteCatalogChanged);
     }
 
-    public PlayResult play(ServerPlayer player, String id) {
-        return play(player, id, PlaySource.COMMAND);
-    }
-
     public PlayResult play(ServerPlayer player, String id, PlaySource source) {
         return play(player, id, source, PlaybackPlacement.actor());
     }

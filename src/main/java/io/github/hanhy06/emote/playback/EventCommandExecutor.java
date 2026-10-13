@@ -92,7 +92,10 @@ public final class EventCommandExecutor implements EmotePlayback.EventExecutor {
     }
 
     private Entity requiredEntity(String nodeId, String attachmentId) {
-        PlaybackScene.NodeInstance node = requiredNode(nodeId);
+        PlaybackScene.NodeInstance node = this.scene.nodes().get(nodeId);
+        if (node == null) {
+            throw new IllegalStateException("Command references missing playback node: " + nodeId);
+        }
         var attachment = node.attachments().get(attachmentId);
         if (attachment == null || attachment.entity() == null || attachment.entity().isRemoved()) {
             throw new IllegalStateException("Command source node entity is unavailable: " + nodeId);
@@ -100,11 +103,4 @@ public final class EventCommandExecutor implements EmotePlayback.EventExecutor {
         return attachment.entity();
     }
 
-    private PlaybackScene.NodeInstance requiredNode(String nodeId) {
-        PlaybackScene.NodeInstance node = this.scene.nodes().get(nodeId);
-        if (node == null) {
-            throw new IllegalStateException("Command references missing playback node: " + nodeId);
-        }
-        return node;
-    }
 }

@@ -49,7 +49,7 @@ final class StressTestCommand {
 
     LiteralArgumentBuilder<CommandSourceStack> createCommand() {
         return Commands.literal("stress-test")
-            .requires(this.permissionService.requireManage())
+            .requires(this.permissionService::canManage)
             .then(Commands.argument("time", TimeArgument.time(1))
                 .executes(context -> startStressTest(
                     context.getSource(),

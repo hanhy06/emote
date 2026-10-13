@@ -113,14 +113,11 @@ public class EmoteMod implements ModInitializer {
         );
         playback.register();
         markerPlayback.register();
-        registerPayloads();
+        PayloadTypeRegistry.clientboundPlay().register(PlaybackStatePayload.TYPE, PlaybackStatePayload.STREAM_CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(WheelSyncPayload.TYPE, WheelSyncPayload.STREAM_CODEC);
         ServerLifecycleEvents.SERVER_STARTED.register(server -> accounts.initialize());
         lifecycle.register();
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> accounts.close());
     }
 
-    private static void registerPayloads() {
-        PayloadTypeRegistry.clientboundPlay().register(PlaybackStatePayload.TYPE, PlaybackStatePayload.STREAM_CODEC);
-        PayloadTypeRegistry.clientboundPlay().register(WheelSyncPayload.TYPE, WheelSyncPayload.STREAM_CODEC);
-    }
 }

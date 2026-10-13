@@ -341,7 +341,10 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
         entity.setXRot(0.0F);
         entity.addTag(RUNTIME_TAG);
 
-        DisplayData content = applyRuntimeData(entity, requirePreparedData(nodeId + "/" + attachmentId, preparedData));
+        if (preparedData == null) {
+            throw new IllegalStateException("Display node was not prepared during reload: " + nodeId + "/" + attachmentId);
+        }
+        DisplayData content = applyRuntimeData(entity, preparedData);
         AttachmentInstance instance = new AttachmentInstance(attachmentId, attachment, entity, content);
         TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, entity.registryAccess());
         entity.saveWithoutId(output);
@@ -400,16 +403,6 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
         accessor.emote$setTransformationInterpolationDelay(0);
         attachment.appliedTransformation = transformation;
         attachment.appliedInterpolationDuration = interpolationDurationTicks;
-    }
-
-    private static DisplayData requirePreparedData(
-        String nodeId,
-        DisplayData preparedData
-    ) {
-        if (preparedData == null) {
-            throw new IllegalStateException("Display node was not prepared during reload: " + nodeId);
-        }
-        return preparedData;
     }
 
     private static Component resolveText(Display.TextDisplay entity, Component text) {
