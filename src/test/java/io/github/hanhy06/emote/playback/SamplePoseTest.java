@@ -466,7 +466,7 @@ class SamplePoseTest {
             json = JsonParser.parseReader(new InputStreamReader(input, StandardCharsets.UTF_8)).getAsJsonObject();
         }
         var clip = json.getAsJsonObject("animation");
-        clip.add("programs", JsonParser.parseString("{\"initialize\":\"v.counter=q.max_health;\",\"update\":\"v.counter=v.counter+q.health;\"}"));
+        clip.add("molang", JsonParser.parseString("{\"initialize\":\"v.counter=q.max_health;\",\"tick\":\"v.counter=v.counter+q.health;\"}"));
         clip.add("clock", JsonParser.parseString("{\"type\":\"molang\",\"expression\":\"q.anim_time + q.delta_time\"}"));
         clip.add("playback", JsonParser.parseString("{\"mode\":\"loop\",\"start_delay\":{\"molang\":\"q.player_level * 0\"},\"loop_delay\":{\"molang\":\"q.scoreboard('delay') * 0\"}}"));
         clip.getAsJsonObject("values").add("location", JsonParser.parseString("{\"base\":[0],\"type\":\"expression\",\"value\":[{\"molang\":\"q.position(0)\"}]}"));

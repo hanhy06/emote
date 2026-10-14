@@ -41,7 +41,7 @@ public record EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings set
         Objects.requireNonNull(source, "source");
     }
 
-    public record MolangPrograms(String initialize, String update) {
+    public record MolangPrograms(String initialize, String tick) {
         public static MolangPrograms empty() { return new MolangPrograms(null, null); }
     }
     public record Settings(boolean standalone, int cooldownTicks, float rotationDeadzone,

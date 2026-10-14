@@ -42,8 +42,8 @@ public final class AnimationJsonParser {
         if (cooldownTicks < 0) throw d.error("$.settings.cooldown", "must not be negative");
         if (deadzone < 0 || deadzone > 180) throw d.error("$.settings.rotation_deadzone", "must be between 0 and 180");
         EmotePlayerBehavior playerBehavior = animationPlayer(object(settings, "player", "$.settings", d), d);
-        JsonObject programs = object(clip, "programs", "$.animation", d);
-        MolangPrograms molang = new MolangPrograms(program(programs, "initialize", "$.animation.programs", d), program(programs, "update", "$.animation.programs", d));
+        JsonObject molangObject = object(clip, "molang", "$.animation", d);
+        MolangPrograms molang = new MolangPrograms(program(molangObject, "initialize", "$.animation.molang", d), program(molangObject, "tick", "$.animation.molang", d));
         JsonObject clock = object(clip, "clock", "$.animation", d);
         String clockType = text(clock, "type", "elapsed", "$.animation.clock", d);
         if (!Set.of("elapsed", "molang").contains(clockType)) throw d.error("$.animation.clock.type", "unknown clock");

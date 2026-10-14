@@ -79,7 +79,7 @@ final class AnimationEvaluator {
         this.nbtCycle = loopCount;
         prepareFrame(0, loopCount, 0, lifetimeTicks);
         if (this.animation.model().molang().initialize() != null) {
-            this.session.evaluate(this.animation.expression("$.animation.programs.initialize"));
+            this.session.evaluate(this.animation.expression("$.animation.molang.initialize"));
         }
     }
 
@@ -133,19 +133,19 @@ final class AnimationEvaluator {
         this.session.setQuery("life_time", lifetimeTicks / 20.0);
     }
 
-    void evaluateFrame(int tick, int loopCount, int deltaTicks, long lifetimeTicks, boolean update) {
-        sampleFrame(tick, loopCount, deltaTicks, lifetimeTicks, update, true);
+    void evaluateFrame(int tick, int loopCount, int deltaTicks, long lifetimeTicks, boolean runMolangTick) {
+        sampleFrame(tick, loopCount, deltaTicks, lifetimeTicks, runMolangTick, true);
         finishFrame();
         calculatePose(capturePose(), new Matrix4f(), null, 0);
     }
 
-    void sampleFrame(int tick, int loopCount, int deltaTicks, long lifetimeTicks, boolean update, boolean captureNbt) {
+    void sampleFrame(int tick, int loopCount, int deltaTicks, long lifetimeTicks, boolean runMolangTick, boolean captureNbt) {
         this.sampleGeneration++;
         tick = Math.min(tick, this.animation.model().clip().durationTicks());
         this.sharedValues.clear();
         setFrameQueries(tick, loopCount, deltaTicks, lifetimeTicks);
-        if (update && this.animation.model().molang().update() != null) {
-            this.session.evaluate(this.animation.expression("$.animation.programs.update"));
+        if (runMolangTick && this.animation.model().molang().tick() != null) {
+            this.session.evaluate(this.animation.expression("$.animation.molang.tick"));
         }
         if (!this.animation.hasNbtTracks() || this.animation.playbackMode() == PlaybackMode.SERVER_SYNC) this.nbtCycle = loopCount;
         Map<String, double[]> frameValues = captureNbt && this.nbtCycle < loopCount ? new HashMap<>(this.sharedValues) : null;

@@ -37,7 +37,7 @@ const animation: AnimationJson = {
   animation: {
     duration: "2s", clock: { type: "molang", expression: "q.anim_time + q.delta_time * v.speed" },
     playback: { mode: "loop", loop_start: "5t", start_delay: "0.15s", loop_delay: { molang: "v.pause * 20" } },
-    programs: { initialize: "v.speed = 1; v.pause = 0.5;", update: "v.speed = q.is_sneaking ? 0.5 : 1;" },
+    molang: { initialize: "v.speed = 1; v.pause = 0.5;", tick: "v.speed = q.is_sneaking ? 0.5 : 1;" },
     tracks: [
       {
         target: { node: "arm", operation: "position" }, channel: "value",

@@ -41,7 +41,7 @@ export function createPreviewModel(document: ConversionDocument, animation: Conv
   let availability: PreviewAvailability | null = animation ? { status: "full" } : null;
   if (animation) {
     if (animation.clip.clock?.type === "molang") approximate("Runtime animation clock is approximated with elapsed time.");
-    if (animation.clip.programs?.initialize || animation.clip.programs?.update) approximate("Runtime programs are preserved; dependent expressions use their base components.");
+    if (animation.clip.molang?.initialize || animation.clip.molang?.tick) approximate("Runtime Molang is preserved; dependent expressions use their base components.");
     try {
       const poses = evaluatePose({ ...animation, nodes: Object.fromEntries(animation.nodeIds.map((id) => [id, document.nodes[id]])),
         animation: frame.type === "create" ? { ...animation.clip, tracks: [] } : animation.clip }, time, evaluate, approximate);

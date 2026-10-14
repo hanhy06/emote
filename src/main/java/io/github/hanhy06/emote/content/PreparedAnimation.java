@@ -258,8 +258,8 @@ public final class PreparedAnimation implements PreparedEmote {
             }
         }
         if (animation.clip().clock() != null) compileExpression(result, animation.clip().clock(), "$.animation.clock.expression", false);
-        if (animation.molang().initialize() != null) compileExpression(result, animation.molang().initialize(), "$.animation.programs.initialize", true);
-        if (animation.molang().update() != null) compileExpression(result, animation.molang().update(), "$.animation.programs.update", true);
+        if (animation.molang().initialize() != null) compileExpression(result, animation.molang().initialize(), "$.animation.molang.initialize", true);
+        if (animation.molang().tick() != null) compileExpression(result, animation.molang().tick(), "$.animation.molang.tick", true);
         for (var delay : List.of(animation.settings().playback().startDelay(), animation.settings().playback().loopDelay())) {
             if (delay instanceof EmoteAnimation.MolangValue m) compileExpression(result, m.source(), m.path(), false);
         }
@@ -281,7 +281,7 @@ public final class PreparedAnimation implements PreparedEmote {
 
     private void requireSupportedPlayback() {
         var playback = model.settings().playback();
-        if (playback.mode() == EmoteAnimation.PlaybackMode.SERVER_SYNC && (model.clip().clock() != null || model.molang().update() != null
+        if (playback.mode() == EmoteAnimation.PlaybackMode.SERVER_SYNC && (model.clip().clock() != null || model.molang().tick() != null
             || !(playback.startDelay() instanceof EmoteAnimation.ConstantValue) || !(playback.loopDelay() instanceof EmoteAnimation.ConstantValue))) {
             throw new IllegalArgumentException("$.animation.playback: server_sync requires reconstructible clock and state");
         }

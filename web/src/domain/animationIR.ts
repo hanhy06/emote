@@ -104,7 +104,7 @@ export interface ClipIR {
   duration: string;
   clock?: { type: "elapsed" } | { type: "molang"; expression: string };
   playback?: { mode?: "once" | "hold" | "loop" | "server_sync"; loop_start?: string; start_delay?: TimeValueIR; loop_delay?: TimeValueIR };
-  programs?: { initialize?: string; update?: string };
+  molang?: { initialize?: string; tick?: string };
   values?: Record<string, SharedValueIR>;
   tracks: TrackIR[];
   events?: { start?: EventIR[]; timeline?: TimelineEventIR[]; loop?: EventIR[]; stop?: EventIR[] };

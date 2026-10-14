@@ -193,7 +193,7 @@ public final class EmotePlayback {
     private void startAtCyclePhaseUnchecked(long cycleTick) {
         if (this.emote instanceof PreparedSequence) throw new IllegalStateException("Cycle phase placement requires an animation");
         var playback = this.model.settings().playback();
-        if ( this.model.clip().clock() != null || this.model.molang().update() != null
+        if ( this.model.clip().clock() != null || this.model.molang().tick() != null
             || !(playback.startDelay() instanceof EmoteAnimation.ConstantValue) || !(playback.loopDelay() instanceof EmoteAnimation.ConstantValue delay)
             || this.model.clip().tracks().stream().flatMap(track -> track.driver().keys().stream()).anyMatch(key -> key.post() instanceof EmoteAnimation.MolangNbtValue)) {
             throw new IllegalStateException("Cycle phase placement requires a reconstructible clock and fixed delays");
@@ -728,7 +728,7 @@ public final class EmotePlayback {
                     var source = selectedAnimation(segments.get(previous));
                     if (this.child == null || this.childSelection != source) {
                         var model = source.animation().model();
-                        if (model.molang().update() != null || model.clip().clock() != null
+                        if (model.molang().tick() != null || model.clip().clock() != null
                             || segment.phase() == PlaybackTimeline.Phase.LOOP_DELAY && model.settings().playback().loopDelay() instanceof EmoteAnimation.MolangValue) {
                             throw new IllegalArgumentException("Cannot reconstruct a previous animation program for this sequence gap");
                         }
@@ -763,7 +763,7 @@ public final class EmotePlayback {
             if (previous >= 0) {
                 var source = selectedAnimation(segments.get(previous));
                 if (this.child == null || this.childSelection != source) {
-                    if (source.animation().model().molang().update() != null || source.animation().model().clip().clock() != null) throw new IllegalArgumentException("Cannot reconstruct a previous animation program for this sequence gap");
+                    if (source.animation().model().molang().tick() != null || source.animation().model().clip().clock() != null) throw new IllegalArgumentException("Cannot reconstruct a previous animation program for this sequence gap");
                     this.child = null;
                     prepareChild(source);
                 }
