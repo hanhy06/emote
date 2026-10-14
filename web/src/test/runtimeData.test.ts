@@ -241,7 +241,7 @@ it("preserves and evaluates shared v5 curves, dynamic arguments and blend in tra
   const actual: AnimationJson = JSON.parse(await output.blob.text());
   expect(actual).toEqual(authored);
   const parser = new MolangParser();
-  for (const tick of [0, 10, 15, 15, 30]) {
+  for (const tick of [0, 10, 15, 30]) {
     const calls = new Map<string, number>();
     const scoreboard = (id: string) => {
       const count = (calls.get(id) ?? 0) + 1;
