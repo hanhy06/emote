@@ -24,41 +24,55 @@ public class PlayerSkinManager implements ConfigListener {
     private final List<Consumer<UUID>> readyListeners = new CopyOnWriteArrayList<>();
     private final Map<UUID, PlayerSkinSource.Key> connectedSkins = new HashMap<>();
     private Set<PlayerSkinRegion> modelRegions = Set.of();
-    private long sourceGeneration;
+    private volatile long sourceGeneration;
+    private volatile MinecraftServer server;
 
     public PlayerSkinManager(SkinBakeCoordinator provider) {
         this.provider = Objects.requireNonNull(provider, "provider");
         this.provider.setListener(new SkinBakeCoordinator.Listener() {
             @Override
-            public void onDefaultReady() {
-                EmoteMod.SERVER.execute(() -> {
-                    EmoteMod.SERVER.getPlayerList().getPlayers().forEach(player -> {
+            public void onDefaultReady(long generation, long revision) {
+                if (!provider.isDefaultCurrent(generation, revision)) return;
+                MinecraftServer server = PlayerSkinManager.this.server;
+                server.execute(() -> {
+                    if (!provider.isDefaultCurrent(generation, revision)) return;
+                    server.getPlayerList().getPlayers().forEach(player -> {
                         for (Consumer<UUID> readyListener : readyListeners) readyListener.accept(player.getUUID());
                     });
                     defaultReadyListeners.forEach(Runnable::run);
                 });
             }
             @Override
-            public void onReady(UUID playerUuid) {
-                notifySkinReady(playerUuid);
+            public void onReady(UUID playerUuid, long generation) {
+                notifySkinReady(playerUuid, generation);
             }
 
             @Override
-            public void onFailed(UUID playerUuid) {
-                notifySkinFailed(playerUuid);
+            public void onUnavailable(UUID playerUuid, long generation) {
+                notifySkinReady(playerUuid, generation);
+            }
+
+            @Override
+            public void onFailed(UUID playerUuid, long generation) {
+                notifySkinFailed(playerUuid, generation);
             }
         });
     }
 
     @Override
     public void onConfigReload(Config newConfig) {
+        MinecraftServer server = EmoteMod.SERVER;
+        this.server = server;
         long generation = ++this.sourceGeneration;
         this.namedSources.clear();
         this.provider.onConfigReload(newConfig);
         if (!newConfig.defaultSkin().isEmpty()) {
-            namedSource(newConfig.defaultSkin()).thenAccept(source -> EmoteMod.SERVER.execute(() -> {
-                if (generation == this.sourceGeneration && source != null) this.provider.setDefaultSource(source);
-            }));
+            namedSource(newConfig.defaultSkin()).thenAccept(source -> {
+                if (generation != this.sourceGeneration || source == null) return;
+                server.execute(() -> {
+                    if (generation == this.sourceGeneration) this.provider.setDefaultSource(source);
+                });
+            });
         }
     }
 
@@ -169,18 +183,22 @@ public class PlayerSkinManager implements ConfigListener {
         return this.provider.processingStats();
     }
 
-    private void notifySkinReady(UUID playerUuid) {
-        MinecraftServer server = EmoteMod.SERVER;
+    private void notifySkinReady(UUID playerUuid, long generation) {
+        if (!this.provider.isCurrent(generation)) return;
+        MinecraftServer server = this.server;
         server.execute(() -> {
+            if (!this.provider.isCurrent(generation)) return;
             for (Consumer<UUID> readyListener : this.readyListeners) {
                 readyListener.accept(playerUuid);
             }
         });
     }
 
-    private void notifySkinFailed(UUID playerUuid) {
-        MinecraftServer server = EmoteMod.SERVER;
+    private void notifySkinFailed(UUID playerUuid, long generation) {
+        if (!this.provider.isCurrent(generation)) return;
+        MinecraftServer server = this.server;
         server.execute(() -> {
+            if (!this.provider.isCurrent(generation)) return;
             for (Consumer<UUID> readyListener : this.readyListeners) readyListener.accept(playerUuid);
             ServerPlayer player = server.getPlayerList().getPlayer(playerUuid);
             if (player != null) {

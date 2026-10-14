@@ -29,6 +29,8 @@ public final class SkinCache {
     private static final Pattern CONTENT_HASH_PATTERN = Pattern.compile("[0-9a-f]{64}");
 
     private final Path skinDirPath;
+    private final Object memoryLock = new Object();
+    private long memoryEpoch;
     private final BoundedCache<PlayerSkinSource.Key, Map<PlayerSkinRegion, String>> skinTextures =
         new BoundedCache<>(SKIN_MEMORY_CACHE_MAX_ENTRIES);
     private final BoundedCache<String, String> contentTextureUrls =
@@ -55,28 +57,51 @@ public final class SkinCache {
         return HexFormat.of().formatHex(digest.digest());
     }
 
-    public synchronized Map<PlayerSkinRegion, String> load(String textureHash, boolean slimModel) {
+    long epoch() { synchronized (this.memoryLock) { return this.memoryEpoch; } }
+
+    public Map<PlayerSkinRegion, String> peek(String textureHash, boolean slimModel) {
+        var key = new PlayerSkinSource.Key(textureHash.toLowerCase(Locale.ROOT), slimModel);
+        synchronized (this.memoryLock) { return this.skinTextures.get(key); }
+    }
+
+    boolean markUsed(String textureHash, boolean slimModel) {
+        Path path = resolveFilePath(textureHash, slimModel);
+        long now = System.currentTimeMillis();
+        synchronized (this.memoryLock) {
+            Long previous = this.refreshedAccessTimes.get(path);
+            if (previous != null && now - previous < LAST_ACCESS_REFRESH_MILLIS) return false;
+            this.refreshedAccessTimes.put(path, now);
+            return true;
+        }
+    }
+
+    public synchronized void touch(String textureHash, boolean slimModel, long expectedEpoch) {
+        if (expectedEpoch == epoch()) touchFile(resolveFilePath(textureHash, slimModel), expectedEpoch);
+    }
+
+    public synchronized Map<PlayerSkinRegion, String> load(String textureHash, boolean slimModel, long expectedEpoch) {
+        if (expectedEpoch != epoch()) return Map.of();
         PlayerSkinSource.Key cacheKey = new PlayerSkinSource.Key(Objects.requireNonNull(textureHash, "textureHash").toLowerCase(Locale.ROOT), slimModel);
         Path filePath = resolveFilePath(textureHash, slimModel);
-        Map<PlayerSkinRegion, String> cached = this.skinTextures.get(cacheKey);
+        Map<PlayerSkinRegion, String> cached = peek(textureHash, slimModel);
         if (cached != null) {
-            refreshLastUsed(filePath);
+            refreshLastUsed(filePath, expectedEpoch);
             return cached;
         }
 
         if (!Files.exists(filePath)) {
-            return cacheSkinTextures(cacheKey, Map.of());
+            return cacheSkinTextures(cacheKey, Map.of(), expectedEpoch);
         }
 
         try {
             JsonObject skinJson = JsonFileStore.readObject(filePath);
             if (skinJson == null) {
-                return cacheSkinTextures(cacheKey, Map.of());
+                return cacheSkinTextures(cacheKey, Map.of(), expectedEpoch);
             }
 
             JsonArray textures = readTextures(skinJson);
             if (textures == null) {
-                return cacheSkinTextures(cacheKey, Map.of());
+                return cacheSkinTextures(cacheKey, Map.of(), expectedEpoch);
             }
 
             Map<PlayerSkinRegion, String> textureUrlMap = new HashMap<>();
@@ -91,36 +116,43 @@ public final class SkinCache {
             }
 
             if (textureUrlMap.isEmpty()) {
-                return cacheSkinTextures(cacheKey, Map.of());
+                return cacheSkinTextures(cacheKey, Map.of(), expectedEpoch);
             }
-            refreshLastUsed(filePath);
-            return cacheSkinTextures(cacheKey, Map.copyOf(textureUrlMap));
+            refreshLastUsed(filePath, expectedEpoch);
+            return cacheSkinTextures(cacheKey, Map.copyOf(textureUrlMap), expectedEpoch);
         } catch (IOException | RuntimeException exception) {
             EmoteMod.LOGGER.warn("Failed to read skin texture cache: {}", filePath, exception);
-            return cacheSkinTextures(cacheKey, Map.of());
+            return cacheSkinTextures(cacheKey, Map.of(), expectedEpoch);
         }
     }
 
-    public synchronized void save(String textureHash, boolean slimModel, Map<PlayerSkinRegion, String> textureUrlMap) {
+    public synchronized boolean save(String textureHash, boolean slimModel, Map<PlayerSkinRegion, String> textureUrlMap, long expectedEpoch) {
+        if (expectedEpoch != epoch()) return false;
         if (textureUrlMap.isEmpty()) {
-            return;
+            return true;
         }
 
         Path filePath = resolveFilePath(textureHash, slimModel);
-        Map<PlayerSkinRegion, String> merged = new HashMap<>(load(textureHash, slimModel));
+        Map<PlayerSkinRegion, String> merged = new HashMap<>(load(textureHash, slimModel, expectedEpoch));
         merged.putAll(textureUrlMap);
         Map<PlayerSkinRegion, String> savedTextureUrls = Map.copyOf(merged);
         JsonObject skinJson = createSkinJson(textureHash, slimModel, savedTextureUrls);
         try {
             JsonFileStore.writeObjectAtomically(filePath, skinJson, this.gson);
-            this.skinTextures.put(new PlayerSkinSource.Key(Objects.requireNonNull(textureHash, "textureHash").toLowerCase(Locale.ROOT), slimModel), savedTextureUrls);
-            this.refreshedAccessTimes.put(filePath, System.currentTimeMillis());
+            synchronized (this.memoryLock) {
+                if (expectedEpoch != this.memoryEpoch) return false;
+                this.skinTextures.put(new PlayerSkinSource.Key(textureHash.toLowerCase(Locale.ROOT), slimModel), savedTextureUrls);
+                this.refreshedAccessTimes.put(filePath, System.currentTimeMillis());
+            }
+            return true;
         } catch (IOException exception) {
             EmoteMod.LOGGER.warn("Failed to write skin texture cache: {}", filePath, exception);
+            return false;
         }
     }
 
-    public synchronized DefaultSkin loadDefault(String playerName) {
+    public synchronized DefaultSkin loadDefault(String playerName, long expectedEpoch) {
+        if (expectedEpoch != epoch()) return null;
         Path path = this.skinDirPath.resolve("default_skin.json");
         if (playerName.isEmpty() || !Files.isRegularFile(path)) return null;
         try {
@@ -137,21 +169,22 @@ public final class SkinCache {
                 String textureUrl = readTextureUrl(texture);
                 if (region != null && textureUrl != null) ready.put(region, textureUrl);
             }
-            return new DefaultSkin(playerName, hash, url, slim.getAsBoolean(), ready);
+            return expectedEpoch == epoch() ? new DefaultSkin(playerName, hash, url, slim.getAsBoolean(), ready) : null;
         } catch (IOException | RuntimeException exception) {
             EmoteMod.LOGGER.warn("Failed to read default skin cache: {}", path, exception);
             return null;
         }
     }
 
-    public synchronized boolean saveDefault(DefaultSkin skin) {
+    public synchronized boolean saveDefault(DefaultSkin skin, long expectedEpoch) {
+        if (expectedEpoch != epoch()) return false;
         Path path = this.skinDirPath.resolve("default_skin.json");
         JsonObject object = createSkinJson(skin.textureHash(), skin.slimModel(), skin.textures());
         object.addProperty("player_name", skin.playerName());
         object.addProperty("source_texture_url", skin.textureUrl());
         try {
             JsonFileStore.writeObjectAtomically(path, object, this.gson);
-            return true;
+            return expectedEpoch == epoch();
         } catch (IOException exception) {
             EmoteMod.LOGGER.warn("Failed to write default skin cache: {}", path, exception);
             return false;
@@ -163,11 +196,13 @@ public final class SkinCache {
         public DefaultSkin { textures = Map.copyOf(textures); }
     }
 
-    public synchronized String loadContent(String contentHash) {
+    public synchronized String loadContent(String contentHash, long expectedEpoch) {
+        if (expectedEpoch != epoch()) return null;
         Path filePath = resolveCacheFilePath(contentHash, "content");
-        String cachedTextureUrl = this.contentTextureUrls.get(contentHash);
+        String cachedTextureUrl;
+        synchronized (this.memoryLock) { cachedTextureUrl = this.contentTextureUrls.get(contentHash); }
         if (cachedTextureUrl != null) {
-            refreshLastUsed(filePath);
+            refreshLastUsed(filePath, expectedEpoch);
             return cachedTextureUrl;
         }
 
@@ -187,8 +222,12 @@ public final class SkinCache {
             if (version == null || version != CONTENT_CACHE_VERSION || !contentHash.equals(storedHash) || textureUrl == null) {
                 return null;
             }
-            String existingTextureUrl = this.contentTextureUrls.putIfAbsent(contentHash, textureUrl);
-            refreshLastUsed(filePath);
+            String existingTextureUrl;
+            synchronized (this.memoryLock) {
+                if (expectedEpoch != this.memoryEpoch) return null;
+                existingTextureUrl = this.contentTextureUrls.putIfAbsent(contentHash, textureUrl);
+            }
+            refreshLastUsed(filePath, expectedEpoch);
             return existingTextureUrl == null ? textureUrl : existingTextureUrl;
         } catch (IOException | RuntimeException exception) {
             EmoteMod.LOGGER.warn("Failed to read skin content cache: {}", filePath, exception);
@@ -196,10 +235,11 @@ public final class SkinCache {
         }
     }
 
-    public synchronized void saveContent(String contentHash, String textureUrl) {
+    public synchronized boolean saveContent(String contentHash, String textureUrl, long expectedEpoch) {
+        if (expectedEpoch != epoch()) return false;
         Path filePath = resolveCacheFilePath(contentHash, "content");
         if (filePath == null) {
-            return;
+            return false;
         }
 
         JsonObject object = new JsonObject();
@@ -208,12 +248,17 @@ public final class SkinCache {
         object.addProperty("texture_url", textureUrl);
         try {
             JsonFileStore.writeObjectAtomically(filePath, object, this.gson);
-            this.contentTextureUrls.put(contentHash, textureUrl);
-            this.refreshedAccessTimes.put(filePath, System.currentTimeMillis());
+            synchronized (this.memoryLock) {
+                if (expectedEpoch != this.memoryEpoch) return false;
+                this.contentTextureUrls.put(contentHash, textureUrl);
+                this.refreshedAccessTimes.put(filePath, System.currentTimeMillis());
+            }
             clearPendingJob(contentHash);
             clearFailure(contentHash);
+            return true;
         } catch (IOException exception) {
             EmoteMod.LOGGER.warn("Failed to write skin content cache: {}", filePath, exception);
+            return false;
         }
     }
 
@@ -317,13 +362,17 @@ public final class SkinCache {
         }
     }
 
-    public synchronized void clearMemory() {
-        this.skinTextures.clear();
-        this.contentTextureUrls.clear();
-        this.refreshedAccessTimes.clear();
+    public void clearMemory() {
+        synchronized (this.memoryLock) {
+            this.memoryEpoch++;
+            this.skinTextures.clear();
+            this.contentTextureUrls.clear();
+            this.refreshedAccessTimes.clear();
+        }
     }
 
-    public synchronized CleanupResult cleanup(long retentionMillis, long maximumBytes, long nowEpochMillis) {
+    public synchronized CleanupResult cleanup(long retentionMillis, long maximumBytes, long nowEpochMillis, long expectedEpoch) {
+        if (expectedEpoch != epoch()) return new CleanupResult(0, 0, 0, 0L);
         if (retentionMillis < 1L) {
             throw new IllegalArgumentException("retentionMillis must be positive");
         }
@@ -364,7 +413,13 @@ public final class SkinCache {
         }
 
         if (expiredFilesDeleted > 0 || capacityFilesDeleted > 0) {
-            clearMemory();
+            synchronized (this.memoryLock) {
+                if (expectedEpoch == this.memoryEpoch) {
+                    this.skinTextures.clear();
+                    this.contentTextureUrls.clear();
+                    this.refreshedAccessTimes.clear();
+                }
+            }
         }
         return new CleanupResult(
             expiredFilesDeleted,
@@ -376,24 +431,36 @@ public final class SkinCache {
 
     private Map<PlayerSkinRegion, String> cacheSkinTextures(
         PlayerSkinSource.Key cacheKey,
-        Map<PlayerSkinRegion, String> textureUrls
+        Map<PlayerSkinRegion, String> textureUrls,
+        long expectedEpoch
     ) {
-        Map<PlayerSkinRegion, String> existing = this.skinTextures.putIfAbsent(cacheKey, textureUrls);
-        return existing == null ? textureUrls : existing;
+        synchronized (this.memoryLock) {
+            if (expectedEpoch != this.memoryEpoch) return Map.of();
+            Map<PlayerSkinRegion, String> existing = this.skinTextures.putIfAbsent(cacheKey, textureUrls);
+            return existing == null ? textureUrls : existing;
+        }
     }
 
-    private void refreshLastUsed(Path filePath) {
+    private void refreshLastUsed(Path filePath, long expectedEpoch) {
         long now = System.currentTimeMillis();
-        Long refreshedAt = this.refreshedAccessTimes.get(filePath);
-        if (refreshedAt != null && now - refreshedAt < LAST_ACCESS_REFRESH_MILLIS) {
-            return;
+        synchronized (this.memoryLock) {
+            if (expectedEpoch != this.memoryEpoch) return;
+            Long refreshedAt = this.refreshedAccessTimes.get(filePath);
+            if (refreshedAt != null && now - refreshedAt < LAST_ACCESS_REFRESH_MILLIS) return;
         }
+        touchFile(filePath, expectedEpoch);
+    }
+
+    private void touchFile(Path filePath, long expectedEpoch) {
+        long now = System.currentTimeMillis();
         try {
             FileTime lastModified = Files.getLastModifiedTime(filePath);
             if (now - lastModified.toMillis() >= LAST_ACCESS_REFRESH_MILLIS) {
                 Files.setLastModifiedTime(filePath, FileTime.fromMillis(now));
             }
-            this.refreshedAccessTimes.put(filePath, now);
+            synchronized (this.memoryLock) {
+                if (expectedEpoch == this.memoryEpoch) this.refreshedAccessTimes.put(filePath, now);
+            }
         } catch (IOException ignored) {
         }
     }
@@ -439,10 +506,15 @@ public final class SkinCache {
 
     private void addCacheFile(List<CacheFile> result, Path filePath) {
         try {
+            long lastUsed = Files.getLastModifiedTime(filePath).toMillis();
+            synchronized (this.memoryLock) {
+                Long refreshedAt = this.refreshedAccessTimes.get(filePath);
+                if (refreshedAt != null) lastUsed = Math.max(lastUsed, refreshedAt);
+            }
             result.add(new CacheFile(
                 filePath,
                 Files.size(filePath),
-                Files.getLastModifiedTime(filePath).toMillis()
+                lastUsed
             ));
         } catch (IOException exception) {
             EmoteMod.LOGGER.warn("Failed to inspect skin cache file: {}", filePath, exception);
