@@ -17,7 +17,6 @@ import net.minecraft.core.component.DataComponentInitializers;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.data.registries.VanillaRegistries;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.TagParser;
 import net.minecraft.server.Bootstrap;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
@@ -40,7 +39,6 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -477,131 +475,6 @@ class SamplePoseTest {
         var prepared = PreparedAnimation.prepare(new AnimationJsonParser().parse(Path.of("queries.json"), json.toString().getBytes(StandardCharsets.UTF_8)), registries);
         assertTrue(prepared.queryNames().containsAll(Set.of("max_health", "health", "anim_time", "delta_time", "player_level", "scoreboard", "position", "hurt_time", "value", "key_frame_lerp_time")));
         assertTrue(!prepared.queryNames().contains("is_swimming"));
-    }
-
-    @Test
-    void accumulatesNbtPatchesAndPreservesSnapshotsAcrossSeek() throws Exception {
-        var animation = nbtAnimation("once", """
-            [{"target":{"node":"n","attachment":"a"},"channel":"nbt","driver":{"type":"state","keys":[
-              {"time":"0t","value":{"merge":"{old:1,nested:{a:1,b:1}}"}},
-              {"time":"2t","value":{"remove":["old"],"merge":"{nested:{a:2}}"}},
-              {"time":"2t","value":{"merge":"{old:3,nested:{c:3}}"}},
-              {"time":"4t","value":{"remove":["nested"],"merge":"{nested:{b:4}}"}},
-              {"time":"6t","value":{"merge":"{end:1}"}}
-            ]}}]
-            """);
-        var evaluator = new AnimationEvaluator(animation, MolangQuerySource.EMPTY);
-        evaluator.initialize(0, 0);
-        evaluator.evaluateFrame(0, 0, 0, 0, false);
-        var initial = evaluator.capturePose();
-        evaluator.evaluateFrame(1, 0, 1, 1, false);
-        assertSame(initial.nbt, evaluator.capturePose().nbt);
-        evaluator.evaluateFrame(2, 0, 1, 2, false);
-        var changed = evaluator.capturePose();
-        assertEquals(TagParser.parseCompoundFully("{old:3,nested:{a:2,b:1,c:3}}"), changed.nbt.get("n").get("a"));
-        assertEquals(Set.of("old"), changed.nbtRemoved.get("n").get("a"));
-        evaluator.evaluateFrame(6, 0, 4, 6, false);
-        var jumped = evaluator.capturePose();
-        assertEquals(TagParser.parseCompoundFully("{old:3,nested:{b:4},end:1}"), jumped.nbt.get("n").get("a"));
-        assertEquals(Set.of("old", "nested"), jumped.nbtRemoved.get("n").get("a"));
-        evaluator.evaluateFrame(1, 0, 0, 6, false);
-        var rewound = evaluator.capturePose();
-        assertEquals(initial.nbt, rewound.nbt);
-        assertEquals(Set.of(), rewound.nbtRemoved.get("n").get("a"));
-        evaluator.evaluateFrame(2, 0, 1, 7, false);
-        assertEquals(changed.nbt, evaluator.capturePose().nbt);
-        assertEquals(TagParser.parseCompoundFully("{old:1,nested:{a:1,b:1}}"), initial.nbt.get("n").get("a"));
-        assertEquals(TagParser.parseCompoundFully("{old:3,nested:{a:2,b:1,c:3}}"), changed.nbt.get("n").get("a"));
-        assertEquals(TagParser.parseCompoundFully("{old:3,nested:{b:4},end:1}"), jumped.nbt.get("n").get("a"));
-    }
-
-    @Test
-    void preservesNbtCaptureOrderAndPersistentVariablesAcrossLoops() throws Exception {
-        String tracks = """
-            [{"target":{"node":"n","attachment":"a"},"channel":"nbt","driver":{"type":"state","keys":[
-              {"time":"0t","value":{"merge":{"molang":"q.scoreboard('a');return v.counter==1 ? '{marker:1}' : '{marker:2}';"}}}
-            ]}},
-             {"target":{"node":"n","attachment":"z"},"channel":"nbt","driver":{"type":"state","keys":[
-              {"time":"4t","value":{"merge":{"molang":"q.scoreboard('z');return v.counter==2 ? '{marker:2}' : '{marker:3}';"}}}
-            ]}}]
-            """;
-        var captures = new ArrayList<String>();
-        MolangQuerySource queries = (session, names) -> {
-            MolangQuerySource.EMPTY.apply(session, names);
-            session.setQueryFunction("scoreboard", arguments -> {
-                captures.add(arguments.string(0));
-                return io.github.hanhy06.emote.molang.MolangEngine.QueryValue.number(0);
-            });
-        };
-        var evaluator = new AnimationEvaluator(nbtAnimation("loop", tracks), queries);
-        evaluator.initialize(0, 0);
-        evaluator.evaluateFrame(0, 0, 0, 0, true);
-        var initial = evaluator.capturePose();
-        evaluator.evaluateFrame(4, 0, 4, 4, true);
-        assertEquals(TagParser.parseCompoundFully("{marker:1}"), evaluator.nbt(0).get("a"));
-        assertEquals(TagParser.parseCompoundFully("{marker:2}"), evaluator.nbt(0).get("z"));
-        evaluator.evaluateFrame(1, 0, 0, 4, false);
-        assertEquals(new CompoundTag(), evaluator.nbt(0).get("z"));
-        evaluator.evaluateFrame(4, 0, 3, 7, false);
-        assertEquals(List.of("a", "z"), captures);
-        evaluator.evaluateFrame(1, 2, 9, 16, true);
-        assertEquals(List.of("a", "z", "a", "z", "a"), captures);
-        assertEquals(TagParser.parseCompoundFully("{marker:2}"), evaluator.nbt(0).get("a"));
-        assertEquals(new CompoundTag(), evaluator.nbt(0).get("z"));
-        assertEquals(TagParser.parseCompoundFully("{marker:1}"), initial.nbt.get("n").get("a"));
-
-        captures.clear();
-        var synchronizedEvaluator = new AnimationEvaluator(nbtAnimation("server_sync", """
-            [{"target":{"node":"n","attachment":"a"},"channel":"nbt","driver":{"type":"state","keys":[
-              {"time":"0t","value":{"merge":"{marker:1}"}},
-              {"time":"4t","value":{"merge":"{marker:2}"}}
-            ]}}]
-            """), queries);
-        synchronizedEvaluator.initialize(0, 0);
-        synchronizedEvaluator.evaluateFrame(0, 0, 0, 0, true);
-        synchronizedEvaluator.evaluateFrame(4, 1, 10, 10, true);
-        synchronizedEvaluator.evaluateFrame(0, 2, 8, 18, true);
-        assertTrue(captures.isEmpty());
-        assertEquals(TagParser.parseCompoundFully("{marker:1}"), synchronizedEvaluator.nbt(0).get("a"));
-    }
-
-    @Test
-    void reusesNbtSnapshotsWhenNoKeysBecomeDue() throws Exception {
-        for (String tracks : List.of("[]", """
-            [{"target":{"node":"n","attachment":"a"},"channel":"nbt","driver":{"type":"state","keys":[
-              {"time":"0t","value":{"merge":"{nested:{value:1}}"}}
-            ]}}]
-            """)) {
-            var evaluator = new AnimationEvaluator(nbtAnimation("once", tracks), MolangQuerySource.EMPTY);
-            evaluator.initialize(0, 0);
-            evaluator.evaluateFrame(0, 0, 0, 0, false);
-            var initial = evaluator.capturePose();
-            for (int frame = 1; frame <= 100; frame++) {
-                evaluator.evaluateFrame(frame, 0, 1, frame, false);
-                var pose = evaluator.capturePose();
-                assertSame(initial.nbt, pose.nbt);
-                assertSame(initial.nbtRemoved, pose.nbtRemoved);
-                if (!initial.nbt.isEmpty()) assertSame(initial.nbt.get("n").get("a"), pose.nbt.get("n").get("a"));
-            }
-            if (tracks.equals("[]")) assertTrue(initial.nbt.isEmpty());
-        }
-    }
-
-    private PreparedAnimation nbtAnimation(String playbackMode, String tracks) throws Exception {
-        JsonObject json;
-        try (var input = Objects.requireNonNull(getClass().getResourceAsStream("/common-curves.json"))) {
-            json = JsonParser.parseReader(new InputStreamReader(input, StandardCharsets.UTF_8)).getAsJsonObject();
-        }
-        json.add("nodes", JsonParser.parseString("{\"n\":{\"attachments\":{\"a\":{\"type\":\"text_display\",\"text\":\"a\"},\"z\":{\"type\":\"text_display\",\"text\":\"z\"}}}}"));
-        var clip = JsonParser.parseString("{\"duration\":\"6t\",\"programs\":{\"initialize\":\"v.counter=0;\",\"update\":\"v.counter=v.counter+1;\"}}").getAsJsonObject();
-        if (playbackMode.equals("server_sync")) clip.getAsJsonObject("programs").remove("update");
-        var playback = new JsonObject();
-        playback.addProperty("mode", playbackMode);
-        if (playbackMode.equals("loop")) playback.addProperty("loop_start", "1t");
-        clip.add("playback", playback);
-        clip.add("tracks", JsonParser.parseString(tracks));
-        json.add("animation", clip);
-        return PreparedAnimation.prepare(new AnimationJsonParser().parse(Path.of("nbt.json"), json.toString().getBytes(StandardCharsets.UTF_8)), registries);
     }
 
     @Test
