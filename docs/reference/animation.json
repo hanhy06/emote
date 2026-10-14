@@ -1,16 +1,16 @@
 {
   "type": "animation",
   "schema_version": 5,
-  "id": "example:ir_design",
+  "id": "example:animation",
   "target_minecraft_version": "26.3",
   "metadata": {
-    "name": "Animation v5 Design Example",
-    "description": "Design proposal only; not loadable by the current v4 runtime.",
+    "name": "Animation Format Reference",
+    "description": "A rotating display with curves, Molang, visibility, NBT patches, and a command event.",
     "license": "Apache-2.0"
   },
   "settings": {
     "standalone": true,
-    "cooldown": 0,
+    "cooldown": "0t",
     "rotation_deadzone": 50,
     "player": {
       "hidden": false,
@@ -25,6 +25,7 @@
       }
     }
   },
+  "callbacks": [],
   "nodes": {
     "root": {
       "name": "root",
@@ -54,21 +55,16 @@
       "transform": [
         { "id": "offset", "op": "translate", "value": [0, 0.5, 0] }
       ]
-    },
-    "n3": {
-      "name": "unknown_accessory",
-      "parent": "n2",
-      "source": { "format": "example", "node_id": "original-accessory" },
-      "attachments": {
-        "custom": { "type": "external", "key": "example:accessory", "data": { "name": "accessory" } }
-      }
     }
   },
   "animation": {
-    "duration": 2,
+    "duration": "2s",
     "clock": { "type": "molang", "expression": "q.anim_time + q.delta_time * v.speed" },
-    "playback": { "mode": "loop", "loop_start": 0, "start_delay": 0, "loop_delay": 0 },
-    "programs": { "initialize": "v.speed = 1;" },
+    "playback": { "mode": "loop", "loop_start": "0t", "start_delay": "0t", "loop_delay": "0t" },
+    "molang": {
+      "initialize": "v.speed = 1; v.phase = 0;",
+      "tick": "v.phase = v.phase + q.delta_time * v.speed;"
+    },
     "tracks": [
       {
         "target": { "node": "n1", "operation": "spin" },
@@ -76,8 +72,8 @@
         "driver": {
           "type": "curve",
           "keys": [
-            { "time": 0, "value": [0, 0, 0] },
-            { "time": 2, "value": [0, 720, 0] }
+            { "time": "0t", "value": [0, 0, 0] },
+            { "time": "2s", "value": [0, 720, 0] }
           ],
           "segments": [
             { "interpolation": "linear", "easing": { "kernel": "power", "direction": "in_out", "exponent": 2 } }
@@ -90,9 +86,9 @@
         "driver": {
           "type": "curve",
           "keys": [
-            { "time": 0, "value": [0, 1.5, { "molang": "math.sin(q.anim_time * 180) * 0.1" }] },
-            { "time": 0.01, "value": [0.1, 1.5, 0] },
-            { "time": 2, "value": [0, 1.5, 0] }
+            { "time": "0t", "value": [0, 1.5, { "molang": "math.sin(v.phase * 180) * 0.1" }] },
+            { "time": "10t", "pre": [0.1, 1.5, 0], "post": [0.2, 1.5, 0] },
+            { "time": "2s", "value": [0, 1.5, 0] }
           ],
           "segments": [
             { "interpolation": "linear" },
@@ -101,7 +97,7 @@
               "handles": [
                 { "out": { "time": 0.3, "value": 0.4 }, "in": { "time": 0.7, "value": 0.2 } },
                 { "out": { "time": 0.3, "value": 1.8 }, "in": { "time": 0.7, "value": 1.8 } },
-                { "out": { "time": 0.3, "value": { "molang": "math.sin(q.anim_time * 180) * 0.1" } }, "in": { "time": 0.7, "value": 0 } }
+                { "out": { "time": 0.3, "value": { "molang": "math.sin(v.phase * 180) * 0.1" } }, "in": { "time": 0.7, "value": 0 } }
               ],
               "easing": { "kernel": "sine", "direction": "in_out" }
             }
@@ -109,9 +105,9 @@
         }
       },
       {
-        "target": { "node": "root" },
+        "target": { "node": "n1", "attachment": "prop" },
         "channel": "visible",
-        "driver": { "type": "state", "keys": [ { "time": 0, "value": true }, { "time": 1.9, "value": false } ] }
+        "driver": { "type": "state", "keys": [ { "time": "0t", "value": true }, { "time": "38t", "value": false } ] }
       },
       {
         "target": { "node": "n1", "attachment": "prop" },
@@ -119,22 +115,25 @@
         "driver": {
           "type": "state",
           "keys": [
-            { "time": 0, "value": { "merge": "{glowing:1b}", "remove": [] } },
-            { "time": 1, "value": { "merge": "{}", "remove": ["glowing"] } }
+            { "time": "0t", "value": { "merge": "{glowing:1b}", "remove": [] } },
+            { "time": "1s", "value": { "merge": "{}", "remove": ["glowing"] } }
           ]
         }
       }
     ],
     "events": {
+      "start": [],
       "timeline": [
         {
-          "time": 0.01,
+          "time": "10t",
           "direction": "forward",
-          "source": { "type": "server" },
-          "origin": { "type": "node", "node": "n2", "offset": [0, 0, 0] },
+          "source": { "type": "node", "node": "n1", "attachment": "prop" },
+          "origin": { "type": "node", "node": "n2", "offset": [0, 0, 0], "rotation": "origin" },
           "action": { "type": "commands", "commands": ["particle minecraft:end_rod ~ ~ ~ 0 0 0 0 1"] }
         }
-      ]
+      ],
+      "loop": [],
+      "stop": []
     }
   }
 }
