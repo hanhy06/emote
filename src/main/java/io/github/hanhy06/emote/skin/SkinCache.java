@@ -672,16 +672,16 @@ public final class SkinCache {
             this.maximumSize = maximumSize;
         }
 
-        private synchronized V get(K key) {
+        private V get(K key) {
             return this.values.get(key);
         }
 
-        private synchronized void put(K key, V value) {
+        private void put(K key, V value) {
             this.values.put(key, value);
             trimToMaximumSize();
         }
 
-        private synchronized V putIfAbsent(K key, V value) {
+        private V putIfAbsent(K key, V value) {
             V existing = this.values.get(key);
             if (existing != null) {
                 return existing;
@@ -691,7 +691,7 @@ public final class SkinCache {
             return null;
         }
 
-        private synchronized void clear() {
+        private void clear() {
             this.values.clear();
         }
 
