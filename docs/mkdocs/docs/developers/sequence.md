@@ -161,15 +161,17 @@ Include these IDs in random selection to skip a repetition or end the current st
 
 See the [Animation documentation](animation.md) for individual player settings.
 
-Sequences are directly playable and do not define `standalone`, `rotation_deadzone`, or `playback`. Rotation tracking and display interpolation use the currently playing Animation's settings.
+Sequences are directly playable. Their root `settings` controls cooldown and player behavior, while rotation tracking uses the currently playing Animation's `rotation_deadzone`.
 
 ## Animation compatibility
 
 All referenced Animations must be loaded successfully on the server. Compatibility is checked when emotes are reloaded.
 
-Regular node IDs may differ between Animations. The Sequence creates the required nodes once and reuses them until playback ends. Nodes absent from the current Animation are hidden.
+Node IDs may differ between Animations. The Sequence creates the required display attachments once and reuses them until playback ends. Attachments belonging to nodes absent from the current Animation are hidden.
 
-### Shared node IDs
+### Shared nodes and skin bindings
+
+For a node ID reused by multiple Animations:
 
 | Must match | May differ |
 |---|---|
@@ -177,9 +179,7 @@ Regular node IDs may differ between Animations. The Sequence creates the require
 | Item, item display context, block state, text, entity NBT, and initial attachment visibility | Initial node visibility |
 | Player skin binding | Timeline tracks |
 
-### Player skins
-
-All Animations must have the same compiled player-skin layout. Skin node IDs, attachment IDs, and each region's `part`, `from`, and `to` must match.
+All Animations must also have the same compiled player-skin layout. Skin node IDs, attachment IDs, and each region's `part`, `from`, and `to` must match, even when other node IDs differ.
 
 Repeat-control IDs are excluded from compatibility checks.
 

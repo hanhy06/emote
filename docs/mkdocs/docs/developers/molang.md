@@ -1,10 +1,10 @@
 # Molang
 
-Animation schema 5 accepts Molang in animation programs, vector track components, visibility track values, and dynamic NBT values. Both the short and long prefixes are supported: `q` or `query`, `v` or `variable`, and `t` or `temp`.
+Animation schema 5 accepts Molang for initialization and ticks, track values, curve parameters, shared values, animation time, and delays. Both the short and long prefixes are supported: `q` or `query`, `v` or `variable`, and `t` or `temp`.
 
-## Programs
+## Initialization and ticks
 
-Programs in `animation.molang` are optional:
+Use the optional `animation.molang` object when an Animation needs to initialize variables or update persistent state on ticks:
 
 ```json
 "animation": {
@@ -20,9 +20,37 @@ Programs in `animation.molang` are optional:
 - `v.*` variables persist within the Animation playback and may be assigned by `initialize` and `tick`.
 - `t.*` variables exist only for one expression evaluation.
 - `q.*` values are read-only. Assigning a query is rejected.
-- `server_sync` Animations cannot use `animation.molang.tick` because their timeline may begin at an arbitrary synchronized time.
 
 A Molang session is retained across an Animation's loops. Each Animation segment in a Sequence creates its own session.
+
+Track expressions, clock expressions, delays, and curve parameters can read persistent variables but cannot assign them. Use `initialize` and `tick` for those assignments. An Animation that only needs formulas in its tracks can omit `animation.molang`.
+
+## Animation time and delays
+
+Normally, animation time advances with elapsed server ticks. Set `animation.clock.type` to `molang` and provide `expression` to calculate the next timeline position in seconds:
+
+```json
+"clock": {
+  "type": "molang",
+  "expression": "q.anim_time + q.delta_time * v.speed"
+}
+```
+
+This fragment belongs inside `animation`. A custom clock can change the playback speed or move backward along the timeline. Timeline event `direction` determines which events run when the clock moves forward or backward.
+
+`animation.playback.start_delay` and `loop_delay` accept either Minecraft time strings or a Molang object. Molang delay results use seconds:
+
+```json
+"playback": {
+  "mode": "loop",
+  "start_delay": "5t",
+  "loop_delay": {"molang": "q.is_sneaking ? 0.5 : 0"}
+}
+```
+
+`start_delay` is calculated when the Animation starts, and `loop_delay` is calculated at each completed loop. Results must be finite and non-negative.
+
+`server_sync` playback must be reconstructible from server time. It cannot use a Molang clock, `animation.molang.tick`, Molang delays, or dynamic NBT keys.
 
 ## Math functions
 
@@ -64,18 +92,31 @@ Each position, rotation, or scale component may be a number or an object contain
   "target": {"node": "n1", "operation": "spin"},
   "channel": "value",
   "driver": {
-    "type": "curve",
-    "keys": [
-      {"time": "0t", "value": [0, {"molang": "q.target_y_rotation"}, {"molang": "v.offset"}]}
-    ],
-    "segments": []
+    "type": "expression",
+    "value": [0, {"molang": "q.target_y_rotation"}, 0]
   }
 }
 ```
 
 Visibility values may be booleans or objects containing a `molang` string. A finite result of `0` is hidden; any other finite result is visible.
 
-Track values may read persistent variables but cannot assign them. Temporary variables are cleared for each expression evaluation.
+The same `{ "molang": "..." }` form is used for dynamic easing parameters, curve handles and tangents, and `blend.weight`. A blended three-component track combines `blend.base` with the driver's result using that weight.
+
+### Shared values
+
+`animation.values` defines reusable scalar or three-component drivers. Each definition has a numeric `base` array and uses an `expression` or `curve` driver. Read a component with `q.value('id', index)`.
+
+```json
+"values": {
+  "sway": {
+    "type": "expression",
+    "base": [0],
+    "value": [{"molang": "math.sin(q.anim_time * 180) * 0.1"}]
+  }
+}
+```
+
+The result is evaluated on demand and shared by expressions that read it during the same sample. A shared curve's optional `time_offset` changes only its sampling time; it does not change animation time, queries, or events. Missing references, invalid component indices, and cyclic references reject loading or fail playback.
 
 ### Dynamic NBT values
 
@@ -103,7 +144,7 @@ The table uses the `q.*` form. The equivalent `query.*` names are also accepted.
 | `q.anim_length` | Timeline duration in seconds. |
 | `q.delta_time` | `0.05` during normal ticks and `0` when playback is initialized. |
 | `q.loop_count` | Zero-based number of completed loops. |
-| `q.key_frame_lerp_time` | Uneased progress from the current vector keyframe to the next, from `0` to `1`; `0` outside vector evaluation. |
+| `q.key_frame_lerp_time` | Uneased curve-segment progress from `0` to `1`; exact-key sampling follows the driver's `at_key` policy. |
 | `q.life_time` | Elapsed Animation playback time in seconds; continues across timeline loops. |
 | `q.target_x_rotation`, `q.target_y_rotation` | Player look pitch and head yaw relative to the body, in degrees. |
 | `q.body_x_rotation`, `q.body_y_rotation` | Player pitch and absolute body yaw, in degrees. |
@@ -156,7 +197,7 @@ The three item-use duration queries refer to the item currently being used, in e
 
 ### Query functions
 
-Registered query functions are available in animation programs, vector and visibility tracks, and dynamic NBT values.
+Query functions are available wherever Molang is accepted.
 
 | Query | Value |
 |---|---|
@@ -171,6 +212,7 @@ Registered query functions are available in animation programs, vector and visib
 | `q.item_is_charged()` | `1` if the main-hand crossbow is charged. An optional hand or equipment-slot selector may be supplied. |
 | `q.is_item_name_any(slot, name, ...)` | `1` if the selected equipment item has one of the full identifiers, such as `'minecraft:bow'`. |
 | `q.scoreboard(objective)` | Player score for the named objective, or `0` when the objective or score is absent. |
+| `q.value(id, component)` | Component of a shared driver in `animation.values`; component indices start at `0`. |
 
 Item selectors accept `main_hand`, `off_hand`, `slot.weapon`, `slot.weapon.mainhand`, `slot.weapon.offhand`, and `slot.armor.head`, `slot.armor.chest`, `slot.armor.legs`, or `slot.armor.feet`. Numeric hand selector `0` means main hand and `1` means off hand. Scalar `q.is_item_equipped` and `q.item_is_charged` remain available as main-hand shortcuts.
 

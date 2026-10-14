@@ -18,7 +18,7 @@ Join the Discord server to share emotes you have made.
 
 Emote is a server-side emote mod that plays animations with Minecraft display entities. All server features work when the mod is installed only on the server. Installing it on the client is optional and adds an emote wheel and automatic third-person view during playback.
 
-The web converter supports BD Engine, GeckoLib, and Animated Java. Configure skin parts, metadata, playback settings, and events without editing Animation JSON.
+The web converter imports BD Engine, GeckoLib, and Animated Java projects, with experimental support for Bedrock and Emotecraft. It can also reopen Emote Animation and Sequence JSON. Configure skin parts, metadata, playback settings, and events before export.
 
 On the server, LuckPerms permissions can assign emotes and idle emotes per player. Sequences can connect multiple animations, with the player's skin applied to compatible animations. A server API is also available for other mods to register emotes, control playback, and receive events.
 
@@ -124,7 +124,7 @@ Use the 3D preview to assign skin parts, then configure metadata, playback behav
 
 ### Animation conversion
 
-The web converter preserves the source animation's easing and interpolation curves, including Bézier, Catmull-Rom, bounce, and elastic motion. The server evaluates these curves at Minecraft tick times. The converter removes redundant keyframes from constant, linear, and step tracks.
+The web converter exports transform nodes, display attachments, and animation curves, including Bézier, Catmull-Rom, bounce, and elastic motion. The server evaluates the curves and Molang during playback, while the browser preview helps check skin assignments and may approximate dynamic behavior.
 
 Each animation can define a cooldown, player visibility, stop conditions such as movement, jumping, attacking, and taking damage, and events.
 
@@ -132,13 +132,10 @@ Each animation can define a cooldown, player visibility, stop conditions such as
 
 ### Sequence
 
-Connect short animation clips in order and combine waits, weighted random choices, and repeats to create a single emote. The following excerpt shows the step order; see the Sequence format for the required metadata and settings.
+Connect short animation clips in order and combine waits, weighted random choices, and repeats to create a single emote. Install the Sequence and every referenced Animation together. The following excerpt shows its steps:
 
 ```json
 {
-  "type": "sequence",
-  "schema_version": 5,
-  "id": "sit:idle.sit",
   "steps": [
     {"emote": "sit:sit_down"},
     {"wait": "10t"},

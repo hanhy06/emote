@@ -5,7 +5,7 @@
   "target_minecraft_version": "26.3",
   "metadata": {
     "name": "Animation Format Reference",
-    "description": "A rotating display with curves, Molang, visibility, NBT patches, and a command event.",
+    "description": "A rotating display with curves, shared values, Molang ticks, visibility, NBT patches, and a command event.",
     "license": "Apache-2.0"
   },
   "settings": {
@@ -49,7 +49,7 @@
       }
     },
     "n2": {
-      "name": "arm_x",
+      "name": "effect_origin",
       "parent": "n1",
       "inherit": { "rotation": "parent", "scale": false, "visibility": true },
       "transform": [
@@ -64,6 +64,13 @@
     "molang": {
       "initialize": "v.speed = 1; v.phase = 0;",
       "tick": "v.phase = v.phase + q.delta_time * v.speed;"
+    },
+    "values": {
+      "sway": {
+        "type": "expression",
+        "base": [0],
+        "value": [{ "molang": "math.sin(v.phase * 180) * 0.1" }]
+      }
     },
     "tracks": [
       {
@@ -86,7 +93,7 @@
         "driver": {
           "type": "curve",
           "keys": [
-            { "time": "0t", "value": [0, 1.5, { "molang": "math.sin(v.phase * 180) * 0.1" }] },
+            { "time": "0t", "value": [0, 1.5, { "molang": "q.value('sway', 0)" }] },
             { "time": "10t", "pre": [0.1, 1.5, 0], "post": [0.2, 1.5, 0] },
             { "time": "2s", "value": [0, 1.5, 0] }
           ],
@@ -97,12 +104,17 @@
               "handles": [
                 { "out": { "time": 0.3, "value": 0.4 }, "in": { "time": 0.7, "value": 0.2 } },
                 { "out": { "time": 0.3, "value": 1.8 }, "in": { "time": 0.7, "value": 1.8 } },
-                { "out": { "time": 0.3, "value": { "molang": "math.sin(v.phase * 180) * 0.1" } }, "in": { "time": 0.7, "value": 0 } }
+                { "out": { "time": 0.3, "value": { "molang": "q.value('sway', 0)" } }, "in": { "time": 0.7, "value": 0 } }
               ],
               "easing": { "kernel": "sine", "direction": "in_out" }
             }
           ]
         }
+      },
+      {
+        "target": { "node": "n2", "operation": "offset" },
+        "channel": "value",
+        "driver": { "type": "expression", "value": [0, { "molang": "0.5 + q.value('sway', 0)" }, 0] }
       },
       {
         "target": { "node": "n1", "attachment": "prop" },
@@ -115,8 +127,8 @@
         "driver": {
           "type": "state",
           "keys": [
-            { "time": "0t", "value": { "merge": "{glowing:1b}", "remove": [] } },
-            { "time": "1s", "value": { "merge": "{}", "remove": ["glowing"] } }
+            { "time": "0t", "value": { "merge": "{Glowing:1b}", "remove": [] } },
+            { "time": "1s", "value": { "merge": { "molang": "q.is_sneaking ? '{Glowing:1b}' : '{}'" }, "remove": ["Glowing"] } }
           ]
         }
       }

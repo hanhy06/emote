@@ -55,7 +55,7 @@ Inspect the current playback and its resolved timeline. Use `PlaybackInfo.sessio
 | `getPlayback(player)` | The player's current `PlaybackInfo`. |
 | `getPlayback(sessionId)` | The session's current `PlaybackInfo`. |
 | `getTimeline(sessionId)` | `PlaybackTimeline` containing duration, loop mode, loop start, and resolved segments. |
-| `getNodeWorldPosition(sessionId, nodeId)` | The node's transformed origin as an `Optional<Vec3>` in world coordinates. Supports anchors; an unknown node returns empty. |
+| `getNodeWorldPosition(sessionId, nodeId)` | The node's transformed origin as an `Optional<Vec3>` in world coordinates, including nodes without entity attachments. An unknown node returns empty. |
 
 | Playback data | Meaning |
 |---|---|
@@ -65,7 +65,7 @@ Inspect the current playback and its resolved timeline. Use `PlaybackInfo.sessio
 | `PlaybackInfo.position()` | Current segment, Sequence step and repetition, phase, phase-local tick, and active Animation. |
 | `PlaybackInfo.placement()` | Current root position, yaw, and placement mode. |
 | `PlaybackPosition.animationTick()` | Animation-local tick; `null` outside the `ANIMATION` phase. |
-| `PlaybackTimeline.segments()` | Resolved `ANIMATION`, `TRANSITION`, `WAIT`, `LOOP_DELAY`, or `HOLD` segments. Random choices and repeats are already resolved for this session. |
+| `PlaybackTimeline.segments()` | Resolved `START_DELAY`, `ANIMATION`, `TRANSITION`, `WAIT`, `LOOP_DELAY`, or `HOLD` segments. Random choices and repeats are already resolved for this session. |
 
 Segment ranges include the start tick and exclude the end tick. An indefinite hold has no end tick. Sequence step and repetition indices are zero-based and refer to the original step and repetition.
 
@@ -148,7 +148,7 @@ Register a named callback and select it in an Animation or Sequence's root `call
 
 ### Callback context
 
-`PlaybackContext` provides the session, actors, nodes, and per-callback state. A Sequence and its Animation segments have separate callback contexts.
+`PlaybackContext` provides the session, actors, node positions, attachment entities, and per-callback state. A node describes a transform; its attachments provide the entities. A Sequence and its Animation segments have separate callback contexts.
 
 | API | Result or behavior |
 |---|---|
@@ -163,7 +163,7 @@ Register a named callback and select it in an Animation or Sequence's root `call
 | `setStep(stepIndex, repeatIndex, tick)` | Moves to a resolved Sequence Animation. Position-control rules above apply. |
 | `getActor(name)` | Actor entity as an `Optional<Entity>`; use `"actor"` for the playback actor. |
 | `getAttachmentEntity(nodeId, attachmentId)` | Display entity as an `Optional<Entity>`; empty for attachments without an entity or unavailable entities. |
-| `getNodeWorldPosition(nodeId)` | Transformed node origin in world coordinates; supports anchors. |
+| `getNodeWorldPosition(nodeId)` | Transformed node origin in world coordinates, including nodes without entity attachments. |
 | `getRootPosition()` | Current root world position. |
 | `getStopReason()` | Optional close reason. |
 | `getUserState()`, `setUserState(state)` | Reads or replaces custom state for this callback context. |
