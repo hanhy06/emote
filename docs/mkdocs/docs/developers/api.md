@@ -112,7 +112,7 @@ Register Animations and Sequences at runtime or inspect loaded emotes. Runtime r
 
 | API | Result |
 |---|---|
-| `register(animation)` | Registers an `EmoteAnimation` and returns a `Registration`. Invalid content throws `EmoteAnimationLoadException`. |
+| `register(animation)` | Registers an `EmoteAnimation` and returns a `Registration`. Invalid content throws `EmoteLoadException`. |
 | `register(sequence)` | Registers an `EmoteSequence` and returns a `Registration`. Referenced Animations must already be registered or loaded and compatible. |
 | `get(emoteId)` | `Optional<EmoteInfo>`; empty when the ID is not loaded. |
 | `getAll()` | A list of all loaded `EmoteInfo` entries. |
@@ -162,7 +162,7 @@ Register a named callback and select it in an Animation or Sequence's root `call
 | `setAnimationTick(tick)` | Moves within the active Animation. |
 | `setStep(stepIndex, repeatIndex, tick)` | Moves to a resolved Sequence Animation. Position-control rules above apply. |
 | `getActor(name)` | Actor entity as an `Optional<Entity>`; use `"actor"` for the playback actor. |
-| `getNodeEntity(nodeId)` | Display entity as an `Optional<Entity>`; empty for anchors or unavailable entities. |
+| `getAttachmentEntity(nodeId, attachmentId)` | Display entity as an `Optional<Entity>`; empty for attachments without an entity or unavailable entities. |
 | `getNodeWorldPosition(nodeId)` | Transformed node origin in world coordinates; supports anchors. |
 | `getRootPosition()` | Current root world position. |
 | `getStopReason()` | Optional close reason. |

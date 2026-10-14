@@ -1,26 +1,28 @@
 # Molang
 
-Animation schema 4 accepts Molang in animation programs, vector track components, visibility track values, and dynamic NBT values. Both the short and long prefixes are supported: `q` or `query`, `v` or `variable`, and `t` or `temp`.
+Animation schema 5 accepts Molang in animation programs, vector track components, visibility track values, and dynamic NBT values. Both the short and long prefixes are supported: `q` or `query`, `v` or `variable`, and `t` or `temp`.
 
 ## Programs
 
-Animation-level programs are optional:
+Programs in `animation.molang` are optional:
 
 ```json
-"molang": {
-  "initialize": "v.speed = 2;",
-  "tick": "v.phase = v.phase + q.delta_time * v.speed;"
+"animation": {
+  "molang": {
+    "initialize": "v.speed = 2;",
+    "tick": "v.phase = v.phase + q.delta_time * v.speed;"
+  }
 }
 ```
 
-- `initialize` runs when a playback cycle begins.
+- `initialize` runs when Animation playback begins.
 - `tick` runs before track values are evaluated on each animation tick.
-- `v.*` variables persist within the current cycle and may be assigned by `initialize` and `tick`.
+- `v.*` variables persist within the Animation playback and may be assigned by `initialize` and `tick`.
 - `t.*` variables exist only for one expression evaluation.
 - `q.*` values are read-only. Assigning a query is rejected.
-- `server_sync` Animations cannot use `molang.tick` because their timeline may begin at an arbitrary synchronized time.
+- `server_sync` Animations cannot use `animation.molang.tick` because their timeline may begin at an arbitrary synchronized time.
 
-A new Molang session is created for every repeated cycle and every Animation segment in a Sequence.
+A Molang session is retained across an Animation's loops. Each Animation segment in a Sequence creates its own session.
 
 ## Math functions
 
@@ -55,18 +57,23 @@ return v.count;
 
 ## Track values
 
-Each position, rotation, or scale component may be a number or a Molang string:
+Each position, rotation, or scale component may be a number or an object containing a `molang` string:
 
 ```json
-"rotation": [
-  {
-    "time": "0t",
-    "value": [0, "q.target_y_rotation", "v.offset"]
+{
+  "target": {"node": "n1", "operation": "spin"},
+  "channel": "value",
+  "driver": {
+    "type": "curve",
+    "keys": [
+      {"time": "0t", "value": [0, {"molang": "q.target_y_rotation"}, {"molang": "v.offset"}]}
+    ],
+    "segments": []
   }
-]
+}
 ```
 
-Visibility values may be booleans or Molang strings. A finite result of `0` is hidden; any other finite result is visible.
+Visibility values may be booleans or objects containing a `molang` string. A finite result of `0` is hidden; any other finite result is visible.
 
 Track values may read persistent variables but cannot assign them. Temporary variables are cleared for each expression evaluation.
 
@@ -76,13 +83,14 @@ An NBT keyframe can use Molang to produce a compound SNBT string:
 
 ```json
 "value": {
-  "molang": "q.is_sneaking ? '{Glowing:1b}' : '{Glowing:0b}'"
+  "merge": {"molang": "q.is_sneaking ? '{Glowing:1b}' : '{Glowing:0b}'"},
+  "remove": []
 }
 ```
 
 The expression follows the same read-only track-expression rules as vector and visibility values. Its result must be a string containing valid compound SNBT. It is evaluated once when the keyframe is applied, rather than on every animation tick; a new playback loop or Sequence segment evaluates it again. `q.key_frame_lerp_time` is `0` during evaluation.
 
-Runtime-owned fields remain forbidden. The `0t` result establishes the top-level fields that later keyframes may modify, and a dynamic `0t` value must return the same field set on every playback cycle.
+NBT keys apply `merge` and `remove` patches. Runtime-owned fields remain forbidden.
 
 ## Queries
 
@@ -93,10 +101,10 @@ The table uses the `q.*` form. The equivalent `query.*` names are also accepted.
 | `q.anim_time` | Current timeline time in seconds. |
 | `q.anim_time_ticks` | Current timeline time in ticks. |
 | `q.anim_length` | Timeline duration in seconds. |
-| `q.delta_time` | `0.05` during normal ticks and `0` when a cycle is initialized. |
+| `q.delta_time` | `0.05` during normal ticks and `0` when playback is initialized. |
 | `q.loop_count` | Zero-based number of completed loops. |
 | `q.key_frame_lerp_time` | Uneased progress from the current vector keyframe to the next, from `0` to `1`; `0` outside vector evaluation. |
-| `q.life_time` | Alias of `q.anim_time`, for imported Molang compatibility. |
+| `q.life_time` | Elapsed Animation playback time in seconds; continues across timeline loops. |
 | `q.target_x_rotation`, `q.target_y_rotation` | Player look pitch and head yaw relative to the body, in degrees. |
 | `q.body_x_rotation`, `q.body_y_rotation` | Player pitch and absolute body yaw, in degrees. |
 | `q.head_x_rotation`, `q.head_y_rotation` | Player pitch and absolute head yaw, in degrees. |

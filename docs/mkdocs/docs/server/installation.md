@@ -42,7 +42,7 @@ File names are only for organization. The mod identifies emotes by `id` and reje
   "mineskin_poll_interval_seconds": 3,
   "mineskin_cache_retention_days": 30,
   "mineskin_cache_max_mib": 256,
-  "max_active_display_entities": 512,
+  "max_active_display_entities": 768,
   "default_skin": ""
 }
 ```

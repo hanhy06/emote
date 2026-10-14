@@ -49,7 +49,7 @@ The emote menu and wheel editor can search by name, ID, description, or `#tags` 
 | `/emote account login`                        | Connects a Minecraft account using Microsoft device login.                                                                                                                                    |
 | `/emote account remove <account>`             | Removes a bake account by name or UUID.                                                                                                                                                       |
 
-Administrative commands use the `emote.manage` permission and are granted to game master operators by default.
+Administrative commands use the `emote.manage` permission and are granted to game master operators by default, except `/emote account` and its subcommands, which require server owner permission.
 
 ## Server management
 
@@ -74,7 +74,7 @@ Place JSON exported by the converter under `emote/`. Subdirectories are loaded a
   "mineskin_poll_interval_seconds": 3,
   "mineskin_cache_retention_days": 30,
   "mineskin_cache_max_mib": 256,
-  "max_active_display_entities": 512,
+  "max_active_display_entities": 768,
   "default_skin": ""
 }
 ```
@@ -106,7 +106,7 @@ Set `mineskin_api_key` to generate player skin textures when no bake accounts ar
 }
 ```
 
-`disabled` turns off emotes, while `permissions` determines the emotes and idle emotes available to each player. Valid emote IDs in `emotes` are matched literally; other entries are Java regular expressions matched against the complete emote ID. `*` is a special value that grants every enabled emote. Regular-expression backslashes must also be escaped for JSON. Every player receives `emote.default`. `emote.bypass` is an administrator and development override that ignores `standalone`, disabled IDs, permissions, and cooldowns.
+`disabled` turns off emotes, while `permissions` determines the emotes and idle emotes available to each player. Valid emote IDs in `emotes` are matched literally; other entries are Java regular expressions matched against the complete emote ID. `*` is a special value that grants every enabled standalone emote. Regular-expression backslashes must also be escaped for JSON. `emote.default` is allowed unless explicitly denied. `emote.bypass` is an administrator and development override that ignores `standalone`, disabled IDs, permissions, and cooldowns.
 
 ## Web converter
 
@@ -124,7 +124,7 @@ Use the 3D preview to assign skin parts, then configure metadata, playback behav
 
 ### Animation conversion
 
-The web converter recalculates the source animation's easing and interpolation curves for Minecraft ticks. It preserves important points in Bézier, Catmull-Rom, bounce, and elastic motion, then selects the keyframe placement with the lowest position, rotation, and scale error to keep the result as close to the original movement as possible.
+The web converter preserves the source animation's easing and interpolation curves, including Bézier, Catmull-Rom, bounce, and elastic motion. The server evaluates these curves at Minecraft tick times. The converter removes redundant keyframes from constant, linear, and step tracks.
 
 Each animation can define a cooldown, player visibility, stop conditions such as movement, jumping, attacking, and taking damage, and events.
 
@@ -132,12 +132,12 @@ Each animation can define a cooldown, player visibility, stop conditions such as
 
 ### Sequence
 
-Connect short animation clips in order and combine waits, weighted random choices, and repeats to create a single emote.
+Connect short animation clips in order and combine waits, weighted random choices, and repeats to create a single emote. The following excerpt shows the step order; see the Sequence format for the required metadata and settings.
 
 ```json
 {
   "type": "sequence",
-  "schema_version": 4,
+  "schema_version": 5,
   "id": "sit:idle.sit",
   "steps": [
     {"emote": "sit:sit_down"},

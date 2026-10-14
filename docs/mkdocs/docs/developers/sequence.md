@@ -9,7 +9,7 @@ This example plays sit down → idle action three times → stand up. Each refer
 ```json
 {
   "type": "sequence",
-  "schema_version": 4,
+  "schema_version": 5,
   "id": "sit:idle.sit",
   "metadata": {
     "name": "Sit",
@@ -38,7 +38,7 @@ This example plays sit down → idle action three times → stand up. Each refer
 }
 ```
 
-See the [Sequence example JSON](https://github.com/hanhy06/emote/blob/dev/docs/reference/sequence.json) for the complete format. Sequence files use schema version `4` and are limited to 8 MiB.
+See the [Sequence example JSON](https://github.com/hanhy06/emote/blob/dev/docs/reference/sequence.json) for the complete format. Sequence files use schema version `5` and are limited to 8 MiB.
 
 !!! tip "Time units"
     Time settings use Minecraft time format. `1s` equals `20t`.
@@ -61,7 +61,7 @@ Steps cannot reference another Sequence or an Animation using `hold` or `server_
 
 ## Transitions
 
-`transition` is the time spent moving from the previous Animation's final pose to the next Animation's initial pose. Position, rotation, and scale of shared display nodes are interpolated linearly.
+`transition` is the time spent moving from the previous Animation's final pose to the next Animation's initial pose. Position and scale of shared display attachments are interpolated linearly, while rotation uses quaternion interpolation.
 
 ```json
 {"emote": "sit:idle_sky", "transition": "2t"}
@@ -173,13 +173,13 @@ Regular node IDs may differ between Animations. The Sequence creates the require
 
 | Must match | May differ |
 |---|---|
-| Node type | Position, rotation, and scale |
-| Item, item display context, block state, text, and entity NBT | Initial visibility |
+| Attachment IDs and types | Position, rotation, and scale |
+| Item, item display context, block state, text, entity NBT, and initial attachment visibility | Initial node visibility |
 | Player skin binding | Timeline tracks |
 
 ### Player skins
 
-All Animations must have the same compiled player-skin layout. Skin node IDs and body regions derived from `part`, `order`, and local Y scale must match.
+All Animations must have the same compiled player-skin layout. Skin node IDs, attachment IDs, and each region's `part`, `from`, and `to` must match.
 
 Repeat-control IDs are excluded from compatibility checks.
 

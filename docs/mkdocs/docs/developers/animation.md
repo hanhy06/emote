@@ -68,7 +68,7 @@ For conditions other than distance, `true` stops playback when the action occurs
 
 ### Playback mode
 
-Select the playback behavior with `settings.playback.mode`.
+Select the playback behavior with `animation.playback.mode`.
 
 | Mode | Behavior | Available in Sequences |
 |---|---|---|
@@ -82,31 +82,31 @@ Loop settings belong in the same `playback` object.
 | Setting | Behavior |
 |---|---|
 | `loop_start` | Starting position for the second and subsequent cycles in `loop` mode. Defaults to `0t` and must be earlier than the timeline end. Other modes allow only `0t`. |
-| `loop_delay` | Wait between cycles. Defaults to `0t`. Values greater than zero are allowed only in `loop` and `server_sync` modes. |
+| `loop_delay` | Wait between cycles. Defaults to `0t`. Applies only in `loop` and `server_sync` modes; ignored in `once` and `hold` modes. |
 
 ## Tracks
 
 A track changes a model part's state over time. Each part is called a node, and a node can have several types of tracks.
 
-For example, raising and turning a hand uses position and rotation tracks. Each track contains keyframes that record values at specific times.
+For example, raising and turning a hand uses `value` tracks targeting its translate and rotate operations. Curve and state drivers contain keyframes that record values at specific times; expression drivers calculate values directly.
 
-| Track | State | Purpose |
+| Channel and target | State | Purpose |
 |---|---|---|
-| `position` | Position | Move a part |
-| `rotation` | Rotation | Change a part's orientation |
-| `scale` | Scale | Enlarge or shrink a part |
+| `value` targeting a `translate` operation | Position | Move a part |
+| `value` targeting a `rotate_euler` or `rotate_quaternion` operation | Rotation | Change a part's orientation |
+| `value` targeting a `scale` operation | Scale | Enlarge or shrink a part |
 | `visible` | Visibility | Hide or show a part at a specific time |
 | `nbt` | Display entity data | Change display content or entity properties |
 
 Position, rotation, and scale can be interpolated between keyframes. `linear` interpolates between two values; `step` holds the current value until the next keyframe. `easing` controls how the speed changes within an interpolated segment.
 
-Visibility and NBT change immediately at the specified time. A property without a track uses the node's initial value.
+Visibility and NBT state keys change immediately at the specified time. A property without a track uses the node or attachment's initial value.
 
 [Molang](molang.md) can calculate position, rotation, scale, and visibility during playback, or calculate values for NBT keyframes. NBT can change only permitted display data. Fields managed by the playback engine, such as position, transformation, and interpolation, cannot be changed.
 
 ## Command events
 
-`timeline.events` runs commands at specific points during playback.
+`animation.events` runs commands at specific points during playback.
 
 | Event | Execution time |
 |---|---|
@@ -123,11 +123,11 @@ Set the command source (`source`) and execution position (`origin`) separately.
 
 | Field | Values | Meaning |
 |---|---|---|
-| `source` | `player`, `server`, `node` | Who runs the command. A `node` source must be a display node. |
-| `origin` | `root`, `node` | Runs at the emote's root position or a specific node's position. |
+| `source.type` | `player`, `server`, `node` | Who runs the command. A `node` source must select an entity attachment. |
+| `origin.type` | `root`, `node` | Runs at the emote's root position or a specific node's position. |
 | `origin.offset` | Three-number position offset | Adjusts the execution position. Defaults to `[0, 0, 0]`. |
 
-When `source` or `origin` is `node`, also specify the node ID. Anchor nodes create no entity and can be used as origins, but not as command sources.
+When `source.type` or `origin.type` is `node`, also specify the node ID. A node source also requires `source.attachment`. Nodes without entity attachments can be used as origins, but not as command sources.
 
 ## Extensions
 

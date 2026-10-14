@@ -146,7 +146,7 @@ config/emote/emote/sit/
 ```json
 {
   "type": "sequence",
-  "schema_version": 4,
+  "schema_version": 5,
   "id": "sit:idle.sit",
   "metadata": {
     "name": "Sit",
