@@ -2,6 +2,56 @@
 
 Animation schema 5 accepts Molang for initialization and ticks, track values, curve parameters, shared values, animation time, and delays. Both the short and long prefixes are supported: `q` or `query`, `v` or `variable`, and `t` or `temp`.
 
+## Track values
+
+Each component of a translation, Euler rotation, or scale track may be a number or an object containing a `molang` string:
+
+```json
+{
+  "target": {"node": "n1", "operation": "spin"},
+  "channel": "value",
+  "driver": {
+    "type": "expression",
+    "value": [0, {"molang": "q.target_y_rotation"}, 0]
+  }
+}
+```
+
+Visibility values may be booleans or objects containing a `molang` string. A finite result of `0` is hidden; any other finite result is visible.
+
+The same `{ "molang": "..." }` form is used for dynamic easing parameters, curve handles and tangents, and `blend.weight`. A blended three-component track combines `blend.base` with the driver's result using that weight.
+
+### Shared values
+
+`animation.values` defines reusable scalar or three-component drivers. Each definition has a numeric `base` array and uses an `expression` or `curve` driver. Read a component with `q.value('id', index)`.
+
+```json
+"values": {
+  "sway": {
+    "type": "expression",
+    "base": [0],
+    "value": [{"molang": "math.sin(q.anim_time * 180) * 0.1"}]
+  }
+}
+```
+
+A shared curve's optional `time_offset` changes only its sampling time; it does not change animation time, queries, or events.
+
+### Dynamic NBT values
+
+An NBT keyframe can use Molang to produce a compound SNBT string:
+
+```json
+"value": {
+  "merge": {"molang": "q.is_sneaking ? '{Glowing:1b}' : '{Glowing:0b}'"},
+  "remove": []
+}
+```
+
+The expression follows the same read-only track-expression rules as vector and visibility values. Its result must be a string containing valid compound SNBT. It is evaluated once when the keyframe is applied, rather than on every animation tick; a new playback loop or Sequence segment evaluates it again. `q.key_frame_lerp_time` is `0` during evaluation.
+
+NBT keys apply `merge` and `remove` patches. Runtime-owned fields remain forbidden.
+
 ## Initialization and ticks
 
 Use the optional `animation.molang` object when an Animation needs to initialize variables or update persistent state on ticks:
@@ -58,6 +108,8 @@ All functions in the Bedrock Molang `math.*` reference are supported, including 
 
 ## Conditionals
 
+The examples in this section and [Loops](#loops) assign persistent variables, so use them in `animation.molang.initialize` or `animation.molang.tick`.
+
 Bedrock's binary and ternary conditional operators are supported. Only the selected branch is evaluated, and either branch may contain a brace-delimited execution scope:
 
 ```molang
@@ -82,56 +134,6 @@ loop(3, {
 });
 return v.count;
 ```
-
-## Track values
-
-Each position, rotation, or scale component may be a number or an object containing a `molang` string:
-
-```json
-{
-  "target": {"node": "n1", "operation": "spin"},
-  "channel": "value",
-  "driver": {
-    "type": "expression",
-    "value": [0, {"molang": "q.target_y_rotation"}, 0]
-  }
-}
-```
-
-Visibility values may be booleans or objects containing a `molang` string. A finite result of `0` is hidden; any other finite result is visible.
-
-The same `{ "molang": "..." }` form is used for dynamic easing parameters, curve handles and tangents, and `blend.weight`. A blended three-component track combines `blend.base` with the driver's result using that weight.
-
-### Shared values
-
-`animation.values` defines reusable scalar or three-component drivers. Each definition has a numeric `base` array and uses an `expression` or `curve` driver. Read a component with `q.value('id', index)`.
-
-```json
-"values": {
-  "sway": {
-    "type": "expression",
-    "base": [0],
-    "value": [{"molang": "math.sin(q.anim_time * 180) * 0.1"}]
-  }
-}
-```
-
-The result is evaluated on demand and shared by expressions that read it during the same sample. A shared curve's optional `time_offset` changes only its sampling time; it does not change animation time, queries, or events. Missing references, invalid component indices, and cyclic references reject loading or fail playback.
-
-### Dynamic NBT values
-
-An NBT keyframe can use Molang to produce a compound SNBT string:
-
-```json
-"value": {
-  "merge": {"molang": "q.is_sneaking ? '{Glowing:1b}' : '{Glowing:0b}'"},
-  "remove": []
-}
-```
-
-The expression follows the same read-only track-expression rules as vector and visibility values. Its result must be a string containing valid compound SNBT. It is evaluated once when the keyframe is applied, rather than on every animation tick; a new playback loop or Sequence segment evaluates it again. `q.key_frame_lerp_time` is `0` during evaluation.
-
-NBT keys apply `merge` and `remove` patches. Runtime-owned fields remain forbidden.
 
 ## Queries
 
@@ -191,8 +193,6 @@ The table uses the `q.*` form. The equivalent `query.*` names are also accepted.
 | `q.yaw_speed` | Player yaw change during the current tick, in degrees. |
 | `q.on_fire_time` | Remaining player fire time in seconds. |
 
-Player-state queries refer to the player during player-backed playback. Synthetic stress-test playback has no player and evaluates these queries as `0`.
-
 The three item-use duration queries refer to the item currently being used, in either hand, and return `0` when no item is being used.
 
 ### Query functions
@@ -218,8 +218,8 @@ Item selectors accept `main_hand`, `off_hand`, `slot.weapon`, `slot.weapon.mainh
 
 ## Validation
 
-Each Molang source string is limited to 16,384 characters. Invalid syntax, unsupported query names, query assignments, and persistent-variable assignments in track values reject the Animation during loading. A numeric value that evaluates to a non-finite number stops playback as a runtime failure. A dynamic NBT value also fails at runtime if it does not return a string containing valid compound SNBT or violates the NBT track's field restrictions.
+Invalid syntax or unsupported queries prevent an Animation from loading. A numeric value that evaluates to a non-finite number stops playback.
 
 ## Current limitations
 
-This is not a complete Bedrock Molang environment. Only the queries and query functions listed above are available. Context values, `this`, structs, arrays, resource values, entity references, the arrow operator's entity switching, and `for_each` are not supported. Null coalescing and string equality currently follow the embedded evaluator's behavior rather than full Bedrock semantics.
+This is not a complete Bedrock Molang environment. Only the queries and query functions listed above are available. Context values, `this`, structs, arrays, resource values, entity references, the arrow operator's entity switching, and `for_each` are not supported. Null coalescing and string equality may behave differently from Bedrock Molang.

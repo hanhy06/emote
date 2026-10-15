@@ -119,8 +119,6 @@ A curve has one `segments` entry between each pair of keys. A key uses either `v
 
 Segment interpolation supports `step`, `linear`, `catmull_rom`, `hermite`, and `bezier` for three-component values. Quaternion values use `step` or `slerp`; matrix values use `step`. Segment `easing` controls progress through the interpolation and can preserve the source format's easing behavior.
 
-The server evaluates the curves on animation ticks. During normal playback, the client interpolates display poses over 1 tick; initial placement, seeking, and Sequence transitions apply their calculated poses immediately. The playback engine controls this duration.
-
 ### NBT patches
 
 An NBT state key contains `value.merge`, a compound SNBT string or Molang expression, and an optional `value.remove` list of top-level field names. Patches are applied in order. They can change display content and entity properties, but cannot change fields owned by the playback engine, such as position, transformation, and interpolation. See [Dynamic NBT values](molang.md#dynamic-nbt-values) for expressions.
@@ -138,7 +136,7 @@ An NBT state key contains `value.merge`, a compound SNBT string or Molang expres
 
 Timeline events include a time string and a `direction`: `forward` by default, `backward`, or `both`. They may occur anywhere from the timeline start through its end, including the end itself. Lifecycle events do not have a time or direction.
 
-Commands belong in `action.commands` with `action.type` set to `commands`. They run with game master permission. Review imported commands before installing an Animation. The converter can preserve `external` actions, but the current server rejects them because no external-action resolver is available.
+Commands belong in `action.commands` with `action.type` set to `commands`. They run with game master permission. Review imported commands before installing an Animation. External actions in converted files cannot currently run on the server.
 
 ### Command source and origin
 

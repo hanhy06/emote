@@ -11,7 +11,6 @@ To use your own animation, convert the source project to Emote JSON with the [Em
 | Animated Java | `.ajblueprint` | Original Animated Java project |
 | Bedrock Edition | `.json` | Player animation JSON; experimental support |
 | Emotecraft | `.emotecraft` | Emotecraft file; experimental support |
-| Emote | `.json` | Schema 5 Animation or Sequence JSON for editing and export |
 
 ## 1. Open files
 
@@ -26,8 +25,6 @@ Select **Choose animation files** in the converter and open one or more source p
 
 In **Review**, select model parts and verify their player-skin assignments. You can reassign any parts that were detected incorrectly.
 
-The preview helps check player-skin assignments. It approximates Molang clocks, does not run `initialize` or `tick`, and does not evaluate dynamic NBT values. The exported file preserves this data for server playback, so preview results may differ from the game.
-
 In **Settings**, configure the ID, name, description, and playback behavior. The ID must use the `namespace:path` format and must not duplicate another emote on the server.
 
 When the configuration is complete, use **Export** to download the Animation JSON. To connect multiple animations as one emote, configure a Sequence and download it together with every Animation it references.
@@ -38,7 +35,7 @@ When the configuration is complete, use **Export** to download the Animation JSO
 
 Place the exported JSON files under `config/emote/emote/`.
 
-When an animation requires additional resources, the converter also downloads a `*.resources.zip` file. Place it under `config/emote/resource-pack/`. With Polymer Resource Pack and Auto Host installed, Emote adds those resources to the shared pack and distributes it to clients. Without both modules, automatic delivery is unavailable. See the [Polymer documentation](https://polymer.pb4.eu/latest/) for configuration details.
+When an animation requires additional resources, the converter also downloads a `*.resources.zip` file. Place it under `config/emote/resource-pack/`. Install [Polymer](https://polymer.pb4.eu/latest/) to send these resources to players automatically.
 
 !!! note "Polymer is optional"
     The emotes bundled with Emote do not require a resource pack.<br>If none of your custom emotes use additional resources, Polymer does not need to be installed.

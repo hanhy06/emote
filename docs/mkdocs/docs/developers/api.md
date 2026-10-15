@@ -46,6 +46,19 @@ Declare the Emote dependency in `fabric.mod.json` as well:
 
 Obtain the API with `EmoteApi.getInstance()`. State-changing calls and playback inspection must run on the Minecraft server thread. Unless another type is named, the tables below list methods on `EmoteApi`.
 
+## Playback control
+
+Start an emote for a player or stop an existing playback.
+
+| API | Behavior |
+|---|---|
+| `play(player, emoteId)` | Starts playback with the default actor placement. |
+| `play(player, emoteId, placement)` | Starts playback with the supplied `PlaybackPlacement`. |
+| `stop(player)` | Stops the player's playback; returns whether a playback was stopped. |
+| `stop(sessionId)` | Stops the session; returns whether a playback was stopped. |
+
+`play` returns `PlayResult.Success` with `playback()`, or `PlayResult.Failure` with `errorMessage()`. API playback bypasses standalone visibility, disabled IDs, player permissions, and cooldown policy. The calling mod applies any desired policy; Emote still checks loaded IDs, cancellable play events, and playback-engine limits. Both stop methods use the manual stop reason.
+
 ## Playback inspection
 
 Inspect the current playback and its resolved timeline. Use `PlaybackInfo.sessionId()` to address a session. Missing sessions return `Optional.empty()`.
@@ -68,19 +81,6 @@ Inspect the current playback and its resolved timeline. Use `PlaybackInfo.sessio
 | `PlaybackTimeline.segments()` | Resolved `START_DELAY`, `ANIMATION`, `TRANSITION`, `WAIT`, `LOOP_DELAY`, or `HOLD` segments. Random choices and repeats are already resolved for this session. |
 
 Segment ranges include the start tick and exclude the end tick. An indefinite hold has no end tick. Sequence step and repetition indices are zero-based and refer to the original step and repetition.
-
-## Playback control
-
-Start an emote for a player or stop an existing playback.
-
-| API | Behavior |
-|---|---|
-| `play(player, emoteId)` | Starts playback with the default actor placement. |
-| `play(player, emoteId, placement)` | Starts playback with the supplied `PlaybackPlacement`. |
-| `stop(player)` | Stops the player's playback; returns whether a playback was stopped. |
-| `stop(sessionId)` | Stops the session; returns whether a playback was stopped. |
-
-`play` returns `PlayResult.Success` with `playback()`, or `PlayResult.Failure` with `errorMessage()`. API playback bypasses standalone visibility, disabled IDs, player permissions, and cooldown policy. The calling mod applies any desired policy; Emote still checks loaded IDs, cancellable play events, and playback-engine limits. Both stop methods use the manual stop reason.
 
 ## Playback position control
 

@@ -167,7 +167,7 @@ Sequences are directly playable. Their root `settings` controls cooldown and pla
 
 All referenced Animations must be loaded successfully on the server. Compatibility is checked when emotes are reloaded.
 
-Node IDs may differ between Animations. The Sequence creates the required display attachments once and reuses them until playback ends. Attachments belonging to nodes absent from the current Animation are hidden.
+Node IDs may differ between Animations. Attachments belonging to nodes absent from the current Animation are hidden.
 
 ### Shared nodes and skin bindings
 
@@ -180,8 +180,6 @@ For a node ID reused by multiple Animations:
 | Player skin binding | Timeline tracks |
 
 All Animations must also have the same compiled player-skin layout. Skin node IDs, attachment IDs, and each region's `part`, `from`, and `to` must match, even when other node IDs differ.
-
-Repeat-control IDs are excluded from compatibility checks.
 
 ## Events and callbacks
 
@@ -197,9 +195,3 @@ Command events defined in each Animation also run within a Sequence.
 At a shared boundary, the previous Animation's stop events run before the next Animation's start events.
 
 Sequence `callbacks` use the same format as [Animation callbacks](animation.md#callbacks). The Sequence and each Animation segment have separate callback contexts and state. Each Animation segment also has its own Molang session.
-
-## Playback behavior
-
-Random choices and repeat controls are resolved before playback starts, and the selected steps are compiled into one playback.
-
-Stopping the Sequence cancels all remaining steps.
