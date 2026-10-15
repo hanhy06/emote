@@ -44,12 +44,14 @@ The emote menu and wheel editor can search by name, ID, description, or `#tags` 
 | `/emote reload`                               | Reloads configuration and animations.                                                                                                                                                         |
 | `/emote enable/disable <id>`                  | Enables or disables an emote.                                                                                                                                                                 |
 | `/emote stop <player>`, `/emote stop @a`      | Stops selected players' emotes; use `@a` for all players.                                                                                                                                     |
-| `/emote stress-test <time> [load] [packets]`  | Measures server performance with concurrent emotes and configurable packet fanout (default 20). `100` or `100i` requests 100 instances; `1000d` requests up to 1,000 display entities.       |
+| `/emote stress-test <time> [load]`            | Measures server and emote processing performance with concurrent emotes (default 50 instances). `50` or `50i` requests 50 instances; `768d` requests up to 768 display entities.                |
 | `/emote account`                              | Lists registered bake accounts and the selected skin provider.                                                                                                                                |
 | `/emote account login`                        | Connects a Minecraft account using Microsoft device login.                                                                                                                                    |
 | `/emote account remove <account>`             | Removes a bake account by name or UUID.                                                                                                                                                       |
 
 Administrative commands use the `emote.manage` permission and are granted to game master operators by default, except `/emote account` and its subcommands, which require server owner permission.
+
+Measure packet load separately with actual connected players under the intended viewing conditions.
 
 ## Server management
 

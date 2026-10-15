@@ -55,8 +55,7 @@ final class StressTestCommand {
                 .executes(context -> startStressTest(
                     context.getSource(),
                     IntegerArgumentType.getInteger(context, "time"),
-                    new StressLoad(DEFAULT_INSTANCE_COUNT, LoadUnit.INSTANCES),
-                    DEFAULT_PACKET_FANOUT
+                    new StressLoad(DEFAULT_INSTANCE_COUNT, LoadUnit.INSTANCES)
                 ))
                 .then(Commands.argument("load", StringArgumentType.word())
                     .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
@@ -66,27 +65,13 @@ final class StressTestCommand {
                     .executes(context -> startStressTest(
                         context.getSource(),
                         IntegerArgumentType.getInteger(context, "time"),
-                        parseLoad(StringArgumentType.getString(context, "load")),
-                        DEFAULT_PACKET_FANOUT
-                    ))
-                    .then(Commands.argument(
-                            "packets",
-                            IntegerArgumentType.integer(0, MAX_PACKET_FANOUT)
-                        )
-                        .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
-                            List.of(Integer.toString(DEFAULT_PACKET_FANOUT)), builder
-                        ))
-                        .executes(context -> startStressTest(
-                            context.getSource(),
-                            IntegerArgumentType.getInteger(context, "time"),
-                            parseLoad(StringArgumentType.getString(context, "load")),
-                            IntegerArgumentType.getInteger(context, "packets")
-                        )))))
+                        parseLoad(StringArgumentType.getString(context, "load"))
+                    ))))
             .then(Commands.literal("stop")
                 .executes(context -> stopStressTest(context.getSource())));
     }
 
-    private int startStressTest(CommandSourceStack source, int durationTicks, StressLoad load, int packetFanout) {
+    private int startStressTest(CommandSourceStack source, int durationTicks, StressLoad load) {
         List<PreparedAnimation> animations = this.emoteCatalog.animations();
         if (animations.isEmpty()) {
             source.sendFailure(Component.literal("No emotes are registered."));
@@ -115,7 +100,6 @@ final class StressTestCommand {
                     animations,
                     durationTicks,
                     load.amount(),
-                    packetFanout,
                     preparedSkin,
                     report -> sendStressTestReport(source, report)
                 )
@@ -126,7 +110,6 @@ final class StressTestCommand {
                     animations,
                     durationTicks,
                     load.amount(),
-                    packetFanout,
                     preparedSkin,
                     report -> sendStressTestReport(source, report)
                 );
@@ -144,7 +127,7 @@ final class StressTestCommand {
                 "\n\n\nStarted a stress test for " + requestedLoad + ". Created " + startResult.instanceCount()
                     + " instances with " + startResult.displayEntityCount() + " displays in a " + gridSize + "×" + gridSize
                     + " grid for " + String.format(Locale.ROOT, "%.1f", durationTicks / 20.0D) + " seconds using "
-                    + animations.size() + " emotes and " + packetFanout + "× packet fanout."
+                    + animations.size() + " emotes."
             ),
             true
         );
@@ -220,8 +203,7 @@ final class StressTestCommand {
                 "avg %.3f ms / max %.3f ms",
                 report.averageEmoteProcessingMillis(),
                 report.maximumEmoteProcessingMillis()
-            )).withStyle(ChatFormatting.WHITE))
-            .append(createPacketLoadSummary(report));
+            )).withStyle(ChatFormatting.WHITE));
         source.sendSuccess(() -> message, true);
     }
 
@@ -229,16 +211,12 @@ final class StressTestCommand {
         double elapsedSeconds = roundTenths(report.elapsedSeconds());
         double setupSeconds = roundTenths(report.creationMillis() / 1_000.0D);
         double emoteSeconds = roundTenths(report.emoteProcessingSeconds());
-        double networkSeconds = roundTenths(report.networkProcessingSeconds());
-        double drainSeconds = roundTenths(report.packetLoad().drainNanos() / 1_000_000_000.0D);
         double cleanupSeconds = roundTenths(report.cleanupMillis() / 1_000.0D);
         double serverAndIdleSeconds = Math.max(
             0.0D,
             elapsedSeconds
                 - setupSeconds
                 - emoteSeconds
-                - networkSeconds
-                - drainSeconds
                 - cleanupSeconds
         );
         return Component.literal("\n• Duration: ").withStyle(ChatFormatting.GOLD)
@@ -247,10 +225,6 @@ final class StressTestCommand {
             .append(Component.literal(String.format(Locale.ROOT, "%.1f s", setupSeconds)).withStyle(ChatFormatting.WHITE))
             .append(Component.literal(" + Emote ").withStyle(ChatFormatting.GREEN))
             .append(Component.literal(String.format(Locale.ROOT, "%.1f s", emoteSeconds)).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal(" + Submit ").withStyle(ChatFormatting.AQUA))
-            .append(Component.literal(String.format(Locale.ROOT, "%.1f s", networkSeconds)).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal(" + Drain ").withStyle(ChatFormatting.AQUA))
-            .append(Component.literal(String.format(Locale.ROOT, "%.1f s", drainSeconds)).withStyle(ChatFormatting.WHITE))
             .append(Component.literal("\n  + Server/idle ").withStyle(ChatFormatting.GRAY))
             .append(Component.literal(String.format(Locale.ROOT, "%.1f s", serverAndIdleSeconds)).withStyle(ChatFormatting.WHITE))
             .append(Component.literal(" + Cleanup ").withStyle(ChatFormatting.GOLD))
@@ -259,62 +233,6 @@ final class StressTestCommand {
 
     private static double roundTenths(double value) {
         return Math.round(value * 10.0D) / 10.0D;
-    }
-
-    static Component createPacketLoadSummary(PlaybackStressTestReport report) {
-        var packets = report.packetLoad();
-        if (packets.packetFanout() == 0) {
-            return Component.literal("\n\nPacket load\n• Fanout: disabled").withStyle(ChatFormatting.GRAY);
-        }
-
-        double runtimeSeconds = Math.max(report.runtimeSeconds(), 0.001D);
-        double packetsPerSecond = packets.runtimePackets() / runtimeSeconds;
-        double mebibytesPerSecond = packets.runtimeBytes() / 1_048_576.0D / runtimeSeconds;
-        double averageWorkerMillis = packets.runtimeSamples() == 0
-            ? 0.0D
-            : packets.runtimeProcessingNanos() / 1_000_000.0D / packets.runtimeSamples();
-        double averageMebibytesPerTick = packets.runtimeSamples() == 0
-            ? 0.0D
-            : packets.runtimeBytes() / 1_048_576.0D / packets.runtimeSamples();
-        return Component.literal("\n\nPacket load").withStyle(ChatFormatting.GRAY)
-            .append(Component.literal("\n• Fanout: ").withStyle(ChatFormatting.AQUA))
-            .append(Component.literal(packets.packetFanout() + "×").withStyle(ChatFormatting.WHITE))
-            .append(Component.literal("  Create: ").withStyle(ChatFormatting.YELLOW))
-            .append(Component.literal(String.format(
-                Locale.ROOT,
-                "%,d packets / %.2f MiB",
-                packets.creationPackets(),
-                packets.creationBytes() / 1_048_576.0D
-            )).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal("\n• Submit/tick: ").withStyle(ChatFormatting.YELLOW))
-            .append(Component.literal(String.format(
-                Locale.ROOT,
-                "avg %.3f ms / max %.3f ms",
-                report.averageNetworkProcessingMillis(),
-                report.maximumNetworkProcessingMillis()
-            )).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal("\n• Worker sum/tick: ").withStyle(ChatFormatting.GOLD))
-            .append(Component.literal(String.format(
-                Locale.ROOT, "avg %.3f ms / max %.3f ms",
-                averageWorkerMillis, packets.maximumRuntimeProcessingNanosPerTick() / 1_000_000.0D
-            )).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal(String.format(
-                Locale.ROOT, " (total %.3f s)", packets.runtimeProcessingNanos() / 1_000_000_000.0D
-            )).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal("\n• Throughput: ").withStyle(ChatFormatting.GREEN))
-            .append(Component.literal(String.format(
-                Locale.ROOT,
-                "%,.0f packets/s / %.2f MiB/s",
-                packetsPerSecond,
-                mebibytesPerSecond
-            )).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal("\n• Traffic/tick: ").withStyle(ChatFormatting.LIGHT_PURPLE))
-            .append(Component.literal(String.format(
-                Locale.ROOT,
-                "avg %.2f MiB / max %.2f MiB",
-                averageMebibytesPerTick,
-                packets.maximumRuntimeBytesPerTick() / 1_048_576.0D
-            )).withStyle(ChatFormatting.WHITE));
     }
 
     static MutableComponent createStressStatistic(

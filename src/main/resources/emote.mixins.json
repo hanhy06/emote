@@ -5,8 +5,7 @@
     "mixins": [
         "EntityMixin",
         "LivingEntityMixin",
-        "ServerPlayerMixin",
-        "accessor.SynchedEntityDataAccessor"
+        "ServerPlayerMixin"
     ],
     "injectors": {
         "defaultRequire": 1
