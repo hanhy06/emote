@@ -88,11 +88,11 @@ public final class ReloadService {
 
     private PreparedRegistry prepareRegistry() {
         var contents = this.directoryLoader.load(this.configManager.getEmoteDirectory());
-        var emotes = contents.animations().stream()
+        var animations = contents.animations().stream()
             .map(this::prepareAnimation)
             .filter(Objects::nonNull)
             .toList();
-        var animationsById = emotes.stream().collect(Collectors.toMap(
+        var animationsById = animations.stream().collect(Collectors.toMap(
             PreparedAnimation::id,
             Function.identity()
         ));
@@ -100,7 +100,7 @@ public final class ReloadService {
             .map(sequence -> prepareSequence(sequence, animationsById))
             .filter(Objects::nonNull)
             .toList();
-        List<PreparedEmote> definitions = new ArrayList<>(emotes);
+        List<PreparedEmote> definitions = new ArrayList<>(animations);
         definitions.addAll(sequences);
         return new PreparedRegistry(contents.detectedFileCount(), definitions);
     }

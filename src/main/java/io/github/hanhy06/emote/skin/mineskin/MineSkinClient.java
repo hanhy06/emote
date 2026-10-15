@@ -214,9 +214,7 @@ public final class MineSkinClient {
                 }
             })
             .orElse(0L);
-        JsonObject rateLimit = findObject(responseBody, "rateLimit");
-        JsonObject next = findObject(rateLimit, "next");
-        long bodyDelay = readRelativeDelay(next);
+        long bodyDelay = readRelativeDelay(findObject(findObject(responseBody, "rateLimit"), "next"));
         return Math.max(this.jobPollIntervalMillis, Math.max(headerDelay, bodyDelay));
     }
 

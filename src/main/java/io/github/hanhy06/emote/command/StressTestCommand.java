@@ -83,15 +83,15 @@ final class StressTestCommand {
     }
 
     private int startStressTest(CommandSourceStack source, int durationTicks, StressLoad load, int packetFanout) {
-        List<PreparedAnimation> emotes = this.emoteCatalog.animations();
-        if (emotes.isEmpty()) {
+        List<PreparedAnimation> animations = this.emoteCatalog.animations();
+        if (animations.isEmpty()) {
             source.sendFailure(Component.literal("No emotes are registered."));
             return 0;
         }
 
         Map<PlayerSkinRegion, String> preparedSkin = null;
         if (source.getEntity() instanceof ServerPlayer player) {
-            PlayerSkinPreparation skinPreparation = this.playerPlaybackManager.prepareStressTestSkin(player, emotes);
+            PlayerSkinPreparation skinPreparation = this.playerPlaybackManager.prepareStressTestSkin(player, animations);
             if (skinPreparation.preparing()) {
                 source.sendFailure(Component.literal(
                     "Preparing your skin… " + skinPreparation.progressPercent() + "% Run the stress test again when it is ready."
@@ -108,7 +108,7 @@ final class StressTestCommand {
                     source.getLevel(),
                     source.getPosition(),
                     source.getRotation().y,
-                    emotes,
+                    animations,
                     durationTicks,
                     load.amount(),
                     packetFanout,
@@ -119,7 +119,7 @@ final class StressTestCommand {
                     source.getLevel(),
                     source.getPosition(),
                     source.getRotation().y,
-                    emotes,
+                    animations,
                     durationTicks,
                     load.amount(),
                     packetFanout,
@@ -140,7 +140,7 @@ final class StressTestCommand {
                 "\n\n\nStarted a stress test for " + requestedLoad + ". Created " + startResult.instanceCount()
                     + " instances with " + startResult.displayEntityCount() + " displays in a " + gridSize + "×" + gridSize
                     + " grid for " + String.format(Locale.ROOT, "%.1f", durationTicks / 20.0D) + " seconds using "
-                    + emotes.size() + " emotes and " + packetFanout + "× packet fanout."
+                    + animations.size() + " emotes and " + packetFanout + "× packet fanout."
             ),
             true
         );

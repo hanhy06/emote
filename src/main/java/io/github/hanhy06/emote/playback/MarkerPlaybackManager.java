@@ -57,7 +57,7 @@ public final class MarkerPlaybackManager {
 
     public void tick() {
         if (!this.running) return;
-        long tick = EmoteMod.SERVER.getTickCount();
+        long serverTick = EmoteMod.SERVER.getTickCount();
         for (Entry entry : List.copyOf(this.markers.values())) {
             if (entry.marker.isRemoved()) continue;
             MarkerEmoteSettings settings = MarkerEmoteSettings.read(entry.marker.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY));
@@ -65,7 +65,7 @@ public final class MarkerPlaybackManager {
                 entry.settings = settings;
                 entry.catalogRevision = this.catalogRevision;
                 entry.blocked = false;
-                entry.nextAttempt = tick;
+                entry.nextAttempt = serverTick;
                 entry.needsStart = true;
                 entry.skinWarning = false;
             }
@@ -74,7 +74,7 @@ public final class MarkerPlaybackManager {
                 entry.needsStart = false;
                 continue;
             }
-            if (!entry.blocked && entry.needsStart && tick >= entry.nextAttempt) start(entry, tick);
+            if (!entry.blocked && entry.needsStart && serverTick >= entry.nextAttempt) start(entry, serverTick);
             if (entry.session != null && !entry.needsStart && entry.skinRevision != this.skinRevision) {
                 entry.skinRevision = this.skinRevision;
                 var preparation = this.skins.prepareNamedSkin(entry.settings.skinName(), entry.skinBindings);
@@ -83,7 +83,7 @@ public final class MarkerPlaybackManager {
         }
     }
 
-    private void start(Entry entry, long tick) {
+    private void start(Entry entry, long serverTick) {
         PreparedEmote emote = this.catalog.find(entry.settings.emoteId());
         if (emote == null) {
             entry.blocked = true;
@@ -95,7 +95,7 @@ public final class MarkerPlaybackManager {
         }
         var preparation = this.skins.prepareNamedSkin(entry.settings.skinName(), emote.skinBindings());
         if (preparation.preparing()) {
-            entry.nextAttempt = tick + 20;
+            entry.nextAttempt = serverTick + 20;
             return;
         }
         entry.needsStart = false;
@@ -140,7 +140,7 @@ public final class MarkerPlaybackManager {
         if (result instanceof PlaybackEngine.StartResult.Failure failure) {
             if (failure.reason() == PlaybackEngine.FailureReason.DISPLAY_LIMIT) {
                 entry.needsStart = true;
-                entry.nextAttempt = tick + 20;
+                entry.nextAttempt = serverTick + 20;
                 return;
             }
             entry.blocked = true;

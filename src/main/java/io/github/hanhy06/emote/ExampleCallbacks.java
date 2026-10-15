@@ -149,12 +149,12 @@ public final class ExampleCallbacks {
 
             api.registerCallbacks(BAT_CALLBACK_ID, new EmoteCallbacks() {
                 public void onTick(PlaybackContext context) {
-                    Integer tick = context.getAnimationTick();
-                    if (tick == null) return;
-                    if (tick >= 25 && tick < 210) {
+                    Integer animationTick = context.getAnimationTick();
+                    if (animationTick == null) return;
+                    if (animationTick >= 25 && animationTick < 210) {
                         if (context.getUserState() == null) spawnBat(context);
                         moveEntity(context, 0.6F);
-                    } else if (tick >= 210 && context.getUserState() != null) {
+                    } else if (animationTick >= 210 && context.getUserState() != null) {
                         moveEntity(context, 0.6F);
                         removeEntity(context, true);
                     }
@@ -176,9 +176,9 @@ public final class ExampleCallbacks {
                 }
                 public void onTick(PlaybackContext context) {
                     TrumpetCanCan melody = (TrumpetCanCan) context.getUserState();
-                    long tick = context.getServer().getTickCount();
-                    if (melody.activeNote != null && melody.activeNote.endTick() <= tick) melody.stopNote();
-                    melody.advance(context.getElapsedTicks(), note -> playHorn(melody, note, tick));
+                    long serverTick = context.getServer().getTickCount();
+                    if (melody.activeNote != null && melody.activeNote.endTick() <= serverTick) melody.stopNote();
+                    melody.advance(context.getElapsedTicks(), note -> playHorn(melody, note, serverTick));
                 }
                 public void onClose(PlaybackContext context) {
                     if (context.getUserState() instanceof TrumpetCanCan melody) {
@@ -280,7 +280,7 @@ public final class ExampleCallbacks {
         entity.discard();
     }
 
-    private void playHorn(TrumpetCanCan melody, HornNote note, long tick) {
+    private void playHorn(TrumpetCanCan melody, HornNote note, long serverTick) {
         melody.stopNote();
         Vec3 origin = melody.origin;
         var random = ThreadLocalRandom.current();
@@ -293,21 +293,21 @@ public final class ExampleCallbacks {
         for (HornListener listener : melody.listeners) {
             boolean soundOccupied = this.activeMelodies.stream()
                 .map(active -> active.activeNote)
-                .filter(active -> active != null && active.endTick() > tick)
+                .filter(active -> active != null && active.endTick() > serverTick)
                 .flatMap(active -> active.voices().stream())
                 .anyMatch(voice -> voice.listener().id().equals(listener.id()) && voice.sound().equals(TrumpetPlayer.SOUND));
             if (soundOccupied) continue;
-            TrumpetPlayer.play(melody.origin, note.midi(), note.volume(), tick, listener.send());
+            TrumpetPlayer.play(melody.origin, note.midi(), note.volume(), serverTick, listener.send());
             listener.send().accept(particle);
             voices.add(new HornVoice(listener, TrumpetPlayer.SOUND));
         }
         if (!voices.isEmpty()) {
-            long endTick = tick + Math.min(note.durationTicks(), MAX_HORN_DURATION_TICKS);
+            long endTick = serverTick + Math.min(note.durationTicks(), MAX_HORN_DURATION_TICKS);
             melody.activeNote = new ActiveHornNote(endTick, List.copyOf(voices));
         }
     }
 
-    record HornNote(int tick, double midi, int durationTicks, float volume) {}
+    record HornNote(int offsetTicks, double midi, int durationTicks, float volume) {}
 
     static final class TrumpetCanCan {
         private final long startTick;
@@ -328,10 +328,10 @@ public final class ExampleCallbacks {
             if (note != null) note.stop();
         }
 
-        boolean advance(long tick, Consumer<HornNote> play) {
+        boolean advance(long elapsedTicks, Consumer<HornNote> play) {
             while (this.nextNote < TRUMPET_CAN_CAN_NOTES.size()) {
                 HornNote note = TRUMPET_CAN_CAN_NOTES.get(this.nextNote);
-                if (tick - this.startTick < note.tick()) return false;
+                if (elapsedTicks - this.startTick < note.offsetTicks()) return false;
                 this.nextNote++;
                 play.accept(note);
             }

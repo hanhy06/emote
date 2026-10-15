@@ -33,12 +33,12 @@ public final class SequenceJsonParser {
             throw document.error("$.participants", "two-player matching is no longer supported");
         }
         JsonObject settingsObject = document.requireObject(root, "settings", "$");
-        int cooldownTicks = document.requireTime(settingsObject, "cooldown", "$.settings", 0);
-        EmotePlayerBehavior player = document.requirePlayer(
+        int cooldownTicks = document.requireTicks(settingsObject, "cooldown", "$.settings", 0);
+        EmotePlayerBehavior playerBehavior = document.parsePlayerBehavior(
             document.requireObject(settingsObject, "player", "$.settings"),
             "$.settings.player"
         );
-        EmoteSequence.Settings settings = new EmoteSequence.Settings(cooldownTicks, player);
+        EmoteSequence.Settings settings = new EmoteSequence.Settings(cooldownTicks, playerBehavior);
 
         List<EmoteSequence.Step> steps = parseSteps(document.requireArray(root, "steps", "$"), "$.steps", document);
         try {
@@ -81,7 +81,7 @@ public final class SequenceJsonParser {
                 if (!steps.isEmpty() && steps.getLast() instanceof EmoteSequence.WaitStep) {
                     throw document.error(path + ".wait", "must not follow another wait step");
                 }
-                steps.add(new EmoteSequence.WaitStep(document.requireTime(stepObject, "wait", path, 1)));
+                steps.add(new EmoteSequence.WaitStep(document.requireTicks(stepObject, "wait", path, 1)));
                 continue;
             }
             List<EmoteSequence.Choice> choices = readEmoteChoices(stepObject, path, document);
@@ -92,7 +92,7 @@ public final class SequenceJsonParser {
                 throw document.error(path + ".repeat", "must be at least 1");
             }
             int transitionTicks = stepObject.has("transition")
-                ? document.requireTime(stepObject, "transition", path, 0)
+                ? document.requireTicks(stepObject, "transition", path, 0)
                 : 0;
             steps.add(new EmoteSequence.AnimationStep(choices, repeat, transitionTicks));
         }

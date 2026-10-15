@@ -186,13 +186,13 @@ public final class PreparedAnimation implements PreparedEmote {
     }
 
     public List<String> nodeOrder() { return this.nodeOrder; }
-    public Node node(int index) { return this.orderedNodes.get(index); }
-    public int parentIndex(int index) { return this.parentIndices[index]; }
-    public List<String> attachmentIds(int index) { return this.attachmentIds.get(index); }
-    public @Nullable Track track(int index, int operation) { return this.operationTracks[index][operation]; }
-    public @Nullable Track visibilityTrack(int index) { return this.nodeVisibilityTracks[index]; }
-    public @Nullable Track visibilityTrack(int index, String attachment) { return this.attachmentVisibilityTracks.get(index).get(attachment); }
-    public Map<String, Track> nbtTracks(int index) { return this.nbtTracks.get(index); }
+    public Node node(int nodeIndex) { return this.orderedNodes.get(nodeIndex); }
+    public int parentIndex(int nodeIndex) { return this.parentIndices[nodeIndex]; }
+    public List<String> attachmentIds(int nodeIndex) { return this.attachmentIds.get(nodeIndex); }
+    public @Nullable Track track(int nodeIndex, int operationIndex) { return this.operationTracks[nodeIndex][operationIndex]; }
+    public @Nullable Track visibilityTrack(int nodeIndex) { return this.nodeVisibilityTracks[nodeIndex]; }
+    public @Nullable Track visibilityTrack(int nodeIndex, String attachmentId) { return this.attachmentVisibilityTracks.get(nodeIndex).get(attachmentId); }
+    public Map<String, Track> nbtTracks(int nodeIndex) { return this.nbtTracks.get(nodeIndex); }
     public boolean hasNbtTracks() { return this.hasNbtTracks; }
     public boolean defaultVisibility(Track track) { return this.defaultVisibility.get(track); }
     public Operation operation(Track track) { return this.trackOperations.get(track); }
@@ -201,7 +201,7 @@ public final class PreparedAnimation implements PreparedEmote {
     public Matrix4fc operationMatrix(Operation operation) { return this.operationMatrices.get(operation); }
     public Quaternionfc operationRotation(Operation operation) { return this.operationRotations.get(operation); }
 
-    public io.github.hanhy06.emote.molang.MolangEngine.CompiledExpression expression(String path) {
+    public MolangEngine.CompiledExpression expression(String path) {
         return this.expressions.get(path);
     }
 
@@ -219,9 +219,9 @@ public final class PreparedAnimation implements PreparedEmote {
         return List.copyOf(result);
     }
 
-    private static Map<String, io.github.hanhy06.emote.molang.MolangEngine.CompiledExpression> compileExpressions(
+    private static Map<String, MolangEngine.CompiledExpression> compileExpressions(
         EmoteAnimation animation, Map<VectorValue, double[]> constantVectors) {
-        Map<String, io.github.hanhy06.emote.molang.MolangEngine.CompiledExpression> result = new HashMap<>();
+        Map<String, MolangEngine.CompiledExpression> result = new HashMap<>();
         List<Driver> drivers = new ArrayList<>();
         for (var track : animation.clip().tracks()) {
             drivers.add(track.driver());
@@ -266,15 +266,15 @@ public final class PreparedAnimation implements PreparedEmote {
         return Map.copyOf(result);
     }
 
-    private static void compileExpression(Map<String, io.github.hanhy06.emote.molang.MolangEngine.CompiledExpression> result,
+    private static void compileExpression(Map<String, MolangEngine.CompiledExpression> result,
                                           String source, String path, boolean allowPersistentWrites) {
         if (result.containsKey(path)) return;
         try {
-            var expression = io.github.hanhy06.emote.molang.MolangEngine.INSTANCE.compile(source);
+            var expression = MolangEngine.INSTANCE.compile(source);
             MolangQueryCatalog.validate(expression, path);
             if (!allowPersistentWrites && expression.assignsPersistentVariables()) throw new IllegalArgumentException(path + " must not assign persistent variables");
             result.put(path, expression);
-        } catch (io.github.hanhy06.emote.molang.MolangEngine.MolangCompileException e) {
+        } catch (MolangEngine.MolangCompileException e) {
             throw new IllegalArgumentException(path + " contains invalid Molang", e);
         }
     }

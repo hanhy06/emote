@@ -73,7 +73,7 @@ public final class PlayerSkinBaker {
         PreparedSkin preparedSkin,
         PlayerSkinRegion region
     ) throws IOException {
-        PlayerSkinPart skinPart = region.skinPart();
+        PlayerSkinPart skinPart = region.part();
         BufferedImage bakingImage = preparedSkin.imageFor(skinPart);
         BufferedImage outputImage = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
         FaceMap baseFaces = PARTS.get(skinPart).base();

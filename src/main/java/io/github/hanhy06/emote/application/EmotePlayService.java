@@ -29,8 +29,8 @@ public class EmotePlayService implements AccessConfigListener {
     private List<AccessConfig.PermissionEntry> permissionEntries = List.of();
     private List<AccessConfig.PermissionEntry> wildcardPermissionEntries = List.of();
     private Map<String, List<AccessConfig.PermissionEntry>> permissionEntriesByEmoteId = Map.of();
-    private List<String> emoteIds = List.of();
-    private Set<String> disabled = Set.of();
+    private List<String> catalogEmoteIds = List.of();
+    private Set<String> disabledEmoteIds = Set.of();
 
     public EmotePlayService(
         EmoteCatalog emoteCatalog,
@@ -47,12 +47,12 @@ public class EmotePlayService implements AccessConfigListener {
         this.emoteCatalog.addListener(this::onEmoteCatalogChanged);
     }
 
-    public PlayResult play(ServerPlayer player, String id, PlaySource source) {
-        return play(player, id, source, PlaybackPlacement.actor());
+    public PlayResult play(ServerPlayer player, String emoteId, PlaySource source) {
+        return play(player, emoteId, source, PlaybackPlacement.actor());
     }
 
-    public PlayResult play(ServerPlayer player, String id, PlaySource source, PlaybackPlacement placement) {
-        PreparedEmote emote = this.emoteCatalog.find(id);
+    public PlayResult play(ServerPlayer player, String emoteId, PlaySource source, PlaybackPlacement placement) {
+        PreparedEmote emote = this.emoteCatalog.find(emoteId);
         if (emote == null) {
             return PlayResult.failure("That emote does not exist.");
         }
@@ -81,12 +81,12 @@ public class EmotePlayService implements AccessConfigListener {
     @Override
     public void onAccessConfigReload(AccessConfig newConfig) {
         this.permissionEntries = newConfig.permissions();
-        this.disabled = Set.copyOf(newConfig.disabled());
+        this.disabledEmoteIds = Set.copyOf(newConfig.disabled());
         rebuildPermissionIndex();
     }
 
     private void onEmoteCatalogChanged(List<? extends PreparedEmote> emotes) {
-        this.emoteIds = emotes.stream().map(PreparedEmote::id).toList();
+        this.catalogEmoteIds = emotes.stream().map(PreparedEmote::id).toList();
         rebuildPermissionIndex();
     }
 
@@ -98,7 +98,7 @@ public class EmotePlayService implements AccessConfigListener {
         if (rules.checkStandalone() && !emote.standalone()) {
             return Decision.denied("This emote can only be played as part of a sequence.");
         }
-        if (rules.checkDisabled() && this.disabled.contains(emote.id())) {
+        if (rules.checkDisabled() && this.disabledEmoteIds.contains(emote.id())) {
             return Decision.denied("This emote is currently unavailable.");
         }
         PermissionResolution permission = rules.checkPermission() ? resolvePermission(player, emote.id()) : null;
@@ -125,8 +125,7 @@ public class EmotePlayService implements AccessConfigListener {
             return Decision.denied("This emote is already playing.");
         }
         if (cooldownStatus.state() == PlaybackCooldownService.State.COOLING_DOWN) {
-            long remainingTicks = cooldownStatus.remainingTicks();
-            long remainingSeconds = (remainingTicks + 19) / 20;
+            long remainingSeconds = (cooldownStatus.remainingTicks() + 19) / 20;
             return Decision.denied(
                 "You can use this emote again in " + remainingSeconds + (remainingSeconds == 1 ? " second." : " seconds.")
             );
@@ -149,7 +148,7 @@ public class EmotePlayService implements AccessConfigListener {
     public boolean isVisibleForCommand(ServerPlayer player, PreparedEmote emote) {
         Rules rules = rulesFor(player, PlaySource.COMMAND);
         return (!rules.checkStandalone() || emote.standalone())
-            && (!rules.checkDisabled() || !this.disabled.contains(emote.id()))
+            && (!rules.checkDisabled() || !this.disabledEmoteIds.contains(emote.id()))
             && (!rules.checkPermission() || resolvePermission(player, emote.id()).allowed());
     }
 
@@ -176,9 +175,9 @@ public class EmotePlayService implements AccessConfigListener {
         return source == PlaySource.IDLE ? IDLE_RULES : COMMAND_RULES;
     }
 
-    private PermissionResolution resolvePermission(ServerPlayer player, String id) {
+    private PermissionResolution resolvePermission(ServerPlayer player, String emoteId) {
         boolean allowed = false;
-        for (AccessConfig.PermissionEntry entry : this.permissionEntriesByEmoteId.getOrDefault(id, this.wildcardPermissionEntries)) {
+        for (AccessConfig.PermissionEntry entry : this.permissionEntriesByEmoteId.getOrDefault(emoteId, this.wildcardPermissionEntries)) {
             boolean grantedByDefault = entry.permission().equals(DEFAULT_PERMISSION);
             if (this.permissionService.has(player, entry.permission(), grantedByDefault)) {
                 allowed = true;
@@ -196,7 +195,7 @@ public class EmotePlayService implements AccessConfigListener {
             .toList();
 
         Map<String, List<AccessConfig.PermissionEntry>> entriesById = new HashMap<>();
-        for (String id : this.emoteIds) {
+        for (String id : this.catalogEmoteIds) {
             List<AccessConfig.PermissionEntry> matches = this.permissionEntries.stream()
                 .filter(entry -> entry.appliesToAllEmotes() || entry.matchesEmote(id))
                 .toList();

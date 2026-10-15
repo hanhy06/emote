@@ -51,18 +51,17 @@ final class AnimationEvaluator {
         this.animation = animation;
         this.querySource = querySource;
         this.nodeIds = animation.nodeOrder();
-        int count = this.nodeIds.size();
-        this.matrices = new Matrix4f[count];
-        this.poseMatrices = new Matrix4fc[count];
-        this.transformations = new Transformation[count];
-        this.transitionStarts = new Transformation[count];
-        this.transitionEnds = new Transformation[count];
-        this.orientations = new Quaternionf[count];
-        this.visibility = new boolean[count];
+        this.matrices = new Matrix4f[this.nodeIds.size()];
+        this.poseMatrices = new Matrix4fc[this.nodeIds.size()];
+        this.transformations = new Transformation[this.nodeIds.size()];
+        this.transitionStarts = new Transformation[this.nodeIds.size()];
+        this.transitionEnds = new Transformation[this.nodeIds.size()];
+        this.orientations = new Quaternionf[this.nodeIds.size()];
+        this.visibility = new boolean[this.nodeIds.size()];
         for (Track track : animation.model().clip().tracks()) {
             if (track.blend() != null) this.blendedValues.put(track, new double[track.blend().base().size()]);
         }
-        for (int index = 0; index < count; index++) {
+        for (int index = 0; index < this.nodeIds.size(); index++) {
             this.matrices[index] = new Matrix4f();
             this.orientations[index] = new Quaternionf();
             this.attachmentVisibility.add(new LinkedHashMap<>());
@@ -171,9 +170,9 @@ final class AnimationEvaluator {
                 double[] value = sample(track.driver(), tick, operation.value());
                 if (track.blend() != null) {
                     double[] blended = this.blendedValues.get(track);
-                    for (int i = 0; i < value.length; i++) {
-                        double base = track.blend().base().get(i);
-                        blended[i] = base + (value[i] - base) * weight;
+                    for (int componentIndex = 0; componentIndex < value.length; componentIndex++) {
+                        double base = track.blend().base().get(componentIndex);
+                        blended[componentIndex] = base + (value[componentIndex] - base) * weight;
                     }
                     value = blended;
                 }
@@ -399,23 +398,23 @@ final class AnimationEvaluator {
         double[] in = !component && segment.interpolation() == Interpolation.HERMITE ? vector(segment.inTangent(), progress) : null;
         double durationSeconds = (right.tick() - left.tick()) / 20.0;
         double[] result = new double[startValues.components().size()];
-        for (int i = 0; i < result.length; i++) {
+        for (int componentIndex = 0; componentIndex < result.length; componentIndex++) {
             double t = component ? easing(segment.easing(), progress) : eased;
-            double p0 = component && segment.interpolation() == Interpolation.CATMULL_ROM && segment.previous() != null ? scalar(segment.previous().components().get(i), progress) : previous == null ? 0 : previous[i];
-            double a = component ? scalar(startValues.components().get(i), progress) : start[i];
-            double b = component ? scalar(endValues.components().get(i), progress) : end[i];
-            double p1 = component && segment.interpolation() == Interpolation.CATMULL_ROM && segment.following() != null ? scalar(segment.following().components().get(i), progress) : following == null ? 0 : following[i];
-            result[i] = switch (segment.interpolation()) {
+            double p0 = component && segment.interpolation() == Interpolation.CATMULL_ROM && segment.previous() != null ? scalar(segment.previous().components().get(componentIndex), progress) : previous == null ? 0 : previous[componentIndex];
+            double a = component ? scalar(startValues.components().get(componentIndex), progress) : start[componentIndex];
+            double b = component ? scalar(endValues.components().get(componentIndex), progress) : end[componentIndex];
+            double p1 = component && segment.interpolation() == Interpolation.CATMULL_ROM && segment.following() != null ? scalar(segment.following().components().get(componentIndex), progress) : following == null ? 0 : following[componentIndex];
+            result[componentIndex] = switch (segment.interpolation()) {
                 case LINEAR -> a + (b - a) * t;
                 case CATMULL_ROM, HERMITE -> {
-                    double m0 = segment.interpolation() == Interpolation.HERMITE ? (component ? scalar(segment.outTangent().components().get(i), progress) : out[i]) * durationSeconds : segment.tension() * (b - (segment.previous() == null ? a : p0));
-                    double m1 = segment.interpolation() == Interpolation.HERMITE ? (component ? scalar(segment.inTangent().components().get(i), progress) : in[i]) * durationSeconds : segment.tension() * ((segment.following() == null ? b : p1) - a);
+                    double m0 = segment.interpolation() == Interpolation.HERMITE ? (component ? scalar(segment.outTangent().components().get(componentIndex), progress) : out[componentIndex]) * durationSeconds : segment.tension() * (b - (segment.previous() == null ? a : p0));
+                    double m1 = segment.interpolation() == Interpolation.HERMITE ? (component ? scalar(segment.inTangent().components().get(componentIndex), progress) : in[componentIndex]) * durationSeconds : segment.tension() * ((segment.following() == null ? b : p1) - a);
                     double t2 = t * t, t3 = t2 * t;
                     yield (2 * t3 - 3 * t2 + 1) * a + (t3 - 2 * t2 + t) * m0
                         + (-2 * t3 + 3 * t2) * b + (t3 - t2) * m1;
                 }
                 case BEZIER -> {
-                    BezierHandle handle = segment.handles().get(i);
+                    BezierHandle handle = segment.handles().get(componentIndex);
                     double outTime, inTime, outValue, inValue;
                     if (segment.inControlFirst()) {
                         inValue = scalar(handle.inValue(), progress);
@@ -525,8 +524,8 @@ final class AnimationEvaluator {
             return constant;
         }
         double[] result = new double[value.components().size()];
-        for (int i = 0; i < result.length; i++) {
-            result[i] = scalar(value.components().get(i), progress);
+        for (int componentIndex = 0; componentIndex < result.length; componentIndex++) {
+            result[componentIndex] = scalar(value.components().get(componentIndex), progress);
         }
         return result;
     }

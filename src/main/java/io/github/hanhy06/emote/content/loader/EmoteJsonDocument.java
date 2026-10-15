@@ -105,7 +105,7 @@ final class EmoteJsonDocument {
         return List.copyOf(callbacks);
     }
 
-    EmotePlayerBehavior requirePlayer(JsonObject object, String path) throws EmoteLoadException {
+    EmotePlayerBehavior parsePlayerBehavior(JsonObject object, String path) throws EmoteLoadException {
         boolean hidden = requireBoolean(object, "hidden", path);
         JsonObject stopObject = requireObject(object, "stop_conditions", path);
         String stopPath = path + ".stop_conditions";
@@ -201,14 +201,13 @@ final class EmoteJsonDocument {
         }
     }
 
-    int requireTime(JsonObject object, String key, String path, int minimumTicks)
+    int requireTicks(JsonObject object, String key, String path, int minimumTicks)
         throws EmoteLoadException {
-        String fieldPath = path + "." + key;
         String value = requireString(object, key, path);
         try {
             return MinecraftTime.parse(value, minimumTicks);
         } catch (IllegalArgumentException exception) {
-            throw error(fieldPath, "must be a valid Minecraft time", exception);
+            throw error(path + "." + key, "must be a valid Minecraft time", exception);
         }
     }
 

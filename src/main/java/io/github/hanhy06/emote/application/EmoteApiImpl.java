@@ -86,30 +86,30 @@ public final class EmoteApiImpl extends EmoteApi {
     }
 
     @Override
-    public boolean setTick(UUID sessionId, int time) {
+    public boolean setTick(UUID sessionId, int tick) {
         Objects.requireNonNull(sessionId, "sessionId");
         requireServerThread();
-        if (time < 0) throw new IllegalArgumentException("Tick must be non-negative");
+        if (tick < 0) throw new IllegalArgumentException("Tick must be non-negative");
         PlaybackSession session = this.engine.findSession(sessionId);
-        return session != null && session.setTick(time);
+        return session != null && session.setTick(tick);
     }
 
     @Override
-    public boolean setAnimationTick(UUID sessionId, int time) {
+    public boolean setAnimationTick(UUID sessionId, int tick) {
         Objects.requireNonNull(sessionId, "sessionId");
         requireServerThread();
-        if (time < 0) throw new IllegalArgumentException("Tick must be non-negative");
+        if (tick < 0) throw new IllegalArgumentException("Tick must be non-negative");
         PlaybackSession session = this.engine.findSession(sessionId);
-        return session != null && session.setAnimationTick(time);
+        return session != null && session.setAnimationTick(tick);
     }
 
     @Override
-    public boolean setStep(UUID sessionId, int stepIndex, int repeatIndex, int time) {
+    public boolean setStep(UUID sessionId, int stepIndex, int repeatIndex, int tick) {
         Objects.requireNonNull(sessionId, "sessionId");
         requireServerThread();
-        if (stepIndex < 0 || repeatIndex < 0 || time < 0) throw new IllegalArgumentException("Step, repeat and tick must not be negative");
+        if (stepIndex < 0 || repeatIndex < 0 || tick < 0) throw new IllegalArgumentException("Step, repeat and tick must not be negative");
         PlaybackSession session = this.engine.findSession(sessionId);
-        return session != null && session.setStep(stepIndex, repeatIndex, time);
+        return session != null && session.setStep(stepIndex, repeatIndex, tick);
     }
 
     @Override
@@ -125,13 +125,10 @@ public final class EmoteApiImpl extends EmoteApi {
     public Registration register(EmoteAnimation animation) throws EmoteLoadException {
         Objects.requireNonNull(animation, "animation");
         requireServerThread();
-        Path sourcePath = Path.of("api", animation.id().getNamespace(), animation.id().getPath() + ".json");
-        LoadedAnimation loaded = new LoadedAnimation(
-            sourcePath,
+        UUID registrationId = this.emoteCatalog.register(PreparedAnimation.prepare(new LoadedAnimation(
+            Path.of("api", animation.id().getNamespace(), animation.id().getPath() + ".json"),
             animation
-        );
-        PreparedAnimation emote = PreparedAnimation.prepare(loaded);
-        UUID registrationId = this.emoteCatalog.register(emote);
+        )));
         this.changeNotifier.run();
         return new ApiRegistration(animation.id(), registrationId);
     }
@@ -233,14 +230,14 @@ public final class EmoteApiImpl extends EmoteApi {
         @Override
         public boolean unregister() {
             requireServerThread();
-            List<String> previousIds = EmoteApiImpl.this.emoteCatalog.emotes().stream().map(emote -> emote.id()).toList();
+            List<String> previousEmoteIds = EmoteApiImpl.this.emoteCatalog.emotes().stream().map(emote -> emote.id()).toList();
             if (!EmoteApiImpl.this.emoteCatalog.unregister(this.id.toString(), this.registrationId)) {
                 return false;
             }
             EmoteApiImpl.this.engine.stopById(this.id.toString(), PlaybackStopReason.EMOTE_REMOVED);
-            for (String previousId : previousIds) {
-                if (!previousId.equals(this.id.toString()) && EmoteApiImpl.this.emoteCatalog.find(previousId) == null) {
-                    EmoteApiImpl.this.engine.stopById(previousId, PlaybackStopReason.EMOTE_REMOVED);
+            for (String previousEmoteId : previousEmoteIds) {
+                if (!previousEmoteId.equals(this.id.toString()) && EmoteApiImpl.this.emoteCatalog.find(previousEmoteId) == null) {
+                    EmoteApiImpl.this.engine.stopById(previousEmoteId, PlaybackStopReason.EMOTE_REMOVED);
                 }
             }
             EmoteApiImpl.this.changeNotifier.run();

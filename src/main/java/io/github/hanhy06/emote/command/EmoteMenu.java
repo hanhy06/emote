@@ -84,11 +84,11 @@ public final class EmoteMenu {
     }
 
     private Dialog createRootDialog(ServerPlayer player, int requestedPageNumber, String query) {
-        List<EmoteSummary> emoteSummaryList = this.emoteQueryService.search(player, query);
-        DialogPage dialogPage = createDialogPage(emoteSummaryList.size(), requestedPageNumber);
+        List<EmoteSummary> emotes = this.emoteQueryService.search(player, query);
+        DialogPage dialogPage = createDialogPage(emotes.size(), requestedPageNumber);
 
         List<ActionButton> actionButtons = new ArrayList<>();
-        for (EmoteSummary emoteSummary : emoteSummaryList.subList(dialogPage.startIndex(), dialogPage.endIndex())) {
+        for (EmoteSummary emoteSummary : emotes.subList(dialogPage.startIndex(), dialogPage.endIndex())) {
             String command = "/" + emoteSummary.createPlayCommand();
             actionButtons.add(createRunCommandButton(
                 emoteSummary.name(),

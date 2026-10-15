@@ -69,17 +69,17 @@ public final class IdlePlaybackService implements AccessConfigListener {
 
         IdleState state = this.playerStates.get(playerUuid);
         long now = Util.getMillis();
-        Optional<AccessConfig.IdleSettings> resolvedIdle = resolveIdle(playerUuid, player, now);
-        if (resolvedIdle.isEmpty()) {
+        Optional<AccessConfig.IdleSettings> resolvedIdleSettings = resolveIdle(playerUuid, player, now);
+        if (resolvedIdleSettings.isEmpty()) {
             this.playerStates.remove(playerUuid);
             return;
         }
 
-        AccessConfig.IdleSettings idle = resolvedIdle.get();
-        if (state == null || state.lastActionTime() != lastActionTime || !state.idle().equals(idle)) {
-            long firstAttemptTime = lastActionTime + ticksToMillis(idle.delayTicks());
-            String selectedEmote = selectEmote(playerUuid, idle);
-            state = new IdleState(lastActionTime, idle, selectedEmote, firstAttemptTime);
+        AccessConfig.IdleSettings idleSettings = resolvedIdleSettings.get();
+        if (state == null || state.lastActionTime() != lastActionTime || !state.idleSettings().equals(idleSettings)) {
+            long firstAttemptTime = lastActionTime + ticksToMillis(idleSettings.delayTicks());
+            String selectedEmote = selectEmote(playerUuid, idleSettings);
+            state = new IdleState(lastActionTime, idleSettings, selectedEmote, firstAttemptTime);
             this.playerStates.put(playerUuid, state);
         }
 
@@ -88,7 +88,7 @@ public final class IdlePlaybackService implements AccessConfigListener {
         }
 
         if (state.selectedEmote() == null) {
-            this.playerStates.put(playerUuid, new IdleState(lastActionTime, idle, selectEmote(playerUuid, idle), now + RETRY_INTERVAL_MILLIS));
+            this.playerStates.put(playerUuid, new IdleState(lastActionTime, idleSettings, selectEmote(playerUuid, idleSettings), now + RETRY_INTERVAL_MILLIS));
             return;
         }
 
@@ -97,8 +97,8 @@ public final class IdlePlaybackService implements AccessConfigListener {
         long nextAttemptTime;
         if (result.isSuccess()) {
             this.lastPlayedEmotes.put(playerUuid, state.selectedEmote());
-            selectedEmote = selectEmote(playerUuid, idle);
-            long intervalMillis = ticksToMillis(idle.delayTicks());
+            selectedEmote = selectEmote(playerUuid, idleSettings);
+            long intervalMillis = ticksToMillis(idleSettings.delayTicks());
             long elapsedIntervals = (now - state.nextAttemptTime()) / intervalMillis + 1L;
             nextAttemptTime = state.nextAttemptTime() + elapsedIntervals * intervalMillis;
         } else {
@@ -106,7 +106,7 @@ public final class IdlePlaybackService implements AccessConfigListener {
         }
         this.playerStates.put(playerUuid, new IdleState(
             lastActionTime,
-            idle,
+            idleSettings,
             selectedEmote,
             nextAttemptTime
         ));
@@ -126,15 +126,15 @@ public final class IdlePlaybackService implements AccessConfigListener {
     ) {
         IdleResolution resolution = this.idleResolutions.get(playerUuid);
         if (resolution != null && now < resolution.expiresAt()) {
-            return resolution.idle();
+            return resolution.idleSettings();
         }
-        Optional<AccessConfig.IdleSettings> idle = this.playService.findIdleSettings(player);
-        this.idleResolutions.put(playerUuid, new IdleResolution(idle, now + RESOLUTION_CACHE_MILLIS));
-        return idle;
+        Optional<AccessConfig.IdleSettings> idleSettings = this.playService.findIdleSettings(player);
+        this.idleResolutions.put(playerUuid, new IdleResolution(idleSettings, now + RESOLUTION_CACHE_MILLIS));
+        return idleSettings;
     }
 
-    private String selectEmote(UUID playerUuid, AccessConfig.IdleSettings idle) {
-        List<AccessConfig.IdleSettings.Choice> choices = idle.resolveChoices(this.emoteCatalog.emotes().stream().map(PreparedEmote::id).toList());
+    private String selectEmote(UUID playerUuid, AccessConfig.IdleSettings idleSettings) {
+        List<AccessConfig.IdleSettings.Choice> choices = idleSettings.resolveChoices(this.emoteCatalog.emotes().stream().map(PreparedEmote::id).toList());
         if (choices.isEmpty()) {
             return null;
         }
@@ -174,13 +174,13 @@ public final class IdlePlaybackService implements AccessConfigListener {
 
     private record IdleState(
         long lastActionTime,
-        AccessConfig.IdleSettings idle,
+        AccessConfig.IdleSettings idleSettings,
         String selectedEmote,
         long nextAttemptTime
     ) {
     }
 
-    private record IdleResolution(Optional<AccessConfig.IdleSettings> idle, long expiresAt) {
+    private record IdleResolution(Optional<AccessConfig.IdleSettings> idleSettings, long expiresAt) {
     }
 
 }

@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 public class PlayerSkinManager implements ConfigListener {
-    private final SkinBakeCoordinator provider;
+    private final SkinBakeCoordinator bakeCoordinator;
     private final Map<String, CompletableFuture<PlayerSkinSource>> namedSources = new HashMap<>();
     private final List<Runnable> defaultReadyListeners = new CopyOnWriteArrayList<>();
     private final List<Consumer<UUID>> readyListeners = new CopyOnWriteArrayList<>();
@@ -27,15 +27,15 @@ public class PlayerSkinManager implements ConfigListener {
     private volatile long sourceGeneration;
     private volatile MinecraftServer server;
 
-    public PlayerSkinManager(SkinBakeCoordinator provider) {
-        this.provider = Objects.requireNonNull(provider, "provider");
-        this.provider.setListener(new SkinBakeCoordinator.Listener() {
+    public PlayerSkinManager(SkinBakeCoordinator bakeCoordinator) {
+        this.bakeCoordinator = Objects.requireNonNull(bakeCoordinator, "bakeCoordinator");
+        this.bakeCoordinator.setListener(new SkinBakeCoordinator.Listener() {
             @Override
             public void onDefaultReady(long generation, long revision) {
-                if (!provider.isDefaultCurrent(generation, revision)) return;
+                if (!bakeCoordinator.isDefaultCurrent(generation, revision)) return;
                 MinecraftServer server = PlayerSkinManager.this.server;
                 server.execute(() -> {
-                    if (!provider.isDefaultCurrent(generation, revision)) return;
+                    if (!bakeCoordinator.isDefaultCurrent(generation, revision)) return;
                     server.getPlayerList().getPlayers().forEach(player -> {
                         for (Consumer<UUID> readyListener : readyListeners) readyListener.accept(player.getUUID());
                     });
@@ -65,12 +65,12 @@ public class PlayerSkinManager implements ConfigListener {
         this.server = server;
         long generation = ++this.sourceGeneration;
         this.namedSources.clear();
-        this.provider.onConfigReload(newConfig);
+        this.bakeCoordinator.onConfigReload(newConfig);
         if (!newConfig.defaultSkin().isEmpty()) {
             namedSource(newConfig.defaultSkin()).thenAccept(source -> {
                 if (generation != this.sourceGeneration || source == null) return;
                 server.execute(() -> {
-                    if (generation == this.sourceGeneration) this.provider.setDefaultSource(source);
+                    if (generation == this.sourceGeneration) this.bakeCoordinator.setDefaultSource(source);
                 });
             });
         }
@@ -110,18 +110,18 @@ public class PlayerSkinManager implements ConfigListener {
         if (skinBindings.isEmpty()) {
             return new PlayerSkinPreparation(null, PlayerSkinPreparation.State.READY, 100);
         }
-        Set<PlayerSkinRegion> requiredTextureKeys = new LinkedHashSet<>(this.modelRegions);
+        Set<PlayerSkinRegion> requiredRegions = new LinkedHashSet<>(this.modelRegions);
         for (SkinBinding binding : skinBindings) {
-            requiredTextureKeys.add(binding.region());
+            requiredRegions.add(binding.region());
         }
         PlayerSkinPreparation preparation = skinSource == null
             ? new PlayerSkinPreparation(null, PlayerSkinPreparation.State.UNAVAILABLE, 0)
-            : this.provider.prepare(skinSource, requiredTextureKeys);
-        return withDefaultSkin(preparation, requiredTextureKeys);
+            : this.bakeCoordinator.prepare(skinSource, requiredRegions);
+        return withDefaultSkin(preparation, requiredRegions);
     }
 
     PlayerSkinPreparation withDefaultSkin(PlayerSkinPreparation preparation, Set<PlayerSkinRegion> regions) {
-        var fallback = this.provider.defaultSkin();
+        var fallback = this.bakeCoordinator.defaultSkin();
         if (fallback == null || preparation.state() == PlayerSkinPreparation.State.READY || preparation.preparing()) return preparation;
         Map<PlayerSkinRegion, String> merged = new HashMap<>();
         for (PlayerSkinRegion region : regions) {
@@ -139,7 +139,7 @@ public class PlayerSkinManager implements ConfigListener {
             regions.add(binding.region());
         }
         this.modelRegions = Set.copyOf(regions);
-        this.provider.setDefaultRegions(this.modelRegions);
+        this.bakeCoordinator.setDefaultRegions(this.modelRegions);
     }
 
     public void checkPlayerSkin(ServerPlayer player) {
@@ -152,7 +152,7 @@ public class PlayerSkinManager implements ConfigListener {
         if (identity.equals(previous)) {
             return;
         }
-        PlayerSkinPreparation preparation = this.provider.prepare(source, this.modelRegions);
+        PlayerSkinPreparation preparation = this.bakeCoordinator.prepare(source, this.modelRegions);
         if (previous != null && preparation.state() == PlayerSkinPreparation.State.READY) {
             for (Consumer<UUID> readyListener : this.readyListeners) {
                 readyListener.accept(source.playerUuid());
@@ -176,18 +176,18 @@ public class PlayerSkinManager implements ConfigListener {
         this.sourceGeneration++;
         this.namedSources.clear();
         this.connectedSkins.clear();
-        this.provider.cancelPendingBakes();
+        this.bakeCoordinator.cancelPendingBakes();
     }
 
     public SkinProcessingStats processingStats() {
-        return this.provider.processingStats();
+        return this.bakeCoordinator.processingStats();
     }
 
     private void notifySkinReady(UUID playerUuid, long generation) {
-        if (!this.provider.isCurrent(generation)) return;
+        if (!this.bakeCoordinator.isCurrent(generation)) return;
         MinecraftServer server = this.server;
         server.execute(() -> {
-            if (!this.provider.isCurrent(generation)) return;
+            if (!this.bakeCoordinator.isCurrent(generation)) return;
             for (Consumer<UUID> readyListener : this.readyListeners) {
                 readyListener.accept(playerUuid);
             }
@@ -195,10 +195,10 @@ public class PlayerSkinManager implements ConfigListener {
     }
 
     private void notifySkinFailed(UUID playerUuid, long generation) {
-        if (!this.provider.isCurrent(generation)) return;
+        if (!this.bakeCoordinator.isCurrent(generation)) return;
         MinecraftServer server = this.server;
         server.execute(() -> {
-            if (!this.provider.isCurrent(generation)) return;
+            if (!this.bakeCoordinator.isCurrent(generation)) return;
             for (Consumer<UUID> readyListener : this.readyListeners) readyListener.accept(playerUuid);
             ServerPlayer player = server.getPlayerList().getPlayer(playerUuid);
             if (player != null) {

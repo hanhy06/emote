@@ -11,11 +11,11 @@ public interface DisplayAccessor {
     void emote$setTransformation(Transformation transformation);
 
     @Invoker("setTransformationInterpolationDuration")
-    void emote$setTransformationInterpolationDuration(int duration);
+    void emote$setTransformationInterpolationDuration(int ticks);
 
     @Invoker("setTransformationInterpolationDelay")
     void emote$setTransformationInterpolationDelay(int ticks);
 
     @Invoker("setPosRotInterpolationDuration")
-    void emote$setPosRotInterpolationDuration(int duration);
+    void emote$setPosRotInterpolationDuration(int ticks);
 }

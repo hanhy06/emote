@@ -60,8 +60,9 @@ public final class SkinCache {
     long epoch() { synchronized (this.memoryLock) { return this.memoryEpoch; } }
 
     public Map<PlayerSkinRegion, String> peek(String textureHash, boolean slimModel) {
-        var key = new PlayerSkinSource.Key(textureHash.toLowerCase(Locale.ROOT), slimModel);
-        synchronized (this.memoryLock) { return this.skinTextures.get(key); }
+        synchronized (this.memoryLock) {
+            return this.skinTextures.get(new PlayerSkinSource.Key(textureHash.toLowerCase(Locale.ROOT), slimModel));
+        }
     }
 
     boolean markUsed(String textureHash, boolean slimModel) {
@@ -106,13 +107,13 @@ public final class SkinCache {
 
             Map<PlayerSkinRegion, String> textureUrlMap = new HashMap<>();
             for (JsonElement textureElement : textures) {
-                PlayerSkinRegion textureKey = readTextureKey(textureElement);
+                PlayerSkinRegion region = readTextureRegion(textureElement);
                 String textureUrl = readTextureUrl(textureElement);
-                if (textureKey == null || textureUrl == null) {
+                if (region == null || textureUrl == null) {
                     continue;
                 }
 
-                textureUrlMap.put(textureKey, textureUrl);
+                textureUrlMap.put(region, textureUrl);
             }
 
             if (textureUrlMap.isEmpty()) {
@@ -165,7 +166,7 @@ public final class SkinCache {
             if (hash == null || url == null || slim == null || textures == null) return null;
             Map<PlayerSkinRegion, String> ready = new HashMap<>();
             for (JsonElement texture : textures) {
-                PlayerSkinRegion region = readTextureKey(texture);
+                PlayerSkinRegion region = readTextureRegion(texture);
                 String textureUrl = readTextureUrl(texture);
                 if (region != null && textureUrl != null) ready.put(region, textureUrl);
             }
@@ -562,13 +563,13 @@ public final class SkinCache {
         JsonArray texturesJson = new JsonArray();
         List<Map.Entry<PlayerSkinRegion, String>> textureEntries = new ArrayList<>(textureUrlMap.entrySet());
         textureEntries.sort(Comparator
-            .comparing((Map.Entry<PlayerSkinRegion, String> entry) -> entry.getKey().skinPart().ordinal())
+            .comparing((Map.Entry<PlayerSkinRegion, String> entry) -> entry.getKey().part().ordinal())
             .thenComparing(entry -> entry.getKey().from())
             .thenComparing(entry -> entry.getKey().to()));
 
         for (Map.Entry<PlayerSkinRegion, String> textureEntry : textureEntries) {
             JsonObject textureJson = new JsonObject();
-            textureJson.addProperty("skin_part", textureEntry.getKey().skinPart().id());
+            textureJson.addProperty("skin_part", textureEntry.getKey().part().id());
             textureJson.addProperty("region_from", textureEntry.getKey().from());
             textureJson.addProperty("region_to", textureEntry.getKey().to());
             textureJson.addProperty("texture_url", textureEntry.getValue());
@@ -584,7 +585,7 @@ public final class SkinCache {
         return textures != null && textures.isJsonArray() ? textures.getAsJsonArray() : null;
     }
 
-    private PlayerSkinRegion readTextureKey(JsonElement textureElement) {
+    private PlayerSkinRegion readTextureRegion(JsonElement textureElement) {
         if (textureElement == null || !textureElement.isJsonObject()) {
             return null;
         }

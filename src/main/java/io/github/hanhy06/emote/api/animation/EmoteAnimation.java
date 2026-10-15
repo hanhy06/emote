@@ -2,6 +2,7 @@ package io.github.hanhy06.emote.api.animation;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import io.github.hanhy06.emote.api.EmoteCallback;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
@@ -10,21 +11,18 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
-import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import io.github.hanhy06.emote.api.EmoteCallback;
 
-public record EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings settings, MolangPrograms molang,
+public record EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings settings, Molang molang,
                              Map<String, Node> nodes, Clip clip, List<EmoteCallback> callbacks,
                              String targetMinecraftVersion, JsonObject resources, JsonObject source) {
     public static final int SCHEMA_VERSION = 5;
     public static final Set<String> RUNTIME_NBT_FIELDS = Set.of("id", "UUID", "Pos", "Motion", "Rotation", "Passengers", "Tags",
         "transformation", "interpolation_duration", "start_interpolation", "teleport_duration");
 
-    public EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings settings, MolangPrograms molang,
+    public EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings settings, Molang molang,
                           Map<String, Node> nodes, Clip clip, List<EmoteCallback> callbacks) {
         this(id, metadata, settings, molang, nodes, clip, callbacks, null, new JsonObject(), new JsonObject());
     }
@@ -41,8 +39,8 @@ public record EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings set
         Objects.requireNonNull(source, "source");
     }
 
-    public record MolangPrograms(String initialize, String tick) {
-        public static MolangPrograms empty() { return new MolangPrograms(null, null); }
+    public record Molang(String initialize, String tick) {
+        public static Molang empty() { return new Molang(null, null); }
     }
     public record Settings(boolean standalone, int cooldownTicks, float rotationDeadzone,
                            EmotePlayerBehavior playerBehavior, PlaybackSettings playback) {

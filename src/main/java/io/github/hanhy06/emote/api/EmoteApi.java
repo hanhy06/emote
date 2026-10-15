@@ -9,7 +9,6 @@ import net.minecraft.world.phys.Vec3;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import io.github.hanhy06.emote.api.EmoteLoadException;
 
 public abstract class EmoteApi {
     public static volatile EmoteApi INSTANCE;

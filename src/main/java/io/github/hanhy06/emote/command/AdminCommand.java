@@ -73,7 +73,7 @@ public final class AdminCommand {
     private int info(CommandSourceStack source) {
         SkinProcessingStats skin = this.playerSkinManager.processingStats();
         int activeSessions = this.playerPlaybackManager.engine().activeSessionCount();
-        int activeParticipants = this.playerPlaybackManager.activePlayerCount();
+        int activePlayers = this.playerPlaybackManager.activePlayerCount();
         int activeDisplays = this.playerPlaybackManager.engine().activeDisplayEntityCount();
         int displayLimit = this.configManager.getConfig().maxActiveDisplayEntities();
         int loadedEmotes = this.emoteCatalog.size();
@@ -95,7 +95,7 @@ public final class AdminCommand {
                 .append(Component.literal("\n• Sessions: ").withStyle(ChatFormatting.YELLOW))
                 .append(Component.literal(Integer.toString(activeSessions)).withStyle(ChatFormatting.WHITE))
                 .append(Component.literal("\n• Players: ").withStyle(ChatFormatting.GREEN))
-                .append(Component.literal(Integer.toString(activeParticipants)).withStyle(ChatFormatting.WHITE))
+                .append(Component.literal(Integer.toString(activePlayers)).withStyle(ChatFormatting.WHITE))
                 .append(Component.literal("\n• Displays: ").withStyle(displayColor))
                 .append(Component.literal(displayUsage).withStyle(ChatFormatting.WHITE))
                 .append(Component.literal("\n\nSkin processing").withStyle(ChatFormatting.GRAY))
@@ -227,21 +227,21 @@ public final class AdminCommand {
     static Component createListEntry(
         String id,
         EmoteMetadata metadata,
-        @org.jspecify.annotations.Nullable Integer duration,
+        @org.jspecify.annotations.Nullable Integer durationTicks,
         boolean standalone
     ) {
-        var entry = Component.literal("\n• " + metadata.name()).withStyle(ChatFormatting.WHITE)
+        var listEntry = Component.literal("\n• " + metadata.name()).withStyle(ChatFormatting.WHITE)
             .append(Component.literal("  " + metadata.description()).withStyle(ChatFormatting.GRAY))
             .append(Component.literal("\n  " + id).withStyle(ChatFormatting.AQUA))
-            .append(Component.literal(duration == null ? " · duration unknown" : String.format(Locale.ROOT, " · %.1f seconds", duration / 20.0))
+            .append(Component.literal(durationTicks == null ? " · duration unknown" : String.format(Locale.ROOT, " · %.1f seconds", durationTicks / 20.0))
                 .withStyle(ChatFormatting.GRAY));
         if (!standalone) {
-            entry.append(Component.literal(" · Sequence only").withStyle(ChatFormatting.GRAY));
+            listEntry.append(Component.literal(" · Sequence only").withStyle(ChatFormatting.GRAY));
         }
         for (Map.Entry<String, JsonElement> metadataEntry : metadata.additional().entrySet()) {
-            appendMetadata(entry, metadataEntry.getKey(), metadataEntry.getValue(), 0);
+            appendMetadata(listEntry, metadataEntry.getKey(), metadataEntry.getValue(), 0);
         }
-        return entry;
+        return listEntry;
     }
 
     private static void appendMetadata(MutableComponent entry, String key, JsonElement value, int depth) {

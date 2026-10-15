@@ -44,9 +44,8 @@ public final class ApiEventDispatcher implements PlaybackEngine.Lifecycle {
     @Override
     public void onStarted(PlaybackSession session) {
         PlaybackInfo playback = session.info();
-        UUID key = session.sessionId();
         List<EmotePlaybackListener> notified = new ArrayList<>();
-        if (this.startedPlaybacks.putIfAbsent(key, notified) != null) {
+        if (this.startedPlaybacks.putIfAbsent(session.sessionId(), notified) != null) {
             throw new IllegalStateException("Playback start is already being dispatched: " + session.sessionId());
         }
         for (EmotePlaybackListener listener : List.copyOf(this.playbackListeners)) {

@@ -113,9 +113,9 @@ public final class PlayerPlaybackManager {
             }
             @Override public void onStopped(PlaybackSession session, PlaybackStopReason reason) {
                 if (this.started) restorePlayerVisibility(player, playerState);
-                for (int i = 0; i < playbackListeners.size(); i++) {
-                    if (i < this.notifiedListeners) playbackListeners.get(i).onStopped(player, session, playerState, reason);
-                    else playbackListeners.get(i).onCancelled(player, session, playerState, reason);
+                for (int listenerIndex = 0; listenerIndex < playbackListeners.size(); listenerIndex++) {
+                    if (listenerIndex < this.notifiedListeners) playbackListeners.get(listenerIndex).onStopped(player, session, playerState, reason);
+                    else playbackListeners.get(listenerIndex).onCancelled(player, session, playerState, reason);
                 }
             }
         };

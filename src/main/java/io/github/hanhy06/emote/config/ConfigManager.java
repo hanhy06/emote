@@ -151,18 +151,18 @@ public class ConfigManager {
         return loadedConfig;
     }
 
-    private AccessConfig parseAccessConfig(@Nullable JsonObject configJson) {
-        AccessConfig loadedConfig;
+    private AccessConfig parseAccessConfig(@Nullable JsonObject accessConfigJson) {
+        AccessConfig loadedAccessConfig;
         try {
-            loadedConfig = ConfigJsonCodec.readAccessConfig(configJson);
+            loadedAccessConfig = ConfigJsonCodec.readAccessConfig(accessConfigJson);
         } catch (RuntimeException exception) {
             EmoteMod.LOGGER.warn("Emote access config contains invalid field values; keeping the current config: {}", exception.getMessage());
             return null;
         }
-        if (loadedConfig == null) {
+        if (loadedAccessConfig == null) {
             EmoteMod.LOGGER.warn("Emote access config is empty or invalid; keeping the current config");
         }
-        return loadedConfig;
+        return loadedAccessConfig;
     }
 
     public void addListener(ConfigListener listener) {

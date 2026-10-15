@@ -645,7 +645,7 @@ public final class EmotePlayback {
     public boolean canSetTick(int tick) {
         if (tick < 0) throw new IllegalArgumentException("Tick must be non-negative");
         if ((this.emote instanceof PreparedSequence)) locateSequence(tick);
-        else if (tick > this.model.clip().durationTicks()) throw new IllegalArgumentException("Time is outside the animation");
+        else if (tick > this.model.clip().durationTicks()) throw new IllegalArgumentException("Tick is outside the animation");
         return canSeek();
     }
 
@@ -698,7 +698,7 @@ public final class EmotePlayback {
         if (stepIndex < 0 || repeatIndex < 0 || animationTick < 0) throw new IllegalArgumentException("Step, repeat and tick must not be negative");
         for (var segment : this.sequencePhases) {
             if (segment.phase() != PlaybackTimeline.Phase.ANIMATION || !Objects.equals(segment.stepIndex(), stepIndex) || !Objects.equals(segment.repeatIndex(), repeatIndex)) continue;
-            if (animationTick > selectedAnimation(segment).animation().model().clip().durationTicks()) throw new IllegalArgumentException("Time is outside the animation");
+            if (animationTick > selectedAnimation(segment).animation().model().clip().durationTicks()) throw new IllegalArgumentException("Tick is outside the animation");
             return segment.segmentIndex();
         }
         throw new IllegalArgumentException("No animation at the specified sequence step and repeat");
@@ -730,7 +730,7 @@ public final class EmotePlayback {
                         var model = source.animation().model();
                         if (model.molang().tick() != null || model.clip().clock() != null
                             || segment.phase() == PlaybackTimeline.Phase.LOOP_DELAY && model.settings().playback().loopDelay() instanceof EmoteAnimation.MolangValue) {
-                            throw new IllegalArgumentException("Cannot reconstruct a previous animation program for this sequence gap");
+                            throw new IllegalArgumentException("Cannot reconstruct previous animation state for this sequence gap");
                         }
                     }
                 }
@@ -763,7 +763,7 @@ public final class EmotePlayback {
             if (previous >= 0) {
                 var source = selectedAnimation(segments.get(previous));
                 if (this.child == null || this.childSelection != source) {
-                    if (source.animation().model().molang().tick() != null || source.animation().model().clip().clock() != null) throw new IllegalArgumentException("Cannot reconstruct a previous animation program for this sequence gap");
+                    if (source.animation().model().molang().tick() != null || source.animation().model().clip().clock() != null) throw new IllegalArgumentException("Cannot reconstruct previous animation state for this sequence gap");
                     this.child = null;
                     prepareChild(source);
                 }

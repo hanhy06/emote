@@ -470,14 +470,14 @@ public final class PlaybackStressTest {
         }
 
         private void recordCompletedServerTick(long stressTickNanos) {
-            int completedTick = EmoteMod.SERVER.getTickCount();
-            if (completedTick < this.startedServerTick || completedTick == this.lastSampledServerTick) {
+            int completedServerTick = EmoteMod.SERVER.getTickCount();
+            if (completedServerTick < this.startedServerTick || completedServerTick == this.lastSampledServerTick) {
                 return;
             }
 
             long[] tickTimesNanos = EmoteMod.SERVER.getTickTimesNanos();
-            long elapsedNanos = tickTimesNanos[Math.floorMod(completedTick, tickTimesNanos.length)] + stressTickNanos;
-            this.lastSampledServerTick = completedTick;
+            long elapsedNanos = tickTimesNanos[Math.floorMod(completedServerTick, tickTimesNanos.length)] + stressTickNanos;
+            this.lastSampledServerTick = completedServerTick;
             if (elapsedNanos <= 0L) {
                 return;
             }
@@ -538,8 +538,8 @@ public final class PlaybackStressTest {
 
             List<Long> sorted = new ArrayList<>(samples);
             sorted.sort(Long::compareTo);
-            int index = Math.max(0, (int) Math.ceil(sorted.size() * 0.95D) - 1);
-            return sorted.get(index);
+            int percentileIndex = Math.max(0, (int) Math.ceil(sorted.size() * 0.95D) - 1);
+            return sorted.get(percentileIndex);
         }
 
         private static double nanosToMillis(long nanos) {

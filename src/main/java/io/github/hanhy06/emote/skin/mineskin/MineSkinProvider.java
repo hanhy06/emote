@@ -50,14 +50,14 @@ public final class MineSkinProvider {
         byte[] bakedImage,
         boolean slimModel
     ) throws IOException, InterruptedException {
-        long now = System.currentTimeMillis();
-        SkinCache.Failure failure = this.cache.loadFailure(contentHash, now);
+        long nowEpochMillis = System.currentTimeMillis();
+        SkinCache.Failure failure = this.cache.loadFailure(contentHash, nowEpochMillis);
         if (failure != null) {
             return TextureResolution.retry(failure.retryAfterEpochMillis());
         }
         SkinCache.PendingJob pendingJob = this.cache.loadPendingJob(contentHash);
         if (pendingJob != null
-            && now - pendingJob.submittedAtEpochMillis() > SkinCache.PENDING_JOB_MAX_AGE_MILLIS) {
+            && nowEpochMillis - pendingJob.submittedAtEpochMillis() > SkinCache.PENDING_JOB_MAX_AGE_MILLIS) {
             this.cache.clearPendingJob(contentHash);
             pendingJob = null;
         }
@@ -75,18 +75,18 @@ public final class MineSkinProvider {
                 );
             }
         } catch (MineSkinClient.RateLimitException exception) {
-            long retryAt = now + positiveOrRateLimitFallback(exception.retryDelayMillis());
-            this.cache.saveFailure(contentHash, exception.getMessage(), retryAt);
-            return TextureResolution.retry(retryAt);
+            long retryAtEpochMillis = nowEpochMillis + positiveOrRateLimitFallback(exception.retryDelayMillis());
+            this.cache.saveFailure(contentHash, exception.getMessage(), retryAtEpochMillis);
+            return TextureResolution.retry(retryAtEpochMillis);
         } catch (MineSkinClient.JobFailedException exception) {
             this.cache.clearPendingJob(contentHash);
             if (exception.isRateLimited()) {
-                long retryAt = now + positiveOrRateLimitFallback(exception.retryDelayMillis());
-                this.cache.saveFailure(contentHash, exception.getMessage(), retryAt);
-                return TextureResolution.retry(retryAt);
+                long retryAtEpochMillis = nowEpochMillis + positiveOrRateLimitFallback(exception.retryDelayMillis());
+                this.cache.saveFailure(contentHash, exception.getMessage(), retryAtEpochMillis);
+                return TextureResolution.retry(retryAtEpochMillis);
             }
 
-            this.cache.saveFailure(contentHash, exception.getMessage(), now + FAILED_JOB_RETRY_DELAY_MILLIS);
+            this.cache.saveFailure(contentHash, exception.getMessage(), nowEpochMillis + FAILED_JOB_RETRY_DELAY_MILLIS);
             EmoteMod.LOGGER.warn("MineSkin rejected baked texture {}: {}", contentHash, exception.getMessage());
             return TextureResolution.failed();
         }

@@ -13,7 +13,7 @@ import org.jspecify.annotations.NonNull;
 import java.util.List;
 
 public record WheelSyncPayload(List<EmoteSummary> emotes) implements CustomPacketPayload {
-    private static final StreamCodec<RegistryFriendlyByteBuf, EmoteSummary> PLAYABLE_EMOTE_STREAM_CODEC = StreamCodec.composite(
+    private static final StreamCodec<RegistryFriendlyByteBuf, EmoteSummary> EMOTE_SUMMARY_STREAM_CODEC = StreamCodec.composite(
         ByteBufCodecs.STRING_UTF8,
         EmoteSummary::id,
         ByteBufCodecs.STRING_UTF8,
@@ -25,7 +25,7 @@ public record WheelSyncPayload(List<EmoteSummary> emotes) implements CustomPacke
 
     public static final Type<WheelSyncPayload> TYPE = new Type<>(Identifier.fromNamespaceAndPath(EmoteMod.MOD_ID, "wheel_sync"));
     public static final StreamCodec<RegistryFriendlyByteBuf, WheelSyncPayload> STREAM_CODEC = StreamCodec.composite(
-        PLAYABLE_EMOTE_STREAM_CODEC.apply(ByteBufCodecs.list(EmoteCatalog.MAX_EMOTE_COUNT)),
+        EMOTE_SUMMARY_STREAM_CODEC.apply(ByteBufCodecs.list(EmoteCatalog.MAX_EMOTE_COUNT)),
         WheelSyncPayload::emotes,
         WheelSyncPayload::new
     );
