@@ -230,6 +230,7 @@ final class StressTestCommand {
         double setupSeconds = roundTenths(report.creationMillis() / 1_000.0D);
         double emoteSeconds = roundTenths(report.emoteProcessingSeconds());
         double networkSeconds = roundTenths(report.networkProcessingSeconds());
+        double drainSeconds = roundTenths(report.packetLoad().drainNanos() / 1_000_000_000.0D);
         double cleanupSeconds = roundTenths(report.cleanupMillis() / 1_000.0D);
         double serverAndIdleSeconds = Math.max(
             0.0D,
@@ -237,6 +238,7 @@ final class StressTestCommand {
                 - setupSeconds
                 - emoteSeconds
                 - networkSeconds
+                - drainSeconds
                 - cleanupSeconds
         );
         return Component.literal("\n• Duration: ").withStyle(ChatFormatting.GOLD)
@@ -245,8 +247,10 @@ final class StressTestCommand {
             .append(Component.literal(String.format(Locale.ROOT, "%.1f s", setupSeconds)).withStyle(ChatFormatting.WHITE))
             .append(Component.literal(" + Emote ").withStyle(ChatFormatting.GREEN))
             .append(Component.literal(String.format(Locale.ROOT, "%.1f s", emoteSeconds)).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal(" + Network ").withStyle(ChatFormatting.AQUA))
+            .append(Component.literal(" + Submit ").withStyle(ChatFormatting.AQUA))
             .append(Component.literal(String.format(Locale.ROOT, "%.1f s", networkSeconds)).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal(" + Drain ").withStyle(ChatFormatting.AQUA))
+            .append(Component.literal(String.format(Locale.ROOT, "%.1f s", drainSeconds)).withStyle(ChatFormatting.WHITE))
             .append(Component.literal("\n  + Server/idle ").withStyle(ChatFormatting.GRAY))
             .append(Component.literal(String.format(Locale.ROOT, "%.1f s", serverAndIdleSeconds)).withStyle(ChatFormatting.WHITE))
             .append(Component.literal(" + Cleanup ").withStyle(ChatFormatting.GOLD))
@@ -266,9 +270,9 @@ final class StressTestCommand {
         double runtimeSeconds = Math.max(report.runtimeSeconds(), 0.001D);
         double packetsPerSecond = packets.runtimePackets() / runtimeSeconds;
         double mebibytesPerSecond = packets.runtimeBytes() / 1_048_576.0D / runtimeSeconds;
-        double encodingShare = report.networkProcessingSeconds() == 0.0D
+        double averageWorkerMillis = packets.runtimeSamples() == 0
             ? 0.0D
-            : Math.min(100.0D, packets.runtimeEncodingNanos() / 1_000_000_000.0D / report.networkProcessingSeconds() * 100.0D);
+            : packets.runtimeProcessingNanos() / 1_000_000.0D / packets.runtimeSamples();
         double averageMebibytesPerTick = packets.runtimeSamples() == 0
             ? 0.0D
             : packets.runtimeBytes() / 1_048_576.0D / packets.runtimeSamples();
@@ -282,15 +286,21 @@ final class StressTestCommand {
                 packets.creationPackets(),
                 packets.creationBytes() / 1_048_576.0D
             )).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal("\n• Tick: ").withStyle(ChatFormatting.YELLOW))
+            .append(Component.literal("\n• Submit/tick: ").withStyle(ChatFormatting.YELLOW))
             .append(Component.literal(String.format(
                 Locale.ROOT,
                 "avg %.3f ms / max %.3f ms",
                 report.averageNetworkProcessingMillis(),
                 report.maximumNetworkProcessingMillis()
             )).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal("\n  Encoding share: ").withStyle(ChatFormatting.GOLD))
-            .append(Component.literal(String.format(Locale.ROOT, "%.1f%%", encodingShare)).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("\n• Worker sum/tick: ").withStyle(ChatFormatting.GOLD))
+            .append(Component.literal(String.format(
+                Locale.ROOT, "avg %.3f ms / max %.3f ms",
+                averageWorkerMillis, packets.maximumRuntimeProcessingNanosPerTick() / 1_000_000.0D
+            )).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal(String.format(
+                Locale.ROOT, " (total %.3f s)", packets.runtimeProcessingNanos() / 1_000_000_000.0D
+            )).withStyle(ChatFormatting.WHITE))
             .append(Component.literal("\n• Throughput: ").withStyle(ChatFormatting.GREEN))
             .append(Component.literal(String.format(
                 Locale.ROOT,

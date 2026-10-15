@@ -2,12 +2,10 @@ package io.github.hanhy06.emote.playback.stress;
 
 import io.github.hanhy06.emote.mixin.accessor.SynchedEntityDataAccessor;
 import io.github.hanhy06.emote.playback.PlaybackScene;
-import io.netty.channel.ChannelHandler;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelOutboundHandlerAdapter;
-import io.netty.channel.ChannelPromise;
-import io.netty.channel.embedded.EmbeddedChannel;
-import io.netty.util.ReferenceCountUtil;
+import io.netty.buffer.ByteBuf;
+import io.netty.channel.*;
+import io.netty.channel.local.LocalAddress;
+import io.netty.util.concurrent.Future;
 import net.minecraft.network.*;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.*;
@@ -16,15 +14,19 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerEntity;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.EventLoopGroupHolder;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.UpdateInterval;
 import net.minecraft.world.item.ItemStack;
 import org.jspecify.annotations.Nullable;
 
+import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
 
 public final class StressTestPacketLoad {
@@ -61,16 +63,8 @@ public final class StressTestPacketLoad {
         ProtocolInfo<ClientGamePacketListener> protocol = GameProtocols.CLIENTBOUND_TEMPLATE.bind(
             RegistryFriendlyByteBuf.decorator(server.registryAccess())
         );
-        List<EncodingSink> sinks = new ArrayList<>(packetFanout);
-        try {
-            for (int index = 0; index < packetFanout; index++) {
-                sinks.add(new EncodingSink(protocol, server.getCompressionThreshold()));
-            }
-        } catch (RuntimeException exception) {
-            sinks.forEach(EncodingSink::close);
-            throw exception;
-        }
-        this.session = new Session(packetFanout, sinks);
+        this.session = new Session(protocol, server.getCompressionThreshold(), packetFanout,
+            EventLoopGroupHolder.remote(server.useNativeTransport()).eventLoopGroup());
     }
 
     public void register(ServerLevel level, PlaybackScene scene) {
@@ -96,7 +90,7 @@ public final class StressTestPacketLoad {
             for (int index = 0; index < current.packetFanout; index++) {
                 List<Packet<? super ClientGamePacketListener>> packets = new ArrayList<>();
                 pairingEntity.sendPairingData(null, packets::add);
-                current.encode(index, new ClientboundBundlePacket(packets));
+                current.send(index, new ClientboundBundlePacket(packets));
             }
         }
     }
@@ -110,7 +104,7 @@ public final class StressTestPacketLoad {
         for (PlaybackScene.AttachmentInstance node : scene.attachments()) {
             Entity entity = node.entity();
             if (entity != null && current.entities.remove(entity) != null) {
-                current.encodeForAll(new ClientboundRemoveEntitiesPacket(entity.getId()));
+                current.sendForAll(new ClientboundRemoveEntitiesPacket(entity.getId()));
             }
         }
     }
@@ -154,7 +148,7 @@ public final class StressTestPacketLoad {
             }
             current.entities.put(entity, next);
             if (!changed.isEmpty()) {
-                current.encodeForAll(new ClientboundSetEntityDataPacket(entity.getId(), changed));
+                current.sendForAll(new ClientboundSetEntityDataPacket(entity.getId(), changed));
             }
         }
     }
@@ -202,123 +196,226 @@ public final class StressTestPacketLoad {
         long runtimeBytes,
         int runtimeSamples,
         long maximumRuntimeBytesPerTick,
-        long runtimeEncodingNanos
+        long runtimeProcessingNanos,
+        long maximumRuntimeProcessingNanosPerTick,
+        long drainNanos
     ) {
         private static final PacketLoadResult EMPTY = new PacketLoadResult(
-            0, 0L, 0L, 0L, 0L, 0, 0L, 0L
+            0, 0L, 0L, 0L, 0L, 0, 0L, 0L, 0L, 0L
         );
     }
 
-    private static final class Session {
+    static final class Session {
         private final int packetFanout;
-        private final List<EncodingSink> sinks;
+        private final List<VirtualChannel> channels = new ArrayList<>();
         private final IdentityHashMap<Entity, List<SynchedEntityData.DataValue<?>>> entities = new IdentityHashMap<>();
 
         private long creationPackets;
         private long creationBytes;
-        private long encodingNanos;
-        private long lastSampledBytes;
+        private boolean runtimeStarted;
         private int runtimeSamples;
-        private long maximumRuntimeBytesPerTick;
+        private final AtomicLong maximumRuntimeBytesPerTick = new AtomicLong();
+        private final AtomicLong maximumRuntimeProcessingNanosPerTick = new AtomicLong();
 
-        private Session(int packetFanout, List<EncodingSink> sinks) {
+        Session(ProtocolInfo<ClientGamePacketListener> protocol, int compressionThreshold, int packetFanout, EventLoopGroup eventLoops) {
             this.packetFanout = packetFanout;
-            this.sinks = sinks;
-        }
-
-        private void encodeForAll(Packet<?> packet) {
-            for (int index = 0; index < this.sinks.size(); index++) {
-                encode(index, packet);
+            try {
+                for (int index = 0; index < packetFanout; index++) {
+                    VirtualChannel channel = new VirtualChannel(protocol, compressionThreshold);
+                    this.channels.add(channel);
+                    eventLoops.register(channel).syncUninterruptibly();
+                }
+            } catch (RuntimeException exception) {
+                close();
+                throw exception;
             }
         }
 
-        private void encode(int sinkIndex, Packet<?> packet) {
-            long startedNanos = System.nanoTime();
-            this.sinks.get(sinkIndex).encode(packet);
-            this.encodingNanos += System.nanoTime() - startedNanos;
+        void sendForAll(Packet<?> packet) {
+            for (int index = 0; index < this.channels.size(); index++) {
+                send(index, packet);
+            }
         }
 
-        private void beginRuntime() {
-            this.creationPackets = totalPackets();
-            this.creationBytes = totalBytes();
-            this.sinks.forEach(EncodingSink::reset);
-            this.encodingNanos = 0L;
-            this.lastSampledBytes = 0L;
+        void send(int channelIndex, Packet<?> packet) {
+            VirtualChannel channel = this.channels.get(channelIndex);
+            channel.writeAndFlush(packet, channel.voidPromise());
         }
 
-        private void sampleRuntimeTick() {
-            long bytes = totalBytes();
-            long bytesThisTick = bytes - this.lastSampledBytes;
+        void beginRuntime() {
+            List<Future<long[]>> samples = new ArrayList<>(this.channels.size());
+            for (VirtualChannel channel : this.channels) {
+                samples.add(channel.eventLoop().submit(() -> {
+                    channel.checkFailure();
+                    long[] sample = {channel.packetCounter.count, channel.bytes};
+                    channel.packetCounter.count = 0L;
+                    channel.bytes = 0L;
+                    channel.processingNanos = 0L;
+                    return sample;
+                }));
+            }
+            for (Future<long[]> sample : samples) {
+                sample.syncUninterruptibly();
+                this.creationPackets += sample.getNow()[0];
+                this.creationBytes += sample.getNow()[1];
+            }
+            this.runtimeStarted = true;
+        }
+
+        void sampleRuntimeTick() {
             this.runtimeSamples++;
-            this.maximumRuntimeBytesPerTick = Math.max(this.maximumRuntimeBytesPerTick, bytesThisTick);
-            this.lastSampledBytes = bytes;
+            AtomicInteger remaining = new AtomicInteger(this.channels.size());
+            AtomicLong bytes = new AtomicLong();
+            AtomicLong processingNanos = new AtomicLong();
+            for (VirtualChannel channel : this.channels) {
+                channel.eventLoop().execute(() -> {
+                    bytes.addAndGet(channel.bytes - channel.lastSampledBytes);
+                    processingNanos.addAndGet(channel.processingNanos - channel.lastSampledProcessingNanos);
+                    channel.lastSampledBytes = channel.bytes;
+                    channel.lastSampledProcessingNanos = channel.processingNanos;
+                    if (remaining.decrementAndGet() == 0) {
+                        this.maximumRuntimeBytesPerTick.accumulateAndGet(bytes.get(), Math::max);
+                        this.maximumRuntimeProcessingNanosPerTick.accumulateAndGet(processingNanos.get(), Math::max);
+                    }
+                });
+            }
         }
 
-        private PacketLoadResult createResult() {
+        PacketLoadResult createResult() {
+            if (!this.runtimeStarted) beginRuntime();
+            long startedNanos = System.nanoTime();
+            List<Future<?>> pending = new ArrayList<>(this.channels.size());
+            for (VirtualChannel channel : this.channels) {
+                pending.add(channel.eventLoop().submit(channel::checkFailure));
+            }
+            pending.forEach(Future::syncUninterruptibly);
+            long drainNanos = System.nanoTime() - startedNanos;
             return new PacketLoadResult(
                 this.packetFanout,
                 this.creationPackets,
                 this.creationBytes,
-                totalPackets(),
-                totalBytes(),
+                this.channels.stream().mapToLong(channel -> channel.packetCounter.count).sum(),
+                this.channels.stream().mapToLong(channel -> channel.bytes).sum(),
                 this.runtimeSamples,
-                this.maximumRuntimeBytesPerTick,
-                this.encodingNanos
+                this.maximumRuntimeBytesPerTick.get(),
+                this.channels.stream().mapToLong(channel -> channel.processingNanos).sum(),
+                this.maximumRuntimeProcessingNanosPerTick.get(),
+                drainNanos
             );
         }
 
-        private long totalPackets() {
-            return this.sinks.stream().mapToLong(EncodingSink::packetCount).sum();
-        }
-
-        private long totalBytes() {
-            return this.sinks.stream().mapToLong(EncodingSink::byteCount).sum();
-        }
-
-        private void close() {
+        void close() {
             this.entities.clear();
-            this.sinks.forEach(EncodingSink::close);
+            List<ChannelFuture> pending = new ArrayList<>(this.channels.size());
+            for (VirtualChannel channel : this.channels) pending.add(channel.close());
+            pending.forEach(ChannelFuture::syncUninterruptibly);
         }
     }
 
-    private static final class EncodingSink {
+    private static final class VirtualChannel extends AbstractChannel {
+        private static final ChannelMetadata METADATA = new ChannelMetadata(false);
+
+        private final ChannelConfig config = new DefaultChannelConfig(this);
+        private final SocketAddress address = new LocalAddress("emote-stress-" + id().asLongText());
         private final PacketCounter packetCounter = new PacketCounter();
-        private final ByteCounter byteCounter = new ByteCounter();
-        private final EmbeddedChannel channel;
+        private volatile boolean open = true;
+        private volatile @Nullable Throwable failure;
+        private long bytes;
+        private long processingNanos;
+        private long lastSampledBytes;
+        private long lastSampledProcessingNanos;
 
-        private EncodingSink(ProtocolInfo<ClientGamePacketListener> protocol, int compressionThreshold) {
-            List<ChannelHandler> handlers = new ArrayList<>();
-            handlers.add(this.byteCounter);
-            handlers.add(new Varint21LengthFieldPrepender());
+        private VirtualChannel(ProtocolInfo<ClientGamePacketListener> protocol, int compressionThreshold) {
+            super(null);
+            pipeline().addLast(new Varint21LengthFieldPrepender());
             if (compressionThreshold >= 0) {
-                handlers.add(new CompressionEncoder(compressionThreshold));
+                pipeline().addLast(new CompressionEncoder(compressionThreshold));
             }
-            handlers.add(new PacketEncoder<>(protocol));
-            handlers.add(this.packetCounter);
-            handlers.add(new PacketBundleUnpacker(Objects.requireNonNull(protocol.bundlerInfo(), "PLAY bundler info")));
-            this.channel = new EmbeddedChannel(handlers.toArray(ChannelHandler[]::new));
+            pipeline().addLast(new PacketEncoder<>(protocol));
+            pipeline().addLast(this.packetCounter);
+            pipeline().addLast(new PacketBundleUnpacker(Objects.requireNonNull(protocol.bundlerInfo(), "PLAY bundler info")));
+            pipeline().addLast(new ChannelDuplexHandler() {
+                @Override
+                public void write(ChannelHandlerContext context, Object message, ChannelPromise promise) throws Exception {
+                    long startedNanos = System.nanoTime();
+                    try { context.write(message, promise); }
+                    finally { processingNanos += System.nanoTime() - startedNanos; }
+                }
+
+                @Override
+                public void flush(ChannelHandlerContext context) throws Exception {
+                    long startedNanos = System.nanoTime();
+                    try { context.flush(); }
+                    finally { processingNanos += System.nanoTime() - startedNanos; }
+                }
+
+                @Override
+                public void exceptionCaught(ChannelHandlerContext context, Throwable cause) {
+                    if (failure == null) failure = cause;
+                    context.close();
+                }
+            });
         }
 
-        private void encode(Packet<?> packet) {
-            this.channel.writeOutbound(packet);
-            this.channel.checkException();
+        private void checkFailure() {
+            if (this.failure != null) throw new IllegalStateException("Stress-test packet transmission failed", this.failure);
         }
 
-        private long packetCount() {
-            return this.packetCounter.count;
+        @Override
+        public ChannelConfig config() { return this.config; }
+
+        @Override
+        public ChannelMetadata metadata() { return METADATA; }
+
+        @Override
+        public boolean isOpen() { return this.open; }
+
+        @Override
+        public boolean isActive() { return this.open; }
+
+        @Override
+        protected boolean isCompatible(EventLoop loop) { return true; }
+
+        @Override
+        protected SocketAddress localAddress0() { return this.address; }
+
+        @Override
+        protected SocketAddress remoteAddress0() { return this.address; }
+
+        @Override
+        protected AbstractUnsafe newUnsafe() {
+            return new AbstractUnsafe() {
+                @Override
+                public void connect(SocketAddress remoteAddress, @Nullable SocketAddress localAddress, ChannelPromise promise) {
+                    promise.setFailure(new UnsupportedOperationException("Send-only stress-test channel"));
+                }
+            };
         }
 
-        private long byteCount() {
-            return this.byteCounter.count;
+        @Override
+        protected void doBind(SocketAddress localAddress) { throw new UnsupportedOperationException("Send-only stress-test channel"); }
+
+        @Override
+        protected void doDisconnect() { doClose(); }
+
+        @Override
+        protected void doClose() { this.open = false; }
+
+        @Override
+        protected void doBeginRead() { }
+
+        @Override
+        protected Object filterOutboundMessage(Object message) {
+            if (message instanceof ByteBuf) return message;
+            throw new IllegalArgumentException("Expected encoded packet bytes");
         }
 
-        private void reset() {
-            this.packetCounter.count = 0L;
-            this.byteCounter.count = 0L;
-        }
-
-        private void close() {
-            this.channel.finishAndReleaseAll();
+        @Override
+        protected void doWrite(ChannelOutboundBuffer buffer) {
+            while (buffer.current() instanceof ByteBuf bytes) {
+                this.bytes += bytes.readableBytes();
+                buffer.remove();
+            }
         }
     }
 
@@ -334,16 +431,4 @@ public final class StressTestPacketLoad {
         }
     }
 
-    private static final class ByteCounter extends ChannelOutboundHandlerAdapter {
-        private long count;
-
-        @Override
-        public void write(ChannelHandlerContext context, Object message, ChannelPromise promise) {
-            if (message instanceof io.netty.buffer.ByteBuf buffer) {
-                this.count += buffer.readableBytes();
-            }
-            ReferenceCountUtil.release(message);
-            promise.setSuccess();
-        }
-    }
 }

@@ -106,8 +106,8 @@ public final class PlaybackStressTest {
         }
 
         stop();
-        this.packetLoad.start(EmoteMod.SERVER, packetFanout);
         long startedNanos = System.nanoTime();
+        this.packetLoad.start(EmoteMod.SERVER, packetFanout);
         int startedServerTick = EmoteMod.SERVER.getTickCount();
         long baselineTickNanos = EmoteMod.SERVER.getAverageTickTimeNanos();
         int instanceCount = selection.size();
@@ -151,14 +151,16 @@ public final class PlaybackStressTest {
         }
 
         this.session = null;
-        StressTestPacketLoad.PacketLoadResult packetLoadResult = this.packetLoad.finishRuntime();
-        long cleanupStartedNanos = System.nanoTime();
+        StressTestPacketLoad.PacketLoadResult packetLoadResult;
+        long runtimeStoppedNanos;
         try {
-            current.instances.forEach(instance -> instance.close(this.packetLoad));
+            packetLoadResult = this.packetLoad.finishRuntime();
+            runtimeStoppedNanos = System.nanoTime();
         } finally {
-            this.packetLoad.stop();
+            try { current.instances.forEach(instance -> instance.close(this.packetLoad)); }
+            finally { this.packetLoad.stop(); }
         }
-        long cleanupNanos = System.nanoTime() - cleanupStartedNanos;
+        long cleanupNanos = System.nanoTime() - runtimeStoppedNanos;
         return current.createReport(packetLoadResult, cleanupNanos, System.nanoTime());
     }
 
