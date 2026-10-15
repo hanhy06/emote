@@ -18,9 +18,9 @@ import java.util.function.ToIntFunction;
 import java.util.random.RandomGenerator;
 
 public final class PlaybackStressTest {
-    public static final int DEFAULT_INSTANCE_COUNT = 100;
+    public static final int DEFAULT_INSTANCE_COUNT = 50;
     public static final int MAX_INSTANCE_COUNT = 500;
-    public static final int DEFAULT_PACKET_FANOUT = 20;
+    public static final int DEFAULT_PACKET_FANOUT = 50;
     public static final int MAX_PACKET_FANOUT = 500;
     static final int MIN_INITIAL_TICK = 80;
     static final int MAX_INITIAL_TICK = 175;

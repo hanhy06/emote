@@ -9,6 +9,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.content.EmoteCatalog;
+import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.playback.stress.PlaybackStressTest;
@@ -59,7 +60,7 @@ final class StressTestCommand {
                 ))
                 .then(Commands.argument("load", StringArgumentType.word())
                     .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
-                        List.of("100", "100i", "1000d"),
+                        List.of(Integer.toString(DEFAULT_INSTANCE_COUNT), DEFAULT_INSTANCE_COUNT + "i", Config.DEFAULT_MAX_ACTIVE_DISPLAY_ENTITIES + "d"),
                         builder
                     ))
                     .executes(context -> startStressTest(
@@ -72,6 +73,9 @@ final class StressTestCommand {
                             "packets",
                             IntegerArgumentType.integer(0, MAX_PACKET_FANOUT)
                         )
+                        .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
+                            List.of(Integer.toString(DEFAULT_PACKET_FANOUT)), builder
+                        ))
                         .executes(context -> startStressTest(
                             context.getSource(),
                             IntegerArgumentType.getInteger(context, "time"),
