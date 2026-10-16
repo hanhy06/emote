@@ -62,7 +62,7 @@ config/emote/
 ├── emote/
 └── resource-pack/
 ```
-The directory and configuration files are created automatically on first startup, with sample emotes included under `emote/`.
+The directory and configuration files are created automatically on first startup, with 19 sample emotes included under `emote/`.
 
 Place JSON exported by the converter under `emote/`. Subdirectories are loaded as well, and emotes use the `id` in the JSON rather than the filename. Invalid files are skipped individually, while every file sharing a duplicate ID is rejected.
 

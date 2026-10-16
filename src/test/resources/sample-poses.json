@@ -106,7 +106,7 @@
       "sample": "emote.indicate.json",
       "reference": "docs/reference/bbmodel/emote.bbmodel",
       "animation": "indicate",
-      "derivation": "Minecraft pitch/yaw are negated for the authored Blockbench queries. Head uses its base before tick 5. Right arm x=90+clamp(-pitch,-15,15)+3*sin_degrees((clip_tick+loop_count*5)*4), y=clamp(-yaw,-15,20). First 5 ticks use easeInOutBack(overshoot=1.70158). Duration 10, loop_start 5; elapsed tick 13 is clip tick 8 in loop 1.",
+      "derivation": "Minecraft pitch/yaw are negated for the authored Blockbench queries. Head uses its first key rotation [-pitch,-yaw,0] before tick 5 as well. Right arm x=90+clamp(-pitch,-15,15)+3*sin_degrees((clip_tick+loop_count*5)*4), y=clamp(-yaw,-15,20). First 5 ticks use easeInOutBack(overshoot=1.70158). Duration 10, loop_start 5; elapsed tick 13 is clip tick 8 in loop 1.",
       "runs": [
         {
           "queries": {
@@ -117,7 +117,7 @@
             {
               "elapsed_ticks": 2,
               "matrices": {
-                "head": [0.9375, 0, 0, 0, 0, 0.9375, 0, 1.875, 0, 0, 0.9375, 0, 0, 0, 0, 1],
+                "head": [0.46875, 0.405949408, -0.703125, 0.202974704, 0, 0.811898816, 0.46875, 1.812199408, 0.811898816, -0.234375, 0.405949408, -0.1171875, 0, 0, 0, 1],
                 "right_arm": [0.468402453, -0.0034725928, -0.0177100441, 0.3506509084, 0, 0.4599906476, -0.0901951585, 1.4040601619, 0.0180472869, 0.0901282847, 0.4596495951, 0.024787982, 0, 0, 0, 1]
               }
             },
@@ -153,7 +153,7 @@
             {
               "elapsed_ticks": 2,
               "matrices": {
-                "head": [0.9375, 0, 0, 0, 0, 0.9375, 0, 1.875, 0, 0, 0.9375, 0, 0, 0, 0, 1],
+                "head": [0.6629126074, 0.226729465, 0.6229340854, 0.1133647325, 0, 0.880961832, -0.3206438844, 1.846730916, -0.6629126074, 0.226729465, 0.6229340854, 0.1133647325, 0, 0, 0, 1],
                 "right_arm": [0.468132198, 0.0064320849, 0.0231826659, 0.353093296, 0, 0.4516869068, -0.1253215892, 1.4019842267, -0.0240584229, 0.1251564182, 0.4510915936, 0.0282818017, 0, 0, 0, 1]
               }
             },
