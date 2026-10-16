@@ -39,6 +39,7 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -633,6 +634,144 @@ class SamplePoseTest {
         stop.apply();
         stop.dispatchEvents();
         assertEquals("close:MANUAL", effects.getLast());
+    }
+
+    @Test
+    void hugSequenceShowsPartnerWhileStowingAndStartsBothHugMotionsTogether() throws Exception {
+        var prepared = new HashMap<String, PreparedAnimation>();
+        var starts = new HashMap<String, Map<String, Matrix4f>>();
+        var ends = new HashMap<String, Map<String, Matrix4f>>();
+        for (String name : List.of("free_hug", "put_away_sign", "hug_player0", "hug_player1")) {
+            var animation = PreparedAnimation.prepare(new AnimationJsonParser().parse(Path.of("docs/sample/hug/hug." + name + ".json")), registries);
+            prepared.put(name, animation);
+            assertEquals(6, animation.skinBindings().stream().map(binding -> binding.region().part()).distinct().count());
+            var playback = new EmotePlayback(animation);
+            var target = new PoseTarget();
+            var frame = playback.prepareStart(target);
+            frame.calculate();
+            frame.apply();
+            frame.dispatchEvents();
+            starts.put(name, new HashMap<>(target.matrices));
+            for (int tick = 1; tick <= animation.model().clip().durationTicks(); tick++) {
+                frame = playback.prepareAdvance();
+                frame.calculate();
+                frame.apply();
+                frame.dispatchEvents();
+                for (var matrix : target.matrices.values()) assertTrue(matrix.isFinite(), name + " at " + tick);
+            }
+            assertEquals(EmotePlayback.AdvanceResult.FINISHED, frame.result(), name);
+            ends.put(name, new HashMap<>(target.matrices));
+        }
+        var animations = new HashMap<String, PreparedAnimation>();
+        prepared.values().forEach(animation -> animations.put(animation.id(), animation));
+        var loaded = new io.github.hanhy06.emote.content.loader.SequenceJsonParser().parse(Path.of("docs/sample/hug/hug.hug.json"));
+        var sequence = PreparedSequence.prepare(loaded.model(), animations);
+        assertEquals(prepared.get("free_hug").skinBindings(), sequence.skinBindings());
+        var callback = sequence.callbacks().getFirst();
+        assertEquals(io.github.hanhy06.emote.ExampleCallbacks.HUG_CALLBACK_ID, callback.name());
+        assertTrue(prepared.get("free_hug").callbacks().isEmpty());
+        Matrix4f locator = starts.get("free_hug").get(callback.payload());
+        assertNotNull(locator);
+        float sceneScale = prepared.get("free_hug").defaultMatrix("scene").m00();
+        assertEquals(2.0F / 16 * sceneScale, locator.m30(), 1e-6);
+        assertEquals(-22.0F / 16 * sceneScale, locator.m32(), 1e-6);
+        for (boolean earlyStow : List.of(false, true)) {
+            var playback = new EmotePlayback(sequence);
+            var target = new PoseTarget();
+            var started = new ArrayList<String>();
+            playback.bindLifecycleListener(new EmotePlayback.LifecycleListener() {
+                public void onStart(PreparedAnimation animation) { started.add(animation.id()); }
+            });
+            var frame = playback.prepareStart(target);
+            frame.calculate();
+            frame.apply();
+            frame.dispatchEvents();
+            int tick = 0;
+            boolean startPartner = false;
+            boolean timedOut = false;
+            EmotePlayback partner = null;
+            EmotePlayback.Frame partnerFrame = null;
+            while (frame.result() != EmotePlayback.AdvanceResult.FINISHED && tick < 740) {
+                if (startPartner) {
+                    // The owner enters the hug step as the partner's starting pose is released.
+                    frame = playback.prepareStep(2, 0, 0);
+                    partnerFrame = partner.prepareAnimationTick(0);
+                    startPartner = false;
+                } else {
+                    frame = earlyStow && tick == 80 ? playback.prepareStep(1, 0, 0) : playback.prepareAdvance();
+                    if (earlyStow && tick == 80) {
+                        partner = new EmotePlayback(prepared.get("hug_player1"));
+                        partnerFrame = partner.prepareStart(new PoseTarget());
+                    } else if (partner != null) {
+                        partnerFrame = Integer.valueOf(1).equals(frame.pose().position().stepIndex())
+                            ? partner.prepareAnimationTick(0) : partner.prepareAdvance();
+                    }
+                }
+                frame.calculate();
+                frame.apply();
+                frame.dispatchEvents();
+                if (partnerFrame != null) {
+                    partnerFrame.calculate();
+                    partnerFrame.apply();
+                    partnerFrame.dispatchEvents();
+                }
+                tick++;
+                var position = frame.pose().position();
+                if (partnerFrame != null && Integer.valueOf(1).equals(position.stepIndex())) {
+                    assertEquals(io.github.hanhy06.emote.api.PlaybackTimeline.Phase.ANIMATION, partnerFrame.pose().position().phase());
+                    assertEquals(0, partnerFrame.pose().position().animationTick());
+                    String partnerRoot = "group:720a1a06-48d2-0063-3afe-c89591816345";
+                    assertTrue(starts.get("hug_player1").get(partnerRoot).equals(partnerFrame.pose().nodeMatrix(partnerRoot), 1e-5F));
+                }
+                if (earlyStow && Integer.valueOf(1).equals(position.stepIndex())
+                    && Integer.valueOf(prepared.get("put_away_sign").model().clip().durationTicks() - 1).equals(position.animationTick())) {
+                    startPartner = true;
+                }
+                if (Integer.valueOf(2).equals(position.stepIndex())) {
+                    if (!earlyStow) {
+                        // Timeout stops at the neutral boundary before any hugging motion.
+                        assertEquals(0, position.animationTick());
+                        var stop = playback.prepareStop(PlaybackStopReason.MANUAL);
+                        stop.calculate();
+                        stop.apply();
+                        stop.dispatchEvents();
+                        timedOut = true;
+                        break;
+                    }
+                    assertNotNull(partnerFrame);
+                    assertEquals(position.animationTick(), partnerFrame.pose().position().animationTick());
+                }
+            }
+            if (earlyStow) {
+                assertEquals(EmotePlayback.AdvanceResult.FINISHED, frame.result());
+                assertNotNull(partnerFrame);
+                assertEquals(EmotePlayback.AdvanceResult.FINISHED, partnerFrame.result());
+                assertTrue(tick < 220);
+            } else {
+                assertTrue(timedOut);
+                assertNull(partner);
+                assertEquals(636, tick);
+            }
+            assertEquals(List.of("hug:free_hug", "hug:put_away_sign", "hug:hug_player0"), started);
+        }
+        String player0 = "group:27735ace-8fd4-80f2-ce41-30ea848a4359";
+        String player1 = "group:720a1a06-48d2-0063-3afe-c89591816345";
+        for (var binding : prepared.get("hug_player0").skinBindings()) {
+            String node = binding.nodeId();
+            while (node != null && !node.equals(player0)) node = prepared.get("hug_player0").model().nodes().get(node).parentId();
+            assertEquals(player0, node);
+        }
+        for (var binding : prepared.get("hug_player1").skinBindings()) {
+            String node = binding.nodeId();
+            while (node != null && !node.equals(player1)) node = prepared.get("hug_player1").model().nodes().get(node).parentId();
+            assertEquals(player1, node);
+        }
+        for (String node : List.of(player0, "group:d2a3967c-f93f-b33a-1dcf-f1c88815d458", "group:969bcd71-7c25-781d-7073-e17294729eef")) {
+            assertTrue(ends.get("free_hug").get(node).equals(starts.get("put_away_sign").get(node), 1e-5F), node);
+            assertTrue(ends.get("put_away_sign").get(node).equals(starts.get("hug_player0").get(node), 1e-5F), node);
+        }
+        assertEquals(0.0F, starts.get("hug_player1").get(player1).m30(), 1e-6);
+        assertEquals(0.0F, starts.get("hug_player1").get(player1).m32(), 1e-6);
     }
 
     private static final class PoseTarget implements EmotePlayback.PoseTarget {
