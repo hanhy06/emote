@@ -2,7 +2,7 @@
 
 An Animation file contains the model, movement, playback settings, and command events for one action. Animation files use schema version `5`.
 
-For file creation and installation, see [Adding Custom Emotes](../server/custom-emote.md). For direct JSON editing, see the [Animation example](https://github.com/hanhy06/emote/blob/dev/docs/reference/animation.json).
+For file creation and installation, see [Adding Custom Emotes](../server/custom-emote.md). For direct JSON editing, see the [Animation example](https://github.com/hanhy06/emote/blob/main/docs/reference/animation.json).
 
 The root `nodes` object defines the model. The `animation` object contains its duration, playback mode, Molang, tracks, and events. Root `settings` controls direct selection, cooldown, rotation tracking, and player behavior; root `callbacks` selects registered lifecycle callbacks.
 
@@ -19,11 +19,12 @@ The root `nodes` object defines the model. The `animation` object contains its d
 Animation files are limited to 8 MiB, and timelines are limited to 10 minutes.
 
 !!! tip "Time units"
-    Time fields use Minecraft time strings. `"1s"` equals `"20t"`; a value without a suffix must still be a string, such as `"20"`.
+    Emote uses Minecraft time format. `1s` equals `20t`.
+    
+    `s`: seconds<br>
+    `t` or omitted: ticks<br>
+    `d`: Minecraft days
 
-    - `s`: seconds
-    - `t` or omitted: ticks
-    - `d`: Minecraft days
 
 ## Playback settings
 

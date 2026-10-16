@@ -2,6 +2,8 @@
 
 Other Fabric mods can use `EmoteApi.getInstance()` to register and play emotes and listen for Emote events.
 
+For a working callback example, see [ExampleCallbacks.java](https://github.com/hanhy06/emote/blob/main/src/main/java/io/github/hanhy06/emote/ExampleCallbacks.java).
+
 ## Gradle dependency
 
 Emote is available from Modrinth Maven. Add the Modrinth Maven repository:

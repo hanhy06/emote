@@ -49,9 +49,7 @@ The emote menu and wheel editor can search by name, ID, description, or `#tags` 
 | `/emote account login`                        | Connects a Minecraft account using Microsoft device login.                                                                                                                                    |
 | `/emote account remove <account>`             | Removes a bake account by name or UUID.                                                                                                                                                       |
 
-Administrative commands use the `emote.manage` permission and are granted to game master operators by default, except `/emote account` and its subcommands, which require server owner permission.
-
-Measure packet load separately with actual connected players under the intended viewing conditions.
+Administrative commands use the `emote.manage` permission and are granted to game master operators by default.
 
 ## Server management
 
