@@ -37,14 +37,13 @@ const DIAGNOSTIC_PREFIX = "geckolib";
 
 export function importGeckoLibProject(project: GeckoLibBbmodelProject, sourceName: string): ImportedProject {
   if (project.meta.model_format !== "geckolib_model") throw new Error(`Unsupported Blockbench model format: ${project.meta.model_format}`);
+  project = { ...project, animations: project.animations.map((animation) => ({ ...animation, animators: animation.animators ?? {} })) };
 
   const sourceStem = sourceName.replace(/\.[^.]+$/i, "").trim() || project.name?.trim() || `${FORMAT_LABEL} Model`;
   const namespace = validNamespace(project.geckolib_modid) ?? sanitizeNamespace(sourceStem);
   const projectPath = sanitizeResourcePath(project.name?.trim() || sourceStem, "model");
   const resources = new Map<string, GeneratedResource>();
   const bones = buildBoneEntries(project);
-  if (bones.length === 0) throw new Error(`${FORMAT_LABEL} cube project does not contain bones.`);
-  if (bones.some((bone) => bone.cubes.length > 0)) writeEmbeddedTextures(project.textures, namespace, projectPath, resources);
   const { playableCubesByBone, skinAssignments, sourceIds, diagnostics: modelDiagnostics } = prepareCubeModels(bones);
   const diagnostics: ConversionIssue[] = [...(project.animationDiagnostics ?? []), ...modelDiagnostics];
   const nodes: Record<string, ImportedNode> = {};
@@ -102,6 +101,7 @@ export function importGeckoLibProject(project: GeckoLibBbmodelProject, sourceNam
     }
   }
 
+  writeEmbeddedTextures(project.textures, namespace, projectPath, resources);
   const boneByUuid = new Map(bones.map((bone) => [bone.uuid, bone]));
   const animationBones = [...new Set([...project.groups.map((group) => group.uuid), ...boneByUuid.keys()])].flatMap((uuid) => {
     const bone = boneByUuid.get(uuid);
@@ -151,9 +151,8 @@ function buildBoneEntries(project: BlockbenchCubeProject): BoneEntry[] {
         entries.at(-1)!.sourceElement = display;
         return;
       }
-      if (!parent) throw new Error(`${FORMAT_LABEL} cube ${entry} is not parented to a bone.`);
-      if (isLocator(element)) parent.locators.push(element);
-      else parent.cubes.push(element as BbCube);
+      if (isLocator(element)) parent!.locators.push(element);
+      else parent!.cubes.push(element as BbCube);
       return;
     }
     const saved = groups.get(entry.uuid);
@@ -166,7 +165,17 @@ function buildBoneEntries(project: BlockbenchCubeProject): BoneEntry[] {
     entries.push(bone);
     entry.children.forEach((child) => visit(child, bone));
   };
-  project.outliner.forEach((entry) => visit(entry));
+  const rootElements = new Set(project.outliner.filter((entry): entry is string => {
+    if (typeof entry !== "string") return false;
+    const element = elements.get(entry);
+    return element !== undefined && (!element.type || element.type === "cube" || element.type === "locator");
+  }));
+  project.outliner.forEach((entry) => { if (typeof entry !== "string" || !rootElements.has(entry)) visit(entry); });
+  if (rootElements.size) {
+    let uuid = "root";
+    for (let suffix = 2; entries.some((bone) => bone.uuid === uuid) || groups.has(uuid) || elements.has(uuid); suffix++) uuid = `root_${suffix}`;
+    visit({ uuid, name: "", origin: [0, 0, 0], rotation: [0, 0, 0], children: [...rootElements] });
+  }
   return entries;
 }
 
@@ -175,10 +184,10 @@ function isLocator(element: BlockbenchCubeProject["elements"][number]): element 
 }
 
 function mergeGroup(saved: BbGroup | undefined, outliner: BbOutlinerGroup): BbGroup {
-  const name = outliner.name ?? saved?.name;
+  const name = outliner.name ?? saved?.name ?? "";
   const origin = outliner.origin ?? saved?.origin;
   const rotation = outliner.rotation ?? saved?.rotation ?? [0, 0, 0];
-  if (!name || !origin) throw new Error(`${FORMAT_LABEL} bone ${outliner.uuid} is missing its saved group data.`);
+  if (!origin) throw new Error(`${FORMAT_LABEL} bone ${outliner.uuid} is missing its saved group data.`);
   return { uuid: outliner.uuid, name, origin, rotation };
 }
 

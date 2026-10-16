@@ -27,6 +27,47 @@ async function importModel(format: typeof formats[number], name: string, cubes: 
   return readInput(format, { name: "model", bytes: new TextEncoder().encode(JSON.stringify(project)) });
 }
 
+it("preserves root cube pivots and locator coordinates beside unnamed groups and exports only used textures", async () => {
+  const source = cube("loose", [16, 24, 32], [18, 28, 34], {
+    origin: [20, 30, 40], rotation: [10, 20, 30], faces: { north: { uv: [0, 0, 16, 16], texture: "used" } },
+  });
+  const locator = { uuid: "tip", name: "tip", type: "locator", position: [48, 64, 80], rotation: [10, 0, 20] };
+  const texture = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=";
+  const radians = (value: number) => value * Math.PI / 180;
+  const expected = new Matrix4().makeScale(0.9375, 0.9375, 0.9375)
+    .multiply(new Matrix4().makeTranslation(20 / 16, 30 / 16, 40 / 16))
+    .multiply(new Matrix4().makeRotationFromEuler(new Euler(radians(10), radians(20), radians(30), "ZYX")))
+    .multiply(new Matrix4().makeTranslation(-20 / 16, -30 / 16, -40 / 16));
+  for (const format of formats) {
+    const project = await importModel(format, "", [source, cube("nested", [0, 0, 0], [2, 2, 2], { faces: {} })], {
+      elements: [source, cube("nested", [0, 0, 0], [2, 2, 2], { faces: {} }), locator],
+      groups: [{ uuid: "root", name: "", origin: [16, 0, 0], rotation: [0, 0, 90] }],
+      outliner: [{ uuid: "root", children: ["nested"] }, "loose", "tip"],
+      textures: [{ uuid: "unused", source: "file:///unused.png" }, { uuid: "used", source: `data:image/png;base64,${texture}` }],
+    });
+    const document = createConversionDocument(project, format);
+    const output = compileAnimation(document, 0).animation;
+    expect(output.nodes["group:root"].name).toBe("");
+    expect(orderedNodeIds(output.nodes)).toHaveLength(Object.keys(output.nodes).length);
+    const pose = evaluatePose(output, 0, (value) => { if (typeof value !== "number") throw new Error("Unexpected expression"); return value; });
+    const cubeId = Object.keys(output.nodes).find((id) => output.nodes[id].source?.node_id === "loose")!;
+    const model = [...document.resources.values()].find((resource) => !(resource instanceof Uint8Array) && resource.kind === "cuboid_model" && Object.keys(resource.textures).length > 0);
+    if (!model || model instanceof Uint8Array || model.kind !== "cuboid_model") throw new Error("Expected textured cube model");
+    const from = model.elements[0].from as number[], to = model.elements[0].to as number[];
+    for (let corner = 0; corner < 8; corner++) {
+      const point = new Vector3(...[0, 1, 2].map((axis) => ((corner & (1 << axis) ? source.to : source.from)[axis]) / 16) as [number, number, number]);
+      const actual = new Vector3(...[0, 1, 2].map((axis) => ((corner & (1 << axis) ? to : from)[axis] - 8) / 16) as [number, number, number]).applyMatrix4(pose[cubeId].matrix);
+      expect(actual.distanceTo(point.applyMatrix4(expected))).toBeLessThan(1e-8);
+    }
+    const locatorId = Object.keys(output.nodes).find((id) => output.nodes[id].source?.node_id === "tip")!;
+    expect(new Vector3().setFromMatrixPosition(pose[locatorId].matrix).toArray()).toEqual([2.8125, 3.75, 4.6875]);
+    const files = await exportAnimation(document, 0);
+    const archive = unzipSync(new Uint8Array(await files.find((file) => file.fileName.endsWith(".zip"))!.blob.arrayBuffer()));
+    expect(Object.keys(archive).filter((path) => path.endsWith(".png"))).toEqual(["textures/model]textures]item]model]texture_1.png"]);
+    expect(archive["textures/model]textures]item]model]texture_1.png"]).toEqual(Uint8Array.from(atob(texture), (character) => character.charCodeAt(0)));
+  }
+});
+
 it("preserves decorations and unaligned limb geometry through both model input paths", async () => {
   for (const format of formats) for (const [name, cubes] of [
     ["prop", [cube("base", [0, 0, 0], [2, 2, 2]), cube("decoration", [0, 0, 0], [2, 2, 2], { inflate: 0.2 })]],
@@ -122,6 +163,8 @@ it("normalizes oversized or displaced models without changing their animated geo
       animations: [{ name: "idle", length: 1, loop: "once", animators: { bone: { keyframes: [
         { channel: "rotation", time: 0, data_points: [{ x: 0, y: 0, z: 0 }] },
         { channel: "rotation", time: 1, data_points: [{ x: 0, y: 30, z: 0 }] },
+        { channel: "position", time: 0, data_points: [{ x: 0, y: 0, z: 0 }] },
+        { channel: "position", time: 1, data_points: [{ x: 16, y: 8, z: -16 }] },
       ] } } }],
     });
     const document = createConversionDocument(input, format);
@@ -140,9 +183,9 @@ it("normalizes oversized or displaced models without changing their animated geo
       .multiply(new Matrix4().makeTranslation(-pivot[0], -pivot[1], -pivot[2]));
     const skinned = compileAnimation(assignSkinPart(document, new Set([attachmentTargetId(nodeId, "display")]), "head"), 0).animation;
     for (const time of [0, 0.5, 1]) {
-      const sceneScale = format === "geckolib_bbmodel" ? 0.9375 : 1;
+      const sceneScale = 0.9375;
       const expected = new Matrix4().makeScale(sceneScale, sceneScale, sceneScale)
-        .multiply(new Matrix4().makeTranslation(groupOrigin[0] / 16, groupOrigin[1] / 16, groupOrigin[2] / 16))
+        .multiply(new Matrix4().makeTranslation(groupOrigin[0] / 16 + time, groupOrigin[1] / 16 + time * 0.5, groupOrigin[2] / 16 - time))
         .multiply(new Matrix4().makeRotationFromEuler(new Euler(radians(groupRotation[0]), radians(groupRotation[1] + time * 30), radians(groupRotation[2]), "ZYX")))
         .multiply(cubeRotation);
       const actual = evaluatePose(original, time, (value) => { if (typeof value !== "number") throw new Error("Unexpected expression"); return value; })[nodeId].matrix;

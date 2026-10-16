@@ -8,7 +8,7 @@ import { ConversionError } from "../../foundation/diagnostics";
 import type { BoneEntry } from "../common/blockbenchCubeModel";
 import type { BbTexture } from "../common/blockbenchCubeSchema";
 import { cubePlayerHeadMatrix, isHiddenAccessoryBone, prepareCubeModels } from "../common/blockbenchCubeSkin";
-import { uniqueCubeNodeId, writeCubeResources, writeEmbeddedTextures } from "../common/blockbenchCubeResources";
+import { uniqueCubeNodeId, writeCubeResources } from "../common/blockbenchCubeResources";
 import type { AjProject, AjProjectCube, AjProjectLocator, ProjectTransformGraph } from "./animatedJavaProjectSchema";
 import type { ConversionIssue } from "../../foundation/diagnostics";
 
@@ -55,7 +55,6 @@ export function importAnimatedJavaCubes(project: AjProject, sourceStem: string, 
     frame_order_type: ["loop", "backwards", "back_and_forth", "custom"].includes(texture.frame_order_type ?? "") ? texture.frame_order_type as BbTexture["frame_order_type"] : undefined,
   }));
   const resources = new Map<string, GeneratedResource>();
-  if (bones.some((bone) => bone.cubes.length > 0)) writeEmbeddedTextures(textures, namespace, projectPath, resources);
   const { playableCubesByBone, skinAssignments, sourceIds, diagnostics } = prepareCubeModels(bones);
   const nodes: Record<string, ImportedNode> = {};
   const nodeIdsBySourceUuid = new Map<string, string[]>();

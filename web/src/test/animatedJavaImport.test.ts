@@ -29,11 +29,11 @@ const display = (uuid: string): AjProjectDisplayElement => ({
 });
 const nbtFields = (value: string | undefined) => Object.fromEntries(parseSnbtCompound(value ?? "{}").map((field) => [field.name, field.value]));
 
-it("keeps AJ source size with and without cube groups and keeps direct display configs independent of their parent", async () => {
+it("applies player render scale with and without cube groups and keeps direct display configs independent of their parent", async () => {
   const bone = { ...group("bone"), configs: { default: { invisible: true, billboard: "center", shadow_radius: 5 } } };
   const element = { ...display("item"), configs: { default: { invisible: false, billboard: "fixed", shadow_radius: 2 } } };
   const cube = { uuid: "cube", name: "cube", type: "cube" as const, from: [16, 32, 48], to: [18, 34, 50], faces: {} };
-  const expected = new Matrix4().makeTranslation(2, 3, 4)
+  const expected = new Matrix4().makeScale(0.9375, 0.9375, 0.9375).multiply(new Matrix4().makeTranslation(2, 3, 4))
     .multiply(new Matrix4().makeRotationFromEuler(new Euler(10 * Math.PI / 180, 20 * Math.PI / 180, 30 * Math.PI / 180, "XYZ")))
     .multiply(new Matrix4().makeScale(2, 3, 4));
   for (const hasGroup of [false, true]) for (const hasCube of hasGroup ? [false, true] : [false]) {
@@ -258,7 +258,7 @@ it("exports locator functions with animated node origins and keeps the exact v5 
   ]);
   for (const time of [0, 0.5, 1]) {
     const pose = evaluatePose(output, time, (value) => { if (typeof value !== "number") throw new Error("Unexpected expression"); return value; });
-    const expected = new Matrix4().makeTranslation(1, 2, 3).multiply(new Matrix4().makeRotationY((30 + 60 * time) * Math.PI / 180))
+    const expected = new Matrix4().makeScale(0.9375, 0.9375, 0.9375).multiply(new Matrix4().makeTranslation(1, 2, 3)).multiply(new Matrix4().makeRotationY((30 + 60 * time) * Math.PI / 180))
       .multiply(new Matrix4().makeScale(2, 2, 2)).multiply(new Matrix4().makeTranslation(0.5, 0.25, -0.5))
       .multiply(new Matrix4().makeRotationFromEuler(new Euler(20 * Math.PI / 180, 10 * Math.PI / 180, 15 * Math.PI / 180, "ZYX")));
     expect(pose.left_arm_tip.matrix.elements.every((value, axis) => Math.abs(value - expected.elements[axis]) < 1e-10)).toBe(true);

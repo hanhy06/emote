@@ -55,8 +55,9 @@ export function writeCubeResources(cube: BbCube, boneOrigin: readonly number[], 
 }
 
 export function writeEmbeddedTextures(textures: BbTexture[], namespace: string, projectPath: string, resources: Map<string, GeneratedResource>): void {
-  if (textures.length === 0) return;
+  const references = new Set([...resources.values()].flatMap((resource) => resource instanceof Uint8Array || resource.kind !== "cuboid_model" ? [] : Object.values(resource.textures)));
   for (const [index, texture] of textures.entries()) {
+    if (!references.has(`${namespace}:item/${projectPath}/${textureFileStem(textures.length, index)}`)) continue;
     if (!texture.source?.startsWith("data:image/png;base64,")) {
       throw new ConversionError("blockbench_external_texture", "Blockbench textures must be embedded as PNG data.", `textures[${index}].source`);
     }

@@ -11,6 +11,8 @@ import type { ImportInput } from "../input";
 import { ConversionError, skippedAnimationIssue, type ConversionIssue } from "../../foundation/diagnostics";
 import { importAnimatedJavaCubes, writeReferencedAnimatedJavaCubeResources, type AnimatedJavaCubes } from "./animatedJavaCubes";
 import { normalizeBlockbenchName } from "../common/blockbenchCubeSkin";
+import { PLAYER_RENDER_SCALE } from "../common/blockbenchCubeModel";
+import { writeEmbeddedTextures } from "../common/blockbenchCubeResources";
 import { createAnimatedJavaAnimationIR, type ProjectNodeStateFrame } from "./animatedJavaAnimationIR";
 import type { EventIR, TimelineEventIR } from "../../domain/animationIR";
 import type { ImportedNode, ImportedProject } from "../../domain/conversionSeed";
@@ -67,7 +69,6 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
     bindOutputNode(element.uuid, element.uuid);
   }
   applyGroupDefaultConfigs(nodes, transformGraph, nodeBindings);
-  if (Object.keys(nodes).length === 0 && logicalElements.length === 0) throw new Error("Animated Java project does not contain importable nodes.");
 
   const diagnostics: ConversionIssue[] = [...(project.animationDiagnostics ?? []), ...(cubeContent?.diagnostics ?? [])];
   appendProjectCapabilityDiagnostics(project, diagnostics);
@@ -77,7 +78,7 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
     try {
       const effects = projectEffectEvents(animation, cubeContent, animationDiagnostics, sourceIndex);
       const state = resolveAnimatedJavaAnimationState(effects, animation, project, nodes, transformGraph, nodeBindings, animationDiagnostics, sourceIndex);
-      const ir = createAnimatedJavaAnimationIR(animation, project, transformGraph, nodes, 1, state.nodeFrames, cubeContent);
+      const ir = createAnimatedJavaAnimationIR(animation, project, transformGraph, nodes, PLAYER_RENDER_SCALE, state.nodeFrames, cubeContent);
       ir.animation.events = { start: state.startEvents, timeline: state.timelineEvents, loop: [], stop: [] };
       diagnostics.push(...animationDiagnostics);
       return [{ ir, id: sanitizeResourcePath(animation.name, `animation_${sourceIndex + 1}`), name: cubeContent ? animation.name : prettify(animation.name) }];
@@ -90,8 +91,11 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
     const reasons = diagnostics.filter((issue) => issue.code === "animation_skipped").map((issue) => issue.message).join(" ");
     throw new ConversionError("no_importable_animations", `No Animated Java animations could be imported.${reasons ? ` ${reasons}` : ""}`);
   }
-  if (cubeContent) writeReferencedAnimatedJavaCubeResources(cubeContent, project.resolution,
-    new Set(animations.flatMap((animation) => [...referencedItemModelResources(animation.ir)])));
+  if (cubeContent) {
+    writeReferencedAnimatedJavaCubeResources(cubeContent, project.resolution,
+      new Set(animations.flatMap((animation) => [...referencedItemModelResources(animation.ir)])));
+    writeEmbeddedTextures(cubeContent.textures, cubeContent.namespace, cubeContent.projectPath, cubeContent.resources);
+  }
   const name = prettify(sourceStem);
   return {
     source: "animated_java_blueprint",
@@ -121,15 +125,21 @@ function buildProjectTransformGraph(project: AjProject): ProjectTransformGraph {
       return;
     }
     const saved = savedGroups.get(entry.uuid);
-    const name = entry.name ?? saved?.name;
+    const name = entry.name ?? saved?.name ?? "";
     const origin = entry.origin ?? saved?.origin ?? [0, 0, 0];
     const rotation = entry.rotation ?? saved?.rotation ?? [0, 0, 0];
-    if (!name) throw new Error(`Animated Java group ${entry.uuid} is missing its name.`);
     groups.set(entry.uuid, { ...saved, ...entry, uuid: entry.uuid, name, origin, rotation });
     groupParents.set(entry.uuid, parent);
     entry.children.forEach((child) => visit(child, entry.uuid));
   };
   project.outliner.forEach((entry) => visit(entry, undefined));
+  const rootElements = project.elements.filter((element) => (element.type === "cube" || element.type === "locator") && elementParents.has(element.uuid) && elementParents.get(element.uuid) === undefined);
+  if (rootElements.length) {
+    let uuid = "root";
+    for (let suffix = 2; groups.has(uuid) || project.elements.some((element) => element.uuid === uuid); suffix++) uuid = `root_${suffix}`;
+    groups.set(uuid, { uuid, name: "", origin: [0, 0, 0], rotation: [0, 0, 0] });
+    for (const element of rootElements) elementParents.set(element.uuid, uuid);
+  }
   return { groups, groupParents, elementParents };
 }
 

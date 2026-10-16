@@ -88,9 +88,9 @@ class EventCommandExecutorTest {
             double parent = Math.toRadians(30 + 60 * occurrence.animationTick() / 20.0);
             double rx = 1 + Math.cos(parent) - Math.sin(parent), rz = 3 - Math.sin(parent) - Math.cos(parent);
             double facing = Math.toRadians(45);
-            assertEquals(10 + Math.cos(facing) * rx + Math.sin(facing) * rz, point.x, 1e-5);
-            assertEquals(22.5, point.y, 1e-5);
-            assertEquals(30 - Math.sin(facing) * rx + Math.cos(facing) * rz, point.z, 1e-5);
+            assertEquals(10 + 0.9375 * (Math.cos(facing) * rx + Math.sin(facing) * rz), point.x, 1e-5);
+            assertEquals(20 + 0.9375 * 2.5, point.y, 1e-5);
+            assertEquals(30 + 0.9375 * (-Math.sin(facing) * rx + Math.cos(facing) * rz), point.z, 1e-5);
             assertEquals(pitch, rotation.x, 1e-4);
             assertEquals(Mth.wrapDegrees((float) (135 - Math.toDegrees(parent) - localYaw)), rotation.y, 1e-4);
 
@@ -101,7 +101,7 @@ class EventCommandExecutorTest {
             assertEquals(-(-Math.sin(worldYaw) * localX + Math.cos(worldYaw) * localZ), forward.z, 2e-4);
 
             var offsetOrigin = new EmoteAnimation.CommandOrigin(origin.type(), origin.node(), new Vec3(0.25, 0.5, -0.125), true);
-            Vector3f offset = new Matrix4f().rotateY((float) facing).translate(1, 2, 3).rotateY((float) parent).scale(2)
+            Vector3f offset = new Matrix4f().rotateY((float) facing).scale(0.9375F).translate(1, 2, 3).rotateY((float) parent).scale(2)
                 .translate(0.5f, 0.25f, -0.5f).rotateZYX((float) z, (float) y, (float) x)
                 .transformPosition(new Vector3f(0.25f, 0.5f, -0.125f));
             assertTrue(target.root.position().add(offset.x, offset.y, offset.z).distanceTo(EventCommandExecutor.resolveOrigin(offsetOrigin, occurrence.pose())) < 1e-5);
