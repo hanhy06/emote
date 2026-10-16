@@ -199,4 +199,4 @@ Intermediate Animations referenced by a Sequence are usually hidden from direct 
 
 If the Sequence does not load, check the server log for missing Animation IDs, incompatible nodes, unsupported playback modes, or invalid wait-step messages.
 
-To create random selection, waits, or repeat control, see the [Sequence format specification](../developers/sequence.md).
+To create random selection, waits, or playback control, see the [Sequence format specification](../developers/sequence.md).

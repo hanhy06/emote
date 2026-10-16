@@ -92,7 +92,7 @@ Move within a running playback without creating a new session.
 |---|---|
 | `setTick(sessionId, tick)` | Moves to a tick in the complete playback timeline, including Sequence transitions and waits. |
 | `setAnimationTick(sessionId, tick)` | Moves within the active Animation; returns `false` outside the Animation phase. |
-| `setStep(sessionId, stepIndex, repeatIndex, tick)` | Moves to the resolved Animation at a Sequence step and repetition, using its local tick. |
+| `setStep(sessionId, stepIndex, repeatIndex, tick)` | Moves to the resolved Animation or `emote:empty` at a Sequence step and repetition. |
 
 Position changes are unavailable for `server_sync` playback. Target ticks start at zero and exclude the timeline or Animation end. Invalid indices or out-of-range ticks throw `IllegalArgumentException`; an absent session returns `false`.
 
@@ -162,7 +162,7 @@ Register a named callback and select it in an Animation or Sequence's root `call
 | `getAnimationTick()` | Animation-local tick. Animation callbacks use their segment's tick; root callbacks return `null` outside the Animation phase. |
 | `setTick(tick)` | Moves within the complete playback timeline. |
 | `setAnimationTick(tick)` | Moves within the active Animation. |
-| `setStep(stepIndex, repeatIndex, tick)` | Moves to a resolved Sequence Animation. Position-control rules above apply. |
+| `setStep(stepIndex, repeatIndex, tick)` | Moves to a resolved Sequence Animation or `emote:empty`. Position-control rules above apply. |
 | `getActor(name)` | Actor entity as an `Optional<Entity>`; use `"actor"` for the playback actor. |
 | `getAttachmentEntity(nodeId, attachmentId)` | Display entity as an `Optional<Entity>`; empty for attachments without an entity or unavailable entities. |
 | `getNodeWorldPosition(nodeId)` | Transformed node origin in world coordinates, including nodes without entity attachments. |
