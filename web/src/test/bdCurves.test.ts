@@ -8,6 +8,35 @@ import { exportAnimation } from "../export/projectExporter";
 import type { AnimationJson } from "../format/animation";
 import { readInput } from "../import/formats";
 import source from "./fixtures/bd-curves.json";
+import { importFileBatch } from "../import/importBatch";
+
+it("preserves sparse frame timing and commands without a generator comment or display nodes", async () => {
+  const encoder = new TextEncoder();
+  for (const hasDisplay of [false, true]) {
+    const bytes = zipSync({
+      "data/bd/function/_/create.mcfunction": encoder.encode(hasDisplay
+        ? `summon minecraft:block_display ~ ~ ~ {id:"minecraft:block_display",Tags:["bd_0"],block_state:{Name:"minecraft:stone"},transformation:[${source.matrices.initial.join(",")}]}` : ""),
+      "data/bd/function/k/sparse/keyframe_2.mcfunction": encoder.encode("say first"),
+      "data/bd/function/k/sparse/keyframe_7.mcfunction": encoder.encode(hasDisplay
+        ? `data merge entity @e[tag=bd_0,limit=1] {transformation:[${source.matrices.instant.join(",")}]}` : "say last"),
+    });
+    const document = await importFileBatch([{ name: "sparse.zip", arrayBuffer: async () => Uint8Array.from(bytes).buffer }]);
+    const [file] = await exportAnimation(document, 0);
+    const animation: AnimationJson = JSON.parse(await file.blob.text());
+    expect(animation.animation.duration).toBe("16t");
+    expect(animation.animation.events?.timeline?.map((event) => event.time)).toEqual(hasDisplay ? ["4t"] : ["4t", "14t"]);
+    expect(animation.animation.events?.timeline?.[0].action).toEqual({ type: "commands", commands: ["say first"] });
+    if (!hasDisplay) {
+      expect(animation.nodes).toEqual({});
+      continue;
+    }
+    for (const tick of [0, 4, 13, 14, 15]) {
+      const pose = evaluatePose(animation, tick / 20, (value) => { if (typeof value !== "number") throw new Error("Unexpected expression"); return value; });
+      const expected = new Matrix4().set(...(tick < 14 ? source.matrices.initial : source.matrices.instant) as Parameters<Matrix4["set"]>);
+      expect(pose.display_0.matrix.elements).toEqual(expected.elements);
+    }
+  }
+});
 
 it("preserves delayed and interrupted BD display interpolation through numeric IR curves and export", async () => {
   const matrices = source.matrices as Record<string, number[]>;
