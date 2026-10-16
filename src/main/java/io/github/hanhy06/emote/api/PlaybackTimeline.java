@@ -15,7 +15,7 @@ public record PlaybackTimeline(Identifier emoteId, @Nullable Integer durationTic
         segments = List.copyOf(segments);
     }
 
-    public enum Phase { START_DELAY, ANIMATION, TRANSITION, WAIT, LOOP_DELAY, HOLD }
+    public enum Phase { START_DELAY, ANIMATION, TRANSITION, WAIT, EMPTY, LOOP_DELAY, HOLD }
 
     public record Segment(int segmentIndex, @Nullable Integer stepIndex, @Nullable Integer repeatIndex,
                           Phase phase, @Nullable Integer startTick, @Nullable Integer endTick, @Nullable Identifier animationId) {

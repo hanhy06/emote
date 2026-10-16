@@ -307,13 +307,13 @@ it("reserves authored IDs and preserves ambiguous sequence references instead of
   document.sequence.steps = [
     { emote: "probe:a" },
     { emote: [{ id: "probe:a_2", chance: 3 }, { id: "probe:a", chance: 1 }] },
-    { emote: "probe:unique" }, { emote: "external:unknown" }, { emote: "emote:break" },
+    { emote: "probe:unique" }, { emote: "external:unknown" }, { emote: "emote:break" }, { emote: "emote:empty" },
   ];
   let outputs = await exportAnimations(document, true);
   let exported = await Promise.all(outputs.map(async (output) => JSON.parse(await output.blob.text())));
   expect(exported.find((entry) => entry.type === "sequence").steps).toEqual([
     { emote: "probe:a" }, { emote: ["probe:a_2", 3, "probe:a", 1] },
-    { emote: "probe:unique" }, { emote: "external:unknown" }, { emote: "emote:break" },
+    { emote: "probe:unique" }, { emote: "external:unknown" }, { emote: "emote:break" }, { emote: "emote:empty" },
   ]);
   expect(sequenceReferenceWarnings(document).map((issue) => issue.code)).toEqual(["sequence_external_reference"]);
   document.animations[0].id = "probe:first";
@@ -324,7 +324,7 @@ it("reserves authored IDs and preserves ambiguous sequence references instead of
   exported = await Promise.all(outputs.map(async (output) => JSON.parse(await output.blob.text())));
   expect(exported.find((entry) => entry.type === "sequence").steps).toEqual([
     { emote: "probe:a" }, { emote: ["probe:a_2", 3, "probe:a", 1] },
-    { emote: "probe:renamed" }, { emote: "external:unknown" }, { emote: "emote:break" },
+    { emote: "probe:renamed" }, { emote: "external:unknown" }, { emote: "emote:break" }, { emote: "emote:empty" },
   ]);
   expect(sequenceReferenceWarnings(document).map((issue) => issue.code)).toEqual([
     "sequence_ambiguous_reference", "sequence_ambiguous_reference", "sequence_external_reference",

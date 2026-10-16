@@ -431,6 +431,15 @@ public final class EmotePlayback {
             .filter(step -> Objects.equals(step.stepIndex(), segment.stepIndex()) && Objects.equals(step.repeatIndex(), segment.repeatIndex())).findFirst().orElseThrow();
     }
 
+    private @Nullable SelectedAnimationStep previousAnimation(int segmentIndex) {
+        for (int index = segmentIndex - 1; index >= 0; index--) {
+            var segment = this.sequencePhases.get(index);
+            if (segment.phase() == PlaybackTimeline.Phase.EMPTY) return null;
+            if (segment.phase() == PlaybackTimeline.Phase.ANIMATION) return selectedAnimation(segment);
+        }
+        return null;
+    }
+
     private void prepareChild(SelectedAnimationStep selected) {
         if (this.child != null && this.childSelection == selected) return;
         this.childSelection = selected;
@@ -457,6 +466,12 @@ public final class EmotePlayback {
             var segment = templates.get(this.sequenceSegment);
             this.segmentStarts.put(this.sequenceSegment, this.currentTick);
             this.phaseTick = 0;
+            if (segment.phase() == PlaybackTimeline.Phase.EMPTY) {
+                this.child = null;
+                this.childSelection = null;
+                this.emote.nodes().keySet().forEach(id -> applyVisibility(id, false));
+                return;
+            }
             if (segment.phase() == PlaybackTimeline.Phase.WAIT) {
                 if (this.child == null) this.emote.nodes().keySet().forEach(id -> applyVisibility(id, false));
                 return;
@@ -497,22 +512,7 @@ public final class EmotePlayback {
     }
 
     private @Nullable Integer sequencePhaseLength(int index) {
-        if (this.segmentLengths.containsKey(index)) return this.segmentLengths.get(index);
-        var segment = this.sequencePhases.get(index);
-        if (segment.phase() == PlaybackTimeline.Phase.WAIT) {
-            return this.selectedSteps.stream().filter(SelectedWaitStep.class::isInstance)
-                .map(SelectedWaitStep.class::cast).filter(wait -> Objects.equals(wait.stepIndex(), segment.stepIndex()))
-                .map(SelectedWaitStep::ticks).findFirst().orElse(1);
-        }
-        var selected = selectedAnimation(segment);
-        var playback = selected.animation().model().settings().playback();
-        return switch (segment.phase()) {
-            case TRANSITION -> selected.transitionTicks();
-            case START_DELAY -> playback.startDelay() instanceof EmoteAnimation.ConstantValue c ? (int) c.value() : null;
-            case LOOP_DELAY -> playback.loopDelay() instanceof EmoteAnimation.ConstantValue c ? (int) c.value() : null;
-            case ANIMATION -> selected.animation().model().clip().clock() == null ? selected.animation().model().clip().durationTicks() : null;
-            default -> throw new IllegalStateException("Unexpected sequence phase");
-        };
+        return this.segmentLengths.getOrDefault(index, this.sequencePhases.get(index).endTick());
     }
 
     private void startChildEvents(boolean replayZero) {
@@ -550,6 +550,12 @@ public final class EmotePlayback {
         while (budget > 0 && !isFinished()) {
             if (++boundaries > MAX_LOOP_BOUNDARIES_PER_FRAME) throw new IllegalStateException("Sequence crossed too many phases in one frame");
             var segment = this.sequencePhases.get(this.sequenceSegment);
+            if (segment.phase() == PlaybackTimeline.Phase.EMPTY) {
+                this.phaseTick += budget;
+                this.currentTick += budget;
+                this.lifetimeTicks += budget;
+                break;
+            }
             if (segment.phase() == PlaybackTimeline.Phase.ANIMATION) {
                 int delta = this.child.model.clip().clock() == null ? Math.min(budget, Math.max(0, this.child.model.clip().durationTicks() - this.child.currentTick)) : budget;
                 this.currentTick += delta;
@@ -697,19 +703,25 @@ public final class EmotePlayback {
     public int stepSegment(int stepIndex, int repeatIndex, int animationTick) {
         if (stepIndex < 0 || repeatIndex < 0 || animationTick < 0) throw new IllegalArgumentException("Step, repeat and tick must not be negative");
         for (var segment : this.sequencePhases) {
-            if (segment.phase() != PlaybackTimeline.Phase.ANIMATION || !Objects.equals(segment.stepIndex(), stepIndex) || !Objects.equals(segment.repeatIndex(), repeatIndex)) continue;
+            if (!Objects.equals(segment.stepIndex(), stepIndex) || !Objects.equals(segment.repeatIndex(), repeatIndex)) continue;
+            if (segment.phase() == PlaybackTimeline.Phase.EMPTY) {
+                if (animationTick != 0) throw new IllegalArgumentException("An empty step has no animation time");
+                return segment.segmentIndex();
+            }
+            if (segment.phase() != PlaybackTimeline.Phase.ANIMATION) continue;
             if (animationTick > selectedAnimation(segment).animation().model().clip().durationTicks()) throw new IllegalArgumentException("Tick is outside the animation");
             return segment.segmentIndex();
         }
-        throw new IllegalArgumentException("No animation at the specified sequence step and repeat");
+        throw new IllegalArgumentException("No animation or empty step at the specified sequence step and repeat");
     }
 
     private void setStep(int stepIndex, int repeatIndex, int animationTick) {
         int index = stepSegment(stepIndex, repeatIndex, animationTick);
         if (!canSeek()) return;
         var segment = timeline().segments().get(index);
-        boolean dynamicClock = selectedAnimation(segment).animation().model().clip().clock() != null;
-        int location = dynamicClock || segment.startTick() == null ? this.currentTick : segment.startTick() + animationTick;
+        boolean dynamicClock = segment.phase() == PlaybackTimeline.Phase.ANIMATION && selectedAnimation(segment).animation().model().clip().clock() != null;
+        int location = segment.phase() == PlaybackTimeline.Phase.EMPTY || dynamicClock || segment.startTick() == null
+            ? this.currentTick : segment.startTick() + animationTick;
         seekSequence(index, location, animationTick);
     }
 
@@ -722,16 +734,12 @@ public final class EmotePlayback {
                 throw new IllegalArgumentException("A dynamic clock requires animation time or step seek");
             }
             if (segment.phase() == PlaybackTimeline.Phase.WAIT || segment.phase() == PlaybackTimeline.Phase.TRANSITION || segment.phase() == PlaybackTimeline.Phase.LOOP_DELAY) {
-                int previous = segment.segmentIndex() - 1;
-                while (previous >= 0 && segments.get(previous).phase() != PlaybackTimeline.Phase.ANIMATION) previous--;
-                if (previous >= 0) {
-                    var source = selectedAnimation(segments.get(previous));
-                    if (this.child == null || this.childSelection != source) {
-                        var model = source.animation().model();
-                        if (model.molang().tick() != null || model.clip().clock() != null
-                            || segment.phase() == PlaybackTimeline.Phase.LOOP_DELAY && model.settings().playback().loopDelay() instanceof EmoteAnimation.MolangValue) {
-                            throw new IllegalArgumentException("Cannot reconstruct previous animation state for this sequence gap");
-                        }
+                var source = previousAnimation(segment.segmentIndex());
+                if (source != null && (this.child == null || this.childSelection != source)) {
+                    var model = source.animation().model();
+                    if (model.molang().tick() != null || model.clip().clock() != null
+                        || segment.phase() == PlaybackTimeline.Phase.LOOP_DELAY && model.settings().playback().loopDelay() instanceof EmoteAnimation.MolangValue) {
+                        throw new IllegalArgumentException("Cannot reconstruct previous animation state for this sequence gap");
                     }
                 }
             }
@@ -755,16 +763,16 @@ public final class EmotePlayback {
         int local = animationTick != null ? animationTick : location - Objects.requireNonNull(segment.startTick());
         boolean dynamicClock = segment.phase() == PlaybackTimeline.Phase.ANIMATION && selectedAnimation(segment).animation().model().clip().clock() != null;
         int elapsed = dynamicClock ? sameExecution ? this.phaseTick : 0 : local;
+        if (destination > this.sequenceSegment && segments.get(this.sequenceSegment).phase() == PlaybackTimeline.Phase.EMPTY) {
+            this.segmentLengths.put(this.sequenceSegment, this.phaseTick);
+        }
         this.segmentStarts.keySet().removeIf(index -> index >= destination);
         this.segmentLengths.keySet().removeIf(index -> index >= destination);
-        if (!sameExecution && segment.phase() != PlaybackTimeline.Phase.ANIMATION && segment.phase() != PlaybackTimeline.Phase.START_DELAY) {
-            int previous = destination - 1;
-            while (previous >= 0 && segments.get(previous).phase() != PlaybackTimeline.Phase.ANIMATION) previous--;
-            if (previous >= 0) {
-                var source = selectedAnimation(segments.get(previous));
+        if (!sameExecution && segment.phase() != PlaybackTimeline.Phase.EMPTY && segment.phase() != PlaybackTimeline.Phase.ANIMATION && segment.phase() != PlaybackTimeline.Phase.START_DELAY) {
+            var source = previousAnimation(destination);
+            if (source != null) {
                 if (this.child == null || this.childSelection != source) {
                     if (source.animation().model().molang().tick() != null || source.animation().model().clip().clock() != null) throw new IllegalArgumentException("Cannot reconstruct previous animation state for this sequence gap");
-                    this.child = null;
                     prepareChild(source);
                 }
                 resetTarget();
@@ -777,6 +785,7 @@ public final class EmotePlayback {
                 hideUnusedNodes();
             } else {
                 this.child = null;
+                this.childSelection = null;
                 clearAppliedPose();
                 this.emote.nodes().keySet().forEach(id -> applyVisibility(id, false));
             }
@@ -1220,6 +1229,10 @@ public final class EmotePlayback {
                     previousAnimationIndex = selectedIndex;
                 } else if (((ControlChoice) selected).control() == EmoteSequence.Control.BREAK) {
                     break;
+                } else if (((ControlChoice) selected).control() == EmoteSequence.Control.EMPTY) {
+                    appendSelectedAnimations(selectedSteps, selectedAnimations);
+                    selectedAnimations.clear();
+                    selectedSteps.add(new SelectedEmptyStep(stepIndex, repeat));
                 }
             }
             appendSelectedAnimations(selectedSteps, selectedAnimations);
@@ -1247,6 +1260,11 @@ public final class EmotePlayback {
         List<PlaybackTimeline.Segment> segments = new ArrayList<>();
         boolean previousPose = false;
         for (var step : steps) {
+            if (step instanceof SelectedEmptyStep empty) {
+                segments.add(new PlaybackTimeline.Segment(segments.size(), empty.stepIndex(), empty.repeatIndex(), PlaybackTimeline.Phase.EMPTY, 0, null, null));
+                previousPose = false;
+                continue;
+            }
             if (step instanceof SelectedWaitStep wait) {
                 segments.add(new PlaybackTimeline.Segment(segments.size(), wait.stepIndex(), null, PlaybackTimeline.Phase.WAIT, 0, wait.ticks(), null));
                 continue;
@@ -1319,7 +1337,7 @@ public final class EmotePlayback {
         }
     }
 
-    private sealed interface SelectedStep permits SelectedAnimationStep, SelectedWaitStep {
+    private sealed interface SelectedStep permits SelectedAnimationStep, SelectedWaitStep, SelectedEmptyStep {
     }
 
     private record SelectedAnimationStep(
@@ -1344,5 +1362,7 @@ public final class EmotePlayback {
             }
         }
     }
+
+    private record SelectedEmptyStep(int stepIndex, int repeatIndex) implements SelectedStep {}
 
 }

@@ -68,7 +68,7 @@ export interface SequenceWaitStep {
 }
 
 export function isSequenceControlId(id: string): boolean {
-  return id === "emote:break" || id === "emote:continue";
+  return id === "emote:break" || id === "emote:continue" || id === "emote:empty";
 }
 
 export function animationReferenceTargets(animations: readonly { id: string; sourceReferenceId?: string }[]): Map<string, string[]> {

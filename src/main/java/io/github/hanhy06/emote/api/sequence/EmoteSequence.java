@@ -19,7 +19,8 @@ public record EmoteSequence(
 ) {
     public enum Control {
         CONTINUE(Identifier.parse("emote:continue")),
-        BREAK(Identifier.parse("emote:break"));
+        BREAK(Identifier.parse("emote:break")),
+        EMPTY(Identifier.parse("emote:empty"));
 
         private final Identifier id;
 
