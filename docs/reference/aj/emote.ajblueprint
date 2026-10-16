@@ -1,7 +1,7 @@
 {
 	"meta": {
 		"format": "animated-java:format/blueprint",
-		"format_version": "1.10.2",
+		"format_version": "1.11.0",
 		"uuid": "18c4cfb2-6bf0-3816-96f1-f4b76ea87357",
 		"save_location": "C:\\dev\\minecraft\\emote\\docs\\reference\\aj\\emote.ajblueprint",
 		"last_used_blueprint_id": "aj:my_blueprint"
@@ -1101,6 +1101,144 @@
 			"scope": 0,
 			"uuid": "0c60c739-32f3-4c06-ba17-8409a482d39c",
 			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "snowball_1_display",
+			"position": [0, 0, 0],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.375, 0.375, 0.375],
+			"color": 1,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"item": "minecraft:snowball",
+			"itemDisplay": "none",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "4bf8cd12-bf9b-4800-9d9a-2e1f1c16ab70",
+			"type": "animated_java:vanilla_item_display"
+		},
+		{
+			"name": "snowball_2_display",
+			"position": [0, 0, 0],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.375, 0.375, 0.375],
+			"color": 1,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"item": "minecraft:snowball",
+			"itemDisplay": "none",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "7386b35f-1cb3-464c-8b14-b6ab117356ce",
+			"type": "animated_java:vanilla_item_display"
+		},
+		{
+			"name": "snowball_3_display",
+			"position": [0, 0, 0],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.375, 0.375, 0.375],
+			"color": 1,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"item": "minecraft:snowball",
+			"itemDisplay": "none",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "9a6e1042-9013-45ff-a7d8-df7210ca4752",
+			"type": "animated_java:vanilla_item_display"
+		},
+		{
+			"name": "snowball_1_impact",
+			"position": [0, 0, 0],
+			"rotation": [0, 0, 0],
+			"ignore_inherited_scale": false,
+			"visibility": true,
+			"locked": false,
+			"scope": 0,
+			"config": null,
+			"uuid": "6e4c3830-f0b8-4ce2-ba4d-aa242747beff",
+			"type": "locator"
+		},
+		{
+			"name": "snowball_2_impact",
+			"position": [0, 0, 0],
+			"rotation": [0, 0, 0],
+			"ignore_inherited_scale": false,
+			"visibility": true,
+			"locked": false,
+			"scope": 0,
+			"config": null,
+			"uuid": "761c80f2-aefa-4d0f-9541-cc0615eded0b",
+			"type": "locator"
+		},
+		{
+			"name": "snowball_3_impact",
+			"position": [0, 0, 0],
+			"rotation": [0, 0, 0],
+			"ignore_inherited_scale": false,
+			"visibility": true,
+			"locked": false,
+			"scope": 0,
+			"config": null,
+			"uuid": "bacba0f9-3d94-4aa5-81e7-f6e2eb08a5ca",
+			"type": "locator"
 		}
 	],
 	"groups": [
@@ -1413,6 +1551,130 @@
 			"autouv": 0,
 			"isOpen": true,
 			"primary_selected": false
+		},
+		{
+			"name": "snow_juggling",
+			"uuid": "79464bd3-a99d-4849-aa77-7c5d04025b38",
+			"export": true,
+			"locked": false,
+			"scope": 0,
+			"selected": false,
+			"visibility": true,
+			"_static": {
+				"properties": {},
+				"temp_data": {}
+			},
+			"origin": [0, 0, 0],
+			"rotation": [0, 0, 0],
+			"color": 0,
+			"onSummonFunction": "",
+			"configs": {
+				"default": {},
+				"variants": {}
+			},
+			"itemModelProperties": {
+				"tints": []
+			},
+			"children": [],
+			"reset": false,
+			"shade": true,
+			"mirror_uv": false,
+			"autouv": 0,
+			"isOpen": true,
+			"primary_selected": false
+		},
+		{
+			"name": "snowball_1",
+			"uuid": "83d3625c-d4ab-451a-ab58-73fd85ab1a7e",
+			"export": true,
+			"locked": false,
+			"scope": 0,
+			"selected": false,
+			"visibility": true,
+			"_static": {
+				"properties": {},
+				"temp_data": {}
+			},
+			"origin": [0, 0, 0],
+			"rotation": [0, 0, 0],
+			"color": 0,
+			"onSummonFunction": "",
+			"configs": {
+				"default": {},
+				"variants": {}
+			},
+			"itemModelProperties": {
+				"tints": []
+			},
+			"children": [],
+			"reset": false,
+			"shade": true,
+			"mirror_uv": false,
+			"autouv": 0,
+			"isOpen": true,
+			"primary_selected": false
+		},
+		{
+			"name": "snowball_2",
+			"uuid": "cdf00552-e189-4e9b-851c-d028eb5163b2",
+			"export": true,
+			"locked": false,
+			"scope": 0,
+			"selected": false,
+			"visibility": true,
+			"_static": {
+				"properties": {},
+				"temp_data": {}
+			},
+			"origin": [0, 0, 0],
+			"rotation": [0, 0, 0],
+			"color": 0,
+			"onSummonFunction": "",
+			"configs": {
+				"default": {},
+				"variants": {}
+			},
+			"itemModelProperties": {
+				"tints": []
+			},
+			"children": [],
+			"reset": false,
+			"shade": true,
+			"mirror_uv": false,
+			"autouv": 0,
+			"isOpen": true,
+			"primary_selected": false
+		},
+		{
+			"name": "snowball_3",
+			"uuid": "bd9a702d-d49c-4444-ac7c-d44b9fe2d657",
+			"export": true,
+			"locked": false,
+			"scope": 0,
+			"selected": false,
+			"visibility": true,
+			"_static": {
+				"properties": {},
+				"temp_data": {}
+			},
+			"origin": [0, 0, 0],
+			"rotation": [0, 0, 0],
+			"color": 0,
+			"onSummonFunction": "",
+			"configs": {
+				"default": {},
+				"variants": {}
+			},
+			"itemModelProperties": {
+				"tints": []
+			},
+			"children": [],
+			"reset": false,
+			"shade": true,
+			"mirror_uv": false,
+			"autouv": 0,
+			"isOpen": true,
+			"primary_selected": false
 		}
 	],
 	"outliner": [
@@ -1487,8 +1749,30 @@
 			"uuid": "38249dba-0da9-4f02-99c6-cacd757718c8",
 			"isOpen": false,
 			"children": []
+		},
+		{
+			"uuid": "79464bd3-a99d-4849-aa77-7c5d04025b38",
+			"isOpen": true,
+			"children": [
+				{
+					"uuid": "83d3625c-d4ab-451a-ab58-73fd85ab1a7e",
+					"isOpen": true,
+					"children": ["4bf8cd12-bf9b-4800-9d9a-2e1f1c16ab70", "6e4c3830-f0b8-4ce2-ba4d-aa242747beff"]
+				},
+				{
+					"uuid": "cdf00552-e189-4e9b-851c-d028eb5163b2",
+					"isOpen": true,
+					"children": ["7386b35f-1cb3-464c-8b14-b6ab117356ce", "761c80f2-aefa-4d0f-9541-cc0615eded0b"]
+				},
+				{
+					"uuid": "bd9a702d-d49c-4444-ac7c-d44b9fe2d657",
+					"isOpen": true,
+					"children": ["9a6e1042-9013-45ff-a7d8-df7210ca4752", "bacba0f9-3d94-4aa5-81e7-f6e2eb08a5ca"]
+				}
+			]
 		}
 	],
+	"texture_groups": [],
 	"textures": [
 		{
 			"name": "steve.png",
@@ -1512,10 +1796,13 @@
 			"wrap_mode": "limited",
 			"pbr_channel": "color",
 			"fps": 7,
+			"force_translucent": false,
 			"frame_time": 1,
 			"frame_order_type": "loop",
 			"frame_order": "",
 			"frame_interpolate": false,
+			"is_texture_slot": false,
+			"slot_textures": [],
 			"visible": true,
 			"internal": true,
 			"saved": false,
@@ -1528,7 +1815,7 @@
 			"name": "default",
 			"display_name": "Default",
 			"uuid": "ad1fed53-a903-35b4-856a-f72471c0240a",
-			"texture_map": {},
+			"slot_textures": {},
 			"excluded_nodes": [],
 			"is_default": true
 		},
@@ -1542,7 +1829,7 @@
 			"override": false,
 			"length": 3,
 			"snapping": 20,
-			"selected": true,
+			"selected": false,
 			"saved": true,
 			"path": "",
 			"scope": 0,
@@ -1560,8 +1847,15 @@
 					"icon": "account_tree",
 					"name": "victory_trophy",
 					"value": "d076741d-aede-4ec7-9d47-7071db38701d"
+				},
+				{
+					"icon": "account_tree",
+					"name": "snow_juggling",
+					"value": "79464bd3-a99d-4849-aa77-7c5d04025b38"
 				}
 			],
+			"preview_variants": [],
+			"preview_texture_slots": {},
 			"animators": {
 				"3fb67721-9eef-8ce2-b455-f3b58a77403e": {
 					"name": "waist",
@@ -1934,6 +2228,85 @@
 					"type": "animated_java:vanilla_block_display",
 					"rotation_global": false,
 					"quaternion_interpolation": false
+				},
+				"79464bd3-a99d-4849-aa77-7c5d04025b38": {
+					"name": "snow_juggling",
+					"type": "bone",
+					"rotation_global": false,
+					"quaternion_interpolation": false,
+					"keyframes": [
+						{
+							"channel": "scale",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "0"
+								}
+							],
+							"uuid": "3268cb16-83b9-4fc8-b775-e5a5b755b3d6",
+							"time": 0,
+							"color": -1,
+							"uniform": true,
+							"interpolation": "step",
+							"easing": "linear",
+							"easingArgs": []
+						}
+					]
+				},
+				"83d3625c-d4ab-451a-ab58-73fd85ab1a7e": {
+					"name": "snowball_1",
+					"type": "bone",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"cdf00552-e189-4e9b-851c-d028eb5163b2": {
+					"name": "snowball_2",
+					"type": "bone",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"bd9a702d-d49c-4444-ac7c-d44b9fe2d657": {
+					"name": "snowball_3",
+					"type": "bone",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"4bf8cd12-bf9b-4800-9d9a-2e1f1c16ab70": {
+					"name": "snowball_1_display",
+					"type": "animated_java:vanilla_item_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"7386b35f-1cb3-464c-8b14-b6ab117356ce": {
+					"name": "snowball_2_display",
+					"type": "animated_java:vanilla_item_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"9a6e1042-9013-45ff-a7d8-df7210ca4752": {
+					"name": "snowball_3_display",
+					"type": "animated_java:vanilla_item_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"6e4c3830-f0b8-4ce2-ba4d-aa242747beff": {
+					"name": "snowball_1_impact",
+					"type": "locator",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"761c80f2-aefa-4d0f-9541-cc0615eded0b": {
+					"name": "snowball_2_impact",
+					"type": "locator",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"bacba0f9-3d94-4aa5-81e7-f6e2eb08a5ca": {
+					"name": "snowball_3_impact",
+					"type": "locator",
+					"rotation_global": false,
+					"quaternion_interpolation": false
 				}
 			}
 		},
@@ -1962,8 +2335,15 @@
 					"icon": "account_tree",
 					"name": "victory_trophy",
 					"value": "d076741d-aede-4ec7-9d47-7071db38701d"
+				},
+				{
+					"icon": "account_tree",
+					"name": "snow_juggling",
+					"value": "79464bd3-a99d-4849-aa77-7c5d04025b38"
 				}
 			],
+			"preview_variants": [],
+			"preview_texture_slots": {},
 			"animators": {
 				"3fb67721-9eef-8ce2-b455-f3b58a77403e": {
 					"name": "waist",
@@ -3598,6 +3978,31 @@
 					"type": "animated_java:vanilla_block_display",
 					"rotation_global": false,
 					"quaternion_interpolation": false
+				},
+				"79464bd3-a99d-4849-aa77-7c5d04025b38": {
+					"name": "snow_juggling",
+					"type": "bone",
+					"rotation_global": false,
+					"quaternion_interpolation": false,
+					"keyframes": [
+						{
+							"channel": "scale",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "0"
+								}
+							],
+							"uuid": "2c9221f2-6f85-46f2-ab18-7e9a52887e18",
+							"time": 0,
+							"color": -1,
+							"uniform": true,
+							"interpolation": "step",
+							"easing": "linear",
+							"easingArgs": []
+						}
+					]
 				}
 			}
 		},
@@ -3626,8 +4031,15 @@
 					"icon": "deployed_code",
 					"name": "anvil_display",
 					"value": "42eeabad-b9fa-0dc5-bd3a-8d4a55bd769c"
+				},
+				{
+					"icon": "account_tree",
+					"name": "snow_juggling",
+					"value": "79464bd3-a99d-4849-aa77-7c5d04025b38"
 				}
 			],
+			"preview_variants": [],
+			"preview_texture_slots": {},
 			"animators": {
 				"d2a3967c-f93f-b33a-1dcf-f1c88815d458": {
 					"name": "right_arm",
@@ -5967,6 +6379,498 @@
 							"easingArgs": []
 						}
 					]
+				},
+				"79464bd3-a99d-4849-aa77-7c5d04025b38": {
+					"name": "snow_juggling",
+					"type": "bone",
+					"rotation_global": false,
+					"quaternion_interpolation": false,
+					"keyframes": [
+						{
+							"channel": "scale",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "0"
+								}
+							],
+							"uuid": "2cb9652e-0415-4dd4-81f2-2df20619ee01",
+							"time": 0,
+							"color": -1,
+							"uniform": true,
+							"interpolation": "step",
+							"easing": "linear",
+							"easingArgs": []
+						}
+					]
+				}
+			}
+		},
+		{
+			"uuid": "afb1e33f-93ad-465c-a96b-3c5f21178c36",
+			"name": "snowball_juggling",
+			"loop": "once",
+			"override": false,
+			"length": 9.7,
+			"snapping": 20,
+			"selected": true,
+			"saved": true,
+			"path": "",
+			"scope": 0,
+			"anim_time_update": "",
+			"blend_weight": "",
+			"start_delay": "",
+			"loop_delay": "0",
+			"excluded_nodes": [
+				{
+					"icon": "account_tree",
+					"name": "bat",
+					"value": "38249dba-0da9-4f02-99c6-cacd757718c8"
+				},
+				{
+					"icon": "account_tree",
+					"name": "victory_trophy",
+					"value": "d076741d-aede-4ec7-9d47-7071db38701d"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "anvil_display",
+					"value": "42eeabad-b9fa-0dc5-bd3a-8d4a55bd769c"
+				}
+			],
+			"preview_variants": [],
+			"preview_texture_slots": {},
+			"animators": {
+				"38249dba-0da9-4f02-99c6-cacd757718c8": {
+					"name": "bat",
+					"type": "bone",
+					"rotation_global": false,
+					"quaternion_interpolation": false,
+					"keyframes": [
+						{"channel":"scale","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"ae1a318a-8aa4-414f-94f9-80510449530c","time":0,"color":-1,"uniform":true,"interpolation":"step","easing":"linear","easingArgs":[]}
+					]
+				},
+				"d076741d-aede-4ec7-9d47-7071db38701d": {
+					"name": "victory_trophy",
+					"type": "bone",
+					"rotation_global": false,
+					"quaternion_interpolation": false,
+					"keyframes": [
+						{"channel":"scale","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"6d08d94d-2787-4800-a3b6-893020374341","time":0,"color":-1,"uniform":true,"interpolation":"step","easing":"linear","easingArgs":[]}
+					]
+				},
+				"42eeabad-b9fa-0dc5-bd3a-8d4a55bd769c": {
+					"name": "anvil_display",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false,
+					"keyframes": [
+						{"channel":"scale","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"f5bb4f5a-99d1-4e55-aada-a2b63d5eca15","time":0,"color":-1,"uniform":true,"interpolation":"step","easing":"linear","easingArgs":[]}
+					]
+				},
+				"79464bd3-a99d-4849-aa77-7c5d04025b38": {
+					"name": "snow_juggling",
+					"type": "bone",
+					"rotation_global": false,
+					"quaternion_interpolation": false,
+					"keyframes": [
+						{"channel":"scale","data_points":[{"x":"1","y":"1","z":"1"}],"uuid":"2b5a2a1b-92c0-496b-b863-2327b633ba5b","time":0,"color":-1,"uniform":true,"interpolation":"step","easing":"linear","easingArgs":[]}
+					]
+				},
+				"d2a3967c-f93f-b33a-1dcf-f1c88815d458": {
+					"name": "right_arm",
+					"type": "bone",
+					"rotation_global": false,
+					"quaternion_interpolation": false,
+					"keyframes": [
+						{"channel":"rotation","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"75140c7a-ab1b-4328-88f3-e1c5463108a7","time":0,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"-12","y":"0","z":"5"}],"uuid":"50053628-1a2c-4dcf-9a88-90f02bce5475","time":0.3,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"65","y":"0","z":"0"}],"uuid":"556d7b72-dff4-4d31-a08a-1ad95733b86f","time":0.8,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"85","y":"0","z":"0"}],"uuid":"bfcd6326-d136-43f9-bee8-2e5d7c33aa6b","time":1.2,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"65","y":"0","z":"0"}],"uuid":"96690cd4-7ebb-4080-b72c-de91b6e4cd6d","time":1.6,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"85","y":"0","z":"0"}],"uuid":"21b478a0-7043-4400-b785-d5a85dcad275","time":2,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"65","y":"0","z":"0"}],"uuid":"6dbf7afb-b6d9-42e6-9f13-5d831b8e2f1e","time":2.4,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"85","y":"0","z":"0"}],"uuid":"811fcd5c-cbb9-4905-a28a-6c19bf79ba47","time":2.8,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"65","y":"0","z":"0"}],"uuid":"be300d95-46d9-475f-b301-632506fc8b72","time":3.2,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"85","y":"0","z":"0"}],"uuid":"c195fa2a-f019-428f-bd46-301c6b79ec05","time":3.6,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"65","y":"0","z":"0"}],"uuid":"7d992f9e-9615-46e3-a220-0b482e66046e","time":4,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"85","y":"0","z":"0"}],"uuid":"59c2da46-c706-40ac-b698-26c7287eaf4c","time":4.4,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"65","y":"0","z":"0"}],"uuid":"f5d66ac5-1157-4231-b127-a736f6cfbf1e","time":4.8,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"85","y":"0","z":"0"}],"uuid":"41d1fa68-b616-4299-b4d9-ac5605c735e6","time":5.2,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"65","y":"0","z":"0"}],"uuid":"25f27bf0-2d2b-48e7-a639-023fee35b097","time":5.6,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"85","y":"0","z":"0"}],"uuid":"ac93d60a-fbff-44b6-8e0c-20530ced4bbd","time":6,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"65","y":"0","z":"0"}],"uuid":"b0ff0212-cb56-479b-9ae8-d057b3ab2a7a","time":6.4,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"75","y":"0","z":"0"}],"uuid":"808dde69-dd5a-4149-b75a-1e91eebf3905","time":6.6,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"83","y":"0","z":"0"}],"uuid":"96c131b1-e7a4-4d6d-826c-0e23d814f40f","time":6.8,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"77","y":"0","z":"0"}],"uuid":"efd38d05-fa84-4a0c-941c-650536b00e4c","time":7.05,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"68 + math.sin((q.anim_time - 7.9) * 300 + 90) * 0.45 * math.pow(math.sin(math.clamp((q.anim_time - 7.9) / 1.8, 0, 1) * 180), 2)","y":"-5","z":"4 + math.sin((q.anim_time - 7.9) * 300 + 0) * 0.65 * math.pow(math.sin(math.clamp((q.anim_time - 7.9) / 1.8, 0, 1) * 180), 2)"}],"uuid":"9acf08be-2a7d-4b51-921f-1fb201827e3d","time":7.25,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[0,0,0],"bezier_right_time":[0.11666666666666654,0.11666666666666654,0.11666666666666654],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"55 + math.sin((q.anim_time - 7.9) * 300 + 90) * 0.45 * math.pow(math.sin(math.clamp((q.anim_time - 7.9) / 1.8, 0, 1) * 180), 2)","y":"-4","z":"3 + math.sin((q.anim_time - 7.9) * 300 + 0) * 0.65 * math.pow(math.sin(math.clamp((q.anim_time - 7.9) / 1.8, 0, 1) * 180), 2)"}],"uuid":"dce1bb3a-7c6a-4c44-b605-5cda3f215871","time":7.6,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.11666666666666654,-0.11666666666666654,-0.11666666666666654],"bezier_right_time":[0.19999999999999987,0.19999999999999987,0.19999999999999987],"bezier_left_value":[4.58207452165156,-0.4666666666666665,0],"bezier_right_value":[-7.85498489425982,0.8,0]},
+						{"channel":"rotation","data_points":[{"x":"30 + math.sin((q.anim_time - 7.9) * 300 + 90) * 0.45 * math.pow(math.sin(math.clamp((q.anim_time - 7.9) / 1.8, 0, 1) * 180), 2)","y":"0","z":"3 + math.sin((q.anim_time - 7.9) * 300 + 0) * 0.65 * math.pow(math.sin(math.clamp((q.anim_time - 7.9) / 1.8, 0, 1) * 180), 2)"}],"uuid":"a23c1049-2d7e-4e43-8333-cec719fb151e","time":8.2,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.19999999999999987,-0.19999999999999987,-0.19999999999999987],"bezier_right_time":[0.16666666666666666,0.16666666666666666,0.16666666666666666],"bezier_left_value":[8.745247148288973,0,0],"bezier_right_value":[-7.287705956907481,0,0]},
+						{"channel":"position","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"e43c0152-293f-48d3-8d39-1bf318a95dde","time":0,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[0,0,0],"bezier_right_time":[2.6333333333333333,2.6333333333333333,2.6333333333333333],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"position","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"07630306-7e52-4f25-9c40-7ddd75aa4f73","time":7.9,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-2.6333333333333333,-2.6333333333333333,-2.6333333333333333],"bezier_right_time":[0.09999999999999964,0.09999999999999964,0.09999999999999964],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"position","data_points":[{"x":"0","y":"0.15","z":"0"}],"uuid":"450608a5-6167-4306-959c-7a73cd460794","time":8.2,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.09999999999999964,-0.09999999999999964,-0.09999999999999964],"bezier_right_time":[0.16666666666666666,0.16666666666666666,0.16666666666666666],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"position","data_points":[{"x":"0","y":"-0.3","z":"0"}],"uuid":"f582e4d9-0543-45dd-b342-5da31086e45d","time":8.7,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.16666666666666666,-0.16666666666666666,-0.16666666666666666],"bezier_right_time":[0.06666666666666703,0.06666666666666703,0.06666666666666703],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"position","data_points":[{"x":"0","y":"-0.28","z":"0"}],"uuid":"52670ef9-34a0-40cd-aa27-8f0947287115","time":8.9,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.06666666666666703,-0.06666666666666703,-0.06666666666666703],"bezier_right_time":[0.2333333333333331,0.2333333333333331,0.2333333333333331],"bezier_left_value":[0,-0.010666666666666665,0],"bezier_right_value":[0,0.03733333333333309,0]},
+						{"channel":"position","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"9aacd9bb-57e6-4766-95c3-eddb27e7b47e","time":9.6,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.2333333333333331,-0.2333333333333331,-0.2333333333333331],"bezier_right_time":[0,0,0],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"7 + math.sin((q.anim_time - 7.9) * 300 + 90) * 0.45 * math.pow(math.sin(math.clamp((q.anim_time - 7.9) / 1.8, 0, 1) * 180), 2)","y":"0","z":"0 + math.sin((q.anim_time - 7.9) * 300 + 0) * 0.65 * math.pow(math.sin(math.clamp((q.anim_time - 7.9) / 1.8, 0, 1) * 180), 2)"}],"uuid":"31c37c27-1482-4159-8870-6bf2c246ee66","time":8.7,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.16666666666666666,-0.16666666666666666,-0.16666666666666666],"bezier_right_time":[0.06666666666666703,0.06666666666666703,0.06666666666666703],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"6.416666666666667 + math.sin((q.anim_time - 7.9) * 300 + 90) * 0.45 * math.pow(math.sin(math.clamp((q.anim_time - 7.9) / 1.8, 0, 1) * 180), 2)","y":"0","z":"0 + math.sin((q.anim_time - 7.9) * 300 + 0) * 0.65 * math.pow(math.sin(math.clamp((q.anim_time - 7.9) / 1.8, 0, 1) * 180), 2)"}],"uuid":"4b1fa768-5e82-4636-b6a9-8eadd561c634","time":8.9,"color":-1,"interpolation":"linear","easing":"linear","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"0 + math.sin((q.anim_time - 7.9) * 300 + 90) * 0.45 * math.pow(math.sin(math.clamp((q.anim_time - 7.9) / 1.8, 0, 1) * 180), 2)","y":"0","z":"0 + math.sin((q.anim_time - 7.9) * 300 + 0) * 0.65 * math.pow(math.sin(math.clamp((q.anim_time - 7.9) / 1.8, 0, 1) * 180), 2)"}],"uuid":"4b09686c-6bc1-418e-af91-4c71e2702bbf","time":9.6,"color":-1,"interpolation":"linear","easing":"easeOutBack","easingArgs":[1.5]},
+						{"channel":"rotation","data_points":[{"x":"0 + math.sin((q.anim_time - 7.9) * 300 + 90) * 0.45 * math.pow(math.sin(math.clamp((q.anim_time - 7.9) / 1.8, 0, 1) * 180), 2)","y":"0","z":"0 + math.sin((q.anim_time - 7.9) * 300 + 0) * 0.65 * math.pow(math.sin(math.clamp((q.anim_time - 7.9) / 1.8, 0, 1) * 180), 2)"}],"uuid":"2f1bf449-f6c4-4478-beda-4b01527ae35d","time":9.7,"color":-1,"interpolation":"linear","easing":"linear","easingArgs":[]}
+					]
+				},
+				"969bcd71-7c25-781d-7073-e17294729eef": {
+					"name": "left_arm",
+					"type": "bone",
+					"rotation_global": false,
+					"quaternion_interpolation": false,
+					"keyframes": [
+						{"channel":"rotation","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"ad6350ab-7cd2-47f3-8351-c1c73187b76d","time":0,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"-12","y":"0","z":"-5"}],"uuid":"a32547a4-4384-481c-9fd7-d297f94f7eec","time":0.3,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"85","y":"0","z":"0"}],"uuid":"e438c6d2-d9a7-436f-81ed-8e57c1ae361a","time":0.8,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"65","y":"0","z":"0"}],"uuid":"abba68fc-791d-4dc4-a821-a4edbd543e86","time":1.2,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"85","y":"0","z":"0"}],"uuid":"da5b06a2-083a-4aa3-b78d-7f2e7692d766","time":1.6,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"65","y":"0","z":"0"}],"uuid":"b2590041-aabe-4afd-9b14-8e17fb7848d3","time":2,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"85","y":"0","z":"0"}],"uuid":"c68e8c39-a682-4605-92e4-ea92bc111813","time":2.4,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"65","y":"0","z":"0"}],"uuid":"d59432f4-bd2d-4cc0-908f-d7dcb7aa6ab6","time":2.8,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"85","y":"0","z":"0"}],"uuid":"947c5f9c-9abf-4ec5-a0a9-3a522342a67a","time":3.2,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"65","y":"0","z":"0"}],"uuid":"0830f40a-0028-4c51-9555-9cbe1820269d","time":3.6,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"85","y":"0","z":"0"}],"uuid":"0e0d26cf-e549-4445-a7d9-96ddc39b33f6","time":4,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"65","y":"0","z":"0"}],"uuid":"567476ca-7bb7-4d5a-92a8-beb6457b143c","time":4.4,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"85","y":"0","z":"0"}],"uuid":"eb8428a2-4277-48d9-a38f-f8de30717830","time":4.8,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"65","y":"0","z":"0"}],"uuid":"68c5328a-0089-4553-8d0f-2b0e617251dd","time":5.2,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"85","y":"0","z":"0"}],"uuid":"5c6ef91b-0e24-4c21-b025-60f4061a452d","time":5.6,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"65","y":"0","z":"0"}],"uuid":"1e8a6783-bb27-4e55-ab13-fff079f5f88b","time":6,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"85","y":"0","z":"0"}],"uuid":"86af125e-7ede-4daa-a180-214142a4dfac","time":6.4,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"75","y":"0","z":"0"}],"uuid":"d9226f78-198f-43ab-a8cd-7c470c17de01","time":6.6,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"65","y":"0","z":"0"}],"uuid":"58ff8ce3-910b-46b7-8ce6-92d255d5147c","time":6.8,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"70","y":"0","z":"-1"}],"uuid":"cf7cea66-88d2-42c6-bacf-64a772f62609","time":6.9,"color":-1,"interpolation":"linear","easing":"easeOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"63","y":"0","z":"-2"}],"uuid":"3818bf58-27e8-4303-9dd9-2d7e6d6b4dd7","time":7.1,"color":-1,"interpolation":"linear","easing":"easeInOutSine","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"60 + math.sin((q.anim_time - 7.9) * 300 + 145) * 0.45 * math.pow(math.sin(math.clamp((q.anim_time - 7.9) / 1.8, 0, 1) * 180), 2)","y":"0","z":"-2 + math.sin((q.anim_time - 7.9) * 300 + 55) * 0.65 * math.pow(math.sin(math.clamp((q.anim_time - 7.9) / 1.8, 0, 1) * 180), 2)"}],"uuid":"8d4392b0-cfa7-431e-9e19-91bce5563a2b","time":7.4,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[0,0,0],"bezier_right_time":[0.14999999999999977,0.14999999999999977,0.14999999999999977],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"48 + math.sin((q.anim_time - 7.9) * 300 + 145) * 0.45 * math.pow(math.sin(math.clamp((q.anim_time - 7.9) / 1.8, 0, 1) * 180), 2)","y":"0","z":"-2 + math.sin((q.anim_time - 7.9) * 300 + 55) * 0.65 * math.pow(math.sin(math.clamp((q.anim_time - 7.9) / 1.8, 0, 1) * 180), 2)"}],"uuid":"29f75a58-fc8e-430b-86bf-bed13a0932d8","time":7.85,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.14999999999999977,-0.14999999999999977,-0.14999999999999977],"bezier_right_time":[0.11666666666666654,0.11666666666666654,0.11666666666666654],"bezier_left_value":[5.2682926829268295,0,0],"bezier_right_value":[-4.097560975609758,0,0]},
+						{"channel":"rotation","data_points":[{"x":"30 + math.sin((q.anim_time - 7.9) * 300 + 145) * 0.45 * math.pow(math.sin(math.clamp((q.anim_time - 7.9) / 1.8, 0, 1) * 180), 2)","y":"0","z":"-3 + math.sin((q.anim_time - 7.9) * 300 + 55) * 0.65 * math.pow(math.sin(math.clamp((q.anim_time - 7.9) / 1.8, 0, 1) * 180), 2)"}],"uuid":"1cdfca37-2bce-4923-893d-cd5b1179cfc2","time":8.2,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.11666666666666654,-0.11666666666666654,-0.11666666666666654],"bezier_right_time":[0.16666666666666666,0.16666666666666666,0.16666666666666666],"bezier_left_value":[5.665689149560115,0,0],"bezier_right_value":[-8.093841642228744,0,0]},
+						{"channel":"position","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"8345124a-47b8-44ff-bab3-7a382368afd0","time":0,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[0,0,0],"bezier_right_time":[2.6333333333333333,2.6333333333333333,2.6333333333333333],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"position","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"e29ca9a5-8731-4413-9543-f332beadc3d4","time":7.9,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-2.6333333333333333,-2.6333333333333333,-2.6333333333333333],"bezier_right_time":[0.09999999999999964,0.09999999999999964,0.09999999999999964],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"position","data_points":[{"x":"0","y":"0.15","z":"0"}],"uuid":"e5c45110-cdc9-4d5b-ab2b-07d315e0e08c","time":8.2,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.09999999999999964,-0.09999999999999964,-0.09999999999999964],"bezier_right_time":[0.16666666666666666,0.16666666666666666,0.16666666666666666],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"position","data_points":[{"x":"0","y":"-0.3","z":"0"}],"uuid":"ba5649df-daa9-4519-b244-9827806ad1b1","time":8.7,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.16666666666666666,-0.16666666666666666,-0.16666666666666666],"bezier_right_time":[0.06666666666666703,0.06666666666666703,0.06666666666666703],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"position","data_points":[{"x":"0","y":"-0.28","z":"0"}],"uuid":"7e394c5d-ea7f-4bc1-8b0c-d70795fcd8a3","time":8.9,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.06666666666666703,-0.06666666666666703,-0.06666666666666703],"bezier_right_time":[0.2333333333333331,0.2333333333333331,0.2333333333333331],"bezier_left_value":[0,-0.010666666666666665,0],"bezier_right_value":[0,0.03733333333333309,0]},
+						{"channel":"position","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"53f42dba-fd12-4f2b-83c3-104fff7076f5","time":9.6,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.2333333333333331,-0.2333333333333331,-0.2333333333333331],"bezier_right_time":[0,0,0],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"7 + math.sin((q.anim_time - 7.9) * 300 + 145) * 0.45 * math.pow(math.sin(math.clamp((q.anim_time - 7.9) / 1.8, 0, 1) * 180), 2)","y":"0","z":"0 + math.sin((q.anim_time - 7.9) * 300 + 55) * 0.65 * math.pow(math.sin(math.clamp((q.anim_time - 7.9) / 1.8, 0, 1) * 180), 2)"}],"uuid":"06d9bea7-5ef7-4d00-b3ed-2a77b7d5f7a0","time":8.7,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.16666666666666666,-0.16666666666666666,-0.16666666666666666],"bezier_right_time":[0.06666666666666703,0.06666666666666703,0.06666666666666703],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"6.416666666666667 + math.sin((q.anim_time - 7.9) * 300 + 145) * 0.45 * math.pow(math.sin(math.clamp((q.anim_time - 7.9) / 1.8, 0, 1) * 180), 2)","y":"0","z":"0 + math.sin((q.anim_time - 7.9) * 300 + 55) * 0.65 * math.pow(math.sin(math.clamp((q.anim_time - 7.9) / 1.8, 0, 1) * 180), 2)"}],"uuid":"ba9d868e-402e-40fe-83ff-42899d9d0d58","time":8.9,"color":-1,"interpolation":"linear","easing":"linear","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"0 + math.sin((q.anim_time - 7.9) * 300 + 145) * 0.45 * math.pow(math.sin(math.clamp((q.anim_time - 7.9) / 1.8, 0, 1) * 180), 2)","y":"0","z":"0 + math.sin((q.anim_time - 7.9) * 300 + 55) * 0.65 * math.pow(math.sin(math.clamp((q.anim_time - 7.9) / 1.8, 0, 1) * 180), 2)"}],"uuid":"99acb355-505e-40fe-9050-748042804590","time":9.6,"color":-1,"interpolation":"linear","easing":"easeOutBack","easingArgs":[1.5]},
+						{"channel":"rotation","data_points":[{"x":"0 + math.sin((q.anim_time - 7.9) * 300 + 145) * 0.45 * math.pow(math.sin(math.clamp((q.anim_time - 7.9) / 1.8, 0, 1) * 180), 2)","y":"0","z":"0 + math.sin((q.anim_time - 7.9) * 300 + 55) * 0.65 * math.pow(math.sin(math.clamp((q.anim_time - 7.9) / 1.8, 0, 1) * 180), 2)"}],"uuid":"4eb23a6b-84a1-47fd-b6da-b33f92b1540b","time":9.7,"color":-1,"interpolation":"linear","easing":"linear","easingArgs":[]}
+					]
+				},
+				"b5872305-6f0c-f982-4544-ae9b1ba6254e": {
+					"name": "body",
+					"type": "bone",
+					"rotation_global": false,
+					"quaternion_interpolation": false,
+					"keyframes": [
+						{"channel":"rotation","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"e4b76ae3-aee7-43f0-8d6f-9342029edfc4","time":0,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[0,0,0],"bezier_right_time":[0.21666666666666667,0.21666666666666667,0.21666666666666667],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"0.75","y":"0","z":"0"}],"uuid":"b7a0b639-5f29-445e-9960-2f1603656b1c","time":0.65,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.21666666666666667,-0.21666666666666667,-0.21666666666666667],"bezier_right_time":[1.95,1.95,1.95],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"0.75","y":"0","z":"0"}],"uuid":"ef7a6384-e031-4693-86ca-33046e107ec4","time":6.5,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-1.95,-1.95,-1.95],"bezier_right_time":[0.13333333333333344,0.13333333333333344,0.13333333333333344],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"1","y":"1.5","z":"-1"}],"uuid":"6406cff1-7c45-456e-abb8-72d632db5c4e","time":6.9,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.13333333333333344,-0.13333333333333344,-0.13333333333333344],"bezier_right_time":[0.09999999999999994,0.09999999999999994,0.09999999999999994],"bezier_left_value":[-0.09523809523809529,-0.5714285714285716,0],"bezier_right_value":[0.07142857142857137,0.4285714285714281,0]},
+						{"channel":"rotation","data_points":[{"x":"1.25","y":"3","z":"-1"}],"uuid":"36c3916c-8cb7-4bab-afa2-2bfde984d2b5","time":7.2,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.09999999999999994,-0.09999999999999994,-0.09999999999999994],"bezier_right_time":[0.19999999999999987,0.19999999999999987,0.19999999999999987],"bezier_left_value":[-0.08333333333333331,0,0],"bezier_right_value":[0.16666666666666663,0,0]},
+						{"channel":"rotation","data_points":[{"x":"1.75","y":"2.5","z":"0"}],"uuid":"02cba9c5-5c73-495a-ab52-b1d73c603dde","time":7.8,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.19999999999999987,-0.19999999999999987,-0.19999999999999987],"bezier_right_time":[0.11666666666666685,0.11666666666666685,0.11666666666666685],"bezier_left_value":[0,0.2985074626865671,0],"bezier_right_value":[0,-0.1741293532338312,0]},
+						{"channel":"rotation","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"b214a4ef-3eb5-4c15-ba7e-7c90f73e00f4","time":8.15,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.11666666666666685,-0.11666666666666685,-0.11666666666666685],"bezier_right_time":[0.4166666666666667,0.4166666666666667,0.4166666666666667],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"30afe21c-77d3-4834-ba2b-24fbfcc8a481","time":9.4,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.4166666666666667,-0.4166666666666667,-0.4166666666666667],"bezier_right_time":[0,0,0],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]}
+					]
+				},
+				"d3a72666-0b6d-d7a0-6b45-8c7cc7e1b3bc": {
+					"name": "head",
+					"type": "bone",
+					"rotation_global": false,
+					"quaternion_interpolation": false,
+					"keyframes": [
+						{"channel":"rotation","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"4a2f2b16-c9c5-42a8-97b7-9e51d7107b12","time":0,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[0,0,0],"bezier_right_time":[0.2333333333333333,0.2333333333333333,0.2333333333333333],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"-8","y":"-20","z":"0"}],"uuid":"77232920-08aa-486f-b9dc-e1d3cfea918b","time":0.7,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.2333333333333333,-0.2333333333333333,-0.2333333333333333],"bezier_right_time":[0.10000000000000002,0.10000000000000002,0.10000000000000002],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"-8","y":"-20","z":"0"}],"uuid":"2a189957-f063-43a4-a422-7c6ed1a42cfb","time":1,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.10000000000000002,-0.10000000000000002,-0.10000000000000002],"bezier_right_time":[0.16666666666666666,0.16666666666666666,0.16666666666666666],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"23","y":"0","z":"0"}],"uuid":"8f918038-a311-4b37-a590-f2e4c26b21f6","time":1.5,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.16666666666666666,-0.16666666666666666,-0.16666666666666666],"bezier_right_time":[0.1333333333333333,0.1333333333333333,0.1333333333333333],"bezier_left_value":[0,-3.636363636363637,0],"bezier_right_value":[0,2.909090909090909,0]},
+						{"channel":"rotation","data_points":[{"x":"18","y":"6","z":"0"}],"uuid":"47528c9e-d374-457a-a1fa-c7102c83467c","time":1.9,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.1333333333333333,-0.1333333333333333,-0.1333333333333333],"bezier_right_time":[0.1333333333333333,0.1333333333333333,0.1333333333333333],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"23","y":"-6","z":"0"}],"uuid":"478ee0f2-fb40-4e17-bcf6-325a489087b1","time":2.3,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.1333333333333333,-0.1333333333333333,-0.1333333333333333],"bezier_right_time":[0.13333333333333344,0.13333333333333344,0.13333333333333344],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"18","y":"6","z":"0"}],"uuid":"e35c93c5-b369-41f6-8daf-3f47f1ef56be","time":2.7,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.13333333333333344,-0.13333333333333344,-0.13333333333333344],"bezier_right_time":[0.1333333333333333,0.1333333333333333,0.1333333333333333],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"23","y":"-6","z":"0"}],"uuid":"4276e65e-fbac-4443-b842-af4d2639404f","time":3.1,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.1333333333333333,-0.1333333333333333,-0.1333333333333333],"bezier_right_time":[0.1333333333333333,0.1333333333333333,0.1333333333333333],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"18","y":"6","z":"0"}],"uuid":"04c9e3e0-447e-4306-b23f-dceeeda1a134","time":3.5,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.1333333333333333,-0.1333333333333333,-0.1333333333333333],"bezier_right_time":[0.1333333333333333,0.1333333333333333,0.1333333333333333],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"23","y":"-6","z":"0"}],"uuid":"700ed1b3-a0b8-422e-98b2-07bc72192a60","time":3.9,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.1333333333333333,-0.1333333333333333,-0.1333333333333333],"bezier_right_time":[0.1333333333333333,0.1333333333333333,0.1333333333333333],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"18","y":"6","z":"0"}],"uuid":"7b729051-1872-4d04-b23c-2c8c16b29aec","time":4.3,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.1333333333333333,-0.1333333333333333,-0.1333333333333333],"bezier_right_time":[0.13333333333333344,0.13333333333333344,0.13333333333333344],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"23","y":"-6","z":"0"}],"uuid":"c0450155-a230-42e1-896b-eb08380f5b7b","time":4.7,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.13333333333333344,-0.13333333333333344,-0.13333333333333344],"bezier_right_time":[0.13333333333333316,0.13333333333333316,0.13333333333333316],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"18","y":"6","z":"0"}],"uuid":"3f8fada0-2bce-4213-b165-882045af6d54","time":5.1,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.13333333333333316,-0.13333333333333316,-0.13333333333333316],"bezier_right_time":[0.13333333333333344,0.13333333333333344,0.13333333333333344],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"23","y":"-6","z":"0"}],"uuid":"553d0206-715b-428c-a8d0-0eeedc4a5cbb","time":5.5,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.13333333333333344,-0.13333333333333344,-0.13333333333333344],"bezier_right_time":[0.13333333333333344,0.13333333333333344,0.13333333333333344],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"18","y":"6","z":"0"}],"uuid":"2fad5e95-75d3-4141-a2d5-3b8381c88c21","time":5.9,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.13333333333333344,-0.13333333333333344,-0.13333333333333344],"bezier_right_time":[0.13333333333333316,0.13333333333333316,0.13333333333333316],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"23","y":"-6","z":"0"}],"uuid":"dcf0ce03-bbaf-4820-bfae-de37a9d713d3","time":6.3,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.13333333333333316,-0.13333333333333316,-0.13333333333333316],"bezier_right_time":[0.11666666666666685,0.11666666666666685,0.11666666666666685],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"-10","y":"8","z":"0"}],"uuid":"17f42003-b098-415d-89b3-f41904934778","time":6.65,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.11666666666666685,-0.11666666666666685,-0.11666666666666685],"bezier_right_time":[0.06666666666666643,0.06666666666666643,0.06666666666666643],"bezier_left_value":[0,-6.222222222222232,0],"bezier_right_value":[0,3.555555555555543,0]},
+						{"channel":"rotation","data_points":[{"x":"15","y":"24","z":"-3"}],"uuid":"a48d694a-e47b-43f9-b8dc-851df4d20ff8","time":6.85,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.06666666666666643,-0.06666666666666643,-0.06666666666666643],"bezier_right_time":[0.06666666666666672,0.06666666666666672,0.06666666666666672],"bezier_left_value":[0,-1.6842105263157834,0],"bezier_right_value":[0,1.6842105263157907,0]},
+						{"channel":"rotation","data_points":[{"x":"2","y":"27","z":"-3"}],"uuid":"81b1ef09-0753-49e2-abc7-2a51b7f0bc87","time":7.05,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.06666666666666672,-0.06666666666666672,-0.06666666666666672],"bezier_right_time":[0.08333333333333333,0.08333333333333333,0.08333333333333333],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"18","y":"27","z":"-2"}],"uuid":"e2cf074f-e3a8-4cd0-b8d2-71d293f83025","time":7.3,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.08333333333333333,-0.08333333333333333,-0.08333333333333333],"bezier_right_time":[0.11666666666666685,0.11666666666666685,0.11666666666666685],"bezier_left_value":[-4.278074866310156,0,-0.3921568627450978],"bezier_right_value":[5.989304812834228,0,0.5490196078431379]},
+						{"channel":"rotation","data_points":[{"x":"33","y":"13","z":"0"}],"uuid":"f8ba7004-0cdf-4c2c-bb03-76c70a5ffeff","time":7.65,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.11666666666666685,-0.11666666666666685,-0.11666666666666685],"bezier_right_time":[0.183333333333333,0.183333333333333,0.183333333333333],"bezier_left_value":[0,3.4666666666666743,0],"bezier_right_value":[0,-5.447619047619041,0]},
+						{"channel":"rotation","data_points":[{"x":"12","y":"0","z":"0"}],"uuid":"f11f3424-9154-41d3-84e1-3fa0cf3220ee","time":8.2,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.183333333333333,-0.183333333333333,-0.183333333333333],"bezier_right_time":[0.16666666666666666,0.16666666666666666,0.16666666666666666],"bezier_left_value":[6.794117647058816,0,0],"bezier_right_value":[-6.176470588235299,0,0]},
+						{"channel":"rotation","data_points":[{"x":"-6","y":"0","z":"0"}],"uuid":"15912980-bcac-4b41-8d34-25e69658ad1e","time":8.7,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.16666666666666666,-0.16666666666666666,-0.16666666666666666],"bezier_right_time":[0.06666666666666703,0.06666666666666703,0.06666666666666703],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"-5.5","y":"0","z":"0"}],"uuid":"0316824b-193c-4fa8-829b-b156a4dad98e","time":8.9,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.06666666666666703,-0.06666666666666703,-0.06666666666666703],"bezier_right_time":[0.26666666666666633,0.26666666666666633,0.26666666666666633],"bezier_left_value":[-0.24444444444444483,0,0],"bezier_right_value":[0.9777777777777729,0,0]},
+						{"channel":"rotation","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"85806a4f-3ff4-4471-81d0-a46bed544d0b","time":9.7,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.26666666666666633,-0.26666666666666633,-0.26666666666666633],"bezier_right_time":[0,0,0],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]}
+					]
+				},
+				"13e4d41d-4bcb-1637-bc48-7350d947f2bc": {
+					"name": "right_leg",
+					"type": "bone",
+					"rotation_global": false,
+					"quaternion_interpolation": false,
+					"keyframes": [
+						{"channel":"rotation","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"c31604d6-e3b4-4f77-94ed-c7988a0cb316","time":0,"color":-1,"interpolation":"step","easing":"linear","easingArgs":[]}
+					]
+				},
+				"6c200e51-0cff-ac81-ebe8-3d9f59146ab5": {
+					"name": "left_leg",
+					"type": "bone",
+					"rotation_global": false,
+					"quaternion_interpolation": false,
+					"keyframes": [
+						{"channel":"rotation","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"e5237791-6473-4bcf-8538-7eb237a30167","time":0,"color":-1,"interpolation":"step","easing":"linear","easingArgs":[]}
+					]
+				},
+				"83d3625c-d4ab-451a-ab58-73fd85ab1a7e": {
+					"name": "snowball_1",
+					"type": "bone",
+					"rotation_global": false,
+					"quaternion_interpolation": false,
+					"keyframes": [
+						{"channel":"position","data_points":[{"x":"6","y":"21.509051","z":"-9.002007"}],"uuid":"0f88214f-b860-4c59-b089-219045d63b19","time":0,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[0,0,0],"bezier_left_value":[0,0,0],"bezier_right_time":[0.266667,0.266667,0.266667],"bezier_right_value":[0,0,0]},
+						{"channel":"position","data_points":[{"x":"6","y":"21.509051","z":"-9.002007"}],"uuid":"d4de3390-e499-410b-bada-a3a21f485177","time":0.8,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.266667,-0.266667,-0.266667],"bezier_left_value":[0,0,0],"bezier_right_time":[0.066667,0.066667,0.066667],"bezier_right_value":[0,0,0]},
+						{"channel":"position","data_points":[{"x":"6","y":"23.10248","z":"-9.210971"}],"uuid":"11b2725f-12f5-4c4d-a1b8-0d70189b9639","time":1,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.066667,-0.066667,-0.066667],"bezier_left_value":[0,-0.841747,0.036327],"bezier_right_time":[0.333333,0.333333,0.333333],"bezier_right_value":[-4,20.80219,0.069655]},
+						{"channel":"position","data_points":[{"x":"-6","y":"21.509051","z":"-9.002007"}],"uuid":"0a728927-89b5-4571-af5c-fbba3abda102","time":2,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.333333,-0.333333,-0.333333],"bezier_left_value":[4,21.864476,-0.069655],"bezier_right_time":[0.066667,0.066667,0.066667],"bezier_right_value":[0,0,0]},
+						{"channel":"position","data_points":[{"x":"-6","y":"23.10248","z":"-9.210971"}],"uuid":"e200e814-bf4b-477e-bf91-859ea32e8aa4","time":2.2,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.066667,-0.066667,-0.066667],"bezier_left_value":[0,-0.841747,0.036327],"bezier_right_time":[0.333333,0.333333,0.333333],"bezier_right_value":[4,20.80219,0.069655]},
+						{"channel":"position","data_points":[{"x":"6","y":"21.509051","z":"-9.002007"}],"uuid":"ce3101dc-67da-4bd1-bdc0-94e48c87385d","time":3.2,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.333333,-0.333333,-0.333333],"bezier_left_value":[-4,21.864476,-0.069655],"bezier_right_time":[0.066667,0.066667,0.066667],"bezier_right_value":[0,0,0]},
+						{"channel":"position","data_points":[{"x":"6","y":"23.10248","z":"-9.210971"}],"uuid":"f5f35198-b291-4408-b603-0fd46d9fcf33","time":3.4,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.066667,-0.066667,-0.066667],"bezier_left_value":[0,-0.841747,0.036327],"bezier_right_time":[0.333333,0.333333,0.333333],"bezier_right_value":[-4,20.80219,0.069655]},
+						{"channel":"position","data_points":[{"x":"-6","y":"21.509051","z":"-9.002007"}],"uuid":"5df2f84c-a90a-462e-8a6b-99fb59c3969a","time":4.4,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.333333,-0.333333,-0.333333],"bezier_left_value":[4,21.864476,-0.069655],"bezier_right_time":[0.066667,0.066667,0.066667],"bezier_right_value":[0,0,0]},
+						{"channel":"position","data_points":[{"x":"-6","y":"23.10248","z":"-9.210971"}],"uuid":"05c4ed3f-dc72-404c-928f-94c78447585e","time":4.6,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.066667,-0.066667,-0.066667],"bezier_left_value":[0,-0.841747,0.036327],"bezier_right_time":[0.333333,0.333333,0.333333],"bezier_right_value":[4,20.80219,0.069655]},
+						{"channel":"position","data_points":[{"x":"6","y":"21.509051","z":"-9.002007"}],"uuid":"83af88f0-c7aa-402c-9b44-914ba00aa0b3","time":5.6,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.333333,-0.333333,-0.333333],"bezier_left_value":[-4,21.864476,-0.069655],"bezier_right_time":[0.066667,0.066667,0.066667],"bezier_right_value":[0,0,0]},
+						{"channel":"position","data_points":[{"x":"6","y":"23.10248","z":"-9.210971"}],"uuid":"4347a787-d40a-4cd7-bd47-397f46edde50","time":5.8,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.066667,-0.066667,-0.066667],"bezier_left_value":[0,-0.841747,0.036327],"bezier_right_time":[0.333333,0.333333,0.333333],"bezier_right_value":[-4,20.80219,0.069655]},
+						{"channel":"position","data_points":[{"x":"-6","y":"21.509051","z":"-9.002007"}],"uuid":"4b3cba99-3493-43ec-8fe7-5460e7c002ab","time":6.8,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.333333,-0.333333,-0.333333],"bezier_left_value":[4,21.864476,-0.069655],"bezier_right_time":[0.083333,0.083333,0.083333],"bezier_right_value":[-0.4,2.333333,-0.1]},
+						{"channel":"position","data_points":[{"x":"-7.2","y":"25.009051","z":"-9.302007"}],"uuid":"cd68f74d-bc08-481b-b42d-cc050e7e1289","time":7.05,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.083333,-0.083333,-0.083333],"bezier_left_value":[0.4,0,0.1],"bezier_right_time":[0.2,0.2,0.2],"bezier_right_value":[-0.96,0,-0.24]},
+						{"channel":"position","data_points":[{"x":"-10.08","y":"1.5","z":"-10.022007"}],"uuid":"a682465c-7377-4028-bbb0-015978175535","time":7.65,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.2,-0.2,-0.2],"bezier_left_value":[0.96,15.672701,0.24],"bezier_right_time":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"d5fe533c-d103-420d-9592-53c88cba3289","time":0,"color":-1,"interpolation":"linear","easing":"linear","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"a07ca253-fa58-4691-b506-201287547323","time":1,"color":-1,"interpolation":"linear","easing":"linear","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"0","y":"0","z":"270"}],"uuid":"45a6bc87-2fc2-4d3f-b1fe-d9fd6264fb7d","time":7.65,"color":-1,"interpolation":"linear","easing":"linear","easingArgs":[]}
+					]
+				},
+				"cdf00552-e189-4e9b-851c-d028eb5163b2": {
+					"name": "snowball_2",
+					"type": "bone",
+					"rotation_global": false,
+					"quaternion_interpolation": false,
+					"keyframes": [
+						{"channel":"position","data_points":[{"x":"-6","y":"24.707988","z":"-9.140064"}],"uuid":"b0aa0359-b46f-402a-b674-2d068af281ca","time":0,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[0,0,0],"bezier_left_value":[0,0,0],"bezier_right_time":[0.266667,0.266667,0.266667],"bezier_right_value":[0,0,0]},
+						{"channel":"position","data_points":[{"x":"-6","y":"24.707988","z":"-9.140064"}],"uuid":"40a31056-cc72-42c6-b876-60e49b5bd185","time":0.8,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.266667,-0.266667,-0.266667],"bezier_left_value":[0,0,0],"bezier_right_time":[0.2,0.2,0.2],"bezier_right_value":[0,0,0]},
+						{"channel":"position","data_points":[{"x":"-6","y":"23.10248","z":"-9.210971"}],"uuid":"764136bd-1674-4377-b1d9-da0ed247b3cc","time":1.4,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.2,-0.2,-0.2],"bezier_left_value":[0,-2.52524,0.108982],"bezier_right_time":[0.333333,0.333333,0.333333],"bezier_right_value":[4,20.80219,0.069655]},
+						{"channel":"position","data_points":[{"x":"6","y":"21.509051","z":"-9.002007"}],"uuid":"714a561e-7ce1-4a4b-8cf2-da218d7d379b","time":2.4,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.333333,-0.333333,-0.333333],"bezier_left_value":[-4,21.864476,-0.069655],"bezier_right_time":[0.066667,0.066667,0.066667],"bezier_right_value":[0,0,0]},
+						{"channel":"position","data_points":[{"x":"6","y":"23.10248","z":"-9.210971"}],"uuid":"dce60dc9-a379-49d9-b3f3-f35610b5e6ff","time":2.6,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.066667,-0.066667,-0.066667],"bezier_left_value":[0,-0.841747,0.036327],"bezier_right_time":[0.333333,0.333333,0.333333],"bezier_right_value":[-4,20.80219,0.069655]},
+						{"channel":"position","data_points":[{"x":"-6","y":"21.509051","z":"-9.002007"}],"uuid":"10527563-f8a8-429d-b4ad-d348a1426629","time":3.6,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.333333,-0.333333,-0.333333],"bezier_left_value":[4,21.864476,-0.069655],"bezier_right_time":[0.066667,0.066667,0.066667],"bezier_right_value":[0,0,0]},
+						{"channel":"position","data_points":[{"x":"-6","y":"23.10248","z":"-9.210971"}],"uuid":"b54855f4-0985-4db9-acd0-e04af8b75882","time":3.8,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.066667,-0.066667,-0.066667],"bezier_left_value":[0,-0.841747,0.036327],"bezier_right_time":[0.333333,0.333333,0.333333],"bezier_right_value":[4,20.80219,0.069655]},
+						{"channel":"position","data_points":[{"x":"6","y":"21.509051","z":"-9.002007"}],"uuid":"88208173-2406-40fb-9010-bcbed60ccc94","time":4.8,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.333333,-0.333333,-0.333333],"bezier_left_value":[-4,21.864476,-0.069655],"bezier_right_time":[0.066667,0.066667,0.066667],"bezier_right_value":[0,0,0]},
+						{"channel":"position","data_points":[{"x":"6","y":"23.10248","z":"-9.210971"}],"uuid":"ae26574b-2172-468c-b9d3-8f8ce6099e7a","time":5,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.066667,-0.066667,-0.066667],"bezier_left_value":[0,-0.841747,0.036327],"bezier_right_time":[0.333333,0.333333,0.333333],"bezier_right_value":[-4,20.80219,0.069655]},
+						{"channel":"position","data_points":[{"x":"-6","y":"21.509051","z":"-9.002007"}],"uuid":"4c35af85-ab78-42da-a77d-0b3d7e24510d","time":6,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.333333,-0.333333,-0.333333],"bezier_left_value":[4,21.864476,-0.069655],"bezier_right_time":[0.066667,0.066667,0.066667],"bezier_right_value":[0,0,0]},
+						{"channel":"position","data_points":[{"x":"-6","y":"23.10248","z":"-9.210971"}],"uuid":"5bff9740-62b2-4dad-91a9-98ece6134701","time":6.2,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.066667,-0.066667,-0.066667],"bezier_left_value":[0,-0.841747,0.036327],"bezier_right_time":[0.416667,0.416667,0.416667],"bezier_right_value":[5,26.002738,0.087068]},
+						{"channel":"position","data_points":[{"x":"9","y":"1.5","z":"-8.949766"}],"uuid":"248962f2-2ab8-4ca5-a73c-f476b971b1f6","time":7.45,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.416667,-0.416667,-0.416667],"bezier_left_value":[-5,40.404391,-0.087068],"bezier_right_time":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"e10f8018-d8f1-464a-9377-7b5fb2a006bd","time":0,"color":-1,"interpolation":"linear","easing":"linear","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"eecfc7a0-61a7-435c-b516-f7e133ba3f25","time":1.4,"color":-1,"interpolation":"linear","easing":"linear","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"0","y":"0","z":"-270"}],"uuid":"2ba6c46e-0156-4744-bde5-8dbf41ea2628","time":7.45,"color":-1,"interpolation":"linear","easing":"linear","easingArgs":[]}
+					]
+				},
+				"bd9a702d-d49c-4444-ac7c-d44b9fe2d657": {
+					"name": "snowball_3",
+					"type": "bone",
+					"rotation_global": false,
+					"quaternion_interpolation": false,
+					"keyframes": [
+						{"channel":"position","data_points":[{"x":"8.5","y":"21.509051","z":"-9.002007"}],"uuid":"fb11941f-d643-4f17-a6fe-8dab9906799c","time":0,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[0,0,0],"bezier_left_value":[0,0,0],"bezier_right_time":[0.266667,0.266667,0.266667],"bezier_right_value":[0,0,0]},
+						{"channel":"position","data_points":[{"x":"8.5","y":"21.509051","z":"-9.002007"}],"uuid":"6c7d55e7-6520-4d26-a909-34c90546f3fb","time":0.8,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.266667,-0.266667,-0.266667],"bezier_left_value":[0,0,0],"bezier_right_time":[0.333333,0.333333,0.333333],"bezier_right_value":[0,0,0]},
+						{"channel":"position","data_points":[{"x":"6","y":"23.10248","z":"-9.210971"}],"uuid":"23956694-f771-4977-925e-1a2b343dc080","time":1.8,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.333333,-0.333333,-0.333333],"bezier_left_value":[0,-4.208733,0.181637],"bezier_right_time":[0.333333,0.333333,0.333333],"bezier_right_value":[-4,20.80219,0.069655]},
+						{"channel":"position","data_points":[{"x":"-6","y":"21.509051","z":"-9.002007"}],"uuid":"57acfcbb-21f1-4ee9-b00a-277ca3678695","time":2.8,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.333333,-0.333333,-0.333333],"bezier_left_value":[4,21.864476,-0.069655],"bezier_right_time":[0.066667,0.066667,0.066667],"bezier_right_value":[0,0,0]},
+						{"channel":"position","data_points":[{"x":"-6","y":"23.10248","z":"-9.210971"}],"uuid":"4658e57d-8e64-4b3a-8525-35fcea5277a4","time":3,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.066667,-0.066667,-0.066667],"bezier_left_value":[0,-0.841747,0.036327],"bezier_right_time":[0.333333,0.333333,0.333333],"bezier_right_value":[4,20.80219,0.069655]},
+						{"channel":"position","data_points":[{"x":"6","y":"21.509051","z":"-9.002007"}],"uuid":"06f3b41b-3722-4d9e-8342-cbe6948417d9","time":4,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.333333,-0.333333,-0.333333],"bezier_left_value":[-4,21.864476,-0.069655],"bezier_right_time":[0.066667,0.066667,0.066667],"bezier_right_value":[0,0,0]},
+						{"channel":"position","data_points":[{"x":"6","y":"23.10248","z":"-9.210971"}],"uuid":"2e8ad9ff-66ad-4388-aef1-b43b01ed383b","time":4.2,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.066667,-0.066667,-0.066667],"bezier_left_value":[0,-0.841747,0.036327],"bezier_right_time":[0.333333,0.333333,0.333333],"bezier_right_value":[-4,20.80219,0.069655]},
+						{"channel":"position","data_points":[{"x":"-6","y":"21.509051","z":"-9.002007"}],"uuid":"dcc7f80e-9b72-4747-92b8-ae9349694b1c","time":5.2,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.333333,-0.333333,-0.333333],"bezier_left_value":[4,21.864476,-0.069655],"bezier_right_time":[0.066667,0.066667,0.066667],"bezier_right_value":[0,0,0]},
+						{"channel":"position","data_points":[{"x":"-6","y":"23.10248","z":"-9.210971"}],"uuid":"1e14a63f-e064-4463-b62a-cbe085b2e006","time":5.4,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.066667,-0.066667,-0.066667],"bezier_left_value":[0,-0.841747,0.036327],"bezier_right_time":[0.333333,0.333333,0.333333],"bezier_right_value":[4,20.80219,0.069655]},
+						{"channel":"position","data_points":[{"x":"6","y":"21.509051","z":"-9.002007"}],"uuid":"8e399c6d-57e5-447e-a5fc-e726f91611c2","time":6.4,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.333333,-0.333333,-0.333333],"bezier_left_value":[-4,21.864476,-0.069655],"bezier_right_time":[0.066667,0.066667,0.066667],"bezier_right_value":[0,0,0]},
+						{"channel":"position","data_points":[{"x":"6","y":"23.10248","z":"-9.210971"}],"uuid":"e3ee23ba-9387-460d-ac95-3d268da35339","time":6.6,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.066667,-0.066667,-0.066667],"bezier_left_value":[0,-0.841747,0.036327],"bezier_right_time":[0.416667,0.416667,0.416667],"bezier_right_value":[-5,26.002738,0.087068]},
+						{"channel":"position","data_points":[{"x":"-9","y":"1.5","z":"-8.949766"}],"uuid":"f1bcb9a2-4c13-40ac-863b-109a7aeb5209","time":7.85,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.416667,-0.416667,-0.416667],"bezier_left_value":[5,40.404391,-0.087068],"bezier_right_time":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"f883b714-8363-4ae6-86b4-829d22288ca3","time":0,"color":-1,"interpolation":"linear","easing":"linear","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"54cb6443-16ad-43f5-9ac6-6d776215a359","time":1.8,"color":-1,"interpolation":"linear","easing":"linear","easingArgs":[]},
+						{"channel":"rotation","data_points":[{"x":"0","y":"0","z":"270"}],"uuid":"b8a33a30-12bd-492c-9704-c529c0659780","time":7.85,"color":-1,"interpolation":"linear","easing":"linear","easingArgs":[]}
+					]
+				},
+				"6e4c3830-f0b8-4ce2-ba4d-aa242747beff": {
+					"name": "snowball_1_impact",
+					"type": "locator",
+					"rotation_global": false,
+					"quaternion_interpolation": false,
+					"keyframes": [
+						{"channel":"function","data_points":[{"x":"0","y":"0","z":"0","function":"particle minecraft:item{item:\"minecraft:snowball\"} ~ ~ ~ 0.07 0.05 0.07 0.12 12 normal","execute_condition":"","repeat":false,"repeat_frequency":1}],"uuid":"4bbdc1e6-a15c-4e4d-b83a-c8afdf3a06f0","time":7.65,"color":-1,"interpolation":"step","easing":"linear","easingArgs":[]}
+					]
+				},
+				"761c80f2-aefa-4d0f-9541-cc0615eded0b": {
+					"name": "snowball_2_impact",
+					"type": "locator",
+					"rotation_global": false,
+					"quaternion_interpolation": false,
+					"keyframes": [
+						{"channel":"function","data_points":[{"x":"0","y":"0","z":"0","function":"particle minecraft:item{item:\"minecraft:snowball\"} ~ ~ ~ 0.07 0.05 0.07 0.12 12 normal","execute_condition":"","repeat":false,"repeat_frequency":1}],"uuid":"7110b296-9d79-4573-ac40-8eb65f7a7a80","time":7.45,"color":-1,"interpolation":"step","easing":"linear","easingArgs":[]}
+					]
+				},
+				"bacba0f9-3d94-4aa5-81e7-f6e2eb08a5ca": {
+					"name": "snowball_3_impact",
+					"type": "locator",
+					"rotation_global": false,
+					"quaternion_interpolation": false,
+					"keyframes": [
+						{"channel":"function","data_points":[{"x":"0","y":"0","z":"0","function":"particle minecraft:item{item:\"minecraft:snowball\"} ~ ~ ~ 0.07 0.05 0.07 0.12 12 normal","execute_condition":"","repeat":false,"repeat_frequency":1}],"uuid":"99512e23-f9ad-4260-b50c-6db39defa98f","time":7.85,"color":-1,"interpolation":"step","easing":"linear","easingArgs":[]}
+					]
+				},
+				"4bf8cd12-bf9b-4800-9d9a-2e1f1c16ab70": {
+					"name": "snowball_1_display",
+					"type": "animated_java:vanilla_item_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false,
+					"keyframes": [
+						{"channel":"scale","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"562facac-92b6-4dd8-a642-317974ef9fad","time":0,"color":-1,"uniform":true,"interpolation":"step","easing":"linear","easingArgs":[]},
+						{"channel":"scale","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"36a01ed4-5317-4d73-9b7b-296be31f46e5","time":0.55,"color":-1,"uniform":true,"interpolation":"linear","easing":"linear","easingArgs":[]},
+						{"channel":"scale","data_points":[{"x":"0.375","y":"0.375","z":"0.375"}],"uuid":"8a322eac-a428-4053-b5f6-c0a45fae35d3","time":0.7,"color":-1,"uniform":true,"interpolation":"step","easing":"linear","easingArgs":[]},
+						{"channel":"scale","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"4e6a8192-0aae-4b61-889e-6db9285da8a9","time":7.65,"color":-1,"uniform":true,"interpolation":"step","easing":"linear","easingArgs":[]}
+					]
+				},
+				"7386b35f-1cb3-464c-8b14-b6ab117356ce": {
+					"name": "snowball_2_display",
+					"type": "animated_java:vanilla_item_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false,
+					"keyframes": [
+						{"channel":"scale","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"568100e6-62f6-4b8d-bcf7-2cfc64c8a85e","time":0,"color":-1,"uniform":true,"interpolation":"step","easing":"linear","easingArgs":[]},
+						{"channel":"scale","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"5d59617b-3e76-4b68-ac92-3fe54020924e","time":0.65,"color":-1,"uniform":true,"interpolation":"linear","easing":"linear","easingArgs":[]},
+						{"channel":"scale","data_points":[{"x":"0.375","y":"0.375","z":"0.375"}],"uuid":"f114f692-8959-4a04-be7d-1619d808d9af","time":0.8,"color":-1,"uniform":true,"interpolation":"step","easing":"linear","easingArgs":[]},
+						{"channel":"scale","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"38b90f5b-b1d4-44d2-acaf-9548707da24c","time":7.45,"color":-1,"uniform":true,"interpolation":"step","easing":"linear","easingArgs":[]}
+					]
+				},
+				"9a6e1042-9013-45ff-a7d8-df7210ca4752": {
+					"name": "snowball_3_display",
+					"type": "animated_java:vanilla_item_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false,
+					"keyframes": [
+						{"channel":"scale","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"7e768a89-0633-4e25-91e5-709e4299f99b","time":0,"color":-1,"uniform":true,"interpolation":"step","easing":"linear","easingArgs":[]},
+						{"channel":"scale","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"8a454e8b-fe34-4104-9915-2e4cbea67f9d","time":0.75,"color":-1,"uniform":true,"interpolation":"linear","easing":"linear","easingArgs":[]},
+						{"channel":"scale","data_points":[{"x":"0.375","y":"0.375","z":"0.375"}],"uuid":"29ba9f3b-9888-4f59-9819-467a1516a20c","time":0.9,"color":-1,"uniform":true,"interpolation":"step","easing":"linear","easingArgs":[]},
+						{"channel":"scale","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"63a64a21-a91f-4798-aa89-2206dbb69903","time":7.85,"color":-1,"uniform":true,"interpolation":"step","easing":"linear","easingArgs":[]}
+					]
+				},
+				"3fb67721-9eef-8ce2-b455-f3b58a77403e": {
+					"name": "waist",
+					"type": "bone",
+					"rotation_global": false,
+					"quaternion_interpolation": false,
+					"keyframes": [
+						{"channel":"rotation","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"7fa76591-b498-417b-bd61-eebb2cd955b3","time":0,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[0,0,0],"bezier_right_time":[2.6333333333333333,2.6333333333333333,2.6333333333333333],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"1def617c-5e1d-4a19-a504-a7de880e812f","time":7.9,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-2.6333333333333333,-2.6333333333333333,-2.6333333333333333],"bezier_right_time":[0.09999999999999964,0.09999999999999964,0.09999999999999964],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"1.2","y":"0","z":"0"}],"uuid":"5d5e6a2d-b7d1-429e-be61-d8fad0a8cc5e","time":8.2,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.09999999999999964,-0.09999999999999964,-0.09999999999999964],"bezier_right_time":[0.16666666666666666,0.16666666666666666,0.16666666666666666],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"-7","y":"0","z":"0"}],"uuid":"2867502a-f6e2-4fa8-bdad-02d765579c9d","time":8.7,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.16666666666666666,-0.16666666666666666,-0.16666666666666666],"bezier_right_time":[0.06666666666666703,0.06666666666666703,0.06666666666666703],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]},
+						{"channel":"rotation","data_points":[{"x":"-6.416666666666667","y":"0","z":"0"}],"uuid":"2ce7225e-c827-41d3-8fbe-d1364957838a","time":8.9,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.06666666666666703,-0.06666666666666703,-0.06666666666666703],"bezier_right_time":[0.2333333333333331,0.2333333333333331,0.2333333333333331],"bezier_left_value":[-0.29501915708812293,0,0],"bezier_right_value":[1.0325670498084236,0,0]},
+						{"channel":"rotation","data_points":[{"x":"0","y":"0","z":"0"}],"uuid":"d512ab28-eb2e-4943-93bb-e07e08671775","time":9.6,"color":-1,"interpolation":"bezier","easing":"linear","easingArgs":[],"bezier_linked":false,"bezier_left_time":[-0.2333333333333331,-0.2333333333333331,-0.2333333333333331],"bezier_right_time":[0,0,0],"bezier_left_value":[0,0,0],"bezier_right_value":[0,0,0]}
+					]
+				},
+				"27735ace-8fd4-80f2-ce41-30ea848a4359": {
+					"name": "player",
+					"type": "bone",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"cd7dc2a5-3a71-4f11-b72c-1efa6ed0af52": {
+					"name": "trophy_plinth",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"97a2dbdf-34d2-476c-b3d2-1669f35c072f": {
+					"name": "trophy_base",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b8b12726-03bd-4021-92d6-0990708cdc32": {
+					"name": "trophy_stem",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"4873cb5a-27ef-4bc1-8f4f-3771c9396431": {
+					"name": "trophy_cup_foot",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"bb30f003-018f-4379-b7c7-0c8591f83bc8": {
+					"name": "trophy_cup_bottom",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"cdf7d72a-fb31-46f2-a9dd-bb45d8f17530": {
+					"name": "trophy_cup_front",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"be6e482f-535b-49d9-9d6a-201a4a4cf879": {
+					"name": "trophy_cup_back",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"d3dbd905-604c-40bb-9ca4-b051d3d5cfcd": {
+					"name": "trophy_cup_left",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"501c459e-4a51-410b-abbf-32d0f0cf75ef": {
+					"name": "trophy_cup_right",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"7b1d0601-cfd5-4d31-8e27-a00b8567fcdc": {
+					"name": "trophy_left_handle",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"0a74c7a8-fd3d-4e23-b2dd-a35ee1dcb000": {
+					"name": "trophy_left_handle_top",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b369c8c0-87d7-4f1b-8868-8fb0c2db1587": {
+					"name": "trophy_left_handle_bottom",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"32723b84-cd9c-4483-9dfb-6d652ebe0f5f": {
+					"name": "trophy_right_handle",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"dc6cc055-901c-4aa0-8a30-2bb943077926": {
+					"name": "trophy_right_handle_top",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"0c60c739-32f3-4c06-ba17-8409a482d39c": {
+					"name": "trophy_right_handle_bottom",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
 				}
 			}
 		}

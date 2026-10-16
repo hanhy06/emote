@@ -18,7 +18,7 @@ Join the Discord server to share emotes you have made.
 
 Emote is a server-side emote mod that plays animations with Minecraft display entities. All server features work when the mod is installed only on the server. Installing it on the client is optional and adds an emote wheel and automatic third-person view during playback.
 
-The web converter imports BD Engine, GeckoLib, and Animated Java projects, with experimental support for Bedrock and Emotecraft. It can also reopen Emote Animation and Sequence JSON. Configure skin parts, metadata, playback settings, and events before export.
+The web converter imports BD Engine, GeckoLib, and Animated Java projects, with experimental support for Bedrock and Emotecraft. Configure skin parts, metadata, playback settings, and events before export.
 
 On the server, LuckPerms permissions can assign emotes and idle emotes per player. Sequences can connect multiple animations, with the player's skin applied to compatible animations. A server API is also available for other mods to register emotes, control playback, and receive events.
 

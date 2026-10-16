@@ -56,7 +56,6 @@ const FILE_TASK = 0x10;
 const ANIMATION_PACKET = 0x99;
 const ANIMATION_VERSION = 6;
 const LEGACY_ANIMATION_PACKET = 0;
-const LEGACY_ANIMATION_VERSION = 1;
 const HEADER_PACKET = 0x11;
 const HEADER_VERSION = 2;
 const ICON_PACKET = 0x12;
@@ -64,14 +63,6 @@ const ICON_VERSION = 0x12;
 const SONG_PACKET = 3;
 const MAX_COLLECTION_SIZE = 100_000;
 const MAX_STRING_BYTES = 1_048_576;
-const LEGACY_PLAYER_BONES = ["head", "body", "right_arm", "left_arm", "right_leg", "left_leg"] as const;
-const LEGACY_POSITION_DEFAULTS: Readonly<Record<string, readonly [number, number, number]>> = {
-  right_arm: [-5, 2, 0],
-  left_arm: [5, 2, 0],
-  left_leg: [1.9, 12, 0.1],
-  right_leg: [-1.9, 12, 0.1],
-};
-
 const EASINGS: Readonly<Record<number, string>> = {
   0: "linear", 1: "constant", 6: "easeinsine", 7: "easeoutsine", 8: "easeinoutsine",
   9: "easeincubic", 10: "easeoutcubic", 11: "easeinoutcubic", 12: "easeinquad",
@@ -87,18 +78,7 @@ const EASINGS: Readonly<Record<number, string>> = {
 export function probeEmotecraft(bytes: Uint8Array): boolean {
   try {
     const reader = new BinaryReader(bytes);
-    if (reader.readInt32() !== NETWORK_VERSION || reader.readUint8() !== FILE_TASK) return false;
-    const count = reader.readUint8();
-    let animation = false;
-    for (let index = 0; index < count; index++) {
-      const id = reader.readUint8();
-      const version = reader.readUint8();
-      const size = reader.readInt32();
-      if (size < 0 || size > reader.remaining) return false;
-      animation ||= isSupportedAnimationPacket(id, version);
-      reader.skip(size);
-    }
-    return animation && reader.remaining === 0;
+    return reader.readInt32() === NETWORK_VERSION && reader.readUint8() === FILE_TASK;
   } catch {
     return false;
   }
@@ -125,15 +105,12 @@ export function decodeEmotecraft(bytes: Uint8Array): EmotecraftFile {
     const packet = reader.subReader(size);
 
     if (id === ANIMATION_PACKET) {
-      if (version !== ANIMATION_VERSION) throw new Error(`Emotecraft animation binary version must be ${ANIMATION_VERSION}, received ${version}.`);
+      if (version !== ANIMATION_VERSION) throw new Error(`Unsupported Emotecraft animation packet version ${version} (0x99). Only version ${ANIMATION_VERSION} is supported.`);
       if (animation) throw new Error("Emotecraft file contains more than one animation packet.");
       packet.readFloat32(); // Saved files start at tick zero; the animation data follows it.
       animation = readAnimationV6(packet);
     } else if (id === LEGACY_ANIMATION_PACKET) {
-      if (version !== LEGACY_ANIMATION_VERSION) throw new Error(`Emotecraft legacy animation packet version must be ${LEGACY_ANIMATION_VERSION}, received ${version}.`);
-      if (animation) throw new Error("Emotecraft file contains more than one animation packet.");
-      packet.readInt32(); // Saved files start at tick zero; the animation data follows it.
-      animation = readLegacyAnimationV1(packet);
+      throw new Error(`Unsupported Emotecraft legacy animation packet version ${version} (0x00). Only the new animation format (0x99), version ${ANIMATION_VERSION}, is supported.`);
     } else if (id === HEADER_PACKET) {
       if (version !== 1 && version !== HEADER_VERSION) throw new Error(`Emotecraft header version must be 1 or ${HEADER_VERSION}, received ${version}.`);
       metadata.name = emptyToUndefined(packet.readLegacyString());
@@ -157,121 +134,6 @@ export function decodeEmotecraft(bytes: Uint8Array): EmotecraftFile {
   if (reader.remaining !== 0) throw new Error(`Emotecraft file has ${reader.remaining} trailing bytes.`);
   if (!animation) throw new Error("Emotecraft file does not contain a supported animation packet.");
   return { animation, metadata, ...(icon ? { icon } : {}), ...(song ? { song } : {}) };
-}
-
-function isSupportedAnimationPacket(id: number, version: number): boolean {
-  return (id === ANIMATION_PACKET && version === ANIMATION_VERSION)
-    || (id === LEGACY_ANIMATION_PACKET && version === LEGACY_ANIMATION_VERSION);
-}
-
-function readLegacyAnimationV1(reader: BinaryReader): PalAnimation {
-  const beginTick = reader.readInt32();
-  const sourceEndTick = Math.max(reader.readInt32(), beginTick + 1);
-  const stopTick = reader.readInt32();
-  const looped = reader.readUint8() !== 0;
-  const encodedReturnTick = reader.readInt32();
-  const returnTick = Math.max(0, encodedReturnTick - 1);
-  const easeBefore = reader.readUint8() !== 0;
-  reader.readUint8(); // Removed NSFW flag.
-  const keyframeSize = reader.readUint8();
-  if (keyframeSize < 9) throw new Error(`Invalid Emotecraft legacy keyframe size ${keyframeSize}.`);
-
-  const bones: Record<string, PalBoneAnimation> = {};
-  for (const name of LEGACY_PLAYER_BONES) {
-    const bone = readLegacyPartV1(reader, name, keyframeSize, easeBefore);
-    if (boneHasFrames(bone)) bones[name] = bone;
-  }
-  const bodyBend = bones.body?.bend ?? [];
-  if (bodyBend.length > 0) {
-    bones.torso = { ...(bones.torso ?? emptyBone()), bend: bodyBend };
-    bones.body = { ...bones.body, bend: [] };
-    if (!boneHasFrames(bones.body)) delete bones.body;
-  }
-
-  const lengthTicks = looped ? sourceEndTick : stopTick <= sourceEndTick ? sourceEndTick + 3 : stopTick;
-  const hold = looped && returnTick >= sourceEndTick - 1;
-  return {
-    uuid: reader.readUuid(),
-    lengthTicks,
-    loop: !looped ? "once" : hold ? "hold" : "loop_from_tick",
-    loopStartTick: looped && !hold ? returnTick : 0,
-    format: "player_animator",
-    applyBendToOtherBones: bodyBend.length > 0,
-    easeBeforeKeyframe: easeBefore,
-    beginTick,
-    endTick: sourceEndTick,
-    bones,
-    effects: { sounds: [], particles: [], instructions: [] },
-    pivots: {},
-    parents: {},
-  };
-}
-
-function readLegacyPartV1(reader: BinaryReader, name: string, keyframeSize: number, easeBefore: boolean): PalBoneAnimation {
-  const defaults = LEGACY_POSITION_DEFAULTS[name] ?? [0, 0, 0];
-  const isBody = name === "body";
-  const position: PalAxisChannels = [
-    readLegacyKeyframes(reader, keyframeSize, easeBefore, { defaultValue: defaults[0], modelPixels: isBody, negate: isBody }),
-    readLegacyKeyframes(reader, keyframeSize, easeBefore, { defaultValue: defaults[1], modelPixels: isBody, negate: !isBody }),
-    readLegacyKeyframes(reader, keyframeSize, easeBefore, { defaultValue: defaults[2], modelPixels: isBody }),
-  ];
-  const rotation: PalAxisChannels = [
-    readLegacyKeyframes(reader, keyframeSize, easeBefore, { negate: isBody }),
-    readLegacyKeyframes(reader, keyframeSize, easeBefore, { negate: isBody }),
-    readLegacyKeyframes(reader, keyframeSize, easeBefore),
-  ];
-  let bend: PalKeyframe[] = [];
-  if (name !== "head") {
-    readLegacyKeyframes(reader, keyframeSize, easeBefore); // Removed Y bend channel.
-    bend = readLegacyKeyframes(reader, keyframeSize, easeBefore);
-  }
-  return { position, rotation, scale: [[], [], []], bend };
-}
-
-interface LegacyChannelOptions {
-  defaultValue?: number;
-  modelPixels?: boolean;
-  negate?: boolean;
-}
-
-function readLegacyKeyframes(
-  reader: BinaryReader,
-  keyframeSize: number,
-  easeBefore: boolean,
-  options: LegacyChannelOptions = {},
-): PalKeyframe[] {
-  const count = reader.readInt32();
-  if (count === -1) return [];
-  if (count < -1 || count > MAX_COLLECTION_SIZE) throw new Error(`Invalid Emotecraft legacy keyframe count ${count}.`);
-  const frames: PalKeyframe[] = [];
-  let lastTick = 0;
-  for (let index = 0; index < count; index++) {
-    const tick = reader.readInt32();
-    const value = (reader.readFloat32() - (options.defaultValue ?? 0)) * (options.modelPixels ? 16 : 1) * (options.negate ? -1 : 1);
-    const easing = EASINGS[reader.readUint8()] ?? "linear";
-    reader.skip(keyframeSize - 9);
-    frames.push({ startTick: lastTick, endTick: tick, start: frames.at(-1)?.end ?? (easeBefore ? value : 0), end: value, easing, easingArgs: [] });
-    lastTick = tick;
-  }
-  if (!easeBefore && frames.length > 0) {
-    let previousEasing = "easeinoutsine";
-    for (const frame of frames) {
-      const next = frame.easing;
-      frame.easing = previousEasing;
-      previousEasing = next;
-    }
-    const last = frames.at(-1)!;
-    frames.push({ startTick: last.endTick, endTick: last.endTick + 0.001, start: last.end, end: last.end, easing: previousEasing, easingArgs: [] });
-  }
-  return frames;
-}
-
-function emptyBone(): PalBoneAnimation {
-  return { rotation: [[], [], []], position: [[], [], []], scale: [[], [], []], bend: [] };
-}
-
-function boneHasFrames(bone: PalBoneAnimation | undefined): boolean {
-  return Boolean(bone && [...bone.rotation, ...bone.position, ...bone.scale, bone.bend].some((channel) => channel.length > 0));
 }
 
 function readAnimationV6(reader: BinaryReader): PalAnimation {

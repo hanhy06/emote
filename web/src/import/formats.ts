@@ -29,6 +29,7 @@ export async function detectInputFormat(input: ImportInput): Promise<InputFormat
   };
   let matches = await probe(hints.length ? hints : formats);
   if (matches.length === 0 && hints.length) matches = await probe(formats.filter((format) => !hints.includes(format)));
+  if (matches.length === 0 && extension === "emotecraft") return "emotecraft_binary";
   if (matches.length === 0) throw new ConversionError("unsupported_input", `Unsupported input format: ${input.name}`, input.name);
   if (matches.length > 1) throw new ConversionError("ambiguous_input", `Input format is ambiguous between ${INPUT_FORMATS[matches[0]].label} and ${INPUT_FORMATS[matches[1]].label}.`, input.name);
   return matches[0];
