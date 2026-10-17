@@ -310,12 +310,11 @@ public final class AdminCommand {
     }
 
     private int setEnabled(CommandSourceStack source, String id, boolean enabled) {
-        if (enabled) {
-            if (this.configManager.getAccessConfig().isEnabled(id)) {
-                source.sendFailure(Component.literal("That emote is already enabled: " + id));
-                return 0;
-            }
-        } else if (this.emoteCatalog.findFileEmote(id) == null) {
+        if (enabled && this.configManager.getAccessConfig().isEnabled(id)) {
+            source.sendFailure(Component.literal("That emote is already enabled: " + id));
+            return 0;
+        }
+        if (!enabled && (!this.configManager.getAccessConfig().isEnabled(id) || this.emoteCatalog.findFileEmote(id) == null)) {
             source.sendFailure(Component.literal("That emote is not currently enabled: " + id));
             return 0;
         }

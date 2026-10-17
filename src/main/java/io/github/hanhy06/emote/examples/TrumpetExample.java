@@ -174,6 +174,11 @@ public final class TrumpetExample implements EmoteCallbacks {
 
     private void playHorn(TrumpetCanCan melody, HornNote note, long serverTick) {
         melody.stopNote();
+        for (TrumpetCanCan active : this.activeMelodies) {
+            if (active.activeNote != null && active.activeNote.endTick() <= serverTick) {
+                active.stopNote();
+            }
+        }
         Vec3 origin = melody.origin;
         var random = ThreadLocalRandom.current();
         var particle = new ClientboundLevelParticlesPacket(
@@ -183,17 +188,15 @@ public final class TrumpetExample implements EmoteCallbacks {
             origin.z + random.nextDouble(-0.8D, 0.8D),
             (float) ((note.midi() % 12) / 12.0), 0.0F, 0.0F, 1.0F, 0
         );
-        List<HornVoice> voices = new ArrayList<>();
+        List<HornListener> listeners = new ArrayList<>();
 
         for (HornListener listener : melody.listeners) {
             // A stop-sound packet targets the sound ID, so avoid competing notes per listener.
             boolean soundOccupied = this.activeMelodies.stream()
                 .map(active -> active.activeNote)
                 .filter(active -> active != null && active.endTick() > serverTick)
-                .flatMap(active -> active.voices().stream())
-                .anyMatch(voice ->
-                    voice.listener().id().equals(listener.id()) && voice.sound().equals(SOUND)
-                );
+                .flatMap(active -> active.listeners().stream())
+                .anyMatch(activeListener -> activeListener.id().equals(listener.id()));
 
             if (soundOccupied) {
                 continue;
@@ -201,11 +204,11 @@ public final class TrumpetExample implements EmoteCallbacks {
 
             playNote(melody.origin, note.midi(), note.volume(), serverTick, listener.send());
             listener.send().accept(particle);
-            voices.add(new HornVoice(listener, SOUND));
+            listeners.add(listener);
         }
-        if (!voices.isEmpty()) {
+        if (!listeners.isEmpty()) {
             long endTick = serverTick + Math.min(note.durationTicks(), MAX_HORN_DURATION_TICKS);
-            melody.activeNote = new ActiveHornNote(endTick, List.copyOf(voices));
+            melody.activeNote = new ActiveHornNote(endTick, List.copyOf(listeners));
         }
     }
 
@@ -230,36 +233,29 @@ public final class TrumpetExample implements EmoteCallbacks {
             ActiveHornNote note = this.activeNote;
             this.activeNote = null;
             if (note != null) {
-                note.stop();
+                for (HornListener listener : note.listeners()) {
+                    stopSound(listener.send());
+                }
             }
         }
 
-        boolean advance(long elapsedTicks, Consumer<HornNote> play) {
+        void advance(long elapsedTicks, Consumer<HornNote> play) {
             while (this.nextNote < TRUMPET_CAN_CAN_NOTES.size()) {
                 HornNote note = TRUMPET_CAN_CAN_NOTES.get(this.nextNote);
                 if (elapsedTicks - this.startTick < note.offsetTicks()) {
-                    return false;
+                    return;
                 }
 
                 this.nextNote++;
                 play.accept(note);
             }
-            return true;
         }
     }
 
     private record HornListener(UUID id, Consumer<Packet<?>> send) {
     }
 
-    private record HornVoice(HornListener listener, Identifier sound) {
-    }
-
-    private record ActiveHornNote(long endTick, List<HornVoice> voices) {
-        void stop() {
-            for (HornVoice voice : this.voices) {
-                stopSound(voice.listener().send());
-            }
-        }
+    private record ActiveHornNote(long endTick, List<HornListener> listeners) {
     }
 
     private static void playNote(Vec3 origin, double midi, float volume, long seed, Consumer<Packet<?>> send) {

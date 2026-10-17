@@ -118,6 +118,19 @@ public final class PlayerSkinBaker {
 
         copyLegacyLimb(normalizedImage, 0, 16);
         copyLegacyLimb(normalizedImage, 40, 32);
+
+        for (int x = 32; x < 64; x++) {
+            for (int y = 0; y < 32; y++) {
+                if ((normalizedImage.getRGB(x, y) >>> 24) < 128) {
+                    return normalizedImage;
+                }
+            }
+        }
+        for (int x = 32; x < 64; x++) {
+            for (int y = 0; y < 16; y++) {
+                normalizedImage.setRGB(x, y, normalizedImage.getRGB(x, y) & 0x00FFFFFF);
+            }
+        }
         return normalizedImage;
     }
 

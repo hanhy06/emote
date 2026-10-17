@@ -152,6 +152,16 @@ public class EmotePlayService implements AccessConfigListener {
             && (!rules.checkPermission() || resolvePermission(player, emote.id()).allowed());
     }
 
+    public boolean isAvailableForIdle(ServerPlayer player, String emoteId) {
+        PreparedEmote emote = this.emoteCatalog.find(emoteId);
+        if (emote == null) {
+            return false;
+        }
+        Rules rules = rulesFor(player, PlaySource.IDLE);
+        return (!rules.checkStandalone() || emote.standalone())
+            && (!rules.checkDisabled() || !this.disabledEmoteIds.contains(emoteId));
+    }
+
     public Optional<AccessConfig.IdleSettings> findIdleSettings(ServerPlayer player) {
         for (AccessConfig.PermissionEntry entry : this.permissionEntries) {
             if (entry.idle().isEmpty()) {
