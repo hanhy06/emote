@@ -5,7 +5,7 @@
   "id": "hug:hug",
   "metadata": {
     "name": "Hug",
-    "description": "Hug emote."
+    "description": "Hug another player."
   },
   "settings": {
     "cooldown": "0t",
