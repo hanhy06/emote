@@ -106,7 +106,8 @@ public final class PlaybackStressTest {
                 PlaybackScene scene = PlaybackScene.create(level, RootTransform.create(gridPosition(origin, index, instanceCount), yaw), emote);
                 EmotePlayback playback = new EmotePlayback(emote, MolangQuerySource.EMPTY, random);
                 instances.add(new StressTestInstance(emote, scene, playback, initialTick(random, index)));
-                scene.applySkin(emote.skinBindings(), preparedSkin == null ? null : preparedSkin.get(emote.id()));
+                if (preparedSkin != null) scene.setSkins(preparedSkin);
+                scene.applyAnimationSkin(emote.id());
                 displayEntityCount += scene.displayEntityCount();
             }
         } catch (RuntimeException exception) {

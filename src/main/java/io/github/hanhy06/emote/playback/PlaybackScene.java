@@ -157,15 +157,7 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
         if (animationId == null) return;
         Map<PlayerSkinRegion, String> skin = this.skins.get(animationId);
         if (skin == null || skin.equals(this.appliedSkin)) return;
-        applySkin(this.emote.skinBindings(), skin);
-        this.appliedSkin = skin;
-    }
-
-    public void applySkin(Collection<SkinBinding> bindings, Map<PlayerSkinRegion, String> skin) {
-        if (skin == null || bindings.isEmpty()) {
-            return;
-        }
-        for (SkinBinding binding : bindings) {
+        for (SkinBinding binding : this.emote.skinBindings()) {
             NodeInstance node = this.nodes.get(binding.nodeId());
             if (node == null) {
                 continue;
@@ -195,6 +187,7 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
                 itemSlot.set(skinnedStack);
             }
         }
+        this.appliedSkin = skin;
     }
 
     private static ResolvableProfile createSkinProfile(String textureUrl) {
