@@ -1,21 +1,19 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
-import type { ConversionAnimation } from "../domain/conversionDocument";
 import type { SkinIR } from "../domain/animationIR";
 import { composeSkin, createSkinOverride, decodeSkinPng, encodeSkinPng } from "../domain/skin";
 
 interface SkinSettingsProps {
-  animation: ConversionAnimation;
+  skin?: SkinIR;
   disabled: boolean;
-  onChange: (animation: ConversionAnimation) => void;
+  onChange: (skin: SkinIR | undefined) => void;
 }
 
-export function SkinSettings({ animation, disabled, onChange }: SkinSettingsProps) {
-  const latest = useRef({ animation, onChange });
-  latest.current = { animation, onChange };
+export function SkinSettings({ skin, disabled, onChange }: SkinSettingsProps) {
+  const latest = useRef({ skin, onChange });
+  latest.current = { skin, onChange };
   const active = useRef(true);
   const [reading, setReading] = useState(false);
   const [error, setError] = useState("");
-  const skin = animation.skin;
   const preview = useMemo(() => {
     try { return { image: skin ? encodeSkinPng(composeSkin(skin)) : undefined, error: "" }; }
     catch (reason) { return { image: undefined, error: reason instanceof Error ? reason.message : String(reason) }; }
@@ -26,8 +24,7 @@ export function SkinSettings({ animation, disabled, onChange }: SkinSettingsProp
   }, []);
 
   function update(next: SkinIR) {
-    const { animation, onChange } = latest.current;
-    onChange({ ...animation, skin: next.default || next.override ? next : undefined });
+    latest.current.onChange(next.default || next.override ? next : undefined);
     setError("");
   }
 
@@ -40,7 +37,7 @@ export function SkinSettings({ animation, disabled, onChange }: SkinSettingsProp
       const bytes = new Uint8Array(await file.arrayBuffer());
       if (!active.current) return;
       const base64 = btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(""));
-      const current = latest.current.animation.skin ?? {};
+      const current = latest.current.skin ?? {};
       if (field === "default") {
         decodeSkinPng(base64);
         update({ ...current, default: base64 });
