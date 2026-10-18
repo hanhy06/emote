@@ -13,6 +13,7 @@ import { importAnimatedJavaCubes, writeReferencedAnimatedJavaCubeResources, type
 import { normalizeBlockbenchName } from "../common/blockbenchCubeSkin";
 import { PLAYER_RENDER_SCALE } from "../common/blockbenchCubeModel";
 import { writeEmbeddedTextures } from "../common/blockbenchCubeResources";
+import { readBlockbenchSkin } from "../common/blockbenchSkin";
 import { createAnimatedJavaAnimationIR, type ProjectNodeStateFrame } from "./animatedJavaAnimationIR";
 import type { EventIR, TimelineEventIR } from "../../domain/animationIR";
 import type { ImportedNode, ImportedProject } from "../../domain/conversionSeed";
@@ -43,6 +44,7 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
     throw new Error(`Unsupported Animated Java project format: ${project.meta.format}`);
   }
   const sourceStem = input.name.replace(/\.ajblueprint$/i, "").trim() || project.name?.trim() || "Animated Java";
+  const skin = readBlockbenchSkin(project.textures);
   if (project.animations.length === 0 && project.animationDiagnostics?.length) {
     throw new ConversionError("no_importable_animations", `No Animated Java animations could be imported. ${project.animationDiagnostics.map((issue) => issue.message).join(" ")}`);
   }
@@ -79,6 +81,7 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
       const effects = projectEffectEvents(animation, cubeContent, animationDiagnostics, sourceIndex);
       const state = resolveAnimatedJavaAnimationState(effects, animation, project, nodes, transformGraph, nodeBindings, animationDiagnostics, sourceIndex);
       const ir = createAnimatedJavaAnimationIR(animation, project, transformGraph, nodes, PLAYER_RENDER_SCALE, state.nodeFrames, cubeContent);
+      ir.skin = skin;
       ir.animation.events = { start: state.startEvents, timeline: state.timelineEvents, loop: [], stop: [] };
       diagnostics.push(...animationDiagnostics);
       return [{ ir, id: sanitizeResourcePath(animation.name, `animation_${sourceIndex + 1}`), name: cubeContent ? animation.name : prettify(animation.name) }];

@@ -121,10 +121,16 @@ export interface AnimationIR {
     player?: EmotePlayerBehavior;
   };
   callbacks?: EmoteCallback[];
+  skin?: SkinIR;
   nodes: Record<string, NodeIR>;
   animation: ClipIR;
   resources?: Record<string, { uri: string; kind: "item_model" | "texture" | "external" }>;
   source?: Record<string, unknown>;
+}
+
+export interface SkinIR {
+  default?: string;
+  override?: { texture: string; mask: string };
 }
 
 export interface AnimationEntryIR extends Omit<AnimationIR, "nodes" | "animation" | "target_minecraft_version"> {

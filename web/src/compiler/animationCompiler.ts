@@ -23,7 +23,7 @@ export function compileAnimation(document: ConversionDocument, index: number, st
     if (node?.parent) nodeIds.add(node.parent);
   }
   const ir: AnimationIR = structuredClone({
-    id: entry.id, metadata: entry.metadata, settings: entry.settings, callbacks: entry.callbacks,
+    id: entry.id, metadata: entry.metadata, settings: entry.settings, callbacks: entry.callbacks, skin: entry.skin,
     nodes: Object.fromEntries([...nodeIds].map((id) => [id, document.nodes[id]])), animation: entry.clip,
     resources: entry.resources, source: entry.source, target_minecraft_version: document.targetMinecraftVersion,
   });

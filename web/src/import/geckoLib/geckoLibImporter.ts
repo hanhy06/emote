@@ -22,6 +22,7 @@ import {
 } from "../common/blockbenchCubeSchema";
 import type { GeckoLibBbmodelProject } from "./geckoLibBbmodelSchema";
 import { uniqueCubeNodeId, writeCubeResources, writeEmbeddedTextures } from "../common/blockbenchCubeResources";
+import { readBlockbenchSkin } from "../common/blockbenchSkin";
 import {
   cubePlayerHeadMatrix,
   isHiddenAccessoryBone,
@@ -37,6 +38,7 @@ const DIAGNOSTIC_PREFIX = "geckolib";
 
 export function importGeckoLibProject(project: GeckoLibBbmodelProject, sourceName: string): ImportedProject {
   if (project.meta.model_format !== "geckolib_model") throw new Error(`Unsupported Blockbench model format: ${project.meta.model_format}`);
+  const skin = readBlockbenchSkin(project.textures);
   project = { ...project, animations: project.animations.map((animation) => ({ ...animation, animators: animation.animators ?? {} })) };
 
   const sourceStem = sourceName.replace(/\.[^.]+$/i, "").trim() || project.name?.trim() || `${FORMAT_LABEL} Model`;
@@ -113,6 +115,7 @@ export function importGeckoLibProject(project: GeckoLibBbmodelProject, sourceNam
     const animationDiagnostics: ConversionIssue[] = [];
     try {
       const imported = importAnimation(animation, sourceIndex, animationBones, nodes, animationDiagnostics);
+      imported.ir.skin = skin;
       animations.push(imported);
       diagnostics.push(...animationDiagnostics);
     } catch (reason) {
