@@ -100,7 +100,7 @@ it("creates masks from indexed PNG transparency and rejects non-skin image sizes
   expect(() => createSkinOverride(btoa(Array.from(wrongSize, (byte) => String.fromCharCode(byte)).join("")))).toThrow("64×64");
 });
 
-for (const format of formats) it(`${format}: preserves automatic orders and unequal leg slices through preview and output`, async () => {
+for (const format of formats) it(`${format}: preserves automatic orders and equal skin regions on unequal leg slices through preview and output`, async () => {
   const source = project([]);
   source.groups = [{ uuid: "leg", name: "right_leg", origin: [1.9, 12, 0], rotation: [0, 0, 0] }];
   source.elements[0] = { ...source.elements[0], from: [-0.1, 0, -2], to: [3.9, 12, 2] };
@@ -114,7 +114,7 @@ for (const format of formats) it(`${format}: preserves automatic orders and uneq
     const candidate = document.skinCandidates[part.candidateId];
     return document.nodes[candidate.nodeId].attachments![candidate.attachmentId];
   });
-  expect(attachments.map((attachment) => attachment.type === "player_skin" ? attachment.region : null)).toEqual([{ from: 0, to: 1 / 3 }, { from: 1 / 3, to: 1 }]);
+  expect(attachments.map((attachment) => attachment.type === "player_skin" ? attachment.region : null)).toEqual([{ from: 0, to: 0.5 }, { from: 0.5, to: 1 }]);
   const output = compileAnimation(document, 0).animation;
   const poses = evaluatePose(output, 0, (value) => { if (typeof value !== "number") throw new Error("Unexpected expression"); return value; });
   const geometry = createPlayerHeadGeometry();
