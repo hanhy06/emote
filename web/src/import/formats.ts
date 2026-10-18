@@ -57,7 +57,8 @@ async function matchesInputFormat(input: ImportInput, format: InputFormat): Prom
         return (await import("./emotecraft/emotecraftBinary")).probeEmotecraft(input.bytes);
       case "emote_json": {
         const value = parseInputJson(input);
-        return isRecord(value) && value.type === "animation" && value.schema_version === EMOTE_SCHEMA_VERSION && isRecord(value.nodes) && isRecord(value.animation);
+        return isRecord(value) && value.type === "animation" && isRecord(value.nodes)
+          && (value.schema_version === EMOTE_SCHEMA_VERSION && isRecord(value.animation) || value.schema_version === 4 && isRecord(value.timeline));
       }
     }
   } catch {
