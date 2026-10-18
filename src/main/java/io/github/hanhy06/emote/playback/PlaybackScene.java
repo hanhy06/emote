@@ -38,6 +38,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import org.joml.Matrix4fc;
+import org.jspecify.annotations.Nullable;
 
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -49,6 +50,9 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
     private final Map<String, NodeInstance> nodes;
     private final List<AttachmentInstance> attachments;
     private final int displayEntityCount;
+    private Map<String, Map<PlayerSkinRegion, String>> skins = Map.of();
+    private @Nullable Map<PlayerSkinRegion, String> appliedSkin;
+    private @Nullable String skinAnimationId;
     private float viewYaw;
     private RootTransform preparedRoot;
     private float preparedViewYaw, preparedRotationDeadzone;
@@ -141,6 +145,20 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
         NodeInstance node = this.nodes.get(nodeId);
         if (node == null) throw new IllegalStateException("Missing playback node: " + nodeId);
         return node;
+    }
+
+    public void setSkins(Map<String, Map<PlayerSkinRegion, String>> skins) {
+        this.skins = Map.copyOf(skins);
+        applyAnimationSkin(this.skinAnimationId);
+    }
+
+    public void applyAnimationSkin(@Nullable String animationId) {
+        this.skinAnimationId = animationId;
+        if (animationId == null) return;
+        Map<PlayerSkinRegion, String> skin = this.skins.get(animationId);
+        if (skin == null || skin.equals(this.appliedSkin)) return;
+        applySkin(this.emote.skinBindings(), skin);
+        this.appliedSkin = skin;
     }
 
     public void applySkin(Collection<SkinBinding> bindings, Map<PlayerSkinRegion, String> skin) {

@@ -3,6 +3,9 @@ package io.github.hanhy06.emote.skin;
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.config.ConfigListener;
+import io.github.hanhy06.emote.content.PreparedAnimation;
+import io.github.hanhy06.emote.content.PreparedEmote;
+import io.github.hanhy06.emote.content.loader.EmoteDirectoryLoader;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
@@ -11,11 +14,14 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Util;
 
+import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+
+import static io.github.hanhy06.emote.skin.model.PlayerSkinPreparation.State;
 
 public class PlayerSkinManager implements ConfigListener {
     private final SkinBakeCoordinator bakeCoordinator;
@@ -24,67 +30,112 @@ public class PlayerSkinManager implements ConfigListener {
     private final List<Consumer<UUID>> readyListeners = new CopyOnWriteArrayList<>();
     private final Map<UUID, PlayerSkinSource.Key> connectedSkins = new HashMap<>();
     private Set<PlayerSkinRegion> modelRegions = Set.of();
-    private volatile long sourceGeneration;
-    private volatile MinecraftServer server;
+    private Map<String, PreparedAnimation> animations = Map.of();
+    private Set<Path> filePaths = Set.of();
+    private final Set<UUID> embeddedSources = new HashSet<>();
+    private PlayerSkinSource configuredDefault;
+    private List<PreparedAnimation> pendingDefaults = List.of();
+    private CompletableFuture<Void> defaultWrites = CompletableFuture.completedFuture(null);
+    private volatile long sourceGeneration, catalogRevision;
+    private MinecraftServer server;
 
     public PlayerSkinManager(SkinBakeCoordinator bakeCoordinator) {
         this.bakeCoordinator = Objects.requireNonNull(bakeCoordinator, "bakeCoordinator");
         this.bakeCoordinator.setListener(new SkinBakeCoordinator.Listener() {
-            @Override
-            public void onDefaultReady(long generation, long revision) {
-                if (!bakeCoordinator.isDefaultCurrent(generation, revision)) return;
-                MinecraftServer server = PlayerSkinManager.this.server;
-                server.execute(() -> {
-                    if (!bakeCoordinator.isDefaultCurrent(generation, revision)) return;
-                    server.getPlayerList().getPlayers().forEach(player -> {
-                        for (Consumer<UUID> readyListener : readyListeners) readyListener.accept(player.getUUID());
-                    });
-                    defaultReadyListeners.forEach(Runnable::run);
-                });
-            }
-            @Override
-            public void onReady(UUID playerUuid, long generation) {
-                notifySkinReady(playerUuid, generation);
-            }
-
-            @Override
-            public void onUnavailable(UUID playerUuid, long generation) {
-                notifySkinReady(playerUuid, generation);
-            }
-
-            @Override
-            public void onFailed(UUID playerUuid, long generation) {
-                notifySkinFailed(playerUuid, generation);
-            }
+            @Override public void onReady(UUID playerUuid, long generation) { notifySkinReady(playerUuid, generation, false); }
+            @Override public void onUnavailable(UUID playerUuid, long generation) { notifySkinReady(playerUuid, generation, false); }
+            @Override public void onFailed(UUID playerUuid, long generation) { notifySkinReady(playerUuid, generation, true); }
         });
     }
 
     @Override
     public void onConfigReload(Config newConfig) {
-        MinecraftServer server = EmoteMod.SERVER;
-        this.server = server;
+        this.server = EmoteMod.SERVER;
         long generation = ++this.sourceGeneration;
         this.namedSources.clear();
+        this.configuredDefault = null;
+        this.pendingDefaults = List.of();
         this.bakeCoordinator.onConfigReload(newConfig);
         if (!newConfig.defaultSkin().isEmpty()) {
-            namedSource(newConfig.defaultSkin()).thenAccept(source -> {
-                if (generation != this.sourceGeneration || source == null) return;
-                server.execute(() -> {
-                    if (generation == this.sourceGeneration) this.bakeCoordinator.setDefaultSource(source);
+            namedSource(newConfig.defaultSkin()).thenCompose(source -> source == null
+                ? CompletableFuture.completedFuture(null) : this.bakeCoordinator.embed(source)).whenComplete((source, exception) -> {
+                if (generation != this.sourceGeneration) return;
+                if (source == null || exception != null) {
+                    EmoteMod.LOGGER.warn("Could not prepare default skin for {}; retaining the skins embedded in emote JSON", newConfig.defaultSkin(), exception);
+                    return;
+                }
+                this.server.execute(() -> {
+                    if (generation != this.sourceGeneration) return;
+                    this.configuredDefault = source;
+                    synchronizeDefault();
                 });
             });
         }
     }
 
-    public PlayerSkinPreparation prepareNamedSkin(String name, List<SkinBinding> skinBindings) {
-        if (skinBindings.isEmpty() || name.isBlank()) return prepareSkinSource(null, skinBindings);
-        CompletableFuture<PlayerSkinSource> future = namedSource(name);
-        if (!future.isDone()) return new PlayerSkinPreparation(null, PlayerSkinPreparation.State.PREPARING, 0);
-        return prepareSkinSource(future.getNow(null), skinBindings);
+    public void setEmotes(List<PreparedAnimation> animations, Set<Path> filePaths) {
+        this.animations = animations.stream().collect(java.util.stream.Collectors.toUnmodifiableMap(PreparedAnimation::id, animation -> animation));
+        this.filePaths = Set.copyOf(filePaths);
+        this.catalogRevision++;
+        this.pendingDefaults = List.of();
+        this.modelRegions = animations.stream().flatMap(animation -> animation.skinBindings().stream()).map(SkinBinding::region)
+            .collect(java.util.stream.Collectors.toUnmodifiableSet());
+        this.embeddedSources.clear();
+        for (PreparedAnimation animation : animations) {
+            PlayerSkinSource source = animation.model().skin().defaultSource();
+            if (source == null) continue;
+            this.embeddedSources.add(source.playerUuid());
+            this.bakeCoordinator.prepare(source, regions(animation.skinBindings()));
+        }
+        synchronizeDefault();
+    }
+
+    private void synchronizeDefault() {
+        PlayerSkinSource source = this.configuredDefault;
+        if (source == null || this.animations.isEmpty()) return;
+        long generation = this.sourceGeneration, revision = this.catalogRevision;
+        List<PreparedAnimation> animations = List.copyOf(this.animations.values());
+        Set<Path> paths = this.filePaths;
+        String base64 = Base64.getEncoder().encodeToString(source.png());
+        this.defaultWrites = this.defaultWrites.handle((ignored, exception) -> null).thenRunAsync(() -> {
+            List<PreparedAnimation> saved = new ArrayList<>();
+            for (PreparedAnimation animation : animations) {
+                if (generation != this.sourceGeneration || revision != this.catalogRevision) return;
+                try {
+                    if (paths.contains(animation.sourcePath())) EmoteDirectoryLoader.updateDefaultSkin(animation.sourcePath(), animation.id(), base64);
+                    saved.add(animation);
+                } catch (java.io.IOException | io.github.hanhy06.emote.api.EmoteLoadException exception) {
+                    EmoteMod.LOGGER.warn("Could not save default skin in {}; retaining its previous skin", animation.sourcePath(), exception);
+                }
+            }
+            this.server.execute(() -> {
+                if (generation != this.sourceGeneration || revision != this.catalogRevision) return;
+                this.embeddedSources.add(source.playerUuid());
+                this.pendingDefaults = List.copyOf(saved);
+                if (publishDefault()) notifyDefaultReady();
+            });
+        }, Util.nonCriticalIoPool());
+    }
+
+    private boolean publishDefault() {
+        PlayerSkinSource source = this.configuredDefault;
+        if (source == null || this.pendingDefaults.isEmpty()) return false;
+        Set<PlayerSkinRegion> required = this.pendingDefaults.stream().flatMap(animation -> animation.skinBindings().stream())
+            .map(SkinBinding::region).collect(java.util.stream.Collectors.toUnmodifiableSet());
+        if (this.bakeCoordinator.prepare(source, required).state() != State.READY) return false;
+        for (PreparedAnimation animation : this.pendingDefaults) animation.model().skin().setDefaultSource(source);
+        this.pendingDefaults = List.of();
+        return true;
+    }
+
+    public Preparation prepareNamedSkin(String name, PreparedEmote emote) {
+        CompletableFuture<PlayerSkinSource> source = name.isBlank() ? CompletableFuture.completedFuture(null) : namedSource(name);
+        return prepareSkinSource(source.getNow(null), emote.animations(), !source.isDone());
     }
 
     private CompletableFuture<PlayerSkinSource> namedSource(String name) {
         String normalized = name.strip();
+        long generation = this.sourceGeneration;
         return this.namedSources.computeIfAbsent(normalized.toLowerCase(Locale.ROOT), ignored ->
             resolveNamedSkinSource(normalized).handle((source, exception) -> {
                 if (source == null || exception != null) {
@@ -92,6 +143,11 @@ public class PlayerSkinManager implements ConfigListener {
                     return null;
                 }
                 return source;
+            }).whenComplete((source, exception) -> {
+                if (generation != this.sourceGeneration) return;
+                this.server.execute(() -> {
+                    if (generation == this.sourceGeneration) this.defaultReadyListeners.forEach(Runnable::run);
+                });
             }));
     }
 
@@ -102,61 +158,56 @@ public class PlayerSkinManager implements ConfigListener {
             .orTimeout(15, TimeUnit.SECONDS);
     }
 
-    public PlayerSkinPreparation preparePlayerSkin(ServerPlayer player, List<SkinBinding> skinBindings) {
-        return prepareSkinSource(skinBindings.isEmpty() ? null : resolvePlayerSkinSource(player), skinBindings);
+    public Preparation preparePlayerSkin(ServerPlayer player, PreparedEmote emote) {
+        return preparePlayerSkins(player, emote.animations());
     }
 
-    public PlayerSkinPreparation prepareSkinSource(PlayerSkinSource skinSource, List<SkinBinding> skinBindings) {
-        if (skinBindings.isEmpty()) {
-            return new PlayerSkinPreparation(null, PlayerSkinPreparation.State.READY, 100);
-        }
-        Set<PlayerSkinRegion> requiredRegions = new LinkedHashSet<>(this.modelRegions);
-        for (SkinBinding binding : skinBindings) {
-            requiredRegions.add(binding.region());
-        }
-        PlayerSkinPreparation preparation = skinSource == null
-            ? new PlayerSkinPreparation(null, PlayerSkinPreparation.State.UNAVAILABLE, 0)
-            : this.bakeCoordinator.prepare(skinSource, requiredRegions);
-        return withDefaultSkin(preparation, requiredRegions);
+    public Preparation preparePlayerSkins(ServerPlayer player, List<PreparedAnimation> animations) {
+        return prepareSkinSource(animations.stream().allMatch(animation -> animation.skinBindings().isEmpty()) ? null : resolvePlayerSkinSource(player), animations, false);
     }
 
-    PlayerSkinPreparation withDefaultSkin(PlayerSkinPreparation preparation, Set<PlayerSkinRegion> regions) {
-        var fallback = this.bakeCoordinator.defaultSkin();
-        if (fallback == null || preparation.state() == PlayerSkinPreparation.State.READY || preparation.preparing()) return preparation;
-        Map<PlayerSkinRegion, String> merged = new HashMap<>();
-        for (PlayerSkinRegion region : regions) {
-            String texture = fallback.get(region);
-            if (texture != null) merged.put(region, texture);
+    public Preparation prepareSkinSource(PlayerSkinSource source, List<PreparedAnimation> animations, boolean resolving) {
+        Set<PlayerSkinRegion> required = new LinkedHashSet<>();
+        for (PreparedAnimation animation : animations) required.addAll(regions(animation.skinBindings()));
+        PlayerSkinPreparation player = required.isEmpty() ? new PlayerSkinPreparation(Map.of(), State.READY, 100)
+            : resolving ? new PlayerSkinPreparation(null, State.PREPARING, 0)
+            : source == null ? new PlayerSkinPreparation(null, State.UNAVAILABLE, 0) : this.bakeCoordinator.prepare(source, required);
+        Map<String, Map<PlayerSkinRegion, String>> textures = new HashMap<>();
+        if (player.state() == State.READY) {
+            for (PreparedAnimation animation : animations) textures.put(animation.id(), player.textures());
+            return new Preparation(Map.copyOf(textures), State.READY, 100);
         }
-        if (preparation.textures() != null) merged.putAll(preparation.textures());
-        return new PlayerSkinPreparation(merged.isEmpty() ? null : Map.copyOf(merged),
-            preparation.state(), preparation.progressPercent());
+        boolean preparing = player.preparing(), failed = player.state() == State.FAILED;
+        int progress = 0;
+        boolean ready = true;
+        for (PreparedAnimation animation : animations) {
+            Set<PlayerSkinRegion> regions = regions(animation.skinBindings());
+            PlayerSkinSource fallback = animation.model().skin().defaultSource();
+            PlayerSkinPreparation preparation = regions.isEmpty() ? new PlayerSkinPreparation(Map.of(), State.READY, 100)
+                : fallback == null ? new PlayerSkinPreparation(null, State.UNAVAILABLE, 0) : this.bakeCoordinator.prepare(fallback, regions);
+            ready &= preparation.state() == State.READY;
+            preparing |= preparation.preparing();
+            failed |= preparation.state() == State.FAILED;
+            progress += preparation.progressPercent();
+            if (preparation.state() == State.READY) textures.put(animation.id(), preparation.textures());
+        }
+        return new Preparation(ready ? Map.copyOf(textures) : Map.of(), ready ? State.READY : preparing ? State.PREPARING : failed ? State.FAILED : State.UNAVAILABLE,
+            ready ? 100 : animations.isEmpty() ? 0 : progress / animations.size());
     }
 
-    public void setModelBindings(Collection<SkinBinding> bindings) {
-        Set<PlayerSkinRegion> regions = new LinkedHashSet<>();
-        for (SkinBinding binding : bindings) {
-            regions.add(binding.region());
-        }
-        this.modelRegions = Set.copyOf(regions);
-        this.bakeCoordinator.setDefaultRegions(this.modelRegions);
+    private static Set<PlayerSkinRegion> regions(List<SkinBinding> bindings) {
+        return bindings.stream().map(SkinBinding::region).collect(java.util.stream.Collectors.toUnmodifiableSet());
     }
 
     public void checkPlayerSkin(ServerPlayer player) {
         PlayerSkinSource source = resolvePlayerSkinSource(player);
-        if (source == null || this.modelRegions.isEmpty()) {
-            return;
-        }
+        if (source == null || this.modelRegions.isEmpty()) return;
         PlayerSkinSource.Key identity = new PlayerSkinSource.Key(source.textureHash(), source.slimModel());
         PlayerSkinSource.Key previous = this.connectedSkins.put(source.playerUuid(), identity);
-        if (identity.equals(previous)) {
-            return;
-        }
+        if (identity.equals(previous)) return;
         PlayerSkinPreparation preparation = this.bakeCoordinator.prepare(source, this.modelRegions);
-        if (previous != null && preparation.state() == PlayerSkinPreparation.State.READY) {
-            for (Consumer<UUID> readyListener : this.readyListeners) {
-                readyListener.accept(source.playerUuid());
-            }
+        if (previous != null && preparation.state() == State.READY) {
+            for (Consumer<UUID> listener : this.readyListeners) listener.accept(source.playerUuid());
         }
     }
 
@@ -174,6 +225,9 @@ public class PlayerSkinManager implements ConfigListener {
 
     public void cancelPendingBakes() {
         this.sourceGeneration++;
+        this.catalogRevision++;
+        this.configuredDefault = null;
+        this.pendingDefaults = List.of();
         this.namedSources.clear();
         this.connectedSkins.clear();
         this.bakeCoordinator.cancelPendingBakes();
@@ -183,26 +237,26 @@ public class PlayerSkinManager implements ConfigListener {
         return this.bakeCoordinator.processingStats();
     }
 
-    private void notifySkinReady(UUID playerUuid, long generation) {
-        if (!this.bakeCoordinator.isCurrent(generation)) return;
-        MinecraftServer server = this.server;
-        server.execute(() -> {
-            if (!this.bakeCoordinator.isCurrent(generation)) return;
-            for (Consumer<UUID> readyListener : this.readyListeners) {
-                readyListener.accept(playerUuid);
-            }
-        });
+    private void notifyDefaultReady() {
+        for (ServerPlayer player : this.server.getPlayerList().getPlayers()) {
+            for (Consumer<UUID> listener : this.readyListeners) listener.accept(player.getUUID());
+        }
+        this.defaultReadyListeners.forEach(Runnable::run);
     }
 
-    private void notifySkinFailed(UUID playerUuid, long generation) {
+    private void notifySkinReady(UUID playerUuid, long generation, boolean failed) {
         if (!this.bakeCoordinator.isCurrent(generation)) return;
-        MinecraftServer server = this.server;
-        server.execute(() -> {
+        this.server.execute(() -> {
             if (!this.bakeCoordinator.isCurrent(generation)) return;
-            for (Consumer<UUID> readyListener : this.readyListeners) readyListener.accept(playerUuid);
-            ServerPlayer player = server.getPlayerList().getPlayer(playerUuid);
-            if (player != null) {
-                player.sendSystemMessage(Component.literal("Your skin could not be prepared. Emotes may use a default skin. Ask a server administrator to check the server log."));
+            if (this.embeddedSources.contains(playerUuid)) {
+                if (!failed) publishDefault();
+                notifyDefaultReady();
+            }
+            else {
+                for (Consumer<UUID> listener : this.readyListeners) listener.accept(playerUuid);
+                this.defaultReadyListeners.forEach(Runnable::run);
+                ServerPlayer player = this.server.getPlayerList().getPlayer(playerUuid);
+                if (failed && player != null) player.sendSystemMessage(Component.literal("Your skin could not be prepared. Emotes may use a default skin. Ask a server administrator to check the server log."));
             }
         });
     }
@@ -216,5 +270,8 @@ public class PlayerSkinManager implements ConfigListener {
         }
     }
 
-
+    public record Preparation(Map<String, Map<PlayerSkinRegion, String>> textures, State state, int progressPercent) {
+        public boolean ready() { return this.state == State.READY; }
+        public boolean preparing() { return this.state == State.PREPARING; }
+    }
 }

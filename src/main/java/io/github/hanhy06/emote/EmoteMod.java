@@ -7,6 +7,8 @@ import io.github.hanhy06.emote.command.EmoteMenu;
 import io.github.hanhy06.emote.command.UserCommand;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.content.EmoteCatalog;
+import io.github.hanhy06.emote.content.PreparedAnimation;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.content.loader.EmoteDirectoryLoader;
 import io.github.hanhy06.emote.network.PlaybackStateSyncService;
 import io.github.hanhy06.emote.network.WheelSyncService;
@@ -59,7 +61,8 @@ public class EmoteMod implements ModInitializer {
         PlayerSkinManager skins = new PlayerSkinManager(
             new SkinBakeCoordinator(accounts, skinBaker, minecraftSkins, skinCache, accountQueue, mineSkin)
         );
-        catalog.addListener(emotes -> skins.setModelBindings(emotes.stream().flatMap(emote -> emote.skinBindings().stream()).toList()));
+        catalog.addListener(emotes -> skins.setEmotes(catalog.animations(), catalog.fileEmotes().stream()
+            .filter(PreparedAnimation.class::isInstance).map(PreparedEmote::sourcePath).collect(java.util.stream.Collectors.toUnmodifiableSet())));
 
         PlaybackEngine engine = new PlaybackEngine();
         PlayerPlaybackManager playback = new PlayerPlaybackManager(engine, skins);

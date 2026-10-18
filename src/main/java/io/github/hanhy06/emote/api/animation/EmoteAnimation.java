@@ -6,9 +6,11 @@ import io.github.hanhy06.emote.api.EmoteCallback;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
+import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 import java.util.Map;
@@ -17,14 +19,14 @@ import java.util.Set;
 
 public record EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings settings, Molang molang,
                              Map<String, Node> nodes, Clip clip, List<EmoteCallback> callbacks,
-                             String targetMinecraftVersion, JsonObject resources, JsonObject source) {
+                             String targetMinecraftVersion, JsonObject resources, JsonObject source, Skin skin) {
     public static final int SCHEMA_VERSION = 5;
     public static final Set<String> RUNTIME_NBT_FIELDS = Set.of("id", "UUID", "Pos", "Motion", "Rotation", "Passengers", "Tags",
         "transformation", "interpolation_duration", "start_interpolation", "teleport_duration");
 
     public EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings settings, Molang molang,
                           Map<String, Node> nodes, Clip clip, List<EmoteCallback> callbacks) {
-        this(id, metadata, settings, molang, nodes, clip, callbacks, null, new JsonObject(), new JsonObject());
+        this(id, metadata, settings, molang, nodes, clip, callbacks, null, new JsonObject(), new JsonObject(), new Skin(null));
     }
 
     public EmoteAnimation {
@@ -37,6 +39,15 @@ public record EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings set
         callbacks = List.copyOf(callbacks);
         Objects.requireNonNull(resources, "resources");
         Objects.requireNonNull(source, "source");
+        Objects.requireNonNull(skin, "skin");
+    }
+
+    public static final class Skin {
+        private volatile @Nullable PlayerSkinSource defaultSource;
+
+        public Skin(@Nullable PlayerSkinSource defaultSource) { this.defaultSource = defaultSource; }
+        public @Nullable PlayerSkinSource defaultSource() { return this.defaultSource; }
+        public void setDefaultSource(PlayerSkinSource source) { this.defaultSource = source; }
     }
 
     public record Molang(String initialize, String tick) {

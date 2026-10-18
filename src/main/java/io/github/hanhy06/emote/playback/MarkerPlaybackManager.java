@@ -7,8 +7,6 @@ import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.playback.molang.EntityMolangQueries;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
-import io.github.hanhy06.emote.skin.SkinBinding;
-import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.core.component.DataComponents;
@@ -67,7 +65,6 @@ public final class MarkerPlaybackManager {
                 entry.blocked = false;
                 entry.nextAttempt = serverTick;
                 entry.needsStart = true;
-                entry.skinWarning = false;
             }
             if (settings.emoteId().isEmpty()) {
                 if (entry.session != null) this.engine.stop(entry.session, PlaybackStopReason.MANUAL);
@@ -77,8 +74,9 @@ public final class MarkerPlaybackManager {
             if (!entry.blocked && entry.needsStart && serverTick >= entry.nextAttempt) start(entry, serverTick);
             if (entry.session != null && !entry.needsStart && entry.skinRevision != this.skinRevision) {
                 entry.skinRevision = this.skinRevision;
-                var preparation = this.skins.prepareNamedSkin(entry.settings.skinName(), entry.skinBindings);
-                if (!preparation.preparing()) entry.session.scene().applySkin(entry.skinBindings, preparation.textures());
+                var preparation = this.skins.prepareNamedSkin(entry.settings.skinName(), entry.session.playback().emote());
+                if (preparation.ready()) entry.session.scene().setSkins(preparation.textures());
+                else this.engine.stop(entry.session, PlaybackStopReason.RELOAD);
             }
         }
     }
@@ -93,20 +91,13 @@ public final class MarkerPlaybackManager {
             }
             return;
         }
-        var preparation = this.skins.prepareNamedSkin(entry.settings.skinName(), emote.skinBindings());
-        if (preparation.preparing()) {
+        var preparation = this.skins.prepareNamedSkin(entry.settings.skinName(), emote);
+        if (!preparation.ready()) {
             entry.nextAttempt = serverTick + 20;
             return;
         }
         entry.needsStart = false;
         entry.skinRevision = this.skinRevision;
-        entry.skinBindings = emote.skinBindings();
-        if (!entry.settings.skinName().isEmpty() && !emote.skinBindings().isEmpty()
-            && preparation.state() != PlayerSkinPreparation.State.READY && !entry.skinWarning) {
-            entry.skinWarning = true;
-            EmoteMod.LOGGER.warn("Marker {} skin {} is {}; using any prepared default skin", entry.marker.getUUID(),
-                entry.settings.skinName(), preparation.state());
-        }
         var lifecycle = new PlaybackEngine.Lifecycle() {
             @Override public void onRegistered(PlaybackSession session) { entry.session = session; }
             @Override public @Nullable PlaybackStopReason beforeTick(PlaybackSession session) {
@@ -156,9 +147,7 @@ public final class MarkerPlaybackManager {
         private long nextAttempt;
         private boolean needsStart;
         private boolean blocked;
-        private boolean skinWarning;
         private long skinRevision;
-        private List<SkinBinding> skinBindings = List.of();
         private Entry(Marker marker) { this.marker = marker; }
     }
 }

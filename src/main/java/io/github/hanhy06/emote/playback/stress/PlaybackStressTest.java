@@ -37,7 +37,7 @@ public final class PlaybackStressTest {
         List<PreparedAnimation> emotes,
         int durationTicks,
         int instanceCount,
-        @Nullable Map<PlayerSkinRegion, String> preparedSkin,
+        @Nullable Map<String, Map<PlayerSkinRegion, String>> preparedSkin,
         Consumer<PlaybackStressTestReport> completion
     ) {
         if (emotes.isEmpty()) {
@@ -62,7 +62,7 @@ public final class PlaybackStressTest {
         List<PreparedAnimation> emotes,
         int durationTicks,
         int targetDisplayEntityCount,
-        @Nullable Map<PlayerSkinRegion, String> preparedSkin,
+        @Nullable Map<String, Map<PlayerSkinRegion, String>> preparedSkin,
         Consumer<PlaybackStressTestReport> completion
     ) {
         if (emotes.isEmpty()) {
@@ -85,7 +85,7 @@ public final class PlaybackStressTest {
         float yaw,
         List<PreparedAnimation> selection,
         int durationTicks,
-        @Nullable Map<PlayerSkinRegion, String> preparedSkin,
+        @Nullable Map<String, Map<PlayerSkinRegion, String>> preparedSkin,
         Consumer<PlaybackStressTestReport> completion,
         Random random
     ) {
@@ -106,7 +106,7 @@ public final class PlaybackStressTest {
                 PlaybackScene scene = PlaybackScene.create(level, RootTransform.create(gridPosition(origin, index, instanceCount), yaw), emote);
                 EmotePlayback playback = new EmotePlayback(emote, MolangQuerySource.EMPTY, random);
                 instances.add(new StressTestInstance(emote, scene, playback, initialTick(random, index)));
-                scene.applySkin(emote.skinBindings(), preparedSkin);
+                scene.applySkin(emote.skinBindings(), preparedSkin == null ? null : preparedSkin.get(emote.id()));
                 displayEntityCount += scene.displayEntityCount();
             }
         } catch (RuntimeException exception) {

@@ -59,6 +59,14 @@ public sealed interface PreparedEmote permits PreparedAnimation, PreparedSequenc
     List<String> nodeOrder();
     Map<String, Map<String, DisplayData>> displayContents();
     List<SkinBinding> skinBindings();
+
+    default List<PreparedAnimation> animations() {
+        if (this instanceof PreparedAnimation animation) return List.of(animation);
+        return ((PreparedSequence) this).steps().stream().filter(PreparedSequence.AnimationStep.class::isInstance)
+            .map(PreparedSequence.AnimationStep.class::cast).flatMap(step -> step.choices().stream())
+            .filter(PreparedSequence.AnimationChoice.class::isInstance).map(PreparedSequence.AnimationChoice.class::cast)
+            .map(PreparedSequence.AnimationChoice::animation).distinct().toList();
+    }
     List<EmoteCallback> callbacks();
     int displayEntityCount();
     float rotationDeadzone();

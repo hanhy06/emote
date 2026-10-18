@@ -91,6 +91,8 @@ public final class EmotePlayback {
         this.sequencePhases = emote instanceof PreparedSequence ? sequencePhases(this.selectedSteps) : List.of();
     }
 
+    public PreparedEmote emote() { return this.emote; }
+
     public List<PreparedAnimation> selectedAnimations() {
         return this.selectedSteps.stream().filter(SelectedAnimationStep.class::isInstance).map(SelectedAnimationStep.class::cast)
             .map(SelectedAnimationStep::animation).distinct().toList();
@@ -153,6 +155,7 @@ public final class EmotePlayback {
         try {
             frame.result = preparation.get();
             frame.finalPose = frame.view();
+            frame.skinAnimationId = this.child != null ? this.child.emote.id() : this.emote instanceof PreparedAnimation ? this.emote.id() : null;
             frame.timeline = timeline();
             return frame;
         } catch (RuntimeException | Error exception) {
@@ -953,6 +956,7 @@ public final class EmotePlayback {
         private PoseView finalPose;
         private @Nullable PoseView fixedView;
         private PlaybackTimeline timeline;
+        private @Nullable String skinAnimationId;
         private boolean eventsCancelled;
 
         private Frame() {
@@ -969,6 +973,7 @@ public final class EmotePlayback {
         public AdvanceResult result() { return this.result; }
         public PoseView pose() { return this.finalPose; }
         public PlaybackTimeline timeline() { return this.timeline; }
+        public @Nullable String skinAnimationId() { return this.skinAnimationId; }
         public void cancelEvents() { this.eventsCancelled = true; }
 
         public void calculate() {

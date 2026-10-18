@@ -158,49 +158,6 @@ class SkinCachePipelineTest {
         } finally { coordinator.cancelPendingBakes(); }
     }
 
-    @Test
-    void ignoresOldDefaultRevisionAndRetainsCompleteFallbackUntilReplacementIsReady() throws Exception {
-        var cache = new SkinCache(this.directory);
-        var original = Map.of(HEAD, "old-head", BODY, "old-body");
-        assertTrue(cache.saveDefault(new SkinCache.DefaultSkin("Player", HASH, "original", false, original), cache.epoch()));
-        var partialHash = "b".repeat(64);
-        var completeHash = "c".repeat(64);
-        var replacement = Map.of(HEAD, "new-head", BODY, "new-body");
-        assertTrue(cache.save(partialHash, false, Map.of(HEAD, "partial-head"), cache.epoch()));
-        assertTrue(cache.save(completeHash, false, replacement, cache.epoch()));
-        var coordinator = coordinator(cache);
-        var ready = new LinkedBlockingQueue<Map<PlayerSkinRegion, String>>();
-        coordinator.setListener(new SkinBakeCoordinator.Listener() {
-            public void onDefaultReady(long generation, long revision) {
-                if (coordinator.isDefaultCurrent(generation, revision)) ready.add(coordinator.defaultSkin());
-            }
-        });
-        try {
-            coordinator.setDefaultRegions(Set.of(HEAD, BODY));
-            coordinator.onConfigReload(defaultConfig("Player"));
-            assertEquals(original, ready.poll(5, TimeUnit.SECONDS));
-            coordinator.setDefaultRegions(Set.of(HEAD, BODY));
-            assertEquals(original, ready.poll(5, TimeUnit.SECONDS));
-            try (var tasks = Executors.newVirtualThreadPerTaskExecutor(); var gate = new IoGate(cache)) {
-                tasks.submit(() -> coordinator.setDefaultSource(source(UUID.randomUUID(), partialHash))).get(2, TimeUnit.SECONDS);
-                tasks.submit(() -> coordinator.setDefaultSource(source(UUID.randomUUID(), completeHash))).get(2, TimeUnit.SECONDS);
-                assertEquals(original, coordinator.defaultSkin());
-            }
-            awaitDefault(ready, replacement, original);
-            assertEquals(completeHash, cache.loadDefault("Player", cache.epoch()).textureHash());
-            coordinator.setDefaultSource(source(UUID.randomUUID(), partialHash));
-            var publish = SkinBakeCoordinator.class.getDeclaredMethod("publishDefault", long.class, long.class, long.class);
-            publish.setAccessible(true);
-            publish.invoke(coordinator, 0L, field(coordinator, "defaultRevision"), cache.epoch());
-            assertEquals(replacement, coordinator.defaultSkin());
-            assertEquals(completeHash, cache.loadDefault("Player", cache.epoch()).textureHash());
-            assertTrue(cache.save(partialHash, false, Map.of(BODY, "partial-body"), cache.epoch()));
-            coordinator.setDefaultSource(source(UUID.randomUUID(), partialHash));
-            awaitDefault(ready, Map.of(HEAD, "partial-head", BODY, "partial-body"), replacement);
-            assertEquals(partialHash, cache.loadDefault("Player", cache.epoch()).textureHash());
-        } finally { coordinator.cancelPendingBakes(); }
-    }
-
     private SkinBakeCoordinator coordinator(SkinCache cache) {
         var accounts = new MinecraftAccountManager(new AccountCredentialStore(this.directory.resolve("unused-accounts.bin")), new MinecraftAccountClient());
         var client = new MinecraftSkinClient() {
@@ -216,17 +173,6 @@ class SkinCachePipelineTest {
         var config = Config.createDefault();
         return new Config(config.schemaVersion(), config.menuPageSize(), config.mineSkinApiKey(), config.mineSkinPollIntervalSeconds(),
             config.mineSkinCacheRetentionDays(), config.mineSkinCacheMaxMiB(), config.maxActiveDisplayEntities(), name);
-    }
-
-    private static void awaitDefault(BlockingQueue<Map<PlayerSkinRegion, String>> ready,
-                                     Map<PlayerSkinRegion, String> expected, Map<PlayerSkinRegion, String> fallback) throws Exception {
-        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
-        while (true) {
-            var textures = ready.poll(Math.max(0, deadline - System.nanoTime()), TimeUnit.NANOSECONDS);
-            assertNotNull(textures, "Replacement default skin did not become ready");
-            if (expected.equals(textures)) return;
-            assertEquals(fallback, textures);
-        }
     }
 
     private static Object field(SkinBakeCoordinator coordinator, String name) throws Exception {

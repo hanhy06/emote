@@ -169,6 +169,7 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
     public void applyFrame(EmotePlayback.Frame frame) {
         this.scene.applyPlacement();
         frame.apply();
+        this.scene.applyAnimationSkin(frame.skinAnimationId());
         if (this.appliedPose != null) this.elapsedTicks++;
         this.appliedPose = frame.pose();
         this.appliedTimeline = frame.timeline();

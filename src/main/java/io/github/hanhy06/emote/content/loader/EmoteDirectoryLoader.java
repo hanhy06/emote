@@ -4,6 +4,9 @@ import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.EmoteLoadException;
 import io.github.hanhy06.emote.content.LoadedAnimation;
 import io.github.hanhy06.emote.content.LoadedSequence;
+import io.github.hanhy06.emote.config.JsonFileStore;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -15,6 +18,23 @@ import java.util.stream.Stream;
 public final class EmoteDirectoryLoader {
     private final AnimationJsonParser animationParser = new AnimationJsonParser();
     private final SequenceJsonParser sequenceParser = new SequenceJsonParser();
+
+    public static void updateDefaultSkin(Path path, String id, String base64) throws IOException, EmoteLoadException {
+        EmoteJsonDocument document = EmoteJsonDocument.read(path);
+        if (!document.type().equals("animation") || !id.equals(document.requireString(document.root(), "id", "$"))) {
+            throw new IOException("emote file changed while preparing its default skin");
+        }
+        JsonObject root = document.root();
+        JsonObject skin = root.has("skin") ? document.requireObject(root, "skin", "$") : new JsonObject();
+        if (skin.has("default") && skin.get("default").isJsonPrimitive() && base64.equals(skin.get("default").getAsString())) return;
+        skin.addProperty("default", base64);
+        root.add("skin", skin);
+        var gson = new GsonBuilder().disableHtmlEscaping().create();
+        if (gson.toJson(root).getBytes(java.nio.charset.StandardCharsets.UTF_8).length > EmoteJsonDocument.MAX_JSON_BYTES) {
+            throw new IOException("emote JSON exceeds 8 MiB after adding its default skin");
+        }
+        JsonFileStore.writeObjectAtomically(path, root, gson);
+    }
 
     public LoadResult load(Path directory) {
         List<LoadedAnimation> candidates = new ArrayList<>();

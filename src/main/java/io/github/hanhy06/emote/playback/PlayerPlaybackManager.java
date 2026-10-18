@@ -12,7 +12,6 @@ import io.github.hanhy06.emote.mixin.accessor.EntitySharedFlagsAccessor;
 import io.github.hanhy06.emote.playback.molang.PlayerMolangQueries;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import io.github.hanhy06.emote.skin.SkinBinding;
-import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import net.fabricmc.fabric.api.networking.v1.EntityTrackingEvents;
 import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
 import net.minecraft.network.protocol.game.ClientboundSetEquipmentPacket;
@@ -65,8 +64,9 @@ public final class PlayerPlaybackManager {
     }
 
     public PlayResult start(ServerPlayer player, PreparedEmote emote, PlaybackPlacement placement) {
-        PlayerSkinPreparation preparation = this.skins.preparePlayerSkin(player, emote.skinBindings());
-        if (preparation.preparing()) return PlayResult.failure("Preparing your skin… " + preparation.progressPercent() + "%");
+        var preparation = this.skins.preparePlayerSkin(player, emote);
+        if (!preparation.ready()) return PlayResult.failure(preparation.preparing()
+            ? "Preparing your skin… " + preparation.progressPercent() + "%" : "No complete player or default skin is available.");
         RootTransform root = placement.mode() == PlaybackPlacement.Mode.EXTERNAL
             ? RootTransform.create(placement.position(), placement.yaw())
             : RootTransform.create(player.position(), player.getYRot());
@@ -141,9 +141,9 @@ public final class PlayerPlaybackManager {
         PlaybackSession session = findActive(playerId);
         ServerPlayer player = EmoteMod.SERVER.getPlayerList().getPlayer(playerId);
         if (session == null || player == null) return;
-        var bindings = playerState(playerId).skinBindings();
-        var preparation = this.skins.preparePlayerSkin(player, bindings);
-        session.scene().applySkin(bindings, preparation.textures());
+        var preparation = this.skins.preparePlayerSkin(player, session.playback().emote());
+        if (preparation.ready()) session.scene().setSkins(preparation.textures());
+        else this.engine.stop(session, PlaybackStopReason.ERROR);
     }
 
     private static void hidePlayer(ServerPlayer player, PlayerPlaybackState playerState) {
@@ -218,9 +218,8 @@ public final class PlayerPlaybackManager {
         };
     }
 
-    public PlayerSkinPreparation prepareStressTestSkin(ServerPlayer player, List<PreparedAnimation> emotes) {
-        List<SkinBinding> bindings = emotes.stream().flatMap(emote -> emote.skinBindings().stream()).distinct().toList();
-        return this.skins.preparePlayerSkin(player, bindings);
+    public PlayerSkinManager.Preparation prepareStressTestSkin(ServerPlayer player, List<PreparedAnimation> emotes) {
+        return this.skins.preparePlayerSkins(player, emotes);
     }
 
     private record PlayerPlayback(PlaybackSession session, PlayerPlaybackState playerState) {}

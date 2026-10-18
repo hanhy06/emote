@@ -69,6 +69,16 @@ public final class PlayerSkinBaker {
         return new PreparedSkin(normalizedImage, effectiveSlimModel);
     }
 
+    public byte[] normalize(BufferedImage sourceImage, boolean slimModel) throws IOException {
+        PreparedSkin prepared = prepare(sourceImage, slimModel);
+        BufferedImage image = prepared.normalizedImage;
+        if (prepared.slimModel) {
+            image = expandSlimArmToWideAtlas(image, PlayerSkinPart.RIGHT_ARM);
+            image = expandSlimArmToWideAtlas(image, PlayerSkinPart.LEFT_ARM);
+        }
+        return writePng(image);
+    }
+
     public byte[] bake(
         PreparedSkin preparedSkin,
         PlayerSkinRegion region

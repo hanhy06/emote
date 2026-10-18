@@ -13,7 +13,6 @@ import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.playback.stress.PlaybackStressTest;
 import io.github.hanhy06.emote.playback.stress.PlaybackStressTestReport;
-import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
@@ -79,12 +78,13 @@ final class StressTestCommand {
             return 0;
         }
 
-        Map<PlayerSkinRegion, String> preparedSkin = null;
+        Map<String, Map<PlayerSkinRegion, String>> preparedSkin = null;
         if (source.getEntity() instanceof ServerPlayer player) {
-            PlayerSkinPreparation skinPreparation = this.playerPlaybackManager.prepareStressTestSkin(player, animations);
-            if (skinPreparation.preparing()) {
+            var skinPreparation = this.playerPlaybackManager.prepareStressTestSkin(player, animations);
+            if (!skinPreparation.ready()) {
                 source.sendFailure(Component.literal(
-                    "Preparing your skin… " + skinPreparation.progressPercent() + "% Run the stress test again when it is ready."
+                    skinPreparation.preparing() ? "Preparing your skin… " + skinPreparation.progressPercent() + "% Run the stress test again when it is ready."
+                        : "No complete player or default skin is available."
                 ));
                 return 0;
             }

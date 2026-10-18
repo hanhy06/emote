@@ -13,6 +13,8 @@ import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
 
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.io.ByteArrayInputStream;
+import javax.imageio.ImageIO;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -20,7 +22,6 @@ public final class SkinBakeCoordinator implements ConfigListener {
     private static final long FAILED_BAKE_RETRY_MILLIS = TimeUnit.MINUTES.toMillis(5);
     private static final long CACHE_CLEANUP_INTERVAL_MILLIS = TimeUnit.DAYS.toMillis(1);
     private static final long MEBIBYTE_BYTES = 1_024L * 1_024L;
-    private static final UUID DEFAULT_SUBSCRIBER = new UUID(0L, 0L);
 
     private final MinecraftAccountManager accounts;
     private final PlayerSkinBaker baker;
@@ -38,14 +39,6 @@ public final class SkinBakeCoordinator implements ConfigListener {
     private Listener listener = new Listener() {};
     private long generation;
     private boolean stopping;
-    private final Object defaultIoLock = new Object();
-    private long defaultRevision;
-    private SkinCache.DefaultSkin savedDefault;
-    private String defaultName = "";
-    private Set<PlayerSkinRegion> defaultRegions = Set.of();
-    private PlayerSkinSource defaultSource;
-    private Map<PlayerSkinRegion, String> defaultSkin;
-
     public SkinBakeCoordinator(
         MinecraftAccountManager accounts,
         PlayerSkinBaker baker,
@@ -62,98 +55,15 @@ public final class SkinBakeCoordinator implements ConfigListener {
         this.mineSkin = Objects.requireNonNull(mineSkin, "mineSkin");
     }
 
-    public synchronized Map<PlayerSkinRegion, String> defaultSkin() { return this.defaultSkin; }
-
-    public synchronized void setDefaultRegions(Set<PlayerSkinRegion> regions) {
-        this.defaultRegions = Set.copyOf(regions);
-        prepareDefault();
-    }
-
-    public synchronized void setDefaultSource(PlayerSkinSource source) {
-        if (this.defaultName.isEmpty()) return;
-        this.defaultSource = new PlayerSkinSource(DEFAULT_SUBSCRIBER, this.defaultName,
-            source.textureHash(), source.textureUrl(), source.slimModel());
-        this.failures.remove(new PlayerSkinSource.Key(source.textureHash(), source.slimModel()));
-        prepareDefault();
-    }
-
-    private void prepareDefault() {
-        long revision = ++this.defaultRevision;
-        if (this.stopping || this.defaultName.isEmpty()) return;
-        long expectedGeneration = this.generation;
-        long cacheEpoch = this.cache.epoch();
-        ensureExecutor();
-        this.executor.execute(() -> prepareDefault(expectedGeneration, revision, cacheEpoch));
-    }
-
-    private void prepareDefault(long expectedGeneration, long revision, long cacheEpoch) {
-        Listener readyListener = null;
-        synchronized (this.defaultIoLock) {
-            String name;
-            synchronized (this) {
-                if (!isDefaultCurrent(expectedGeneration, revision)) return;
-                name = this.defaultName;
+    public CompletableFuture<PlayerSkinSource> embed(PlayerSkinSource source) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return PlayerSkinSource.fromPng(this.baker.normalize(this.skinClient.downloadSkin(source.textureUrl()), source.slimModel()));
+            } catch (IOException | InterruptedException exception) {
+                if (exception instanceof InterruptedException) Thread.currentThread().interrupt();
+                throw new CompletionException(exception);
             }
-            SkinCache.DefaultSkin stored = this.cache.loadDefault(name, cacheEpoch);
-            PlayerSkinSource source;
-            Set<PlayerSkinRegion> regions;
-            synchronized (this) {
-                if (!isDefaultCurrent(expectedGeneration, revision)) return;
-                this.savedDefault = stored;
-                if (stored != null) {
-                    this.defaultSkin = stored.textures();
-                    readyListener = this.listener;
-                    if (this.defaultSource == null) {
-                        this.defaultSource = new PlayerSkinSource(DEFAULT_SUBSCRIBER, name, stored.textureHash(), stored.textureUrl(), stored.slimModel());
-                        this.failures.remove(new PlayerSkinSource.Key(stored.textureHash(), stored.slimModel()));
-                    }
-                }
-                source = this.defaultSource;
-                regions = this.defaultRegions;
-            }
-            if (source != null && !regions.isEmpty()) {
-                if (stored != null && stored.textureHash().equals(source.textureHash()) && stored.slimModel() == source.slimModel()) {
-                    this.cache.save(source.textureHash(), source.slimModel(), stored.textures(), cacheEpoch);
-                }
-                synchronized (this) {
-                    if (!isDefaultCurrent(expectedGeneration, revision)) return;
-                    prepare(source, regions);
-                }
-            }
-        }
-        if (readyListener != null && isDefaultCurrent(expectedGeneration, revision)) readyListener.onDefaultReady(expectedGeneration, revision);
-        publishDefault(expectedGeneration, revision, cacheEpoch);
-    }
-
-    private void publishDefault(long expectedGeneration, long revision, long cacheEpoch) {
-        Listener readyListener = null;
-        synchronized (this.defaultIoLock) {
-            PlayerSkinSource source;
-            Set<PlayerSkinRegion> regions;
-            SkinCache.DefaultSkin previous;
-            synchronized (this) {
-                if (!isDefaultCurrent(expectedGeneration, revision) || this.defaultSource == null || this.defaultRegions.isEmpty()) return;
-                source = this.defaultSource;
-                regions = this.defaultRegions;
-                previous = this.savedDefault;
-            }
-            Map<PlayerSkinRegion, String> ready = this.cache.load(source.textureHash(), source.slimModel(), cacheEpoch);
-            if (ready.isEmpty()) return;
-            boolean changingSource = previous != null && (!previous.textureHash().equals(source.textureHash()) || previous.slimModel() != source.slimModel());
-            if (changingSource && !ready.keySet().containsAll(regions)) return;
-            synchronized (this) { if (!isDefaultCurrent(expectedGeneration, revision)) return; }
-            var saved = new SkinCache.DefaultSkin(source.playerName(), source.textureHash(), source.textureUrl(), source.slimModel(), ready);
-            if (!this.cache.saveDefault(saved, cacheEpoch)) return;
-            synchronized (this) {
-                if (!isDefaultCurrent(expectedGeneration, revision)) return;
-                this.savedDefault = saved;
-                if (!ready.equals(this.defaultSkin)) {
-                    this.defaultSkin = ready;
-                    readyListener = this.listener;
-                }
-            }
-        }
-        if (readyListener != null && isDefaultCurrent(expectedGeneration, revision)) readyListener.onDefaultReady(expectedGeneration, revision);
+        }, net.minecraft.util.Util.nonCriticalIoPool());
     }
 
     public synchronized PlayerSkinPreparation prepare(PlayerSkinSource source, Set<PlayerSkinRegion> requiredRegions) {
@@ -207,11 +117,6 @@ public final class SkinBakeCoordinator implements ConfigListener {
     public synchronized void onConfigReload(Config config) {
         this.stopping = false;
         this.mineSkin.configure(config);
-        this.defaultName = config.defaultSkin();
-        this.defaultSource = null;
-        this.defaultSkin = null;
-        this.savedDefault = null;
-        prepareDefault();
         if (!hasUploadProvider()) {
             EmoteMod.LOGGER.error("No bake accounts or MineSkin API key configured; only cached skin textures are available");
         }
@@ -237,11 +142,6 @@ public final class SkinBakeCoordinator implements ConfigListener {
         synchronized (this) {
             this.generation++;
             this.stopping = true;
-            this.defaultRevision++;
-            this.defaultSource = null;
-            this.defaultSkin = null;
-            this.defaultName = "";
-            this.savedDefault = null;
             this.bakes.clear();
             this.failures.clear();
             pendingUploads = List.copyOf(this.uploads.values());
@@ -262,7 +162,6 @@ public final class SkinBakeCoordinator implements ConfigListener {
     }
 
     synchronized boolean isCurrent(long expectedGeneration) { return !this.stopping && expectedGeneration == this.generation; }
-    synchronized boolean isDefaultCurrent(long expectedGeneration, long revision) { return isCurrent(expectedGeneration) && revision == this.defaultRevision; }
 
     public synchronized SkinProcessingStats processingStats() {
         removeExpiredFailures();
@@ -296,7 +195,6 @@ public final class SkinBakeCoordinator implements ConfigListener {
                 Set<UUID> completedSubscribers = null;
                 Listener completionListener = null;
                 boolean unavailable = false;
-                long defaultRevision = -1;
                 synchronized (this) {
                     if (!isCurrent(key, bake)) {
                         return;
@@ -309,16 +207,10 @@ public final class SkinBakeCoordinator implements ConfigListener {
                         completedSubscribers = Set.copyOf(bake.subscribers);
                         completionListener = this.listener;
                     }
-                    if (bake.subscribers.contains(DEFAULT_SUBSCRIBER) && this.defaultSource != null
-                        && source.textureHash().equals(this.defaultSource.textureHash()) && source.slimModel() == this.defaultSource.slimModel()) {
-                        defaultRevision = this.defaultRevision;
-                    }
                 }
                 if (completedSubscribers != null) {
-                    if (defaultRevision >= 0) publishDefault(bake.generation, defaultRevision, bake.cacheEpoch);
                     if (!isCurrent(bake.generation)) return;
                     for (UUID subscriber : completedSubscribers) {
-                        if (subscriber.equals(DEFAULT_SUBSCRIBER)) continue;
                         if (unavailable) completionListener.onUnavailable(subscriber, bake.generation);
                         else completionListener.onReady(subscriber, bake.generation);
                     }
@@ -326,7 +218,8 @@ public final class SkinBakeCoordinator implements ConfigListener {
                 }
 
                 if (prepared == null) {
-                    BufferedImage sourceImage = this.skinClient.downloadSkin(source.textureUrl());
+                    BufferedImage sourceImage = source.png() == null ? this.skinClient.downloadSkin(source.textureUrl())
+                        : ImageIO.read(new ByteArrayInputStream(source.png()));
                     prepared = this.baker.prepare(sourceImage, source.slimModel());
                 }
                 for (PlayerSkinRegion region : missing) {
@@ -338,18 +231,6 @@ public final class SkinBakeCoordinator implements ConfigListener {
                         throw new IOException("Could not save baked skin texture");
                     }
                     ready = this.cache.load(source.textureHash(), source.slimModel(), bake.cacheEpoch);
-                    synchronized (this) {
-                        if (!isCurrent(key, bake)) {
-                            return;
-                        }
-                        defaultRevision = -1;
-                        if (bake.subscribers.contains(DEFAULT_SUBSCRIBER) && this.defaultSource != null
-                            && source.textureHash().equals(this.defaultSource.textureHash())
-                            && source.slimModel() == this.defaultSource.slimModel()) {
-                            defaultRevision = this.defaultRevision;
-                        }
-                    }
-                    if (defaultRevision >= 0) publishDefault(bake.generation, defaultRevision, bake.cacheEpoch);
                 }
             }
         } catch (InterruptedException exception) {
@@ -461,7 +342,7 @@ public final class SkinBakeCoordinator implements ConfigListener {
             currentListener = this.listener;
         }
         if (!isCurrent(bake.generation)) return;
-        subscribers.stream().filter(uuid -> !uuid.equals(DEFAULT_SUBSCRIBER)).forEach(uuid -> currentListener.onFailed(uuid, bake.generation));
+        subscribers.forEach(uuid -> currentListener.onFailed(uuid, bake.generation));
         EmoteMod.LOGGER.warn("Skin bake failed for {}; retry later or check /emote account", bake.source.playerUuid(), exception);
     }
 
@@ -552,7 +433,6 @@ public final class SkinBakeCoordinator implements ConfigListener {
     }
 
     public interface Listener {
-        default void onDefaultReady(long generation, long revision) {}
         default void onReady(UUID playerUuid, long generation) {}
         default void onUnavailable(UUID playerUuid, long generation) {}
         default void onFailed(UUID playerUuid, long generation) {}

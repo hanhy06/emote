@@ -8,6 +8,7 @@ import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.LoadedAnimation;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
+import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.resources.Identifier;
@@ -59,7 +60,17 @@ public final class AnimationJsonParser {
                 new PlaybackSettings(mode, loopStartTick, startDelay, loopDelay)),
             molang, nodes, new Clip(durationTicks, tracks, events, expression, sharedValues(object(clip, "values", "$.animation", document), durationTicks, document)), document.callbacks(),
             root.has("target_minecraft_version") ? document.requireString(root, "target_minecraft_version", "$") : null,
-            object(root, "resources", "$", document), object(root, "source", "$", document)));
+            object(root, "resources", "$", document), object(root, "source", "$", document), skin(root, document)));
+    }
+
+    private Skin skin(JsonObject root, EmoteJsonDocument document) throws EmoteLoadException {
+        JsonObject skin = object(root, "skin", "$", document);
+        if (!skin.has("default")) return new Skin(null);
+        try {
+            return new Skin(PlayerSkinSource.fromPng(Base64.getDecoder().decode(document.requireString(skin, "default", "$.skin"))));
+        } catch (IllegalArgumentException | java.io.IOException exception) {
+            throw document.error("$.skin.default", exception.getMessage());
+        }
     }
 
     private EmotePlayerBehavior parsePlayerBehavior(JsonObject player, EmoteJsonDocument document) throws EmoteLoadException {
