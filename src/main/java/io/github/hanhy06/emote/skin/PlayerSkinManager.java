@@ -83,8 +83,8 @@ public class PlayerSkinManager implements ConfigListener {
             PlayerSkinSource source = animation.model().skin().defaultSource();
             if (source == null) continue;
             this.embeddedSources.add(source.playerUuid());
-            this.bakeCoordinator.prepare(source.withOverride(animation.model().skin().override()), regions(animation.skinBindings()));
         }
+        prepareSkins(null, animations, false);
         synchronizeDefault();
     }
 
@@ -118,11 +118,7 @@ public class PlayerSkinManager implements ConfigListener {
     private boolean publishDefault() {
         PlayerSkinSource source = this.configuredDefault;
         if (source == null || this.pendingDefaults.isEmpty()) return false;
-        boolean ready = true;
-        for (PreparedAnimation animation : this.pendingDefaults) {
-            ready &= this.bakeCoordinator.prepare(source.withOverride(animation.model().skin().override()), regions(animation.skinBindings())).state() == State.READY;
-        }
-        if (!ready) return false;
+        if (!prepareSkins(source, this.pendingDefaults, false).ready()) return false;
         for (PreparedAnimation animation : this.pendingDefaults) animation.model().skin().setDefaultSource(source);
         this.pendingDefaults = List.of();
         return true;
@@ -182,7 +178,8 @@ public class PlayerSkinManager implements ConfigListener {
         boolean ready = true, preparing = false, failed = false;
         int progress = 0;
         for (PreparedAnimation animation : animations) {
-            Set<PlayerSkinRegion> regions = regions(animation.skinBindings());
+            Set<PlayerSkinRegion> regions = animation.skinBindings().stream().map(SkinBinding::region)
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
             PlayerSkinSource selected = source == null ? animation.model().skin().defaultSource() : source;
             PlayerSkinPreparation preparation = regions.isEmpty() ? new PlayerSkinPreparation(Map.of(), State.READY, 100)
                 : resolving ? new PlayerSkinPreparation(null, State.PREPARING, 0)
@@ -196,10 +193,6 @@ public class PlayerSkinManager implements ConfigListener {
         }
         return new Preparation(ready ? Map.copyOf(textures) : Map.of(), ready ? State.READY : preparing ? State.PREPARING : failed ? State.FAILED : State.UNAVAILABLE,
             ready ? 100 : animations.isEmpty() ? 0 : progress / animations.size());
-    }
-
-    private static Set<PlayerSkinRegion> regions(List<SkinBinding> bindings) {
-        return bindings.stream().map(SkinBinding::region).collect(java.util.stream.Collectors.toUnmodifiableSet());
     }
 
     public void checkPlayerSkin(ServerPlayer player) {
