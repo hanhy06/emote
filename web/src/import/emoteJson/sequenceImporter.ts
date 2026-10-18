@@ -7,7 +7,7 @@ import { parseInputJson } from "../common/inputCache";
 interface EmoteSequence {
   callbacks?: EmoteCallback[];
   type: "sequence";
-  schema_version: typeof EMOTE_SCHEMA_VERSION;
+  schema_version: 4 | typeof EMOTE_SCHEMA_VERSION;
   target_minecraft_version?: string;
   id: string;
   metadata: RuntimeRecord;

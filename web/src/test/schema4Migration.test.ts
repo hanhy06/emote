@@ -1,7 +1,9 @@
 import { expect, it } from "vitest";
 import { createConversionDocument, skinPartOrders } from "../domain/conversionDocument";
 import { evaluatePose } from "../domain/animationIRPose";
-import { exportAnimation } from "../export/projectExporter";
+import { exportAnimation, exportAnimations } from "../export/projectExporter";
+import { importFileBatch } from "../import/importBatch";
+import { createDefaultPlayerBehavior } from "../domain/emoteDefinition";
 import type { AnimationJson } from "../format/animation";
 import { detectInputFormat, readInput } from "../import/formats";
 
@@ -98,4 +100,27 @@ it("keeps Molang Euler rotation and skips unsupported fields without losing the 
   expect(project.diagnostics.map((issue) => issue.sourcePath)).toEqual(expect.arrayContaining([
     "timeline.tracks.prop.rotation", "timeline.tracks.prop.unsupported", "timeline.tracks.missing", "timeline.events.start[1]", "nodes.unknown",
   ]));
+});
+
+it("imports a schema 4 sequence with animations and exports its steps and references as schema 5", async () => {
+  const sequence = {
+    type: "sequence", schema_version: 4, id: "example:sequence", target_minecraft_version: "26.3",
+    metadata: { name: "Sequence", description: "Keep steps", author: "Author" },
+    settings: { cooldown: "0.5s", player: createDefaultPlayerBehavior() }, callbacks: [{ name: "example:sequence" }],
+    steps: [
+      { emote: "example:legacy", repeat: 2, transition: "3t" }, { wait: "0.25s" },
+      { emote: ["example:legacy", 25, "example:unresolved", 75] }, { emote: "emote:empty" },
+    ],
+  };
+  const input = { name: "sequence.json", bytes: new TextEncoder().encode(JSON.stringify(sequence)) };
+  expect(await detectInputFormat(input)).toBe("emote_sequence");
+  const document = await importFileBatch([legacy, sequence].map((value, index) => ({ name: `${index}.json`,
+    arrayBuffer: async () => new TextEncoder().encode(JSON.stringify(value)).buffer })));
+  const outputs = await exportAnimations(document, true);
+  const actual = JSON.parse(await outputs.at(-1)!.blob.text());
+  expect(actual).toEqual({ ...sequence, schema_version: 5 });
+  const animation: AnimationJson = JSON.parse(await outputs[0].blob.text());
+  expect(animation).toMatchObject({ id: "example:legacy", schema_version: 5 });
+  const reopened = await readInput("emote_sequence", { name: "sequence.json", bytes: new TextEncoder().encode(JSON.stringify(actual)) });
+  expect(reopened.steps).toEqual(document.sequence.steps);
 });

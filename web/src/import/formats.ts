@@ -40,7 +40,7 @@ async function matchesInputFormat(input: ImportInput, format: InputFormat): Prom
     switch (format) {
       case "emote_sequence": {
         const value = parseInputJson(input);
-        return isRecord(value) && value.type === "sequence" && value.schema_version === EMOTE_SCHEMA_VERSION;
+        return isRecord(value) && value.type === "sequence" && (value.schema_version === EMOTE_SCHEMA_VERSION || value.schema_version === 4);
       }
       case "bd_datapack":
         (await import("./bdDatapack/bdDatapackSource")).readBdDatapackSource(input);
