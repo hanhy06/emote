@@ -27,6 +27,9 @@ In **Review**, select model parts and verify their player-skin assignments. You 
 
 In **Settings**, configure the ID, name, description, and playback behavior. The ID must use the `namespace:path` format and must not duplicate another emote on the server.
 
+!!! info "[Skin overrides](../developers/animation.md#skin)"
+    In `.ajblueprint` and `.bbmodel` projects, the `override` texture replaces the areas of the player's skin selected by `override_mask` during emote playback.
+
 When the configuration is complete, use **Export** to download the Animation JSON. To connect multiple animations as one emote, configure a Sequence and download it together with every Animation it references.
 
 <img src="../../assets/custom-emote/setting-and-export.gif" alt="Configuring and exporting an emote">

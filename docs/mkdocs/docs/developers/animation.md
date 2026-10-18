@@ -152,6 +152,22 @@ Set the command source (`source`) and execution position (`origin`) separately.
 
 When `source.type` or `origin.type` is `node`, also specify the node ID. A node source also requires `source.attachment`. Nodes without entity attachments can be used as origins, but not as command sources.
 
+## Skin
+
+The root `skin` object provides a default skin and an optional override for player-skin attachments. A complete player skin takes priority over the default skin; missing parts are not filled from the default. The override applies to either skin.
+
+| Field | Description |
+|---|---|
+| `skin.default` | Fallback skin used when a complete player skin is unavailable. |
+| `skin.override.texture` | Texture whose pixels replace the selected areas of the skin. |
+| `skin.override.mask` | Mask selecting the pixels to replace. White replaces pixels; black or transparent preserves the original skin. |
+
+Each image is a Base64-encoded 64×64 PNG with classic (wide) arm UVs. When using `skin.override`, include both `texture` and `mask`.
+
+A white mask also replaces transparent texture pixels, allowing the override to erase the skin's outer layer. The inner layer remains opaque.
+
+For an Animated Java project with a skin override, see [cheer.ajblueprint](https://github.com/hanhy06/emote/blob/main/docs/reference/aj/cheer.ajblueprint).
+
 ## Callbacks {#callbacks}
 
 Select callbacks registered by another server mod in `callbacks` to run code at playback start, ticks, loops, and close.
