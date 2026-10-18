@@ -39,8 +39,9 @@ export interface PreparedCubeModels {
 export function prepareCubeModels(bones: BoneEntry[]): PreparedCubeModels {
   const sourceIds = new Map(bones.flatMap((bone) => bone.cubes.map((cube) => [cube, cube.uuid] as const)));
   const diagnostics: ConversionIssue[] = [];
-  const playableCubesByBone = splitPlayerSkinCubesByPoseBone(bones, sourceIds, diagnostics);
-  return { playableCubesByBone, skinAssignments: inferSkinAssignments(bones, playableCubesByBone, sourceIds), sourceIds, diagnostics };
+  const regions = new Map<BbCube, NonNullable<ImportedSkinPart["region"]>>();
+  const playableCubesByBone = splitPlayerSkinCubesByPoseBone(bones, sourceIds, regions, diagnostics);
+  return { playableCubesByBone, skinAssignments: inferSkinAssignments(bones, playableCubesByBone, sourceIds, regions), sourceIds, diagnostics };
 }
 
 export function normalizeBlockbenchName(name: string | undefined): string | undefined {
@@ -94,10 +95,10 @@ function removeDuplicateSkinLayers(bone: BoneEntry): BbCube[] {
   }));
 }
 
-function splitPlayerSkinCubesByPoseBone(bones: BoneEntry[], sourceIds: Map<BbCube, string>, diagnostics: ConversionIssue[]): Map<string, BbCube[]> {
+function splitPlayerSkinCubesByPoseBone(bones: BoneEntry[], sourceIds: Map<BbCube, string>, regions: Map<BbCube, NonNullable<ImportedSkinPart["region"]>>, diagnostics: ConversionIssue[]): Map<string, BbCube[]> {
   const result = new Map(bones.map((bone) => [bone.uuid, [] as BbCube[]]));
   const cubesByBone = new Map(bones.map((bone) => [bone.uuid, removeDuplicateSkinLayers(bone)]));
-  const consumed = splitPresegmentedSkinCubes(bones, cubesByBone, result, sourceIds, diagnostics);
+  const consumed = splitPresegmentedSkinCubes(bones, cubesByBone, result, sourceIds, regions, diagnostics);
   for (const bone of bones) {
     const part = inferSkinPart(bone);
     for (const cube of cubesByBone.get(bone.uuid) ?? []) {
@@ -123,6 +124,7 @@ function splitPlayerSkinCubesByPoseBone(bones: BoneEntry[], sourceIds: Map<BbCub
           faces: sliceVerticalFaceUvs(cube.faces, piece.startY / skinHeight, piece.endY / skinHeight),
         };
         sourceIds.set(sliced, cube.uuid);
+        regions.set(sliced, { from: piece.startY / skinHeight, to: piece.endY / skinHeight });
         result.get(piece.motion === "lower" && lowerBone ? lowerBone.uuid : bone.uuid)!.push(sliced);
       }
     }
@@ -135,6 +137,7 @@ function splitPresegmentedSkinCubes(
   cubesByBone: ReadonlyMap<string, BbCube[]>,
   result: Map<string, BbCube[]>,
   sourceIds: Map<BbCube, string>,
+  regions: Map<BbCube, NonNullable<ImportedSkinPart["region"]>>,
   diagnostics: ConversionIssue[],
 ): Set<string> {
   const consumed = new Set<string>();
@@ -190,6 +193,7 @@ function splitPresegmentedSkinCubes(
         faces: sliceVerticalFaceUvs(source.cube.faces, startRatio, endRatio),
       };
       sourceIds.set(sliced, source.cube.uuid);
+      regions.set(sliced, { from: piece.startY / humanoidSkinPartHeight(part), to: piece.endY / humanoidSkinPartHeight(part) });
       result.get(source.bone.uuid)!.push(sliced);
     }
     component.forEach((source) => consumed.add(source.cube.uuid));
@@ -279,6 +283,7 @@ function inferSkinAssignments(
   bones: BoneEntry[],
   playableCubesByBone: ReadonlyMap<string, BbCube[]>,
   sourceIds: ReadonlyMap<BbCube, string>,
+  regions: ReadonlyMap<BbCube, NonNullable<ImportedSkinPart["region"]>>,
 ): Map<BbCube, ImportedSkinPart> {
   const candidates: { cube: BbCube; part: ImportedSkinPart["part"]; centerY: number; sourceOrder: number; explicitOrder?: number }[] = [];
   let sourceOrder = 0;
@@ -302,7 +307,8 @@ function inferSkinAssignments(
     candidates
       .filter((candidate) => candidate.part === part)
       .sort((first, second) => second.centerY - first.centerY || first.sourceOrder - second.sourceOrder)
-      .forEach((candidate, order) => result.set(candidate.cube, { part, order: candidate.explicitOrder ?? order }));
+      .forEach((candidate, order) => result.set(candidate.cube, { part, order: candidate.explicitOrder ?? order,
+        ...(regions.has(candidate.cube) ? { region: regions.get(candidate.cube)! } : {}) }));
   }
   return result;
 }

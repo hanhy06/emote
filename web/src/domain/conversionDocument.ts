@@ -133,6 +133,11 @@ export function createConversionDocument(project: ImportedProject, formatLabel: 
       .map(([id, suggestion]) => [skinCandidates[id].groupId, suggestion.order]));
     document = applySkinGroups(document, part, groups, "input");
   }
+  for (const [id, suggestion] of Object.entries(suggestions)) {
+    const candidate = skinCandidates[id];
+    const attachment = document.nodes[candidate.nodeId].attachments?.[candidate.attachmentId];
+    if (suggestion.region && attachment?.type === "player_skin") attachment.region = { ...suggestion.region };
+  }
   return document;
 }
 
