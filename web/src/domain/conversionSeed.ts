@@ -48,7 +48,6 @@ export type ImportedNode =
 export interface ImportedSkinPart {
   part: PlayerSkinPart;
   order: number;
-  region?: { from: number; to: number };
 }
 
 export interface ImportedAnimation {
