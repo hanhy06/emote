@@ -85,7 +85,7 @@ public class PlayerSkinManager implements ConfigListener {
             PlayerSkinSource source = animation.model().skin().defaultSource();
             if (source == null) continue;
             this.embeddedSources.add(source.playerUuid());
-            this.bakeCoordinator.prepare(source, regions(animation.skinBindings()));
+            this.bakeCoordinator.prepare(source.withOverride(animation.model().skin().override()), regions(animation.skinBindings()));
         }
         synchronizeDefault();
     }
@@ -120,9 +120,11 @@ public class PlayerSkinManager implements ConfigListener {
     private boolean publishDefault() {
         PlayerSkinSource source = this.configuredDefault;
         if (source == null || this.pendingDefaults.isEmpty()) return false;
-        Set<PlayerSkinRegion> required = this.pendingDefaults.stream().flatMap(animation -> animation.skinBindings().stream())
-            .map(SkinBinding::region).collect(java.util.stream.Collectors.toUnmodifiableSet());
-        if (this.bakeCoordinator.prepare(source, required).state() != State.READY) return false;
+        boolean ready = true;
+        for (PreparedAnimation animation : this.pendingDefaults) {
+            ready &= this.bakeCoordinator.prepare(source.withOverride(animation.model().skin().override()), regions(animation.skinBindings())).state() == State.READY;
+        }
+        if (!ready) return false;
         for (PreparedAnimation animation : this.pendingDefaults) animation.model().skin().setDefaultSource(source);
         this.pendingDefaults = List.of();
         return true;
@@ -167,24 +169,27 @@ public class PlayerSkinManager implements ConfigListener {
     }
 
     public Preparation prepareSkinSource(PlayerSkinSource source, List<PreparedAnimation> animations, boolean resolving) {
-        Set<PlayerSkinRegion> required = new LinkedHashSet<>();
-        for (PreparedAnimation animation : animations) required.addAll(regions(animation.skinBindings()));
-        PlayerSkinPreparation player = required.isEmpty() ? new PlayerSkinPreparation(Map.of(), State.READY, 100)
-            : resolving ? new PlayerSkinPreparation(null, State.PREPARING, 0)
-            : source == null ? new PlayerSkinPreparation(null, State.UNAVAILABLE, 0) : this.bakeCoordinator.prepare(source, required);
+        Preparation player = source == null && !resolving ? new Preparation(Map.of(), State.UNAVAILABLE, 0)
+            : prepareSkins(source, animations, resolving);
+        if (player.ready()) return player;
+        Preparation fallback = prepareSkins(null, animations, false);
+        if (fallback.ready()) return fallback;
+        State state = player.preparing() || fallback.preparing() ? State.PREPARING
+            : player.state() == State.FAILED || fallback.state() == State.FAILED ? State.FAILED : State.UNAVAILABLE;
+        return new Preparation(Map.of(), state, Math.max(player.progressPercent(), fallback.progressPercent()));
+    }
+
+    private Preparation prepareSkins(PlayerSkinSource source, List<PreparedAnimation> animations, boolean resolving) {
         Map<String, Map<PlayerSkinRegion, String>> textures = new HashMap<>();
-        if (player.state() == State.READY) {
-            for (PreparedAnimation animation : animations) textures.put(animation.id(), player.textures());
-            return new Preparation(Map.copyOf(textures), State.READY, 100);
-        }
-        boolean preparing = player.preparing(), failed = player.state() == State.FAILED;
+        boolean ready = true, preparing = false, failed = false;
         int progress = 0;
-        boolean ready = true;
         for (PreparedAnimation animation : animations) {
             Set<PlayerSkinRegion> regions = regions(animation.skinBindings());
-            PlayerSkinSource fallback = animation.model().skin().defaultSource();
+            PlayerSkinSource selected = source == null ? animation.model().skin().defaultSource() : source;
             PlayerSkinPreparation preparation = regions.isEmpty() ? new PlayerSkinPreparation(Map.of(), State.READY, 100)
-                : fallback == null ? new PlayerSkinPreparation(null, State.UNAVAILABLE, 0) : this.bakeCoordinator.prepare(fallback, regions);
+                : resolving ? new PlayerSkinPreparation(null, State.PREPARING, 0)
+                : selected == null ? new PlayerSkinPreparation(null, State.UNAVAILABLE, 0)
+                : this.bakeCoordinator.prepare(selected.withOverride(animation.model().skin().override()), regions);
             ready &= preparation.state() == State.READY;
             preparing |= preparation.preparing();
             failed |= preparation.state() == State.FAILED;

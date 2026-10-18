@@ -2,6 +2,8 @@ package io.github.hanhy06.emote.skin;
 
 import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
+import io.github.hanhy06.emote.skin.model.SkinOverride;
+import org.jspecify.annotations.Nullable;
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -64,19 +66,27 @@ public final class PlayerSkinBaker {
     private static final FaceTarget OVERLAY_BACK = new FaceTarget(56, 8, 8, 8);
 
     public PreparedSkin prepare(BufferedImage sourceImage, boolean slimModel) {
+        return prepare(sourceImage, slimModel, null);
+    }
+
+    public PreparedSkin prepare(BufferedImage sourceImage, boolean slimModel, @Nullable SkinOverride override) {
         boolean effectiveSlimModel = resolveSlimModel(sourceImage, slimModel);
         BufferedImage normalizedImage = normalizeSkinImage(sourceImage);
-        return new PreparedSkin(normalizedImage, effectiveSlimModel);
+        PreparedSkin prepared = new PreparedSkin(normalizedImage, effectiveSlimModel);
+        return override == null ? prepared : new PreparedSkin(override.apply(wideImage(prepared)), false);
     }
 
     public byte[] normalize(BufferedImage sourceImage, boolean slimModel) throws IOException {
-        PreparedSkin prepared = prepare(sourceImage, slimModel);
+        return writePng(wideImage(prepare(sourceImage, slimModel)));
+    }
+
+    private BufferedImage wideImage(PreparedSkin prepared) {
         BufferedImage image = prepared.normalizedImage;
         if (prepared.slimModel) {
             image = expandSlimArmToWideAtlas(image, PlayerSkinPart.RIGHT_ARM);
             image = expandSlimArmToWideAtlas(image, PlayerSkinPart.LEFT_ARM);
         }
-        return writePng(image);
+        return image;
     }
 
     public byte[] bake(

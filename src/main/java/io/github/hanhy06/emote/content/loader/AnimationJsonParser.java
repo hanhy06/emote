@@ -9,6 +9,7 @@ import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.LoadedAnimation;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
+import io.github.hanhy06.emote.skin.model.SkinOverride;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.resources.Identifier;
@@ -65,12 +66,26 @@ public final class AnimationJsonParser {
 
     private Skin skin(JsonObject root, EmoteJsonDocument document) throws EmoteLoadException {
         JsonObject skin = object(root, "skin", "$", document);
-        if (!skin.has("default")) return new Skin(null);
-        try {
-            return new Skin(PlayerSkinSource.fromPng(Base64.getDecoder().decode(document.requireString(skin, "default", "$.skin"))));
-        } catch (IllegalArgumentException | java.io.IOException exception) {
-            throw document.error("$.skin.default", exception.getMessage());
+        PlayerSkinSource defaultSource = null;
+        if (skin.has("default")) {
+            try {
+                defaultSource = PlayerSkinSource.fromPng(Base64.getDecoder().decode(document.requireString(skin, "default", "$.skin")));
+            } catch (IllegalArgumentException | java.io.IOException exception) {
+                throw document.error("$.skin.default", exception.getMessage());
+            }
         }
+        SkinOverride override = null;
+        if (skin.has("override")) {
+            JsonObject object = document.requireObject(skin, "override", "$.skin");
+            String texture = document.requireString(object, "texture", "$.skin.override");
+            String mask = document.requireString(object, "mask", "$.skin.override");
+            try {
+                override = new SkinOverride(Base64.getDecoder().decode(texture), Base64.getDecoder().decode(mask));
+            } catch (IllegalArgumentException | java.io.IOException exception) {
+                throw document.error("$.skin.override", exception.getMessage());
+            }
+        }
+        return new Skin(defaultSource, override);
     }
 
     private EmotePlayerBehavior parsePlayerBehavior(JsonObject player, EmoteJsonDocument document) throws EmoteLoadException {

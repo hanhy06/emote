@@ -7,6 +7,7 @@ import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
+import io.github.hanhy06.emote.skin.model.SkinOverride;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.Vec3;
@@ -44,10 +45,16 @@ public record EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings set
 
     public static final class Skin {
         private volatile @Nullable PlayerSkinSource defaultSource;
+        private final @Nullable SkinOverride override;
 
-        public Skin(@Nullable PlayerSkinSource defaultSource) { this.defaultSource = defaultSource; }
+        public Skin(@Nullable PlayerSkinSource defaultSource) { this(defaultSource, null); }
+        public Skin(@Nullable PlayerSkinSource defaultSource, @Nullable SkinOverride override) {
+            this.defaultSource = defaultSource;
+            this.override = override;
+        }
         public @Nullable PlayerSkinSource defaultSource() { return this.defaultSource; }
         public void setDefaultSource(PlayerSkinSource source) { this.defaultSource = source; }
+        public @Nullable SkinOverride override() { return this.override; }
     }
 
     public record Molang(String initialize, String tick) {

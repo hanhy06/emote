@@ -8,6 +8,7 @@ import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
+import io.github.hanhy06.emote.skin.model.SkinOverride;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -156,6 +157,56 @@ class SkinCachePipelineTest {
             }
             assertEquals("cached-texture", first.get(5, TimeUnit.SECONDS));
         } finally { coordinator.cancelPendingBakes(); }
+    }
+
+    @Test
+    void coalescesEqualOverridesButKeepsTextureMaskAndOriginalCachesSeparate() throws Exception {
+        var cache = new SkinCache(this.directory);
+        var original = source(UUID.randomUUID(), HASH);
+        var first = original.withOverride(new SkinOverride(png(0xff123456), png(0xffffffff)));
+        var same = source(UUID.randomUUID(), HASH).withOverride(new SkinOverride(png(0xff123456), png(0xffffffff)));
+        var textureChanged = original.withOverride(new SkinOverride(png(0xffabcdef), png(0xffffffff)));
+        var maskChanged = original.withOverride(new SkinOverride(png(0xff123456), png(0xff000000)));
+        assertEquals(first.textureHash(), same.textureHash());
+        assertEquals(4, Set.of(original.textureHash(), first.textureHash(), textureChanged.textureHash(), maskChanged.textureHash()).size());
+        assertTrue(cache.save(original.textureHash(), false, Map.of(HEAD, "original"), cache.epoch()));
+        assertTrue(cache.save(first.textureHash(), false, Map.of(HEAD, "first"), cache.epoch()));
+        assertTrue(cache.save(textureChanged.textureHash(), false, Map.of(HEAD, "texture"), cache.epoch()));
+        assertTrue(cache.save(maskChanged.textureHash(), false, Map.of(HEAD, "mask"), cache.epoch()));
+        cache.clearMemory();
+        var coordinator = coordinator(cache);
+        var ready = new LinkedBlockingQueue<UUID>();
+        coordinator.setListener(new SkinBakeCoordinator.Listener() {
+            public void onReady(UUID player, long generation) { ready.add(player); }
+        });
+        try {
+            try (var gate = new IoGate(cache)) {
+                coordinator.prepare(first, Set.of(HEAD));
+                coordinator.prepare(same, Set.of(HEAD));
+                coordinator.prepare(textureChanged, Set.of(HEAD));
+                coordinator.prepare(maskChanged, Set.of(HEAD));
+                coordinator.prepare(original, Set.of(HEAD));
+                var stats = coordinator.processingStats();
+                assertEquals(4, stats.activeJobs() + stats.queuedJobs());
+                assertTrue(ready.isEmpty());
+            }
+            var subscribers = new java.util.ArrayList<UUID>();
+            for (int i = 0; i < 5; i++) subscribers.add(ready.poll(5, TimeUnit.SECONDS));
+            assertEquals(4, java.util.Collections.frequency(subscribers, original.playerUuid()));
+            assertEquals(1, java.util.Collections.frequency(subscribers, same.playerUuid()));
+            assertEquals(Map.of(HEAD, "first"), coordinator.prepare(first, Set.of(HEAD)).textures());
+            assertEquals(Map.of(HEAD, "texture"), coordinator.prepare(textureChanged, Set.of(HEAD)).textures());
+            assertEquals(Map.of(HEAD, "mask"), coordinator.prepare(maskChanged, Set.of(HEAD)).textures());
+            assertEquals(Map.of(HEAD, "original"), coordinator.prepare(original, Set.of(HEAD)).textures());
+        } finally { coordinator.cancelPendingBakes(); }
+    }
+
+    private static byte[] png(int color) throws Exception {
+        var image = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < 64; y++) for (int x = 0; x < 64; x++) image.setRGB(x, y, color);
+        var output = new java.io.ByteArrayOutputStream();
+        javax.imageio.ImageIO.write(image, "png", output);
+        return output.toByteArray();
     }
 
     private SkinBakeCoordinator coordinator(SkinCache cache) {

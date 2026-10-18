@@ -220,7 +220,7 @@ public final class SkinBakeCoordinator implements ConfigListener {
                 if (prepared == null) {
                     BufferedImage sourceImage = source.png() == null ? this.skinClient.downloadSkin(source.textureUrl())
                         : ImageIO.read(new ByteArrayInputStream(source.png()));
-                    prepared = this.baker.prepare(sourceImage, source.slimModel());
+                    prepared = this.baker.prepare(sourceImage, source.slimModel(), source.override());
                 }
                 for (PlayerSkinRegion region : missing) {
                     byte[] png = this.baker.bake(prepared, region);

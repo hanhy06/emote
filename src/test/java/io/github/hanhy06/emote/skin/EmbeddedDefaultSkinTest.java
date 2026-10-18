@@ -16,6 +16,7 @@ import io.github.hanhy06.emote.skin.mineskin.MineSkinProvider;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
+import io.github.hanhy06.emote.skin.model.SkinOverride;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponentInitializers;
@@ -192,7 +193,9 @@ class EmbeddedDefaultSkinTest {
         };
         var cache = new SkinCache(this.directory.resolve("cache"));
         var accounts = new MinecraftAccountManager(new AccountCredentialStore(this.directory.resolve("unused-accounts.bin")), new MinecraftAccountClient());
-        var mineSkin = new MineSkinProvider(cache, new MineSkinClient());
+        var mineSkin = new MineSkinProvider(cache, new MineSkinClient(java.net.http.HttpClient.newBuilder()
+            .proxy(java.net.ProxySelector.of(new java.net.InetSocketAddress("127.0.0.1", 9)))
+            .connectTimeout(java.time.Duration.ofMillis(250)).build()));
         Config config = Config.createDefault();
         mineSkin.configure(new Config(config.schemaVersion(), config.menuPageSize(), "test-key", config.mineSkinPollIntervalSeconds(),
             config.mineSkinCacheRetentionDays(), config.mineSkinCacheMaxMiB(), config.maxActiveDisplayEntities(), ""));
@@ -214,8 +217,124 @@ class EmbeddedDefaultSkinTest {
             coordinator.prepare(embedded, Set.of(arm));
             assertEquals(embedded.playerUuid(), ready.poll(5, TimeUnit.SECONDS));
             assertEquals(Map.of(arm, "cached-arm"), coordinator.prepare(embedded, Set.of(arm)).textures());
+            var overridden = embedded.withOverride(new SkinOverride(png(0xffabcdef), png(0xffffffff)));
+            var expected = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
+            for (int y = 0; y < 16; y++) for (int x = 0; x < 64; x++) {
+                if (y >= 8 || x >= 8 && x < 24 || x >= 40 && x < 56) expected.setRGB(x, y, 0xffabcdef);
+            }
+            var encoded = new ByteArrayOutputStream();
+            ImageIO.write(expected, "png", encoded);
+            assertTrue(cache.saveContent(SkinCache.createContentKey(encoded.toByteArray(), false), "overridden-arm", cache.epoch()));
+            coordinator.prepare(overridden, Set.of(arm));
+            assertEquals(embedded.playerUuid(), ready.poll(5, TimeUnit.SECONDS));
+            assertEquals(Map.of(arm, "overridden-arm"), coordinator.prepare(overridden, Set.of(arm)).textures());
+            assertEquals(Map.of(arm, "cached-arm"), coordinator.prepare(embedded, Set.of(arm)).textures());
             assertEquals(1, downloads.get());
             assertFalse(Files.exists(this.directory.resolve("cache/default_skin.json")));
+        } finally { coordinator.cancelPendingBakes(); }
+    }
+
+    @Test
+    void readsOverrideAndRetainsItWhenTheServerReplacesTheEmbeddedDefault() throws Exception {
+        Path path = this.directory.resolve("override.json");
+        JsonObject json = animationJson("test:override");
+        JsonObject override = new JsonObject();
+        override.addProperty("texture", Base64.getEncoder().encodeToString(png(0xffabcdef)));
+        override.addProperty("mask", Base64.getEncoder().encodeToString(png(0xffffffff)));
+        JsonObject skin = new JsonObject();
+        skin.add("override", override);
+        json.add("skin", skin);
+        Files.writeString(path, json.toString());
+        var loaded = new AnimationJsonParser().parse(path).model();
+        assertNull(loaded.skin().defaultSource());
+        String hash = loaded.skin().override().hash();
+        EmoteDirectoryLoader.updateDefaultSkin(path, "test:override", Base64.getEncoder().encodeToString(png(0xff123456)));
+        loaded = new AnimationJsonParser().parse(path).model();
+        assertNotNull(loaded.skin().defaultSource());
+        assertEquals(hash, loaded.skin().override().hash());
+        assertEquals(override, JsonParser.parseString(Files.readString(path)).getAsJsonObject().getAsJsonObject("skin").getAsJsonObject("override"));
+
+        override.remove("mask");
+        Files.writeString(path, json.toString());
+        assertEquals("$.skin.override.mask", assertThrows(EmoteLoadException.class, () -> new AnimationJsonParser().parse(path)).fieldPath());
+        override.addProperty("mask", Base64.getEncoder().encodeToString(png(0xff888888)));
+        Files.writeString(path, json.toString());
+        assertEquals("$.skin.override", assertThrows(EmoteLoadException.class, () -> new AnimationJsonParser().parse(path)).fieldPath());
+    }
+
+    @Test
+    void selectsWholeOverrideSetsAndRestoresThePlainSkinWhenChangingSequenceSteps() throws Exception {
+        var first = animation("test:first", png(0xff123456));
+        var json = JsonParser.parseString(Files.readString(first.sourcePath())).getAsJsonObject();
+        var override = new JsonObject();
+        override.addProperty("texture", Base64.getEncoder().encodeToString(png(0xffaabbcc)));
+        override.addProperty("mask", Base64.getEncoder().encodeToString(png(0xffffffff)));
+        json.getAsJsonObject("skin").add("override", override);
+        Files.writeString(first.sourcePath(), json.toString());
+        first = PreparedAnimation.prepare(new AnimationJsonParser().parse(first.sourcePath()), registries);
+        var second = animation("test:second", png(0xffabcdef));
+        var player = new PlayerSkinSource(UUID.randomUUID(), "Player", "c".repeat(64), "unused", false);
+        PlayerSkinSource playerOverride = player.withOverride(first.model().skin().override());
+        PlayerSkinSource fallbackOverride = first.model().skin().defaultSource().withOverride(first.model().skin().override());
+        var cache = new SkinCache(this.directory.resolve("cache"));
+        var own = Map.of(HEAD, "own-head", BODY, "own-body");
+        var dressed = Map.of(HEAD, "dressed-head", BODY, "dressed-body");
+        var defaultDressed = Map.of(HEAD, "default-dressed-head", BODY, "default-dressed-body");
+        var plainDefault = Map.of(HEAD, "default-head", BODY, "default-body");
+        assertTrue(cache.save(player.textureHash(), false, own, cache.epoch()));
+        assertTrue(cache.save(playerOverride.textureHash(), false, Map.of(HEAD, "dressed-head"), cache.epoch()));
+        assertTrue(cache.save(fallbackOverride.textureHash(), false, defaultDressed, cache.epoch()));
+        assertTrue(cache.save(second.model().skin().defaultSource().textureHash(), false, plainDefault, cache.epoch()));
+        var coordinator = coordinator(cache);
+        var manager = new PlayerSkinManager(coordinator);
+        try {
+            var preparation = manager.prepareSkinSource(player, List.of(first, second), false);
+            assertTrue(preparation.ready());
+            assertEquals(Map.of(first.id(), defaultDressed, second.id(), plainDefault), preparation.textures());
+            assertTrue(cache.save(playerOverride.textureHash(), false, Map.of(BODY, "dressed-body"), cache.epoch()));
+            preparation = manager.prepareSkinSource(player, List.of(first, second), false);
+            assertTrue(preparation.ready());
+            assertEquals(Map.of(first.id(), dressed, second.id(), own), preparation.textures());
+
+            JsonObject sequence = animationJson("test:sequence");
+            sequence.addProperty("type", "sequence");
+            sequence.remove("nodes");
+            sequence.remove("animation");
+            sequence.add("settings", JsonParser.parseString("""
+                {"cooldown":"0t","player":{"hidden":true,"stop_conditions":{"movement_distance":0.3,
+                 "jump":true,"submerge":true,"ride":true,"damage":true,"attack":true,"game_mode_change":true}}}
+                """));
+            sequence.add("steps", JsonParser.parseString("[{\"emote\":\"test:first\"},{\"wait\":\"2t\"},{\"emote\":\"test:second\",\"transition\":\"2t\"}]"));
+            Path path = this.directory.resolve("sequence.json");
+            Files.writeString(path, sequence.toString());
+            var prepared = PreparedSequence.prepare(new SequenceJsonParser().parse(path).model(), Map.of(first.id(), first, second.id(), second));
+            var playback = new EmotePlayback(prepared);
+            assertEquals(dressed, preparation.textures().get(apply(playback.prepareStart(new Target())).skinAnimationId()));
+            assertEquals(dressed, preparation.textures().get(apply(playback.prepareAdvance(2)).skinAnimationId()));
+            assertEquals(own, preparation.textures().get(apply(playback.prepareAdvance(2)).skinAnimationId()));
+            assertEquals(dressed, preparation.textures().get(apply(playback.prepareStep(0, 0, 1)).skinAnimationId()));
+            assertEquals(own, preparation.textures().get(apply(playback.prepareStep(2, 0, 1)).skinAnimationId()));
+
+            var replacement = PlayerSkinSource.fromPng(png(0xff998877));
+            var replacementOverride = replacement.withOverride(first.model().skin().override());
+            assertTrue(cache.save(replacement.textureHash(), false, own, cache.epoch()));
+            cache.load(replacementOverride.textureHash(), false, cache.epoch());
+            var sourceField = PlayerSkinManager.class.getDeclaredField("configuredDefault");
+            sourceField.setAccessible(true);
+            sourceField.set(manager, replacement);
+            var pending = PlayerSkinManager.class.getDeclaredField("pendingDefaults");
+            pending.setAccessible(true);
+            pending.set(manager, List.of(first, second));
+            var publish = PlayerSkinManager.class.getDeclaredMethod("publishDefault");
+            publish.setAccessible(true);
+            assertEquals(false, publish.invoke(manager));
+            assertNotSame(replacement, first.model().skin().defaultSource());
+            assertNotSame(replacement, second.model().skin().defaultSource());
+            assertTrue(cache.save(replacementOverride.textureHash(), false, dressed, cache.epoch()));
+            assertEquals(true, publish.invoke(manager));
+            assertSame(replacement, first.model().skin().defaultSource());
+            assertSame(replacement, second.model().skin().defaultSource());
+            assertEquals(Map.of(first.id(), dressed, second.id(), own), manager.prepareSkinSource(null, List.of(first, second), false).textures());
         } finally { coordinator.cancelPendingBakes(); }
     }
 
