@@ -45,6 +45,7 @@ export function removeRedundantKeyframes(ir: AnimationIR): void {
 }
 
 export function removeTinyStaticNodes(ir: AnimationIR): void {
+  const nodeIds = orderedNodeIds(ir.nodes);
   const constantValues = new Map<TrackIR, readonly number[]>();
   for (const track of ir.animation.tracks) {
     if (track.channel !== "value" || track.driver.type !== "curve" || track.blend
@@ -62,7 +63,7 @@ export function removeTinyStaticNodes(ir: AnimationIR): void {
   }
   const staticNodes = new Set<string>();
   const zeroScaleNodes = new Set<string>();
-  for (const id of orderedNodeIds(ir.nodes)) {
+  for (const id of nodeIds) {
     const node = ir.nodes[id];
     const tracks = ir.animation.tracks.filter((track) => track.target.node === id);
     if (node.parent && zeroScaleNodes.has(node.parent) && node.inherit?.scale !== false
@@ -73,14 +74,9 @@ export function removeTinyStaticNodes(ir: AnimationIR): void {
         return value?.length === 3 && value.every((axis) => axis === 0);
       })) zeroScaleNodes.add(id);
     if (node.parent && !staticNodes.has(node.parent)) continue;
-    const constant = tracks.every((t) => {
-      if (t.channel !== "value") {
-        return t.driver.type === "state" && t.driver.keys.every((key) => t.channel === "visible"
-          ? typeof key.value === "boolean" : typeof (key.value as NbtPatchIR).merge === "string");
-      }
-      return constantValues.has(t);
-    });
-    if (constant) staticNodes.add(id);
+    if (tracks.every((track) => track.channel === "value" ? constantValues.has(track)
+      : track.driver.type === "state" && track.driver.keys.every((key) => track.channel === "visible"
+        ? typeof key.value === "boolean" : typeof (key.value as NbtPatchIR).merge === "string"))) staticNodes.add(id);
   }
   const poses = evaluatePose({ ...ir, nodes: Object.fromEntries(Object.entries(ir.nodes).filter(([id]) => staticNodes.has(id))),
     animation: { ...ir.animation, tracks: ir.animation.tracks.filter((track) => track.channel === "value" && staticNodes.has(track.target.node)) } }, 0, (value) => {
@@ -107,8 +103,8 @@ export function removeTinyStaticNodes(ir: AnimationIR): void {
   for (const id of candidates) {
     for (let current: string | undefined = id; current && !protectedNodes.has(current); current = ir.nodes[current]?.parent) removable.add(current);
   }
-  for (const id of orderedNodeIds(ir.nodes)) if (ir.nodes[id].parent && removable.has(ir.nodes[id].parent!)) removable.add(id);
-  if (!removable.size || removable.size === Object.keys(ir.nodes).length) return;
+  for (const id of nodeIds) if (ir.nodes[id].parent && removable.has(ir.nodes[id].parent!)) removable.add(id);
+  if (!removable.size || removable.size === nodeIds.length) return;
   ir.nodes = Object.fromEntries(Object.entries(ir.nodes).filter(([id]) => !removable.has(id)));
   ir.animation.tracks = ir.animation.tracks.filter((track) => !removable.has(track.target.node));
 }
