@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.playback;
 
+import io.github.hanhy06.emote.api.EmoteCallback;
 import io.github.hanhy06.emote.api.EmoteCallbacks;
 import io.github.hanhy06.emote.api.Registration;
 import net.minecraft.resources.Identifier;
@@ -8,7 +9,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import io.github.hanhy06.emote.api.EmoteCallback;
 
 public final class CallbackRegistry {
     private final ConcurrentHashMap<Identifier, RegisteredCallbacks> registrations = new ConcurrentHashMap<>();

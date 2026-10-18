@@ -37,19 +37,10 @@ import net.minecraft.world.item.component.TypedEntityData;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
-import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4fc;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Base64;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 public final class PlaybackScene implements EmotePlayback.PoseTarget {
     private final ServerLevel level;
@@ -354,8 +345,7 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
 
     private static Display createDisplay(ServerLevel level, EmoteAnimation.Attachment attachment) {
         Display display = switch (attachment) {
-            case EmoteAnimation.ItemAttachment ignored -> EntityTypes.ITEM_DISPLAY.create(level, EntitySpawnReason.COMMAND);
-            case EmoteAnimation.SkinAttachment ignored -> EntityTypes.ITEM_DISPLAY.create(level, EntitySpawnReason.COMMAND);
+            case EmoteAnimation.ItemAttachment _, EmoteAnimation.SkinAttachment _ -> EntityTypes.ITEM_DISPLAY.create(level, EntitySpawnReason.COMMAND);
             case EmoteAnimation.BlockAttachment ignored -> EntityTypes.BLOCK_DISPLAY.create(level, EntitySpawnReason.COMMAND);
             case EmoteAnimation.TextAttachment ignored -> EntityTypes.TEXT_DISPLAY.create(level, EntitySpawnReason.COMMAND);
             default -> throw new IllegalArgumentException("Attachment does not provide a display entity");

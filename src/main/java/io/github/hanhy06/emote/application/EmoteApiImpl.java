@@ -4,13 +4,10 @@ import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.*;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.sequence.EmoteSequence;
-import io.github.hanhy06.emote.content.EmoteCatalog;
-import io.github.hanhy06.emote.content.LoadedAnimation;
-import io.github.hanhy06.emote.content.PreparedSequence;
-import io.github.hanhy06.emote.content.PreparedEmote;
+import io.github.hanhy06.emote.content.*;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
-import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.playback.PlaybackSession;
+import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
@@ -22,8 +19,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import io.github.hanhy06.emote.api.EmoteLoadException;
-import io.github.hanhy06.emote.content.PreparedAnimation;
 
 public final class EmoteApiImpl extends EmoteApi {
     private final EmoteCatalog emoteCatalog;
@@ -162,11 +157,7 @@ public final class EmoteApiImpl extends EmoteApi {
     public Optional<PlaybackInfo> getPlayback(ServerPlayer player) {
         Objects.requireNonNull(player, "player");
         requireServerThread();
-        PlaybackSession session = this.playerPlaybackManager.findActive(player.getUUID());
-        if (session == null) {
-            return Optional.empty();
-        }
-        return Optional.of(session.info());
+        return Optional.ofNullable(this.playerPlaybackManager.findActive(player.getUUID())).map(PlaybackSession::info);
     }
 
     @Override

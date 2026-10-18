@@ -3,6 +3,7 @@ package io.github.hanhy06.emote.content.loader;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import io.github.hanhy06.emote.api.EmoteLoadException;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.sequence.EmoteSequence;
@@ -12,7 +13,6 @@ import net.minecraft.resources.Identifier;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import io.github.hanhy06.emote.api.EmoteLoadException;
 
 public final class SequenceJsonParser {
     private static final int SCHEMA_VERSION = io.github.hanhy06.emote.api.animation.EmoteAnimation.SCHEMA_VERSION;

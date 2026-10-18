@@ -1,7 +1,10 @@
 package io.github.hanhy06.emote;
 
 import io.github.hanhy06.emote.application.*;
-import io.github.hanhy06.emote.command.*;
+import io.github.hanhy06.emote.command.AccountCommand;
+import io.github.hanhy06.emote.command.AdminCommand;
+import io.github.hanhy06.emote.command.EmoteMenu;
+import io.github.hanhy06.emote.command.UserCommand;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.loader.EmoteDirectoryLoader;
@@ -24,12 +27,11 @@ import io.github.hanhy06.emote.skin.SkinCache;
 import io.github.hanhy06.emote.skin.account.*;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinClient;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinProvider;
+import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.loader.api.FabricLoader;
-
-import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
-import net.fabricmc.api.ModInitializer;
 import net.minecraft.server.MinecraftServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

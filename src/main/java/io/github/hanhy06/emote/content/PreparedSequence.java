@@ -1,18 +1,17 @@
 package io.github.hanhy06.emote.content;
 
-import io.github.hanhy06.emote.api.sequence.EmoteSequence;
-
+import io.github.hanhy06.emote.api.EmoteCallback;
+import io.github.hanhy06.emote.api.EmoteLoadException;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-
-import java.nio.file.Path;
-import org.jspecify.annotations.Nullable;
-import io.github.hanhy06.emote.api.EmoteCallback;
-import io.github.hanhy06.emote.api.EmoteLoadException;
+import io.github.hanhy06.emote.api.sequence.EmoteSequence;
 import io.github.hanhy06.emote.skin.SkinBinding;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
+import org.jspecify.annotations.Nullable;
+
+import java.nio.file.Path;
 import java.util.*;
 
 public final class PreparedSequence implements PreparedEmote {

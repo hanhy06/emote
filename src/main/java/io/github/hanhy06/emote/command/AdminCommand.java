@@ -7,6 +7,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.content.EmoteCatalog;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.server.ReloadResult;
@@ -26,7 +27,6 @@ import net.minecraft.server.level.ServerPlayer;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import io.github.hanhy06.emote.content.PreparedEmote;
 
 public final class AdminCommand {
     private final EmoteCatalog emoteCatalog;

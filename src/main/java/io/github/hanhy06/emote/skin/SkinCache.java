@@ -1,11 +1,11 @@
 package io.github.hanhy06.emote.skin;
 
-import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
 import com.google.gson.*;
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.config.JsonFileStore;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
+import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
 import io.github.hanhy06.emote.util.Sha256;
 import net.fabricmc.loader.api.FabricLoader;
 

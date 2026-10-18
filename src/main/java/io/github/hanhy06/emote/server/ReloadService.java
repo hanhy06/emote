@@ -1,7 +1,5 @@
 package io.github.hanhy06.emote.server;
 
-import io.github.hanhy06.emote.content.LoadedSequence;
-
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.config.ConfigManager;

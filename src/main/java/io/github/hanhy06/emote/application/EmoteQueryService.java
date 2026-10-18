@@ -1,11 +1,11 @@
 package io.github.hanhy06.emote.application;
 
 import io.github.hanhy06.emote.content.EmoteCatalog;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.util.EmoteTags;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.*;
-import io.github.hanhy06.emote.content.PreparedEmote;
 
 public class EmoteQueryService {
     private final EmoteCatalog emoteCatalog;

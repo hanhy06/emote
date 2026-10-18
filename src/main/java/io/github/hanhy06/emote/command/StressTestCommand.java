@@ -1,20 +1,20 @@
 package io.github.hanhy06.emote.command;
 
-import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
-import java.util.Map;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import io.github.hanhy06.emote.EmoteMod;
-import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.config.Config;
+import io.github.hanhy06.emote.content.EmoteCatalog;
+import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.playback.stress.PlaybackStressTest;
 import io.github.hanhy06.emote.playback.stress.PlaybackStressTestReport;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
+import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -26,9 +26,10 @@ import net.minecraft.server.level.ServerPlayer;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
-import static io.github.hanhy06.emote.playback.stress.PlaybackStressTest.*;
-import io.github.hanhy06.emote.content.PreparedAnimation;
+import static io.github.hanhy06.emote.playback.stress.PlaybackStressTest.DEFAULT_INSTANCE_COUNT;
+import static io.github.hanhy06.emote.playback.stress.PlaybackStressTest.MAX_INSTANCE_COUNT;
 
 final class StressTestCommand {
     private static final DynamicCommandExceptionType INVALID_LOAD = new DynamicCommandExceptionType(value -> Component.literal(

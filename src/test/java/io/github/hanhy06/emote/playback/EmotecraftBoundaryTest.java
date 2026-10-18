@@ -2,8 +2,8 @@ package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.loader.AnimationJsonParser;
-import io.github.hanhy06.emote.playback.molang.MolangQuerySource;
 import io.github.hanhy06.emote.molang.MolangEngine;
+import io.github.hanhy06.emote.playback.molang.MolangQuerySource;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponentInitializers;
@@ -15,8 +15,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
-import java.util.Objects;
 import java.util.ArrayList;
+import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

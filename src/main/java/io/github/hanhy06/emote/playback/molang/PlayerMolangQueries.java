@@ -1,9 +1,6 @@
 package io.github.hanhy06.emote.playback.molang;
 
-import io.github.hanhy06.emote.playback.molang.MolangQueries.*;
 import io.github.hanhy06.emote.molang.MolangEngine;
-import net.minecraft.world.phys.Vec3;
-import java.util.Set;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.FluidTags;
@@ -13,10 +10,12 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemUseAnimation;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import static io.github.hanhy06.emote.playback.molang.MolangQueries.*;
 

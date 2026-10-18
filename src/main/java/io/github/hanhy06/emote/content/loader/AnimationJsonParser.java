@@ -1,6 +1,9 @@
 package io.github.hanhy06.emote.content.loader;
 
-import com.google.gson.*;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import io.github.hanhy06.emote.api.EmoteLoadException;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.LoadedAnimation;
@@ -14,7 +17,6 @@ import java.nio.file.Path;
 import java.util.*;
 
 import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
-import io.github.hanhy06.emote.api.EmoteLoadException;
 
 public final class AnimationJsonParser {
     private static final Set<String> CONTENT_FIELDS = Set.of("item", "item_display", "block_state", "text");

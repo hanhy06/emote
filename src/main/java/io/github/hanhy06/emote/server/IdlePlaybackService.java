@@ -6,6 +6,7 @@ import io.github.hanhy06.emote.application.EmotePlayService;
 import io.github.hanhy06.emote.config.AccessConfig;
 import io.github.hanhy06.emote.config.AccessConfigListener;
 import io.github.hanhy06.emote.content.EmoteCatalog;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.util.WeightedChoiceSelector;
 import net.minecraft.server.level.ServerPlayer;
@@ -14,7 +15,6 @@ import net.minecraft.util.Util;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.random.RandomGenerator;
-import io.github.hanhy06.emote.content.PreparedEmote;
 
 public final class IdlePlaybackService implements AccessConfigListener {
     static final int CHECK_INTERVAL_TICKS = 10;

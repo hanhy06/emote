@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.api.sequence;
 
+import io.github.hanhy06.emote.api.EmoteCallback;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import net.minecraft.resources.Identifier;
@@ -8,7 +9,6 @@ import org.jspecify.annotations.Nullable;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
-import io.github.hanhy06.emote.api.EmoteCallback;
 
 public record EmoteSequence(
     Identifier id,
@@ -75,9 +75,6 @@ public record EmoteSequence(
             choices = List.copyOf(choices);
             if (choices.isEmpty()) {
                 throw new IllegalArgumentException("sequence choices must not be empty");
-            }
-            if (choices.stream().anyMatch(Objects::isNull)) {
-                throw new NullPointerException("choices");
             }
             if (choices.stream().map(Choice::targetId).distinct().count() != choices.size()) {
                 throw new IllegalArgumentException("sequence choices must not contain duplicate targets");

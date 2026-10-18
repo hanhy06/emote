@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote.playback;
 
 import com.mojang.math.Transformation;
+import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.molang.MolangEngine;
 import io.github.hanhy06.emote.playback.molang.MolangQuerySource;
 import net.minecraft.nbt.CompoundTag;
@@ -13,7 +14,6 @@ import org.joml.Quaternionf;
 import java.util.*;
 
 import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
-import io.github.hanhy06.emote.content.PreparedAnimation;
 
 final class AnimationEvaluator {
     private final PreparedAnimation animation;

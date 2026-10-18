@@ -3,8 +3,8 @@ package io.github.hanhy06.emote.playback.molang;
 import io.github.hanhy06.emote.molang.MolangEngine;
 import net.minecraft.world.phys.Vec3;
 
-import java.util.function.ToDoubleFunction;
 import java.util.Set;
+import java.util.function.ToDoubleFunction;
 
 public final class MolangQueries {
     static void applyEmpty(MolangEngine.Session session, Set<String> queries) {

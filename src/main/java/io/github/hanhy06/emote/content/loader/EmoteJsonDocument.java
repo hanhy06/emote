@@ -2,6 +2,7 @@ package io.github.hanhy06.emote.content.loader;
 
 import com.google.gson.*;
 import io.github.hanhy06.emote.api.EmoteCallback;
+import io.github.hanhy06.emote.api.EmoteLoadException;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation.Node;
@@ -12,12 +13,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import io.github.hanhy06.emote.api.EmoteLoadException;
+import java.util.*;
 
 final class EmoteJsonDocument {
     static final int MAX_JSON_BYTES = 8 * 1_024 * 1_024;
@@ -231,8 +227,7 @@ final class EmoteJsonDocument {
 
     void requireExactInt(JsonObject object, String key, String path, int expected)
         throws EmoteLoadException {
-        int value = requireInt(object, key, path);
-        if (value != expected) {
+        if (requireInt(object, key, path) != expected) {
             throw error(path + "." + key, "must equal " + expected);
         }
     }

@@ -6,6 +6,7 @@ import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaybackPlacement;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
+import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.mixin.accessor.EntitySharedFlagsAccessor;
 import io.github.hanhy06.emote.playback.molang.PlayerMolangQueries;
@@ -25,7 +26,6 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 import java.util.*;
-import io.github.hanhy06.emote.content.PreparedAnimation;
 
 public final class PlayerPlaybackManager {
     private static final List<EquipmentSlot> PLAYER_EQUIPMENT_SLOTS = List.of(

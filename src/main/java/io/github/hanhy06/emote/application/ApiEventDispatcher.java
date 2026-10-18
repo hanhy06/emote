@@ -2,6 +2,7 @@ package io.github.hanhy06.emote.application;
 
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.*;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.PlaybackSession;
 import net.minecraft.network.chat.Component;
@@ -10,7 +11,6 @@ import net.minecraft.server.level.ServerPlayer;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
-import io.github.hanhy06.emote.content.PreparedEmote;
 
 public final class ApiEventDispatcher implements PlaybackEngine.Lifecycle {
     private final CopyOnWriteArrayList<EmotePlayListener> playListeners = new CopyOnWriteArrayList<>();

@@ -1,7 +1,8 @@
 package io.github.hanhy06.emote.content;
 
-import io.github.hanhy06.emote.api.EmoteMetadata;
+import io.github.hanhy06.emote.api.EmoteCallback;
 import io.github.hanhy06.emote.api.EmoteInfo;
+import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.skin.SkinBinding;
@@ -11,7 +12,6 @@ import org.joml.Matrix4fc;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import io.github.hanhy06.emote.api.EmoteCallback;
 
 public sealed interface PreparedEmote permits PreparedAnimation, PreparedSequence {
     String id();

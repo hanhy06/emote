@@ -112,22 +112,15 @@ public final class UserCommand {
         return 1;
     }
 
-    private static int applyPlayResult(CommandSourceStack source, PlayResult playResult) {
-        if (!playResult.isSuccess()) {
-            source.sendFailure(playResult.errorMessage());
-            return 0;
-        }
-
-        return 1;
-    }
-
     private int play(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         CommandSourceStack source = context.getSource();
         ServerPlayer player = source.getPlayerOrException();
-        return applyPlayResult(
-            source,
-            this.playService.play(player, IdentifierArgument.getId(context, "id").toString(), PlaySource.COMMAND)
-        );
+        PlayResult result = this.playService.play(player, IdentifierArgument.getId(context, "id").toString(), PlaySource.COMMAND);
+        if (!result.isSuccess()) {
+            source.sendFailure(result.errorMessage());
+            return 0;
+        }
+        return 1;
     }
 
     private int stop(CommandSourceStack source) throws CommandSyntaxException {

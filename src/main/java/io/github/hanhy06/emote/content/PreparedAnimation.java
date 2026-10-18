@@ -1,33 +1,32 @@
 package io.github.hanhy06.emote.content;
 
-import io.github.hanhy06.emote.api.EmoteCallback;
 import com.google.gson.JsonPrimitive;
 import com.mojang.serialization.JsonOps;
 import io.github.hanhy06.emote.EmoteMod;
+import io.github.hanhy06.emote.api.EmoteCallback;
 import io.github.hanhy06.emote.api.EmoteLoadException;
-import net.minecraft.nbt.NbtOps;
+import io.github.hanhy06.emote.api.EmoteMetadata;
+import io.github.hanhy06.emote.api.EmotePlayerBehavior;
+import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.molang.MolangEngine;
+import io.github.hanhy06.emote.molang.MolangQueryCatalog;
+import io.github.hanhy06.emote.skin.SkinBinding;
+import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.state.BlockState;
-import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
-import io.github.hanhy06.emote.api.EmoteMetadata;
-import io.github.hanhy06.emote.api.EmotePlayerBehavior;
-import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import org.joml.*;
 import org.jspecify.annotations.Nullable;
-import io.github.hanhy06.emote.molang.MolangEngine;
-import io.github.hanhy06.emote.molang.MolangQueryCatalog;
-import io.github.hanhy06.emote.skin.SkinBinding;
-import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
-import org.joml.Matrix4f;
-import org.joml.Matrix4fc;
-import org.joml.Quaterniond;
-import org.joml.Quaternionf;
-import org.joml.Quaternionfc;
+
+import java.lang.Math;
 import java.nio.file.Path;
 import java.util.*;
+
+import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
 
 public final class PreparedAnimation implements PreparedEmote {
     private final List<SkinBinding> skinBindings;

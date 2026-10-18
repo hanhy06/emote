@@ -1,8 +1,9 @@
 package io.github.hanhy06.emote.content.loader;
 
 import io.github.hanhy06.emote.EmoteMod;
-import io.github.hanhy06.emote.content.LoadedSequence;
+import io.github.hanhy06.emote.api.EmoteLoadException;
 import io.github.hanhy06.emote.content.LoadedAnimation;
+import io.github.hanhy06.emote.content.LoadedSequence;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -10,7 +11,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Stream;
-import io.github.hanhy06.emote.api.EmoteLoadException;
 
 public final class EmoteDirectoryLoader {
     private final AnimationJsonParser animationParser = new AnimationJsonParser();
