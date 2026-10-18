@@ -30,14 +30,13 @@ public class PlayerSkinManager implements ConfigListener {
     private final List<Consumer<UUID>> readyListeners = new CopyOnWriteArrayList<>();
     private final Map<UUID, PlayerSkinSource.Key> connectedSkins = new HashMap<>();
     private Set<PlayerSkinRegion> modelRegions = Set.of();
-    private Map<String, PreparedAnimation> animations = Map.of();
+    private List<PreparedAnimation> animations = List.of();
     private Set<Path> filePaths = Set.of();
     private final Set<UUID> embeddedSources = new HashSet<>();
     private PlayerSkinSource configuredDefault;
     private List<PreparedAnimation> pendingDefaults = List.of();
     private CompletableFuture<Void> defaultWrites = CompletableFuture.completedFuture(null);
     private volatile long sourceGeneration, catalogRevision;
-    private MinecraftServer server;
 
     public PlayerSkinManager(SkinBakeCoordinator bakeCoordinator) {
         this.bakeCoordinator = Objects.requireNonNull(bakeCoordinator, "bakeCoordinator");
@@ -50,7 +49,6 @@ public class PlayerSkinManager implements ConfigListener {
 
     @Override
     public void onConfigReload(Config newConfig) {
-        this.server = EmoteMod.SERVER;
         long generation = ++this.sourceGeneration;
         this.namedSources.clear();
         this.configuredDefault = null;
@@ -64,7 +62,7 @@ public class PlayerSkinManager implements ConfigListener {
                     EmoteMod.LOGGER.warn("Could not prepare default skin for {}; retaining the skins embedded in emote JSON", newConfig.defaultSkin(), exception);
                     return;
                 }
-                this.server.execute(() -> {
+                EmoteMod.SERVER.execute(() -> {
                     if (generation != this.sourceGeneration) return;
                     this.configuredDefault = source;
                     synchronizeDefault();
@@ -74,7 +72,7 @@ public class PlayerSkinManager implements ConfigListener {
     }
 
     public void setEmotes(List<PreparedAnimation> animations, Set<Path> filePaths) {
-        this.animations = animations.stream().collect(java.util.stream.Collectors.toUnmodifiableMap(PreparedAnimation::id, animation -> animation));
+        this.animations = List.copyOf(animations);
         this.filePaths = Set.copyOf(filePaths);
         this.catalogRevision++;
         this.pendingDefaults = List.of();
@@ -94,7 +92,7 @@ public class PlayerSkinManager implements ConfigListener {
         PlayerSkinSource source = this.configuredDefault;
         if (source == null || this.animations.isEmpty()) return;
         long generation = this.sourceGeneration, revision = this.catalogRevision;
-        List<PreparedAnimation> animations = List.copyOf(this.animations.values());
+        List<PreparedAnimation> animations = this.animations;
         Set<Path> paths = this.filePaths;
         String base64 = Base64.getEncoder().encodeToString(source.png());
         this.defaultWrites = this.defaultWrites.handle((ignored, exception) -> null).thenRunAsync(() -> {
@@ -108,7 +106,7 @@ public class PlayerSkinManager implements ConfigListener {
                     EmoteMod.LOGGER.warn("Could not save default skin in {}; retaining its previous skin", animation.sourcePath(), exception);
                 }
             }
-            this.server.execute(() -> {
+            EmoteMod.SERVER.execute(() -> {
                 if (generation != this.sourceGeneration || revision != this.catalogRevision) return;
                 this.embeddedSources.add(source.playerUuid());
                 this.pendingDefaults = List.copyOf(saved);
@@ -147,7 +145,7 @@ public class PlayerSkinManager implements ConfigListener {
                 return source;
             }).whenComplete((source, exception) -> {
                 if (generation != this.sourceGeneration) return;
-                this.server.execute(() -> {
+                EmoteMod.SERVER.execute(() -> {
                     if (generation == this.sourceGeneration) this.defaultReadyListeners.forEach(Runnable::run);
                 });
             }));
@@ -243,7 +241,7 @@ public class PlayerSkinManager implements ConfigListener {
     }
 
     private void notifyDefaultReady() {
-        for (ServerPlayer player : this.server.getPlayerList().getPlayers()) {
+        for (ServerPlayer player : EmoteMod.SERVER.getPlayerList().getPlayers()) {
             for (Consumer<UUID> listener : this.readyListeners) listener.accept(player.getUUID());
         }
         this.defaultReadyListeners.forEach(Runnable::run);
@@ -251,7 +249,7 @@ public class PlayerSkinManager implements ConfigListener {
 
     private void notifySkinReady(UUID playerUuid, long generation, boolean failed) {
         if (!this.bakeCoordinator.isCurrent(generation)) return;
-        this.server.execute(() -> {
+        EmoteMod.SERVER.execute(() -> {
             if (!this.bakeCoordinator.isCurrent(generation)) return;
             if (this.embeddedSources.contains(playerUuid)) {
                 if (!failed) publishDefault();
@@ -260,7 +258,7 @@ public class PlayerSkinManager implements ConfigListener {
             else {
                 for (Consumer<UUID> listener : this.readyListeners) listener.accept(playerUuid);
                 this.defaultReadyListeners.forEach(Runnable::run);
-                ServerPlayer player = this.server.getPlayerList().getPlayer(playerUuid);
+                ServerPlayer player = EmoteMod.SERVER.getPlayerList().getPlayer(playerUuid);
                 if (failed && player != null) player.sendSystemMessage(Component.literal("Your skin could not be prepared. Emotes may use a default skin. Ask a server administrator to check the server log."));
             }
         });

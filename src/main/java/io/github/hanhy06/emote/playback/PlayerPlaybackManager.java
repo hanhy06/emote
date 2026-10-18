@@ -11,7 +11,6 @@ import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.mixin.accessor.EntitySharedFlagsAccessor;
 import io.github.hanhy06.emote.playback.molang.PlayerMolangQueries;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
-import io.github.hanhy06.emote.skin.SkinBinding;
 import net.fabricmc.fabric.api.networking.v1.EntityTrackingEvents;
 import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
 import net.minecraft.network.protocol.game.ClientboundSetEquipmentPacket;
@@ -72,7 +71,7 @@ public final class PlayerPlaybackManager {
             : RootTransform.create(player.position(), player.getYRot());
         PlayerPlaybackState previousState = playerState(player.getUUID());
         boolean wasInvisible = previousState != null && previousState.behavior().hidden() ? previousState.wasInvisible() : player.isInvisible();
-        PlayerPlaybackState playerState = new PlayerPlaybackState(player.position(), emote.skinBindings(), wasInvisible, emote.playerBehavior());
+        PlayerPlaybackState playerState = new PlayerPlaybackState(player.position(), wasInvisible, emote.playerBehavior());
         List<PlaybackStateListener> playbackListeners = List.copyOf(this.listeners);
         PlaybackEngine.Lifecycle lifecycle = new PlaybackEngine.Lifecycle() {
             private int notifiedListeners;
