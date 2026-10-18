@@ -1,12 +1,14 @@
 import { expect, it } from "vitest";
 import { encode } from "fast-png";
 import { readInput } from "../import/formats";
-import { createConversionDocument } from "../domain/conversionDocument";
+import { createConversionDocument, skinPartOrders } from "../domain/conversionDocument";
 import { compileAnimation } from "../compiler/animationCompiler";
 import { composeSkin, createSkinOverride, decodeSkinPng, encodeSkinPng } from "../domain/skin";
 import { exportAnimation } from "../export/projectExporter";
 import { createPreviewModel } from "../preview/previewModel";
 import { createPlayerHeadGeometry } from "../components/playerHeadGeometry";
+import { Matrix4, Vector3 } from "three";
+import { evaluatePose } from "../domain/animationIRPose";
 
 const formats = ["geckolib_bbmodel", "animated_java_blueprint"] as const;
 const offset = (x: number, y: number) => (y * 64 + x) * 4;
@@ -55,7 +57,8 @@ for (const format of formats) it(`${format}: extracts unreferenced named texture
   const preview = createPreviewModel(reopened, reopened.animations[0], { type: "create" });
   expect(preview.availability).toEqual({ status: "full" });
   expect(preview.parts).toHaveLength(1);
-  expect(preview.parts[0].skin).toMatchObject({ type: "player_skin", part: "head", region: { from: 0, to: 1 } });
+  const candidate = reopened.skinCandidates[preview.parts[0].candidateId];
+  expect(reopened.nodes[candidate.nodeId].attachments?.[candidate.attachmentId]).toMatchObject({ type: "player_skin", part: "head", region: { from: 0, to: 1 } });
 });
 
 for (const format of formats) it(`${format}: honors an explicit mask and rejects duplicate or incomplete skin texture declarations`, async () => {
@@ -97,21 +100,34 @@ it("creates masks from indexed PNG transparency and rejects non-skin image sizes
   expect(() => createSkinOverride(btoa(Array.from(wrongSize, (byte) => String.fromCharCode(byte)).join("")))).toThrow("64×64");
 });
 
-it("previews split skin regions with separate inner and outer UVs and skull layer sizes", () => {
-  const skin = { type: "player_skin", part: "body", region: { from: 0.5, to: 1 } } as const;
-  const inner = createPlayerHeadGeometry(skin);
-  const outer = createPlayerHeadGeometry(skin, true);
-  for (const [geometry, sideY, topY] of [[inner, 26, 16], [outer, 42, 32]] as const) {
-    const uv = geometry.getAttribute("uv");
-    // Front crops only the vertical region; the top keeps the complete source face.
-    expect([uv.getX(20), uv.getY(20), uv.getX(23), uv.getY(23)]).toEqual([20 / 64, 1 - sideY / 64, 28 / 64, 1 - (sideY + 6) / 64]);
-    expect([uv.getX(8), uv.getY(8), uv.getX(11), uv.getY(11)]).toEqual([20 / 64, 1 - topY / 64, 28 / 64, 1 - (topY + 4) / 64]);
-    geometry.computeBoundingBox();
-  }
-  expect(inner.boundingBox!.min.toArray()).toEqual([-0.25, -0.5, -0.25]);
-  expect(inner.boundingBox!.max.toArray()).toEqual([0.25, 0, 0.25]);
-  expect(outer.boundingBox!.min.toArray()).toEqual([-17 / 64, -33 / 64, -17 / 64]);
-  expect(outer.boundingBox!.max.toArray()).toEqual([17 / 64, 1 / 64, 17 / 64]);
-  inner.dispose();
-  outer.dispose();
+for (const format of formats) it(`${format}: preserves automatic orders and unequal leg slices through preview and output`, async () => {
+  const source = project([]);
+  source.groups = [{ uuid: "leg", name: "right_leg", origin: [1.9, 12, 0], rotation: [0, 0, 0] }];
+  source.elements[0] = { ...source.elements[0], from: [-0.1, 0, -2], to: [3.9, 12, 2] };
+  source.outliner = [{ uuid: "leg", children: ["cube"] }];
+  const input = await readInput(format, { name: "leg", bytes: new TextEncoder().encode(JSON.stringify(source)) });
+  const document = createConversionDocument(input, format);
+  const preview = createPreviewModel(document, document.animations[0], { type: "create" });
+  const orders = skinPartOrders(document);
+  expect(preview.parts.map((part) => orders[part.candidateId])).toEqual([0, 1]);
+  const attachments = preview.parts.map((part) => {
+    const candidate = document.skinCandidates[part.candidateId];
+    return document.nodes[candidate.nodeId].attachments![candidate.attachmentId];
+  });
+  expect(attachments.map((attachment) => attachment.type === "player_skin" ? attachment.region : null)).toEqual([{ from: 0, to: 1 / 3 }, { from: 1 / 3, to: 1 }]);
+  const output = compileAnimation(document, 0).animation;
+  const poses = evaluatePose(output, 0, (value) => { if (typeof value !== "number") throw new Error("Unexpected expression"); return value; });
+  const geometry = createPlayerHeadGeometry();
+  geometry.computeBoundingBox();
+  const boxes = preview.parts.map((part) => {
+    const matrix = new Matrix4().fromArray(part.matrix).transpose().multiply(new Matrix4().fromArray(part.conversionMatrix!).transpose());
+    expect(matrix.elements).toEqual(poses[document.skinCandidates[part.candidateId].nodeId].matrix.elements);
+    return geometry.boundingBox!.clone().applyMatrix4(matrix);
+  });
+  geometry.dispose();
+  expect(boxes[0].getSize(new Vector3()).toArray()).toEqual([4 / 16 * 0.9375, 4 / 16 * 0.9375, 4 / 16 * 0.9375]);
+  expect(boxes[1].getSize(new Vector3()).toArray()).toEqual([4 / 16 * 0.9375, 8 / 16 * 0.9375, 4 / 16 * 0.9375]);
+  expect(boxes[0].min.y).toBe(boxes[1].max.y);
+  expect(boxes[0].max.y - boxes[1].min.y).toBe(12 / 16 * 0.9375);
+  expect(Object.values(output.nodes).flatMap((node) => Object.values(node.attachments ?? {}))).toEqual(attachments);
 });

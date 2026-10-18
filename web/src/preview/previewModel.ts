@@ -3,7 +3,6 @@ import { evaluatePose } from "../domain/animationIRPose";
 import { matrix4ToRowMajor } from "../format/matrix";
 import { PreviewMolangEvaluator } from "./molangEvaluator";
 import type { ScalarEvaluatorIR } from "../domain/animationIRCurves";
-import type { AttachmentIR } from "../domain/animationIR";
 import type { SelectedFrame } from "../workspace";
 
 export interface PreviewPart {
@@ -11,7 +10,6 @@ export interface PreviewPart {
   partIndex: number;
   matrix: readonly number[];
   conversionMatrix?: readonly number[];
-  skin?: Extract<AttachmentIR, { type: "player_skin" }>;
 }
 
 export type PreviewAvailability =
@@ -52,10 +50,8 @@ export function createPreviewModel(document: ConversionDocument, animation: Conv
         if (!groups.has(candidate.groupId)) groups.set(candidate.groupId, groups.size);
         const pose = poses[candidate.nodeId];
         if (!pose?.attachments[candidate.attachmentId]) continue;
-        const attachment = document.nodes[candidate.nodeId].attachments?.[candidate.attachmentId];
         parts.push({ candidateId: id, partIndex: groups.get(candidate.groupId)!, matrix: matrix4ToRowMajor(pose.matrix, id),
-          ...(candidate.fittingOperation ? { conversionMatrix: candidate.fittingOperation.value } : {}),
-          ...(attachment?.type === "player_skin" ? { skin: attachment } : {}) });
+          ...(candidate.fittingOperation ? { conversionMatrix: candidate.fittingOperation.value } : {}) });
       }
       if (reasons.size) availability = { status: "approximate", reason: [...reasons].join(" ") };
     } catch (reason) {

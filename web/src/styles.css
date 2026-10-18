@@ -79,7 +79,6 @@ h3 { margin: 20px 0 10px; font-size: 15px; font-weight: 600; }
 .part-preview:active { cursor: grabbing; }
 .part-preview.selection-active { cursor: crosshair; }
 .part-preview canvas { position: absolute; inset: 0; display: block; width: 100% !important; height: 100% !important; }
-.skin-preview-note { position: absolute; z-index: 1; left: 12px; bottom: 12px; max-width: calc(100% - 70px); margin: 0; padding: 6px 8px; color: #555; background: rgb(255 255 255 / 92%); font-size: 12px; pointer-events: none; }
 .preview-reset-view { position: absolute; z-index: 2; right: 12px; bottom: 12px; display: grid; width: 34px; height: 34px; padding: 7px; place-items: center; background: rgb(255 255 255 / 92%); box-shadow: 0 1px 4px rgb(0 0 0 / 16%); cursor: pointer; }
 .preview-reset-view svg { width: 18px; height: 18px; fill: none; stroke: currentcolor; stroke-width: 1.8; stroke-linecap: square; stroke-linejoin: miter; pointer-events: none; }
 .selection-box { position: absolute; z-index: 1; border: 1px solid #0067c0; background: rgb(0 103 192 / 14%); pointer-events: none; }

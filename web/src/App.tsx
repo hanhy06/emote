@@ -260,6 +260,10 @@ export function App() {
             </details>
           ))}
 
+          {(selectedAnimation?.skin?.default || selectedAnimation?.skin?.override) && (
+            <p className="message warning" role="status">Animation {selectedAnimation.metadata.name} uses custom skin settings. Skin changes are applied in game and are not shown in the preview.</p>
+          )}
+
           {eventReviewTypes.includes("commands") && (
             <p className="message warning" role="alert">
               <strong>Commands run with server operator permission.</strong>
@@ -307,7 +311,6 @@ export function App() {
                   <PartPreview
                     key={project.origin.sourceName}
                     parts={previewParts}
-                    skin={selectedAnimation.skin}
                     assignments={assignments}
                     selectedCandidateIds={selectedCandidateIds}
                     onSelectCandidate={handleCandidateSelect}

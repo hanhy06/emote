@@ -1,15 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { PreviewPart } from "../preview/previewModel";
 import { SKIN_PARTS, type PartAssignments } from "../preview/skinParts";
 import { createPlayerHeadGeometry } from "./playerHeadGeometry";
-import type { SkinIR } from "../domain/animationIR";
-import { composeSkin } from "../domain/skin";
 
 interface PartPreviewProps {
   parts: PreviewPart[];
-  skin?: SkinIR;
   assignments: PartAssignments;
   selectedCandidateIds: ReadonlySet<string>;
   onSelectCandidate: (candidateId: string, additive: boolean) => void;
@@ -18,7 +15,7 @@ interface PartPreviewProps {
 
 const ASSIGNMENT_COLORS = new Map(SKIN_PARTS.map((part) => [part.id, part.color]));
 
-export default function PartPreview({ parts, skin, assignments, selectedCandidateIds, onSelectCandidate, onSelectCandidates }: PartPreviewProps) {
+export default function PartPreview({ parts, assignments, selectedCandidateIds, onSelectCandidate, onSelectCandidates }: PartPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const materialsRef = useRef(new Map<string, THREE.MeshStandardMaterial>());
   const onSelectCandidateRef = useRef(onSelectCandidate);
@@ -27,10 +24,6 @@ export default function PartPreview({ parts, skin, assignments, selectedCandidat
   const cameraStateRef = useRef<{ position: THREE.Vector3; target: THREE.Vector3 } | null>(null);
   const resetViewRef = useRef<() => void>(() => {});
   const [renderError, setRenderError] = useState("");
-  const previewSkin = useMemo(() => {
-    try { return { pixels: skin ? composeSkin(skin) : undefined, error: "" }; }
-    catch (reason) { return { pixels: undefined, error: reason instanceof Error ? reason.message : String(reason) }; }
-  }, [skin]);
 
   onSelectCandidateRef.current = onSelectCandidate;
   onSelectCandidatesRef.current = onSelectCandidates;
@@ -39,7 +32,7 @@ export default function PartPreview({ parts, skin, assignments, selectedCandidat
   useEffect(() => {
     for (const [candidateId, material] of materialsRef.current) {
       const assignment = assignments[candidateId];
-      material.color.set(material.map ? "#ffffff" : assignment ? ASSIGNMENT_COLORS.get(assignment)! : "#777777");
+      material.color.set(assignment ? ASSIGNMENT_COLORS.get(assignment)! : "#777777");
       material.emissive.set(selectedCandidateIds.has(candidateId) ? "#3d73b9" : "#000000");
       material.emissiveIntensity = selectedCandidateIds.has(candidateId) ? 0.7 : 0;
     }
@@ -78,46 +71,24 @@ export default function PartPreview({ parts, skin, assignments, selectedCandidat
     const meshes: THREE.Mesh[] = [];
     const geometry = createPlayerHeadGeometry();
     const edgeGeometry = new THREE.EdgesGeometry(geometry);
-    const geometries = new Set<THREE.BufferGeometry>([geometry, edgeGeometry]);
-    const skinTexture = previewSkin.pixels ? new THREE.DataTexture(previewSkin.pixels, 64, 64) : undefined;
-    if (skinTexture) {
-      skinTexture.colorSpace = THREE.SRGBColorSpace;
-      skinTexture.magFilter = skinTexture.minFilter = THREE.NearestFilter;
-      skinTexture.flipY = true;
-      skinTexture.needsUpdate = true;
-    }
 
     for (const part of parts) {
       const assignment = assignments[part.candidateId];
-      const textured = part.skin && skinTexture;
       const material = new THREE.MeshStandardMaterial({
-        color: textured ? "#ffffff" : assignment ? ASSIGNMENT_COLORS.get(assignment) : "#777777",
-        map: textured ? skinTexture : null,
-        transparent: !!textured,
-        alphaTest: textured ? 1 / 255 : 0,
+        color: assignment ? ASSIGNMENT_COLORS.get(assignment) : "#777777",
         emissive: selectedCandidateIds.has(part.candidateId) ? "#3d73b9" : "#000000",
         emissiveIntensity: selectedCandidateIds.has(part.candidateId) ? 0.7 : 0,
         roughness: 0.8,
       });
       materialsRef.current.set(part.candidateId, material);
 
-      const partGeometry = textured ? createPlayerHeadGeometry(part.skin) : geometry;
-      geometries.add(partGeometry);
-      const mesh = new THREE.Mesh(partGeometry, material);
+      const mesh = new THREE.Mesh(geometry, material);
       mesh.matrixAutoUpdate = false;
       mesh.matrix.set(...part.matrix as MatrixValues);
       if (part.conversionMatrix) mesh.matrix.multiply(new THREE.Matrix4().set(...part.conversionMatrix as MatrixValues));
       mesh.userData.candidateId = part.candidateId;
       partGroup.add(mesh);
       meshes.push(mesh);
-      if (textured) {
-        const outerGeometry = createPlayerHeadGeometry(part.skin, true);
-        geometries.add(outerGeometry);
-        const outer = new THREE.Mesh(outerGeometry, material);
-        outer.matrixAutoUpdate = false;
-        outer.matrix.copy(mesh.matrix);
-        partGroup.add(outer);
-      }
 
       const edges = new THREE.LineSegments(edgeGeometry, new THREE.LineBasicMaterial({ color: 0x333333 }));
       edges.matrixAutoUpdate = false;
@@ -292,26 +263,23 @@ export default function PartPreview({ parts, skin, assignments, selectedCandidat
       renderer.domElement.removeEventListener("pointercancel", handlePointerCancel);
       selectionBox.remove();
       controls.dispose();
-      geometries.forEach((geometry) => geometry.dispose());
-      skinTexture?.dispose();
-      const disposedMaterials = new Set<THREE.Material>();
+      geometry.dispose();
+      edgeGeometry.dispose();
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh || object instanceof THREE.LineSegments) {
           const materials = Array.isArray(object.material) ? object.material : [object.material];
-          materials.forEach((material) => disposedMaterials.add(material));
+          materials.forEach((material) => material.dispose());
         }
       });
-      disposedMaterials.forEach((material) => material.dispose());
       renderer.dispose();
       renderer.domElement.remove();
       materialsRef.current.clear();
     };
-  }, [parts, previewSkin]);
+  }, [parts]);
 
-  if (renderError || previewSkin.error) return <p className="preview-error">{previewSkin.error || renderError}</p>;
+  if (renderError) return <p className="preview-error">{renderError}</p>;
   return (
     <div className="part-preview" ref={containerRef} aria-label="3D preview of emote parts">
-      {skin && !skin.default && <p className="skin-preview-note">Gray areas show a preview skin. The player’s skin is chosen in game.</p>}
       <button type="button" className="preview-reset-view" onClick={() => resetViewRef.current()} aria-label="Reset view" title="Reset view">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" />
