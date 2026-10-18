@@ -5,6 +5,7 @@ import { AdditionalMetadataEditor } from "./AdditionalMetadataEditor";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
 import { createDefaultPlayerBehavior } from "../domain/emoteDefinition";
 import { parseMinecraftTime } from "../format/time";
+import { SkinSettings } from "./SkinSettings";
 
 const STOP_CONDITION_OPTIONS = [
   ["jump", "Stop on jump"], ["submerge", "Stop when submerged"], ["ride", "Stop on mount"],
@@ -94,6 +95,7 @@ export function SettingsPanel({ animation, minecraftVersion, disabled, onChange,
         </div>
       </section>
       <AdditionalMetadataEditor value={additionalMetadata} disabled={disabled} onChange={(metadata) => onChange({ ...animation, metadata: { ...metadata, name: animation.metadata.name, description: animation.metadata.description } })} />
+      <SkinSettings animation={animation} disabled={disabled} onChange={onChange} />
       <section className="playback-behavior" aria-labelledby="playback-behavior-heading">
         <h3 id="playback-behavior-heading">Settings</h3>
         <p>Time accepts d, s, t, or bare ticks. Your time strings are preserved; Minecraft converts them to ticks when loading.</p>

@@ -10,6 +10,10 @@ export function importAnimation(value: unknown, sourceName: string): ImportedPro
   for (const [id, node] of Object.entries(ir.nodes)) {
     nodeHints[id] = { sourceNodeId: id };
     for (const [attachmentId, attachment] of Object.entries(node.attachments ?? {})) {
+      if (attachment.type === "player_skin") {
+        (nodeHints[id].skinCandidates ??= {})[attachmentId] = { groupId: attachmentTargetId(id, attachmentId) };
+        continue;
+      }
       if (attachment.type !== "item_display" || !attachment.item_stack_snbt?.trim()) continue;
       try {
         if (normalizeResourceLocation(readItemStack(attachment.item_stack_snbt).id) === "minecraft:player_head") {

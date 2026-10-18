@@ -307,6 +307,7 @@ export function App() {
                   <PartPreview
                     key={project.origin.sourceName}
                     parts={previewParts}
+                    skin={selectedAnimation.skin}
                     assignments={assignments}
                     selectedCandidateIds={selectedCandidateIds}
                     onSelectCandidate={handleCandidateSelect}

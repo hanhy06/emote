@@ -95,7 +95,7 @@ export function createConversionDocument(project: ImportedProject, formatLabel: 
         nodes[id] = node;
         variants.set(sourceId, [...(variants.get(sourceId) ?? []), id]);
         for (const [attachmentId, candidate] of Object.entries(project.nodeHints[importedId]?.skinCandidates ?? {})) {
-          if (node.attachments?.[attachmentId]?.type !== "item_display") continue;
+          if (node.attachments?.[attachmentId]?.type !== "item_display" && node.attachments?.[attachmentId]?.type !== "player_skin") continue;
           let operationId = "skin_conversion";
           let operationSuffix = 2;
           while (node.transform?.some((operation) => operation.id === operationId)) operationId = `skin_conversion_${operationSuffix++}`;

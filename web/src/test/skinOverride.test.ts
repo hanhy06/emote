@@ -5,6 +5,8 @@ import { createConversionDocument } from "../domain/conversionDocument";
 import { compileAnimation } from "../compiler/animationCompiler";
 import { composeSkin, createSkinOverride, decodeSkinPng, encodeSkinPng } from "../domain/skin";
 import { exportAnimation } from "../export/projectExporter";
+import { createPreviewModel } from "../preview/previewModel";
+import { createPlayerHeadGeometry } from "../components/playerHeadGeometry";
 
 const formats = ["geckolib_bbmodel", "animated_java_blueprint"] as const;
 const offset = (x: number, y: number) => (y * 64 + x) * 4;
@@ -50,6 +52,10 @@ for (const format of formats) it(`${format}: extracts unreferenced named texture
   const reopened = createConversionDocument(await readInput("emote_json", { name: "skin.json", bytes }), "Emote");
   expect(compileAnimation(reopened, 0).animation.skin).toEqual(document.animations[0].skin);
   expect(reopened.animations[0].skin).not.toBe(document.animations[0].skin);
+  const preview = createPreviewModel(reopened, reopened.animations[0], { type: "create" });
+  expect(preview.availability).toEqual({ status: "full" });
+  expect(preview.parts).toHaveLength(1);
+  expect(preview.parts[0].skin).toMatchObject({ type: "player_skin", part: "head", region: { from: 0, to: 1 } });
 });
 
 for (const format of formats) it(`${format}: honors an explicit mask and rejects duplicate or incomplete skin texture declarations`, async () => {
@@ -89,4 +95,23 @@ it("creates masks from indexed PNG transparency and rejects non-skin image sizes
   expect([...decodeSkinPng(indexed).slice(offset(8, 8), offset(8, 8) + 4)]).toEqual([12, 34, 56, 255]);
   const wrongSize = encode({ width: 32, height: 64, channels: 4, data: new Uint8Array(32 * 64 * 4) });
   expect(() => createSkinOverride(btoa(Array.from(wrongSize, (byte) => String.fromCharCode(byte)).join("")))).toThrow("64×64");
+});
+
+it("previews split skin regions with separate inner and outer UVs and skull layer sizes", () => {
+  const skin = { type: "player_skin", part: "body", region: { from: 0.5, to: 1 } } as const;
+  const inner = createPlayerHeadGeometry(skin);
+  const outer = createPlayerHeadGeometry(skin, true);
+  for (const [geometry, sideY, topY] of [[inner, 26, 16], [outer, 42, 32]] as const) {
+    const uv = geometry.getAttribute("uv");
+    // Front crops only the vertical region; the top keeps the complete source face.
+    expect([uv.getX(20), uv.getY(20), uv.getX(23), uv.getY(23)]).toEqual([20 / 64, 1 - sideY / 64, 28 / 64, 1 - (sideY + 6) / 64]);
+    expect([uv.getX(8), uv.getY(8), uv.getX(11), uv.getY(11)]).toEqual([20 / 64, 1 - topY / 64, 28 / 64, 1 - (topY + 4) / 64]);
+    geometry.computeBoundingBox();
+  }
+  expect(inner.boundingBox!.min.toArray()).toEqual([-0.25, -0.5, -0.25]);
+  expect(inner.boundingBox!.max.toArray()).toEqual([0.25, 0, 0.25]);
+  expect(outer.boundingBox!.min.toArray()).toEqual([-17 / 64, -33 / 64, -17 / 64]);
+  expect(outer.boundingBox!.max.toArray()).toEqual([17 / 64, 1 / 64, 17 / 64]);
+  inner.dispose();
+  outer.dispose();
 });
