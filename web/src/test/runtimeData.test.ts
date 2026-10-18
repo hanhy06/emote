@@ -122,6 +122,79 @@ it("prunes only proven static nodes in output while preserving curves, event ori
   expect(document).toEqual(snapshot);
 });
 
+it("prunes zero scales under animated ancestors while preserving inheritance breaks and event references", async () => {
+  const authored = structuredClone(animation);
+  const prop: NodeIR = {
+    parent: "arm", transform: [{ id: "scale", op: "scale", value: [1, 1, 1] }],
+    attachments: { display: structuredClone(animation.nodes.arm.attachments!.prop) },
+  };
+  authored.nodes.zeroGroup = { parent: "arm", transform: [{ id: "scale", op: "scale", value: [1, 1, 1] }] };
+  authored.nodes.inherited = { ...structuredClone(prop), parent: "zeroGroup" };
+  authored.nodes.ownZero = { ...structuredClone(prop), transform: [
+    { id: "scale", op: "scale", value: [0, 0, 0] }, { id: "rotation", op: "rotate_euler", order: "XYZ", value: [0, 0, 0] },
+  ] };
+  authored.nodes.retainedGroup = { parent: "arm", transform: [{ id: "scale", op: "scale", value: [0, 0, 0] }] };
+  authored.nodes.hiddenSibling = { ...structuredClone(prop), parent: "retainedGroup" };
+  authored.nodes.independent = { ...structuredClone(prop), parent: "retainedGroup", inherit: { scale: false } };
+  authored.nodes.resumed = { ...structuredClone(prop), parent: "independent" };
+  authored.nodes.independentZero = { ...structuredClone(prop), parent: "retainedGroup", inherit: { scale: false },
+    transform: [{ id: "scale", op: "scale", value: [0, 0, 0] }],
+  };
+  authored.nodes.originZero = { ...structuredClone(prop), parent: "retainedGroup" };
+  authored.nodes.sourceZero = { ...structuredClone(prop), parent: "retainedGroup" };
+  authored.animation.tracks.push(
+    { target: { node: "zeroGroup", operation: "scale" }, channel: "value", driver: { type: "curve", keys: [{ time: "0t", value: [0, 0, 0] }], segments: [] } },
+    { target: { node: "inherited", operation: "scale" }, channel: "value", driver: { type: "expression", value: [{ molang: "q.anim_time" }, 1, 1] } },
+    { target: { node: "ownZero", operation: "rotation" }, channel: "value", driver: { type: "expression", value: [0, { molang: "q.anim_time * 180" }, 0] } },
+  );
+  authored.animation.events!.start!.push(
+    { source: { type: "server" }, origin: { type: "node", node: "originZero" }, action: { type: "commands", commands: ["say origin"] } },
+    { source: { type: "node", node: "sourceZero", attachment: "display" }, origin: { type: "root" }, action: { type: "commands", commands: ["say source"] } },
+  );
+  const project = await readInput("emote_json", { name: "zero-scale.json", bytes: new TextEncoder().encode(JSON.stringify(authored)) });
+  const document = createConversionDocument(project, "Emote JSON");
+  const snapshot = structuredClone(document);
+  const [output] = await exportAnimation(document, 0);
+  const actual: AnimationJson = JSON.parse(await output.blob.text());
+  const removed = ["zeroGroup", "inherited", "ownZero", "hiddenSibling", "independentZero"];
+  for (const id of removed) expect(actual.nodes[id], id).toBeUndefined();
+  for (const id of ["retainedGroup", "independent", "resumed", "originZero", "sourceZero"]) expect(actual.nodes[id], id).toEqual(authored.nodes[id]);
+  expect(actual.animation.tracks.some((track) => removed.includes(track.target.node))).toBe(false);
+  expect(actual.animation.events).toEqual(authored.animation.events);
+  expect(document).toEqual(snapshot);
+});
+
+it("preserves scales that are only initially zero, uncertain, or tiny under animated ancestors", async () => {
+  const authored = structuredClone(animation);
+  const prop: NodeIR = {
+    parent: "arm", transform: [{ id: "scale", op: "scale", value: [1, 1, 1] }],
+    attachments: { display: structuredClone(animation.nodes.arm.attachments!.prop) },
+  };
+  for (const id of ["growing", "lateZero", "blended", "spline", "dynamic", "tiny"]) authored.nodes[id] = structuredClone(prop);
+  authored.nodes.spline.transform![0].value = [0, 0, 0];
+  authored.nodes.dynamic.transform![0].value = [0, 0, 0];
+  authored.nodes.tiny.transform![0].value = [0.0001, 0.0001, 0.0001];
+  authored.animation.tracks.push(
+    { target: { node: "growing", operation: "scale" }, channel: "value", driver: {
+      type: "curve", keys: [{ time: "0t", value: [0, 0, 0] }, { time: "20t", value: [1, 1, 1] }], segments: [{ interpolation: "linear" }],
+    } },
+    { target: { node: "lateZero", operation: "scale" }, channel: "value", driver: { type: "curve", keys: [{ time: "20t", value: [0, 0, 0] }], segments: [] } },
+    { target: { node: "blended", operation: "scale" }, channel: "value", blend: { base: [1, 1, 1], weight: 0.5 },
+      driver: { type: "curve", keys: [{ time: "0t", value: [0, 0, 0] }], segments: [] },
+    },
+    { target: { node: "spline", operation: "scale" }, channel: "value", driver: {
+      type: "curve", keys: [{ time: "0t", value: [0, 0, 0] }, { time: "20t", value: [0, 0, 0] }],
+      segments: [{ interpolation: "hermite", out_tangent: [8, 8, 8], in_tangent: [-8, -8, -8] }],
+    } },
+    { target: { node: "dynamic", operation: "scale" }, channel: "value", driver: { type: "expression", value: [{ molang: "q.anim_time" }, 0, 0] } },
+  );
+  const project = await readInput("emote_json", { name: "preserved-scales.json", bytes: new TextEncoder().encode(JSON.stringify(authored)) });
+  const [output] = await exportAnimation(createConversionDocument(project, "Emote JSON"), 0);
+  const actual: AnimationJson = JSON.parse(await output.blob.text());
+  for (const id of ["growing", "lateZero", "blended", "spline", "dynamic", "tiny"]) expect(actual.nodes[id], id).toEqual(authored.nodes[id]);
+  expect(actual.animation.tracks).toEqual(authored.animation.tracks);
+});
+
 it("edits animation ticks independently of preview delays and keeps generated events within the authored duration", async () => {
   for (const startDelay of ["10t", { molang: "q.scoreboard('pause')" }]) {
     const authored = structuredClone(animation);

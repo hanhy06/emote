@@ -1,4 +1,4 @@
-import { orderedNodeIds, type AnimationIR, type NbtPatchIR } from "../domain/animationIR";
+import { orderedNodeIds, type AnimationIR, type NbtPatchIR, type TrackIR } from "../domain/animationIR";
 import { parseMinecraftTime } from "../format/time";
 import { evaluatePose } from "../domain/animationIRPose";
 
@@ -45,25 +45,40 @@ export function removeRedundantKeyframes(ir: AnimationIR): void {
 }
 
 export function removeTinyStaticNodes(ir: AnimationIR): void {
+  const constantValues = new Map<TrackIR, readonly number[]>();
+  for (const track of ir.animation.tracks) {
+    if (track.channel !== "value" || track.driver.type !== "curve" || track.blend
+      || track.driver.segments.length !== track.driver.keys.length - 1
+      || track.driver.segments.some((segment) => !["step", "linear"].includes(segment.interpolation)
+        || segment.easing && segment.easing.kernel !== "linear"
+        || segment.previous !== undefined || segment.following !== undefined || segment.out_tangent !== undefined
+        || segment.in_tangent !== undefined || segment.handles !== undefined)) continue;
+    const values = track.driver.keys.flatMap((key) => key.value ? [key.value] : [key.pre, key.post]);
+    const first = values[0];
+    if (!first || values.some((value) => value.length !== first.length || value.some((axis, index) => typeof axis !== "number" || !Number.isFinite(axis) || axis !== first[index]))) continue;
+    const base = ir.nodes[track.target.node]?.transform?.find((operation) => operation.id === track.target.operation)?.value;
+    if (track.driver.before === "first_pre" || parseMinecraftTime(track.driver.keys[0].time) === 0
+      || base && first.every((axis, index) => axis === base[index])) constantValues.set(track, first as readonly number[]);
+  }
   const staticNodes = new Set<string>();
+  const zeroScaleNodes = new Set<string>();
   for (const id of orderedNodeIds(ir.nodes)) {
     const node = ir.nodes[id];
+    const tracks = ir.animation.tracks.filter((track) => track.target.node === id);
+    if (node.parent && zeroScaleNodes.has(node.parent) && node.inherit?.scale !== false
+      || node.transform?.some((operation) => {
+        if (operation.op !== "scale") return false;
+        const track = tracks.filter((track) => track.channel === "value" && track.target.operation === operation.id).at(-1);
+        const value = track ? constantValues.get(track) : operation.value;
+        return value?.length === 3 && value.every((axis) => axis === 0);
+      })) zeroScaleNodes.add(id);
     if (node.parent && !staticNodes.has(node.parent)) continue;
-    const constant = ir.animation.tracks.filter((t) => t.target.node === id).every((t) => {
+    const constant = tracks.every((t) => {
       if (t.channel !== "value") {
         return t.driver.type === "state" && t.driver.keys.every((key) => t.channel === "visible"
           ? typeof key.value === "boolean" : typeof (key.value as NbtPatchIR).merge === "string");
       }
-      if (t.driver.type !== "curve" || t.blend || t.driver.segments.length !== t.driver.keys.length - 1
-        || t.driver.segments.some((segment) => !["step", "linear"].includes(segment.interpolation)
-          || segment.easing && segment.easing.kernel !== "linear"
-          || segment.previous !== undefined || segment.following !== undefined || segment.out_tangent !== undefined
-          || segment.in_tangent !== undefined || segment.handles !== undefined)) return false;
-      const values = t.driver.keys.flatMap((key) => key.value ? [key.value] : [key.pre, key.post]);
-      const first = values[0];
-      if (!first || values.some((v) => v.length !== first.length || v.some((axis, index) => typeof axis !== "number" || !Number.isFinite(axis) || axis !== first[index]))) return false;
-      const base = node.transform?.find((op) => op.id === t.target.operation)?.value;
-      return t.driver.before === "first_pre" || parseMinecraftTime(t.driver.keys[0].time) === 0 || Boolean(base && first.every((axis, index) => typeof axis === "number" && axis === base[index]));
+      return constantValues.has(t);
     });
     if (constant) staticNodes.add(id);
   }
@@ -72,8 +87,9 @@ export function removeTinyStaticNodes(ir: AnimationIR): void {
     if (typeof value !== "number") throw new Error("Static node transform requires a constant value.");
     return value;
   });
-  const candidates = new Set([...staticNodes].filter((id) => {
+  const candidates = new Set([...staticNodes, ...zeroScaleNodes].filter((id) => {
     if (!ir.nodes[id].attachments) return false;
+    if (zeroScaleNodes.has(id)) return true;
     const matrix = poses[id].matrix.elements;
     return [0, 4, 8].every((offset) => Math.hypot(matrix[offset], matrix[offset + 1], matrix[offset + 2]) < 0.001);
   }));
@@ -82,7 +98,7 @@ export function removeTinyStaticNodes(ir: AnimationIR): void {
   const protect = (id: string) => {
     for (let current: string | undefined = id; current && !protectedNodes.has(current); current = ir.nodes[current]?.parent) protectedNodes.add(current);
   };
-  for (const [id, node] of Object.entries(ir.nodes)) if (!staticNodes.has(id) || node.attachments && !candidates.has(id)) protect(id);
+  for (const [id, node] of Object.entries(ir.nodes)) if (!staticNodes.has(id) && !zeroScaleNodes.has(id) || node.attachments && !candidates.has(id)) protect(id);
   for (const phase of Object.values(ir.animation.events ?? {})) for (const event of phase ?? []) {
     if (event.source.type === "node") protect(event.source.node);
     if (event.origin.type === "node") protect(event.origin.node);

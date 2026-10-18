@@ -41,8 +41,9 @@ it("preserves the 11 documentation sample matrices with shared player render sca
     }
     const displayIds = (animation: AnimationIR) => Object.keys(animation.nodes).filter((id) => Object.keys(animation.nodes[id].attachments ?? {}).length > 0).sort();
     const ids = displayIds(expected);
+    const actualIds = displayIds(actual);
     expect(ids.length, path).toBeGreaterThan(0);
-    expect(displayIds(actual), path).toEqual(ids);
+    expect(actualIds.filter((id) => !ids.includes(id)), path).toEqual([]);
     const duration = parseMinecraftTime(expected.animation.duration);
     expect(parseMinecraftTime(actual.animation.duration), path).toBe(duration);
     const inputs = name === "indicate"
@@ -62,6 +63,12 @@ it("preserves the 11 documentation sample matrices with shared player render sca
         const expectedPose = evaluatePose(expected, tick / 20, evaluate);
         const actualPose = evaluatePose(actual, tick / 20, evaluate);
         for (const id of ids) {
+          if (!actualIds.includes(id)) {
+            const matrix = expectedPose[id].matrix.elements;
+            const context = `${path}, queries=${JSON.stringify(input)}, ${tick}t, removed ${id}`;
+            for (const offset of [0, 4, 8]) expect(Math.hypot(matrix[offset], matrix[offset + 1], matrix[offset + 2]), context).toBe(0);
+            continue;
+          }
           for (let component = 0; component < 16; component++) {
             const value = expectedPose[id].matrix.elements[component];
             const context = `${path}, queries=${JSON.stringify(input)}, ${tick}t, ${id}, matrix[${component}]`;
