@@ -2,7 +2,7 @@ import type { AnimationEntryIR, AnimationIR, ClipIR, CurveIR, ScalarIR, TimeValu
 import { formatMinecraftTime, parseAnimationSeconds, parseMinecraftTime, sourceSecondsTime } from "../format/time";
 import { mapMolangResult } from "../format/molang/sourceTransformer";
 export function scalarIR(value: number | string): ScalarIR {
-  if (typeof value !== "string") return value as ScalarIR;
+  if (typeof value !== "string") return value;
   const numeric = Number(value.trim());
   return Number.isFinite(numeric) ? numeric : { molang: value };
 }
@@ -36,7 +36,7 @@ export function affineCurveIR(curve: CurveIR, factors: readonly number[], offset
 
 export function sourceDelayIR(value: number | string): TimeValueIR {
   const scalar = scalarIR(value);
-  return typeof scalar === "number" ? formatMinecraftTime(parseMinecraftTime(sourceSecondsTime(scalar))) : scalar as TimeValueIR;
+  return typeof scalar === "number" ? formatMinecraftTime(parseMinecraftTime(sourceSecondsTime(scalar))) : scalar;
 }
 
 export function normalizeAnimationTimes(animation: AnimationIR | AnimationEntryIR, generatedTimes = false): void {

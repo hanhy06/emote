@@ -44,8 +44,8 @@ export async function importFileBatch(files: readonly ImportFile[]): Promise<Con
       });
       return;
     }
-    if ("document" in result.value && result.value.document) documents.push(result.value.document);
-    else if ("sequence" in result.value && result.value.sequence) sequences.push(result.value.sequence);
+    if (result.value.document) documents.push(result.value.document);
+    else if (result.value.sequence) sequences.push(result.value.sequence);
   });
 
   if (documents.length === 0 && failures.length > 0) {

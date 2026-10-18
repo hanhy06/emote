@@ -44,8 +44,7 @@ export function prepareCubeModels(bones: BoneEntry[]): PreparedCubeModels {
 }
 
 export function normalizeBlockbenchName(name: string | undefined): string | undefined {
-  const normalized = name?.toLowerCase().replaceAll(/[^a-z0-9]/g, "");
-  return normalized || undefined;
+  return name?.toLowerCase().replaceAll(/[^a-z0-9]/g, "") || undefined;
 }
 
 export function isHiddenAccessoryBone(bone: BoneEntry): boolean {

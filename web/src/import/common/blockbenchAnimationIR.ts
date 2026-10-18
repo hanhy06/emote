@@ -38,7 +38,6 @@ export function blockbenchCurveIR(frames: readonly BbKeyframe[]): CurveIR | unde
     if (left.interpolation === "step") return { interpolation: "step" };
     const interpolation = left.interpolation === "catmullrom" || right.interpolation === "catmullrom" ? "catmull_rom"
       : left.interpolation === "bezier" || right.interpolation === "bezier" ? "bezier" : "linear";
-    const easing = interpolation === "linear" ? blockbenchEasingIR(right.easing, right.easingArgs) : undefined;
     if (interpolation === "catmull_rom") {
       const previous = grouped[index - 1];
       const following = grouped[index + 2];
@@ -56,6 +55,7 @@ export function blockbenchCurveIR(frames: readonly BbKeyframe[]): CurveIR | unde
         in: { time: handleTime(right.bezier_left_time?.[axis] ?? -0.1, true), value: scalarIR(right.bezier_left_value?.[axis] ?? 0), relative: true },
       })) };
     }
+    const easing = blockbenchEasingIR(right.easing, right.easingArgs);
     return { interpolation: "linear", ...(easing ? { easing } : {}) };
   });
   return { type: "curve", before: "first_pre", at_key: "pre", evaluation: "component", keys, segments };

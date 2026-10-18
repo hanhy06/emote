@@ -28,12 +28,10 @@ export async function exportAnimations(document: ConversionDocument, includeSequ
   const animations = compiled.map((entry) => entry.animation);
   const fileNames = animationFileNames(animations.map((animation) => animation.id));
   const generatedResourceReferences = new Set(compiled.flatMap((entry) => [...entry.generatedResourceReferences]));
-  const files: ExportResult[] = animations.map((animation, index) => {
-    return {
-      blob: new Blob([JSON.stringify(animation)], { type: "application/json" }),
-      fileName: fileNames[index],
-    };
-  });
+  const files: ExportResult[] = animations.map((animation, index) => ({
+    blob: new Blob([JSON.stringify(animation)], { type: "application/json" }),
+    fileName: fileNames[index],
+  }));
   if (includeSequence) {
     const sequenceOutput = structuredClone(document.sequence);
     const references = animationReferenceTargets(document.animations);

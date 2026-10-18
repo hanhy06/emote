@@ -406,7 +406,6 @@ function collectVariantConfigFrame(frames: ProjectNodeStateFrame[], events: Time
 
 function projectOutputNodeIds(sourceId: string, graph: ProjectTransformGraph, bindings: ProjectNodeBindings, includeDescendants = true): string[] {
   const result = new Set<string>();
-  for (const nodeId of bindings.get(sourceId) ?? []) result.add(nodeId);
   const groupIds = [sourceId, ...(includeDescendants ? [...graph.groups.keys()].filter((id) => projectGroupDescendsFrom(id, sourceId, graph)) : [])];
   for (const groupId of groupIds) {
     for (const nodeId of bindings.get(groupId) ?? []) result.add(nodeId);

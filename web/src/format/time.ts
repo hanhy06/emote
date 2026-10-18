@@ -17,8 +17,7 @@ export function parseMinecraftTime(value: string, minimumTicks = 0): number {
 export function parseAnimationSeconds(value: string): number {
   const match = TIME_PATTERN.exec(value);
   if (!match) return Number.NaN;
-  const seconds = Number.parseFloat(value) * (match[1] === "d" ? 1200 : match[1] === "s" ? 1 : 1 / TICKS_PER_SECOND);
-  return seconds;
+  return Number.parseFloat(value) * (match[1] === "d" ? 1200 : match[1] === "s" ? 1 : 1 / TICKS_PER_SECOND);
 }
 
 export function formatMinecraftTime(ticks: number): string {

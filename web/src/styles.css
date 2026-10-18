@@ -70,8 +70,7 @@ h3 { margin: 20px 0 10px; font-size: 15px; font-weight: 600; }
 .section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 14px; }
 .section-heading p { margin: 7px 0 0; color: #606060; line-height: 1.45; }
 .preview-controls { display: flex; align-items: flex-end; gap: 18px; }
-.frame-slider { display: grid; gap: 5px; color: #555; font-size: 12px; }
-.frame-slider { grid-template-columns: 220px 86px; }
+.frame-slider { display: grid; grid-template-columns: 220px 86px; gap: 5px; color: #555; font-size: 12px; }
 .frame-slider span { grid-column: 1 / -1; }
 .frame-slider input { width: 220px; min-height: 30px; padding: 0; }
 .frame-slider output { align-self: center; color: #333; font-variant-numeric: tabular-nums; }

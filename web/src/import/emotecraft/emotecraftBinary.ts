@@ -308,9 +308,7 @@ class BinaryReader {
   }
 
   readProtocolString(): string {
-    const length = this.readVarInt();
-    if (length === 0) return "";
-    return this.decodeString(length);
+    return this.decodeString(this.readVarInt());
   }
 
   readLegacyString(): string {

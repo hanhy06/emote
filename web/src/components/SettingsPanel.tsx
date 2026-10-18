@@ -81,15 +81,11 @@ export function SettingsPanel({ animation, minecraftVersion, disabled, onChange,
         <div className="fields">
           <label>Namespace<input value={drafts.namespace?.value ?? namespace} disabled={disabled} onInput={(event) => editDraft("namespace", event.currentTarget.value)} onBlur={(event) => {
             const value = event.currentTarget.value;
-            commit("namespace", value, () => {
-              return { ...animation, id: `${value}:${animation.id.slice(animation.id.indexOf(":") + 1)}` };
-            });
+            commit("namespace", value, () => ({ ...animation, id: `${value}:${animation.id.slice(animation.id.indexOf(":") + 1)}` }));
           }} /></label>
           <label>Display name<input value={drafts.name?.value ?? animation.metadata.name} disabled={disabled} onInput={(event) => editDraft("name", event.currentTarget.value)} onBlur={(event) => {
             const value = event.currentTarget.value;
-            commit("name", value, () => {
-              return { ...animation, metadata: { ...animation.metadata, name: value } };
-            });
+            commit("name", value, () => ({ ...animation, metadata: { ...animation.metadata, name: value } }));
           }} /></label>
           <label>Description<input value={drafts.description?.value ?? animation.metadata.description} disabled={disabled} onInput={(event) => editDraft("description", event.currentTarget.value)} onBlur={(event) => {
             const value = event.currentTarget.value;
@@ -105,21 +101,16 @@ export function SettingsPanel({ animation, minecraftVersion, disabled, onChange,
           <div className="playback-settings-group">
             <label>Playback mode<select value={animation.playbackMode} disabled={disabled} onChange={(event) => {
               const value = event.currentTarget.value;
+              const nextDrafts = { ...drafts };
+              if (value !== "loop") delete nextDrafts.loop_start;
+              if (value === "source" || value === "once" || value === "hold") delete nextDrafts.loop_delay;
+              setDrafts(nextDrafts);
+              onValidityChange(Object.values(nextDrafts).every((draft) => !draft.error));
               if (value === "source") {
-                const nextDrafts = { ...drafts };
-                delete nextDrafts.loop_start;
-                delete nextDrafts.loop_delay;
-                setDrafts(nextDrafts);
-                onValidityChange(Object.values(nextDrafts).every((draft) => !draft.error));
                 onChange({ ...animation, playbackMode: "source", clip: { ...animation.clip, playback: structuredClone(animation.sourcePlayback) } });
                 return;
               }
               const nextMode = value as NonNullable<typeof playback.mode>;
-              const nextDrafts = { ...drafts };
-              if (nextMode !== "loop") delete nextDrafts.loop_start;
-              if (nextMode === "once" || nextMode === "hold") delete nextDrafts.loop_delay;
-              setDrafts(nextDrafts);
-              onValidityChange(Object.values(nextDrafts).every((draft) => !draft.error));
               onChange({ ...animation, playbackMode: nextMode, clip: { ...animation.clip, playback: { ...playback, mode: nextMode, loop_start: nextMode === "loop" ? playback.loop_start ?? "0t" : "0t",
                 loop_delay: nextMode === "once" || nextMode === "hold" ? "0t" : playback.loop_delay ?? "0t" } } });
             }}>

@@ -32,7 +32,7 @@ function convertSequenceInput(input: ImportInput): EmoteSequence | null {
 export function importSequence(input: ImportInput): ImportedSequence {
   const sequence = convertSequenceInput(input);
   if (!sequence) throw new Error("Input is not an Emote sequence.");
-  const imported: ImportedSequence = {
+  return {
     kind: "sequence",
     source: "emote_sequence",
     sourceName: input.name,
@@ -44,7 +44,6 @@ export function importSequence(input: ImportInput): ImportedSequence {
     steps: sequence.steps.map(importStep),
     callbacks: sequence.callbacks?.map((callback) => ({ ...callback })),
   };
-  return imported;
 }
 
 function importStep(step: Record<string, unknown>): SequenceStep {
