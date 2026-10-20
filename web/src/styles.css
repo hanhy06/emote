@@ -120,15 +120,6 @@ h3 { margin: 20px 0 10px; font-size: 15px; font-weight: 600; }
 .minecraft-version-field { width: min(260px, 100%); margin: 0 0 18px; }
 .minecraft-version-field label { display: grid; gap: 4px; font-size: 13px; }
 .settings-section h3 { margin-top: 0; }
-.skin-settings { margin-top: 18px; padding-top: 2px; border-top: 1px solid #e2e2e2; }
-.skin-settings > p { color: #666; font-size: 12px; line-height: 1.45; }
-.skin-input { display: grid; align-content: start; gap: 8px; min-width: 0; }
-.skin-input input { min-width: 0; width: 100%; }
-.skin-input small { color: #666; font-size: 12px; line-height: 1.45; }
-.skin-input button { justify-self: start; }
-.skin-atlas-preview { margin: 16px 0 0; }
-.skin-atlas-preview img { display: block; border: 1px solid #aaa; image-rendering: pixelated; background: repeating-conic-gradient(#ddd 0% 25%, #fff 0% 50%) 0 0 / 16px 16px; }
-.skin-atlas-preview figcaption { margin-top: 6px; color: #666; font-size: 12px; }
 .playback-behavior { margin-top: 18px; padding-top: 2px; border-top: 1px solid #e2e2e2; }
 .playback-behavior > p { margin: -4px 0 10px; color: #666; font-size: 12px; }
 .playback-behavior-primary { grid-template-columns: repeat(2, minmax(260px, 420px)); justify-content: start; gap: 16px; }
