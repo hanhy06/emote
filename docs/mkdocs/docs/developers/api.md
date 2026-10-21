@@ -2,6 +2,8 @@
 
 Other Fabric mods can use `EmoteApi.getInstance()` to register and play emotes and listen for Emote events.
 
+For a working callback example, see [ExampleCallbacks.java](https://github.com/hanhy06/emote/blob/main/src/main/java/io/github/hanhy06/emote/ExampleCallbacks.java).
+
 ## Gradle dependency
 
 Emote is available from Modrinth Maven. Add the Modrinth Maven repository:
@@ -46,29 +48,6 @@ Declare the Emote dependency in `fabric.mod.json` as well:
 
 Obtain the API with `EmoteApi.getInstance()`. State-changing calls and playback inspection must run on the Minecraft server thread. Unless another type is named, the tables below list methods on `EmoteApi`.
 
-## Playback inspection
-
-Inspect the current playback and its resolved timeline. Use `PlaybackInfo.sessionId()` to address a session. Missing sessions return `Optional.empty()`.
-
-| API | Result |
-|---|---|
-| `getPlayback(player)` | The player's current `PlaybackInfo`. |
-| `getPlayback(sessionId)` | The session's current `PlaybackInfo`. |
-| `getTimeline(sessionId)` | `PlaybackTimeline` containing duration, loop mode, loop start, and resolved segments. |
-| `getNodeWorldPosition(sessionId, nodeId)` | The node's transformed origin as an `Optional<Vec3>` in world coordinates. Supports anchors; an unknown node returns empty. |
-
-| Playback data | Meaning |
-|---|---|
-| `PlaybackInfo.state()` | Current playback state. |
-| `PlaybackInfo.elapsedTicks()` | Elapsed playback ticks. |
-| `PlaybackInfo.timelineTick()` | Current tick in the complete playback timeline. |
-| `PlaybackInfo.position()` | Current segment, Sequence step and repetition, phase, phase-local tick, and active Animation. |
-| `PlaybackInfo.placement()` | Current root position, yaw, and placement mode. |
-| `PlaybackPosition.animationTick()` | Animation-local tick; `null` outside the `ANIMATION` phase. |
-| `PlaybackTimeline.segments()` | Resolved `ANIMATION`, `TRANSITION`, `WAIT`, `LOOP_DELAY`, or `HOLD` segments. Random choices and repeats are already resolved for this session. |
-
-Segment ranges include the start tick and exclude the end tick. An indefinite hold has no end tick. Sequence step and repetition indices are zero-based and refer to the original step and repetition.
-
 ## Playback control
 
 Start an emote for a player or stop an existing playback.
@@ -82,6 +61,29 @@ Start an emote for a player or stop an existing playback.
 
 `play` returns `PlayResult.Success` with `playback()`, or `PlayResult.Failure` with `errorMessage()`. API playback bypasses standalone visibility, disabled IDs, player permissions, and cooldown policy. The calling mod applies any desired policy; Emote still checks loaded IDs, cancellable play events, and playback-engine limits. Both stop methods use the manual stop reason.
 
+## Playback inspection
+
+Inspect the current playback and its resolved timeline. Use `PlaybackInfo.sessionId()` to address a session. Missing sessions return `Optional.empty()`.
+
+| API | Result |
+|---|---|
+| `getPlayback(player)` | The player's current `PlaybackInfo`. |
+| `getPlayback(sessionId)` | The session's current `PlaybackInfo`. |
+| `getTimeline(sessionId)` | `PlaybackTimeline` containing duration, loop mode, loop start, and resolved segments. |
+| `getNodeWorldPosition(sessionId, nodeId)` | The node's transformed origin as an `Optional<Vec3>` in world coordinates, including nodes without entity attachments. An unknown node returns empty. |
+
+| Playback data | Meaning |
+|---|---|
+| `PlaybackInfo.state()` | Current playback state. |
+| `PlaybackInfo.elapsedTicks()` | Elapsed playback ticks. |
+| `PlaybackInfo.tick()` | Current tick in the complete playback timeline. |
+| `PlaybackInfo.position()` | Current segment, Sequence step and repetition, phase, phase-local tick, and active Animation. |
+| `PlaybackInfo.placement()` | Current root position, yaw, and placement mode. |
+| `PlaybackPosition.animationTick()` | Animation-local tick; `null` outside the `ANIMATION` phase. |
+| `PlaybackTimeline.segments()` | Resolved `START_DELAY`, `ANIMATION`, `TRANSITION`, `WAIT`, `EMPTY`, `LOOP_DELAY`, or `HOLD` segments. Random choices and repeats are already resolved for this session. |
+
+Segment ranges include the start tick and exclude the end tick. An indefinite hold has no end tick. Sequence step and repetition indices are zero-based and refer to the original step and repetition.
+
 ## Playback position control
 
 Move within a running playback without creating a new session.
@@ -90,11 +92,11 @@ Move within a running playback without creating a new session.
 |---|---|
 | `setTick(sessionId, tick)` | Moves to a tick in the complete playback timeline, including Sequence transitions and waits. |
 | `setAnimationTick(sessionId, tick)` | Moves within the active Animation; returns `false` outside the Animation phase. |
-| `setStep(sessionId, stepIndex, repeatIndex, tick)` | Moves to the resolved Animation at a Sequence step and repetition, using its local tick. |
+| `setStep(sessionId, stepIndex, repeatIndex, tick)` | Moves to the resolved Animation or `emote:empty` at a Sequence step and repetition. |
 
-Position changes are unavailable for `server_sync` playback. Target ticks start at zero and exclude the timeline or Animation end. Invalid indices or out-of-range ticks throw `IllegalArgumentException`; an absent session returns `false`.
+Position changes are unavailable for `server_sync` playback. Target ticks start at zero. Invalid indices or out-of-range ticks throw `IllegalArgumentException`; an absent session returns `false`.
 
-Seeking applies the destination pose and its timeline events without replaying commands at skipped ticks. Changing the active Sequence Animation closes the outgoing segment and starts the incoming segment. Requests made during a callback or frame are applied after that processing completes.
+Seeking applies the destination pose and its timeline events without replaying commands at skipped ticks. Changing the active Sequence Animation closes the outgoing segment and starts the incoming segment.
 
 ## Playback placement
 
@@ -112,7 +114,7 @@ Register Animations and Sequences at runtime or inspect loaded emotes. Runtime r
 
 | API | Result |
 |---|---|
-| `register(animation)` | Registers an `EmoteAnimation` and returns a `Registration`. Invalid content throws `EmoteAnimationLoadException`. |
+| `register(animation)` | Registers an `EmoteAnimation` and returns a `Registration`. Invalid content throws `EmoteLoadException`. |
 | `register(sequence)` | Registers an `EmoteSequence` and returns a `Registration`. Referenced Animations must already be registered or loaded and compatible. |
 | `get(emoteId)` | `Optional<EmoteInfo>`; empty when the ID is not loaded. |
 | `getAll()` | A list of all loaded `EmoteInfo` entries. |
@@ -148,7 +150,7 @@ Register a named callback and select it in an Animation or Sequence's root `call
 
 ### Callback context
 
-`PlaybackContext` provides the session, actors, nodes, and per-callback state. A Sequence and its Animation segments have separate callback contexts.
+`PlaybackContext` provides the session, actors, node positions, attachment entities, and per-callback state. A node describes a transform; its attachments provide the entities. A Sequence and its Animation segments have separate callback contexts.
 
 | API | Result or behavior |
 |---|---|
@@ -160,10 +162,10 @@ Register a named callback and select it in an Animation or Sequence's root `call
 | `getAnimationTick()` | Animation-local tick. Animation callbacks use their segment's tick; root callbacks return `null` outside the Animation phase. |
 | `setTick(tick)` | Moves within the complete playback timeline. |
 | `setAnimationTick(tick)` | Moves within the active Animation. |
-| `setStep(stepIndex, repeatIndex, tick)` | Moves to a resolved Sequence Animation. Position-control rules above apply. |
+| `setStep(stepIndex, repeatIndex, tick)` | Moves to a resolved Sequence Animation or `emote:empty`. Position-control rules above apply. |
 | `getActor(name)` | Actor entity as an `Optional<Entity>`; use `"actor"` for the playback actor. |
-| `getNodeEntity(nodeId)` | Display entity as an `Optional<Entity>`; empty for anchors or unavailable entities. |
-| `getNodeWorldPosition(nodeId)` | Transformed node origin in world coordinates; supports anchors. |
+| `getAttachmentEntity(nodeId, attachmentId)` | Display entity as an `Optional<Entity>`; empty for attachments without an entity or unavailable entities. |
+| `getNodeWorldPosition(nodeId)` | Transformed node origin in world coordinates, including nodes without entity attachments. |
 | `getRootPosition()` | Current root world position. |
 | `getStopReason()` | Optional close reason. |
 | `getUserState()`, `setUserState(state)` | Reads or replaces custom state for this callback context. |

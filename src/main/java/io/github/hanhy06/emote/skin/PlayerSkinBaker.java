@@ -1,7 +1,9 @@
 package io.github.hanhy06.emote.skin;
 
 import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
-import io.github.hanhy06.emote.skin.model.PlayerSkinSegment;
+import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
+import io.github.hanhy06.emote.skin.model.SkinOverride;
+import org.jspecify.annotations.Nullable;
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -64,16 +66,34 @@ public final class PlayerSkinBaker {
     private static final FaceTarget OVERLAY_BACK = new FaceTarget(56, 8, 8, 8);
 
     public PreparedSkin prepare(BufferedImage sourceImage, boolean slimModel) {
+        return prepare(sourceImage, slimModel, null);
+    }
+
+    public PreparedSkin prepare(BufferedImage sourceImage, boolean slimModel, @Nullable SkinOverride override) {
         boolean effectiveSlimModel = resolveSlimModel(sourceImage, slimModel);
         BufferedImage normalizedImage = normalizeSkinImage(sourceImage);
-        return new PreparedSkin(normalizedImage, effectiveSlimModel);
+        PreparedSkin prepared = new PreparedSkin(normalizedImage, effectiveSlimModel);
+        return override == null ? prepared : new PreparedSkin(override.apply(wideImage(prepared)), false);
+    }
+
+    public byte[] normalize(BufferedImage sourceImage, boolean slimModel) throws IOException {
+        return writePng(wideImage(prepare(sourceImage, slimModel)));
+    }
+
+    private BufferedImage wideImage(PreparedSkin prepared) {
+        BufferedImage image = prepared.normalizedImage;
+        if (prepared.slimModel) {
+            image = expandSlimArmToWideAtlas(image, PlayerSkinPart.RIGHT_ARM);
+            image = expandSlimArmToWideAtlas(image, PlayerSkinPart.LEFT_ARM);
+        }
+        return image;
     }
 
     public byte[] bake(
         PreparedSkin preparedSkin,
-        PlayerSkinPart skinPart,
-        PlayerSkinSegment skinSegment
+        PlayerSkinRegion region
     ) throws IOException {
+        PlayerSkinPart skinPart = region.part();
         BufferedImage bakingImage = preparedSkin.imageFor(skinPart);
         BufferedImage outputImage = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
         FaceMap baseFaces = PARTS.get(skinPart).base();
@@ -81,17 +101,17 @@ public final class PlayerSkinBaker {
 
         drawFace(outputImage, bakingImage, baseFaces.top(), BASE_TOP);
         drawFace(outputImage, bakingImage, baseFaces.bottom(), BASE_BOTTOM);
-        drawFace(outputImage, bakingImage, createSegment(baseFaces.right(), skinSegment), BASE_RIGHT);
-        drawFace(outputImage, bakingImage, createSegment(baseFaces.front(), skinSegment), BASE_FRONT);
-        drawFace(outputImage, bakingImage, createSegment(baseFaces.left(), skinSegment), BASE_LEFT);
-        drawFace(outputImage, bakingImage, createSegment(baseFaces.back(), skinSegment), BASE_BACK);
+        drawFace(outputImage, bakingImage, createSegment(baseFaces.right(), region), BASE_RIGHT);
+        drawFace(outputImage, bakingImage, createSegment(baseFaces.front(), region), BASE_FRONT);
+        drawFace(outputImage, bakingImage, createSegment(baseFaces.left(), region), BASE_LEFT);
+        drawFace(outputImage, bakingImage, createSegment(baseFaces.back(), region), BASE_BACK);
 
         drawFace(outputImage, bakingImage, overlayFaces.top(), OVERLAY_TOP);
         drawFace(outputImage, bakingImage, overlayFaces.bottom(), OVERLAY_BOTTOM);
-        drawFace(outputImage, bakingImage, createSegment(overlayFaces.right(), skinSegment), OVERLAY_RIGHT);
-        drawFace(outputImage, bakingImage, createSegment(overlayFaces.front(), skinSegment), OVERLAY_FRONT);
-        drawFace(outputImage, bakingImage, createSegment(overlayFaces.left(), skinSegment), OVERLAY_LEFT);
-        drawFace(outputImage, bakingImage, createSegment(overlayFaces.back(), skinSegment), OVERLAY_BACK);
+        drawFace(outputImage, bakingImage, createSegment(overlayFaces.right(), region), OVERLAY_RIGHT);
+        drawFace(outputImage, bakingImage, createSegment(overlayFaces.front(), region), OVERLAY_FRONT);
+        drawFace(outputImage, bakingImage, createSegment(overlayFaces.left(), region), OVERLAY_LEFT);
+        drawFace(outputImage, bakingImage, createSegment(overlayFaces.back(), region), OVERLAY_BACK);
 
         return writePng(outputImage);
     }
@@ -118,6 +138,19 @@ public final class PlayerSkinBaker {
 
         copyLegacyLimb(normalizedImage, 0, 16);
         copyLegacyLimb(normalizedImage, 40, 32);
+
+        for (int x = 32; x < 64; x++) {
+            for (int y = 0; y < 32; y++) {
+                if ((normalizedImage.getRGB(x, y) >>> 24) < 128) {
+                    return normalizedImage;
+                }
+            }
+        }
+        for (int x = 32; x < 64; x++) {
+            for (int y = 0; y < 16; y++) {
+                normalizedImage.setRGB(x, y, normalizedImage.getRGB(x, y) & 0x00FFFFFF);
+            }
+        }
         return normalizedImage;
     }
 
@@ -177,9 +210,9 @@ public final class PlayerSkinBaker {
         return outputStream.toByteArray();
     }
 
-    private FaceRect createSegment(FaceRect faceRect, PlayerSkinSegment skinSegment) {
-        int startOffset = faceRect.height() * skinSegment.startY() / PlayerSkinSegment.SIDE_FACE_HEIGHT;
-        int endOffset = faceRect.height() * skinSegment.endY() / PlayerSkinSegment.SIDE_FACE_HEIGHT;
+    private FaceRect createSegment(FaceRect faceRect, PlayerSkinRegion region) {
+        int startOffset = Math.min(faceRect.height() - 1, (int) Math.floor(faceRect.height() * region.from()));
+        int endOffset = (int) Math.floor(faceRect.height() * region.to());
         if (endOffset <= startOffset) {
             endOffset = Math.min(faceRect.height(), startOffset + 1);
         }
@@ -200,8 +233,8 @@ public final class PlayerSkinBaker {
 
     private BufferedImage expandSlimArmToWideAtlas(BufferedImage sourceImage, PlayerSkinPart skinPart) {
         BufferedImage expandedImage = copyImage(sourceImage);
-        copyFaceMap(expandedImage, sourceImage, slimBaseFaces(skinPart), PARTS.get(skinPart).base());
-        copyFaceMap(expandedImage, sourceImage, slimOverlayFaces(skinPart), PARTS.get(skinPart).overlay());
+        copyFaceMap(expandedImage, sourceImage, requireSlimFaces(skinPart, PARTS.get(skinPart).slimBase()), PARTS.get(skinPart).base());
+        copyFaceMap(expandedImage, sourceImage, requireSlimFaces(skinPart, PARTS.get(skinPart).slimOverlay()), PARTS.get(skinPart).overlay());
         return expandedImage;
     }
 
@@ -224,14 +257,6 @@ public final class PlayerSkinBaker {
 
     private void copyFace(BufferedImage targetImage, BufferedImage sourceImage, FaceRect sourceRect, FaceRect targetRect) {
         drawFace(targetImage, sourceImage, sourceRect, new FaceTarget(targetRect.x(), targetRect.y(), targetRect.width(), targetRect.height()));
-    }
-
-    private static FaceMap slimBaseFaces(PlayerSkinPart part) {
-        return requireSlimFaces(part, PARTS.get(part).slimBase());
-    }
-
-    private static FaceMap slimOverlayFaces(PlayerSkinPart part) {
-        return requireSlimFaces(part, PARTS.get(part).slimOverlay());
     }
 
     private static FaceMap requireSlimFaces(PlayerSkinPart part, FaceMap faces) {

@@ -9,7 +9,7 @@ This example plays sit down → idle action three times → stand up. Each refer
 ```json
 {
   "type": "sequence",
-  "schema_version": 4,
+  "schema_version": 5,
   "id": "sit:idle.sit",
   "metadata": {
     "name": "Sit",
@@ -38,7 +38,7 @@ This example plays sit down → idle action three times → stand up. Each refer
 }
 ```
 
-See the [Sequence example JSON](https://github.com/hanhy06/emote/blob/dev/docs/reference/sequence.json) for the complete format. Sequence files use schema version `4` and are limited to 8 MiB.
+See the [Sequence example JSON](https://github.com/hanhy06/emote/blob/main/docs/reference/sequence.json) for the complete format. Sequence files use schema version `5` and are limited to 8 MiB.
 
 !!! tip "Time units"
     Time settings use Minecraft time format. `1s` equals `20t`.
@@ -61,7 +61,7 @@ Steps cannot reference another Sequence or an Animation using `hold` or `server_
 
 ## Transitions
 
-`transition` is the time spent moving from the previous Animation's final pose to the next Animation's initial pose. Position, rotation, and scale of shared display nodes are interpolated linearly.
+`transition` is the time spent moving from the previous Animation's final pose to the next Animation's initial pose. Position and scale of shared display attachments are interpolated linearly, while rotation uses quaternion interpolation.
 
 ```json
 {"emote": "sit:idle_sky", "transition": "2t"}
@@ -122,16 +122,17 @@ Alternate IDs and integer weights to set selection probabilities. The weights mu
 }
 ```
 
-A new choice is made for each repetition. When there are multiple Animation candidates, the most recently selected Animation is excluded and the remaining probabilities are recalculated. Repeat-control IDs in the next section do not count as Animation candidates.
+A new choice is made for each repetition. When there are multiple Animation candidates, the most recently selected Animation is excluded and the remaining probabilities are recalculated. Playback-control IDs in the next section do not count as Animation candidates.
 
-## Repeat control
+## Playback control
 
-Include these IDs in random selection to skip a repetition or end the current step's repeat loop.
+Use these IDs as an `emote` value or include them in random selection to control Sequence playback.
 
 | ID | Behavior |
 |---|---|
 | `emote:continue` | Consumes one repetition and selects the next without adding an Animation or `loop_delay`. |
 | `emote:break` | Ends the current step's repeat loop and advances to the next step. Does not end the entire Sequence. |
+| `emote:empty` | Hides all Sequence display attachments and waits without automatically advancing. |
 
 ```json
 {
@@ -147,6 +148,8 @@ Include these IDs in random selection to skip a repetition or end the current st
 
 `emote:continue` may be selected consecutively. A Sequence must have at least one real Animation candidate.
 
+Use [`setStep`](api.md#playback-position-control) to move to another step, or target `emote:empty` with local tick `0`. The next Animation after `emote:empty` skips its `transition`.
+
 ## Common settings
 
 | Field | Description |
@@ -161,27 +164,25 @@ Include these IDs in random selection to skip a repetition or end the current st
 
 See the [Animation documentation](animation.md) for individual player settings.
 
-Sequences are directly playable and do not define `standalone`, `rotation_deadzone`, or `playback`. Rotation tracking and display interpolation use the currently playing Animation's settings.
+Sequences are directly playable. Their root `settings` controls cooldown and player behavior, while rotation tracking uses the currently playing Animation's `rotation_deadzone`.
 
 ## Animation compatibility
 
 All referenced Animations must be loaded successfully on the server. Compatibility is checked when emotes are reloaded.
 
-Regular node IDs may differ between Animations. The Sequence creates the required nodes once and reuses them until playback ends. Nodes absent from the current Animation are hidden.
+Node IDs may differ between Animations. Attachments belonging to nodes absent from the current Animation are hidden.
 
-### Shared node IDs
+### Shared nodes and skin bindings
+
+For a node ID reused by multiple Animations:
 
 | Must match | May differ |
 |---|---|
-| Node type | Position, rotation, and scale |
-| Item, item display context, block state, text, and entity NBT | Initial visibility |
+| Attachment IDs and types | Position, rotation, and scale |
+| Item, item display context, block state, text, entity NBT, and initial attachment visibility | Initial node visibility |
 | Player skin binding | Timeline tracks |
 
-### Player skins
-
-All Animations must have the same compiled player-skin layout. Skin node IDs and body regions derived from `part`, `order`, and local Y scale must match.
-
-Repeat-control IDs are excluded from compatibility checks.
+All Animations must also have the same compiled player-skin layout. Skin node IDs, attachment IDs, and each region's `part`, `from`, and `to` must match, even when other node IDs differ.
 
 ## Events and callbacks
 
@@ -196,10 +197,4 @@ Command events defined in each Animation also run within a Sequence.
 
 At a shared boundary, the previous Animation's stop events run before the next Animation's start events.
 
-Sequence `callbacks` use the same format as [Animation callbacks](animation.md#callbacks). The Sequence and each Animation segment have separate callback contexts and state. Each Animation segment also has its own Molang session.
-
-## Playback behavior
-
-Random choices and repeat controls are resolved before playback starts, and the selected steps are compiled into one playback.
-
-Stopping the Sequence cancels all remaining steps.
+Sequence `callbacks` use the same format as [Animation callbacks](animation.md#callbacks). The Sequence and each Animation segment have separate callback contexts and state.

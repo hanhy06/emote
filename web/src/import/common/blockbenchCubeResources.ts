@@ -1,31 +1,11 @@
 import { sanitizeResourcePath } from "../../format/resourceLocation";
 import { ConversionError } from "../../foundation/diagnostics";
 import { itemModelResourcePath, type GeneratedResource } from "../../domain/generatedResource";
-import type { BbCube, BbTexture, BlockbenchCubeProject } from "./blockbenchCubeSchema";
+import type { BbCube, BbTexture } from "./blockbenchCubeSchema";
 import type { BoneEntry } from "./blockbenchCubeModel";
-import type { CubeProjectTransformConvention } from "./blockbenchCubeTransform";
+import { Matrix4, Vector3 } from "three";
 
 const SUPPORTED_FACES = new Set(["north", "south", "east", "west", "up", "down"]);
-const TEXTURELESS_MODEL_TEXTURE = "minecraft:block/white_concrete";
-
-export function writeSourceCubeResources(
-  project: BlockbenchCubeProject,
-  bones: BoneEntry[],
-  namespace: string,
-  projectPath: string,
-  resources: Map<string, GeneratedResource>,
-  transforms: CubeProjectTransformConvention,
-): void {
-  if (!bones.some((bone) => bone.cubes.length > 0)) return;
-  writeEmbeddedTextures(project.textures, namespace, projectPath, resources);
-  const resourceNodeIds = new Set(bones.map((bone) => bone.id));
-  for (const bone of bones) {
-    for (const [cubeIndex, cube] of bone.cubes.entries()) {
-      const nodeId = cubeIndex === 0 ? bone.id : uniqueCubeNodeId(bone, cube, cubeIndex, resourceNodeIds);
-      writeCubeResources(project, bone, cube, namespace, `${projectPath}/${nodeId}`, resources, transforms);
-    }
-  }
-}
 
 export function uniqueCubeNodeId(bone: BoneEntry, cube: BbCube, cubeIndex: number, ids: Set<string>): string {
   const cubeName = sanitizeResourcePath(cube.name?.trim() || `cube_${cubeIndex + 1}`, `cube_${cubeIndex + 1}`).replaceAll("/", "_");
@@ -36,33 +16,7 @@ export function uniqueCubeNodeId(bone: BoneEntry, cube: BbCube, cubeIndex: numbe
   return id;
 }
 
-export function writeCubeResources(
-  project: BlockbenchCubeProject,
-  bone: BoneEntry,
-  cube: BbCube,
-  namespace: string,
-  modelPath: string,
-  resources: Map<string, GeneratedResource>,
-  transforms: CubeProjectTransformConvention,
-): void {
-  const sourceTextures = project.textures.length > 0 ? project.textures : [{}];
-  const usedTextureIndexes = referencedTextureIndexes(cube, sourceTextures);
-  const textures = project.textures.length > 0
-    ? Object.fromEntries([...usedTextureIndexes].map((index) => [
-        `layer${index}`,
-        `${namespace}:item/${modelPath.split("/").slice(0, -1).join("/")}/${textureFileStem(project.textures.length, index)}`,
-      ]))
-    : { layer0: TEXTURELESS_MODEL_TEXTURE };
-  const model = {
-    kind: "cuboid_model" as const,
-    textures,
-    elements: [cubeModelElement(cube, bone.group.origin, project.resolution, sourceTextures, transforms)],
-  };
-  resources.set(`assets/${namespace}/models/item/${modelPath}.json`, model);
-  resources.set(itemModelResourcePath(namespace, modelPath), { kind: "item_model", model: `${namespace}:item/${modelPath}` });
-}
-
-function referencedTextureIndexes(cube: BbCube, textures: BbTexture[]): Set<number> {
+export function referencedTextureIndexes(cube: BbCube, textures: BbTexture[]): Set<number> {
   const result = new Set<number>();
   for (const [direction, face] of Object.entries(cube.faces)) {
     if (!SUPPORTED_FACES.has(direction) || face.enabled === false || face.texture === null || face.uv == null) continue;
@@ -71,34 +25,39 @@ function referencedTextureIndexes(cube: BbCube, textures: BbTexture[]): Set<numb
   return result;
 }
 
-function cubeModelElement(cube: BbCube, boneOrigin: number[], resolution: { width: number; height: number }, textures: BbTexture[], transforms: CubeProjectTransformConvention): Record<string, unknown> {
+export function writeCubeResources(cube: BbCube, boneOrigin: readonly number[], resolution: { width: number; height: number }, textures: BbTexture[], namespace: string, modelPath: string, resources: Map<string, GeneratedResource>): Matrix4 | undefined {
+  const sourceTextures = textures.length ? textures : [{}];
+  const used = referencedTextureIndexes(cube, sourceTextures);
+  const modelTextures = textures.length ? Object.fromEntries([...used].map((index) => [`layer${index}`, `${namespace}:item/${modelPath.split("/").slice(0, -1).join("/")}/${textureFileStem(textures.length, index)}`])) : { layer0: "minecraft:block/white_concrete" };
   const inflate = cube.inflate ?? 0;
-  const sourceFrom = cube.from.map((value, axis) => value - boneOrigin[axis] - inflate);
-  const sourceTo = cube.to.map((value, axis) => value - boneOrigin[axis] + inflate);
-  const canonical = transforms.bounds(sourceFrom, sourceTo);
+  let from = cube.from.map((value, axis) => value - boneOrigin[axis] - inflate + 8);
+  let to = cube.to.map((value, axis) => value - boneOrigin[axis] + inflate + 8);
+  let modelGeometry: Matrix4 | undefined;
+  if ([...from, ...to].some((value) => value < -16 || value > 32)) {
+    const center = from.map((value, axis) => (value + to[axis]) / 2);
+    const scale = Math.max(1, ...to.map((value, axis) => Math.abs(value - from[axis]) / 16));
+    from = from.map((value, axis) => (value - center[axis]) / scale + 8);
+    to = to.map((value, axis) => (value - center[axis]) / scale + 8);
+    modelGeometry = new Matrix4().makeTranslation((center[0] - 8) / 16, (center[1] - 8) / 16, (center[2] - 8) / 16).scale(new Vector3(scale, scale, scale));
+  }
   const faces = Object.fromEntries(Object.entries(cube.faces).flatMap(([direction, face]) => {
     if (!SUPPORTED_FACES.has(direction) || face.enabled === false || face.texture === null || face.uv == null) return [];
     return [[direction, {
-      uv: [
-        face.uv[0] * 16 / resolution.width,
-        face.uv[1] * 16 / resolution.height,
-        face.uv[2] * 16 / resolution.width,
-        face.uv[3] * 16 / resolution.height,
-      ],
-      texture: `#layer${resolveFaceTextureIndex(face.texture, textures)}`,
-      ...(face.rotation == null || face.rotation === 0 ? {} : { rotation: face.rotation }),
+      uv: [face.uv[0] * 16 / resolution.width, face.uv[1] * 16 / resolution.height, face.uv[2] * 16 / resolution.width, face.uv[3] * 16 / resolution.height],
+      texture: `#layer${resolveFaceTextureIndex(face.texture, sourceTextures)}`, ...(face.rotation == null || face.rotation === 0 ? {} : { rotation: face.rotation }),
     }]];
   }));
-  return {
-    from: canonical.from.map((value) => value + 8),
-    to: canonical.to.map((value) => value + 8),
-    faces,
-  };
+  resources.set(`assets/${namespace}/models/item/${modelPath}.json`, { kind: "cuboid_model", textures: modelTextures, elements: [{
+    from, to, faces,
+  }] });
+  resources.set(itemModelResourcePath(namespace, modelPath), { kind: "item_model", model: `${namespace}:item/${modelPath}` });
+  return modelGeometry;
 }
 
-function writeEmbeddedTextures(textures: BbTexture[], namespace: string, projectPath: string, resources: Map<string, GeneratedResource>): void {
-  if (textures.length === 0) return;
+export function writeEmbeddedTextures(textures: BbTexture[], namespace: string, projectPath: string, resources: Map<string, GeneratedResource>): void {
+  const references = new Set([...resources.values()].flatMap((resource) => resource instanceof Uint8Array || resource.kind !== "cuboid_model" ? [] : Object.values(resource.textures)));
   for (const [index, texture] of textures.entries()) {
+    if (!references.has(`${namespace}:item/${projectPath}/${textureFileStem(textures.length, index)}`)) continue;
     if (!texture.source?.startsWith("data:image/png;base64,")) {
       throw new ConversionError("blockbench_external_texture", "Blockbench textures must be embedded as PNG data.", `textures[${index}].source`);
     }
@@ -110,11 +69,11 @@ function writeEmbeddedTextures(textures: BbTexture[], namespace: string, project
   }
 }
 
-function textureFileStem(textureCount: number, index: number): string {
+export function textureFileStem(textureCount: number, index: number): string {
   return textureCount === 1 ? "texture" : `texture_${index}`;
 }
 
-function resolveFaceTextureIndex(reference: number | string | null | undefined, textures: BbTexture[]): number {
+export function resolveFaceTextureIndex(reference: number | string | null | undefined, textures: BbTexture[]): number {
   if (reference === undefined && textures.length === 1) return 0;
   const numeric = typeof reference === "number" ? reference : typeof reference === "string" && /^#?\d+$/.test(reference) ? Number(reference.replace(/^#/, "")) : undefined;
   const index = numeric ?? textures.findIndex((texture) => reference === texture.uuid || reference === texture.id || reference === texture.name);

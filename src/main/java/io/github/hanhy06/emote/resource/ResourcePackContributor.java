@@ -1,6 +1,5 @@
 package io.github.hanhy06.emote.resource;
 
-import eu.pb4.polymer.resourcepack.api.ResourcePackBuilder;
 import io.github.hanhy06.emote.util.Sha256;
 import net.minecraft.resources.Identifier;
 
@@ -23,20 +22,11 @@ final class ResourcePackContributor {
     private static final int MAX_ENTRY_COUNT = 65_536;
     private static final long MAX_EXPANDED_BYTES = 256L * 1024L * 1024L;
 
-    Snapshot read(Path sourceDirectory) throws IOException {
+    static Snapshot read(Path sourceDirectory) throws IOException {
         Map<String, ResourceFile> resources = Files.isDirectory(sourceDirectory)
             ? readResources(sourceDirectory)
             : Map.of();
         return new Snapshot(resources, fingerprint(resources));
-    }
-
-    int addTo(Snapshot snapshot, ResourcePackBuilder builder) throws IOException {
-        for (Map.Entry<String, ResourceFile> entry : snapshot.resources.entrySet()) {
-            if (!builder.addData(entry.getKey(), entry.getValue().data())) {
-                throw new IOException("Polymer rejected resource " + entry.getKey());
-            }
-        }
-        return snapshot.resourceCount();
     }
 
     private static Map<String, ResourceFile> readResources(Path sourceDirectory) throws IOException {
@@ -159,15 +149,7 @@ final class ResourcePackContributor {
         return digest.digest();
     }
 
-    static final class Snapshot {
-        private final Map<String, ResourceFile> resources;
-        private final byte[] fingerprint;
-
-        private Snapshot(Map<String, ResourceFile> resources, byte[] fingerprint) {
-            this.resources = resources;
-            this.fingerprint = fingerprint;
-        }
-
+    record Snapshot(Map<String, ResourceFile> resources, byte[] fingerprint) {
         boolean hasSameContent(Snapshot other) {
             return other != null && Arrays.equals(this.fingerprint, other.fingerprint);
         }
@@ -181,7 +163,7 @@ final class ResourcePackContributor {
         }
     }
 
-    private record ResourceFile(byte[] data, String source) {
+    record ResourceFile(byte[] data, String source) {
     }
 
     private static final class Budget {

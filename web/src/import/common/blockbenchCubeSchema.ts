@@ -1,4 +1,4 @@
-import type { ImportDiagnostic } from "../../domain/conversionSeed";
+import type { ConversionIssue } from "../../foundation/diagnostics";
 
 export interface BlockbenchCubeProject {
   name?: string;
@@ -9,7 +9,7 @@ export interface BlockbenchCubeProject {
   textures: BbTexture[];
   animations: BbAnimation[];
   animationSourceIndices?: number[];
-  animationDiagnostics?: ImportDiagnostic[];
+  animationDiagnostics?: ConversionIssue[];
 }
 
 
@@ -48,7 +48,17 @@ export interface BbLocator {
   ignore_inherited_scale?: boolean;
 }
 
-export type BbElement = BbCube | BbLocator;
+export interface BbUnknownElement {
+  uuid: string;
+  name?: string;
+  type: string;
+  position?: number[];
+  origin?: number[];
+  rotation?: number[];
+  scale?: number[];
+}
+
+export type BbElement = BbCube | BbLocator | BbUnknownElement;
 
 export interface BbFace {
   uv?: number[];
@@ -91,11 +101,11 @@ export interface BbKeyframe {
   time: number;
   interpolation?: string;
   easing?: string;
-  easingArgs?: number[];
-  bezier_left_time?: number[];
-  bezier_left_value?: number[];
-  bezier_right_time?: number[];
-  bezier_right_value?: number[];
+  easingArgs?: (number | string)[];
+  bezier_left_time?: (number | string)[];
+  bezier_left_value?: (number | string)[];
+  bezier_right_time?: (number | string)[];
+  bezier_right_value?: (number | string)[];
   data_points: BbDataPoint[];
 }
 

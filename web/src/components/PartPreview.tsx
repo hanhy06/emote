@@ -8,35 +8,35 @@ import { createPlayerHeadGeometry } from "./playerHeadGeometry";
 interface PartPreviewProps {
   parts: PreviewPart[];
   assignments: PartAssignments;
-  selectedNodeIds: ReadonlySet<string>;
-  onSelectNode: (nodeId: string, additive: boolean) => void;
-  onSelectNodes: (nodeIds: readonly string[], additive: boolean) => void;
+  selectedCandidateIds: ReadonlySet<string>;
+  onSelectCandidate: (candidateId: string, additive: boolean) => void;
+  onSelectCandidates: (candidateIds: readonly string[], additive: boolean) => void;
 }
 
 const ASSIGNMENT_COLORS = new Map(SKIN_PARTS.map((part) => [part.id, part.color]));
 
-export default function PartPreview({ parts, assignments, selectedNodeIds, onSelectNode, onSelectNodes }: PartPreviewProps) {
+export default function PartPreview({ parts, assignments, selectedCandidateIds, onSelectCandidate, onSelectCandidates }: PartPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const materialsRef = useRef(new Map<string, THREE.MeshStandardMaterial>());
-  const onSelectNodeRef = useRef(onSelectNode);
-  const onSelectNodesRef = useRef(onSelectNodes);
-  const selectedNodeIdsRef = useRef(selectedNodeIds);
+  const onSelectCandidateRef = useRef(onSelectCandidate);
+  const onSelectCandidatesRef = useRef(onSelectCandidates);
+  const selectedCandidateIdsRef = useRef(selectedCandidateIds);
   const cameraStateRef = useRef<{ position: THREE.Vector3; target: THREE.Vector3 } | null>(null);
   const resetViewRef = useRef<() => void>(() => {});
   const [renderError, setRenderError] = useState("");
 
-  onSelectNodeRef.current = onSelectNode;
-  onSelectNodesRef.current = onSelectNodes;
-  selectedNodeIdsRef.current = selectedNodeIds;
+  onSelectCandidateRef.current = onSelectCandidate;
+  onSelectCandidatesRef.current = onSelectCandidates;
+  selectedCandidateIdsRef.current = selectedCandidateIds;
 
   useEffect(() => {
-    for (const [nodeId, material] of materialsRef.current) {
-      const assignment = assignments[nodeId];
+    for (const [candidateId, material] of materialsRef.current) {
+      const assignment = assignments[candidateId];
       material.color.set(assignment ? ASSIGNMENT_COLORS.get(assignment)! : "#777777");
-      material.emissive.set(selectedNodeIds.has(nodeId) ? "#3d73b9" : "#000000");
-      material.emissiveIntensity = selectedNodeIds.has(nodeId) ? 0.7 : 0;
+      material.emissive.set(selectedCandidateIds.has(candidateId) ? "#3d73b9" : "#000000");
+      material.emissiveIntensity = selectedCandidateIds.has(candidateId) ? 0.7 : 0;
     }
-  }, [assignments, selectedNodeIds]);
+  }, [assignments, selectedCandidateIds]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -68,29 +68,27 @@ export default function PartPreview({ parts, assignments, selectedNodeIds, onSel
     scene.add(new THREE.GridHelper(5, 10, 0x888888, 0xcccccc));
 
     const partGroup = new THREE.Group();
-    const clickableMeshes: THREE.Mesh[] = [];
-    const modelMeshes: THREE.Mesh[] = [];
+    const meshes: THREE.Mesh[] = [];
     const geometry = createPlayerHeadGeometry();
     const edgeGeometry = new THREE.EdgesGeometry(geometry);
 
     for (const part of parts) {
-      const assignment = assignments[part.nodeId];
+      const assignment = assignments[part.candidateId];
       const material = new THREE.MeshStandardMaterial({
         color: assignment ? ASSIGNMENT_COLORS.get(assignment) : "#777777",
-        emissive: selectedNodeIds.has(part.nodeId) ? "#3d73b9" : "#000000",
-        emissiveIntensity: selectedNodeIds.has(part.nodeId) ? 0.7 : 0,
+        emissive: selectedCandidateIds.has(part.candidateId) ? "#3d73b9" : "#000000",
+        emissiveIntensity: selectedCandidateIds.has(part.candidateId) ? 0.7 : 0,
         roughness: 0.8,
       });
-      materialsRef.current.set(part.nodeId, material);
+      materialsRef.current.set(part.candidateId, material);
 
       const mesh = new THREE.Mesh(geometry, material);
       mesh.matrixAutoUpdate = false;
       mesh.matrix.set(...part.matrix as MatrixValues);
       if (part.conversionMatrix) mesh.matrix.multiply(new THREE.Matrix4().set(...part.conversionMatrix as MatrixValues));
-      mesh.userData.nodeId = part.nodeId;
+      mesh.userData.candidateId = part.candidateId;
       partGroup.add(mesh);
-      modelMeshes.push(mesh);
-      clickableMeshes.push(mesh);
+      meshes.push(mesh);
 
       const edges = new THREE.LineSegments(edgeGeometry, new THREE.LineBasicMaterial({ color: 0x333333 }));
       edges.matrixAutoUpdate = false;
@@ -100,7 +98,7 @@ export default function PartPreview({ parts, assignments, selectedNodeIds, onSel
     scene.add(partGroup);
 
     const bounds = new THREE.Box3();
-    for (const mesh of modelMeshes) bounds.expandByObject(mesh);
+    for (const mesh of meshes) bounds.expandByObject(mesh);
     const center = bounds.getCenter(new THREE.Vector3());
     const size = Math.max(bounds.getSize(new THREE.Vector3()).length(), 1);
     const initialTarget = center.clone().add(new THREE.Vector3(0, size * 0.7, 0));
@@ -155,7 +153,7 @@ export default function PartPreview({ parts, assignments, selectedNodeIds, onSel
       const right = Math.min(rectangle.right, Math.max(pointerStart.x, event.clientX));
       const top = Math.max(rectangle.top, Math.min(pointerStart.y, event.clientY));
       const bottom = Math.min(rectangle.bottom, Math.max(pointerStart.y, event.clientY));
-      const nodeIds = clickableMeshes.flatMap((mesh) => {
+      const candidateIds = meshes.flatMap((mesh) => {
         const box = new THREE.Box3().setFromObject(mesh);
         const projectedMin = { x: Number.POSITIVE_INFINITY, y: Number.POSITIVE_INFINITY };
         const projectedMax = { x: Number.NEGATIVE_INFINITY, y: Number.NEGATIVE_INFINITY };
@@ -177,9 +175,9 @@ export default function PartPreview({ parts, assignments, selectedNodeIds, onSel
           && projectedMin.x <= right
           && projectedMax.y >= top
           && projectedMin.y <= bottom;
-        return intersects ? [mesh.userData.nodeId as string] : [];
+        return intersects ? [mesh.userData.candidateId as string] : [];
       });
-      onSelectNodesRef.current(nodeIds, true);
+      onSelectCandidatesRef.current(candidateIds, true);
       return true;
     };
 
@@ -230,12 +228,12 @@ export default function PartPreview({ parts, assignments, selectedNodeIds, onSel
       pointer.x = ((event.clientX - rectangle.left) / rectangle.width) * 2 - 1;
       pointer.y = -((event.clientY - rectangle.top) / rectangle.height) * 2 + 1;
       raycaster.setFromCamera(pointer, camera);
-      const nodeIds = [...new Set(raycaster.intersectObjects(clickableMeshes, false)
-        .map((intersection) => intersection.object.userData.nodeId as string))];
-      if (nodeIds.length === 0) return;
-      const selectedIndex = nodeIds.findIndex((nodeId) => selectedNodeIdsRef.current.has(nodeId));
-      const nextIndex = selectedIndex < 0 ? 0 : (selectedIndex + 1) % nodeIds.length;
-      onSelectNodeRef.current(nodeIds[nextIndex], event.ctrlKey || event.metaKey || event.shiftKey);
+      const candidateIds = [...new Set(raycaster.intersectObjects(meshes, false)
+        .map((intersection) => intersection.object.userData.candidateId as string))];
+      if (candidateIds.length === 0) return;
+      const selectedIndex = candidateIds.findIndex((candidateId) => selectedCandidateIdsRef.current.has(candidateId));
+      const nextIndex = selectedIndex < 0 ? 0 : (selectedIndex + 1) % candidateIds.length;
+      onSelectCandidateRef.current(candidateIds[nextIndex], event.ctrlKey || event.metaKey || event.shiftKey);
     };
     const handlePointerCancel = () => {
       pointerStart = null;

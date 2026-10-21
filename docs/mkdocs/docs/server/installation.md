@@ -42,7 +42,7 @@ File names are only for organization. The mod identifies emotes by `id` and reje
   "mineskin_poll_interval_seconds": 3,
   "mineskin_cache_retention_days": 30,
   "mineskin_cache_max_mib": 256,
-  "max_active_display_entities": 512,
+  "max_active_display_entities": 768,
   "default_skin": ""
 }
 ```
@@ -55,4 +55,4 @@ File names are only for organization. The mod identifies emotes by `id` and reje
 | `mineskin_cache_retention_days`  | Skin-cache retention period. Range: `1`–`3650` days.                                                                                |
 | `mineskin_cache_max_mib`         | Maximum skin-cache size in MiB.                                                                                                     |
 | `max_active_display_entities`    | A value of 0 allows an unlimited number of active display entities.                                                                 |
-| `default_skin`                   | Minecraft player name whose skin supplies fallback textures when a player's skin cannot be baked. Leave empty to disable this fallback. |
+| `default_skin`                   | Minecraft player name used for the fallback skin. Leave empty to keep existing defaults. |

@@ -1,14 +1,12 @@
 package io.github.hanhy06.emote.server;
 
 import io.github.hanhy06.emote.EmoteMod;
-import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaySource;
 import io.github.hanhy06.emote.application.EmotePlayService;
-import io.github.hanhy06.emote.application.PlaybackPolicyService;
 import io.github.hanhy06.emote.config.AccessConfig;
 import io.github.hanhy06.emote.config.AccessConfigListener;
 import io.github.hanhy06.emote.content.EmoteCatalog;
-import io.github.hanhy06.emote.content.PlayableEmote;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.util.WeightedChoiceSelector;
 import net.minecraft.server.level.ServerPlayer;
@@ -16,8 +14,6 @@ import net.minecraft.util.Util;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.function.LongSupplier;
-import java.util.function.Supplier;
 import java.util.random.RandomGenerator;
 
 public final class IdlePlaybackService implements AccessConfigListener {
@@ -25,12 +21,10 @@ public final class IdlePlaybackService implements AccessConfigListener {
     private static final long RETRY_INTERVAL_MILLIS = TimeUnit.SECONDS.toMillis(1);
     private static final long RESOLUTION_CACHE_MILLIS = TimeUnit.SECONDS.toMillis(1);
 
-    private final IdleSettingsResolver idleEmoteResolver;
-    private final PlaybackStarter playbackStarter;
-    private final ActivePlaybackChecker activePlaybackChecker;
-    private final Supplier<Collection<String>> availableEmoteIds;
-    private final LongSupplier clock;
-    private final RandomGenerator random;
+    private final EmotePlayService playService;
+    private final PlayerPlaybackManager playerPlaybackManager;
+    private final EmoteCatalog emoteCatalog;
+    private final RandomGenerator random = RandomGenerator.getDefault();
     private final Map<UUID, IdleState> playerStates = new HashMap<>();
     private final Map<UUID, String> lastPlayedEmotes = new HashMap<>();
     private final Map<UUID, IdleResolution> idleResolutions = new HashMap<>();
@@ -38,45 +32,13 @@ public final class IdlePlaybackService implements AccessConfigListener {
     private int ticksUntilCheck;
 
     public IdlePlaybackService(
-        PlaybackPolicyService playbackPolicy,
         EmotePlayService playService,
         PlayerPlaybackManager playerPlaybackManager,
         EmoteCatalog emoteCatalog
     ) {
-        this(
-            playbackPolicy::findIdleSettings,
-            (player, id) -> playService.play(player, id, PlaySource.IDLE),
-            player -> playerPlaybackManager.findActive(player.getUUID()) != null,
-            () -> emoteCatalog.emotes().stream().map(PlayableEmote::id).toList(),
-            Util::getMillis,
-            RandomGenerator.getDefault()
-        );
-    }
-
-    IdlePlaybackService(
-        IdleSettingsResolver idleEmoteResolver,
-        PlaybackStarter playbackStarter,
-        ActivePlaybackChecker activePlaybackChecker,
-        LongSupplier clock,
-        RandomGenerator random
-    ) {
-        this(idleEmoteResolver, playbackStarter, activePlaybackChecker, List::of, clock, random);
-    }
-
-    IdlePlaybackService(
-        IdleSettingsResolver idleEmoteResolver,
-        PlaybackStarter playbackStarter,
-        ActivePlaybackChecker activePlaybackChecker,
-        Supplier<Collection<String>> availableEmoteIds,
-        LongSupplier clock,
-        RandomGenerator random
-    ) {
-        this.idleEmoteResolver = Objects.requireNonNull(idleEmoteResolver, "idle emote resolver");
-        this.playbackStarter = Objects.requireNonNull(playbackStarter, "playback starter");
-        this.activePlaybackChecker = Objects.requireNonNull(activePlaybackChecker, "active playback checker");
-        this.availableEmoteIds = Objects.requireNonNull(availableEmoteIds, "available emote ids");
-        this.clock = Objects.requireNonNull(clock, "clock");
-        this.random = Objects.requireNonNull(random, "random");
+        this.playService = Objects.requireNonNull(playService, "play service");
+        this.playerPlaybackManager = Objects.requireNonNull(playerPlaybackManager, "player playback manager");
+        this.emoteCatalog = Objects.requireNonNull(emoteCatalog, "emote catalog");
     }
 
     public void tick() {
@@ -105,45 +67,40 @@ public final class IdlePlaybackService implements AccessConfigListener {
         }
 
         IdleState state = this.playerStates.get(playerUuid);
-        long now = this.clock.getAsLong();
-        Optional<AccessConfig.IdleSettings> resolvedIdle = resolveIdle(playerUuid, player, now);
-        if (resolvedIdle.isEmpty()) {
+        long now = Util.getMillis();
+        Optional<AccessConfig.IdleSettings> resolvedIdleSettings = resolveIdle(playerUuid, player, now);
+        if (resolvedIdleSettings.isEmpty()) {
             this.playerStates.remove(playerUuid);
             return;
         }
 
-        AccessConfig.IdleSettings idle = resolvedIdle.get();
-        if (state == null || state.lastActionTime() != lastActionTime || !state.idle().equals(idle)) {
-            long firstAttemptTime = lastActionTime + ticksToMillis(idle.delayTicks());
-            String selectedEmote = selectEmote(playerUuid, idle);
-            state = new IdleState(lastActionTime, idle, selectedEmote, firstAttemptTime);
+        AccessConfig.IdleSettings idleSettings = resolvedIdleSettings.get();
+        if (state == null || state.lastActionTime() != lastActionTime || !state.idleSettings().equals(idleSettings)) {
+            long firstAttemptTime = lastActionTime + ticksToMillis(idleSettings.delayTicks());
+            String selectedEmote = selectEmote(player, idleSettings);
+            state = new IdleState(lastActionTime, idleSettings, selectedEmote, firstAttemptTime);
             this.playerStates.put(playerUuid, state);
         }
 
-        if (now < state.nextAttemptTime() || this.activePlaybackChecker.isActive(player)) {
+        if (now < state.nextAttemptTime() || this.playerPlaybackManager.findActive(player.getUUID()) != null) {
             return;
         }
 
-        if (state.selectedEmote() == null) {
-            this.playerStates.put(playerUuid, new IdleState(lastActionTime, idle, selectEmote(playerUuid, idle), now + RETRY_INTERVAL_MILLIS));
-            return;
-        }
-
-        PlayResult result = this.playbackStarter.play(player, state.selectedEmote());
         String selectedEmote = state.selectedEmote();
-        long nextAttemptTime;
-        if (result.isSuccess()) {
-            this.lastPlayedEmotes.put(playerUuid, state.selectedEmote());
-            selectedEmote = selectEmote(playerUuid, idle);
-            long intervalMillis = ticksToMillis(idle.delayTicks());
+        if (selectedEmote == null || !this.playService.isAvailableForIdle(player, selectedEmote)) {
+            selectedEmote = selectEmote(player, idleSettings);
+        }
+        long nextAttemptTime = now + RETRY_INTERVAL_MILLIS;
+        if (selectedEmote != null && this.playService.play(player, selectedEmote, PlaySource.IDLE).isSuccess()) {
+            this.lastPlayedEmotes.put(playerUuid, selectedEmote);
+            selectedEmote = selectEmote(player, idleSettings);
+            long intervalMillis = ticksToMillis(idleSettings.delayTicks());
             long elapsedIntervals = (now - state.nextAttemptTime()) / intervalMillis + 1L;
             nextAttemptTime = state.nextAttemptTime() + elapsedIntervals * intervalMillis;
-        } else {
-            nextAttemptTime = now + RETRY_INTERVAL_MILLIS;
         }
         this.playerStates.put(playerUuid, new IdleState(
             lastActionTime,
-            idle,
+            idleSettings,
             selectedEmote,
             nextAttemptTime
         ));
@@ -163,24 +120,22 @@ public final class IdlePlaybackService implements AccessConfigListener {
     ) {
         IdleResolution resolution = this.idleResolutions.get(playerUuid);
         if (resolution != null && now < resolution.expiresAt()) {
-            return resolution.idle();
+            return resolution.idleSettings();
         }
-        Optional<AccessConfig.IdleSettings> idle = this.idleEmoteResolver.find(player);
-        this.idleResolutions.put(playerUuid, new IdleResolution(idle, now + RESOLUTION_CACHE_MILLIS));
-        return idle;
+        Optional<AccessConfig.IdleSettings> idleSettings = this.playService.findIdleSettings(player);
+        this.idleResolutions.put(playerUuid, new IdleResolution(idleSettings, now + RESOLUTION_CACHE_MILLIS));
+        return idleSettings;
     }
 
-    private String selectEmote(UUID playerUuid, AccessConfig.IdleSettings idle) {
-        List<AccessConfig.IdleSettings.Choice> choices = idle.resolveChoices(this.availableEmoteIds.get());
+    private String selectEmote(ServerPlayer player, AccessConfig.IdleSettings idleSettings) {
+        List<AccessConfig.IdleSettings.Choice> choices = idleSettings.resolveChoices(this.emoteCatalog.emotes().stream().map(PreparedEmote::id).toList()).stream()
+            .filter(choice -> this.playService.isAvailableForIdle(player, choice.id()))
+            .toList();
         if (choices.isEmpty()) {
             return null;
         }
-        if (choices.size() == 1) {
-            return choices.getFirst().id();
-        }
-
         int previousIndex = -1;
-        String previousId = this.lastPlayedEmotes.get(playerUuid);
+        String previousId = this.lastPlayedEmotes.get(player.getUUID());
         for (int index = 0; index < choices.size(); index++) {
             if (choices.get(index).id().equals(previousId)) {
                 previousIndex = index;
@@ -211,27 +166,13 @@ public final class IdlePlaybackService implements AccessConfigListener {
 
     private record IdleState(
         long lastActionTime,
-        AccessConfig.IdleSettings idle,
+        AccessConfig.IdleSettings idleSettings,
         String selectedEmote,
         long nextAttemptTime
     ) {
     }
 
-    private record IdleResolution(Optional<AccessConfig.IdleSettings> idle, long expiresAt) {
+    private record IdleResolution(Optional<AccessConfig.IdleSettings> idleSettings, long expiresAt) {
     }
 
-    @FunctionalInterface
-    interface IdleSettingsResolver {
-        Optional<AccessConfig.IdleSettings> find(ServerPlayer player);
-    }
-
-    @FunctionalInterface
-    interface PlaybackStarter {
-        PlayResult play(ServerPlayer player, String id);
-    }
-
-    @FunctionalInterface
-    interface ActivePlaybackChecker {
-        boolean isActive(ServerPlayer player);
-    }
 }

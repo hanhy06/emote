@@ -1,37 +1,21 @@
 package io.github.hanhy06.emote.application;
 
 import io.github.hanhy06.emote.api.PlaybackStopReason;
+import io.github.hanhy06.emote.playback.PlaybackSession;
 import io.github.hanhy06.emote.playback.PlaybackStateListener;
 import io.github.hanhy06.emote.playback.PlayerPlaybackState;
-import io.github.hanhy06.emote.playback.session.PlaybackSession;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.function.Function;
-import java.util.function.ToLongFunction;
 
 public final class PlaybackCooldownService implements PlaybackStateListener {
-    private final Function<ServerPlayer, UUID> playerIdResolver;
-    private final ToLongFunction<ServerPlayer> tickSource;
     private final Map<UUID, Map<String, CooldownState>> statesByPlayer = new HashMap<>();
 
-    public PlaybackCooldownService() {
-        this(ServerPlayer::getUUID, player -> player.level().getGameTime());
-    }
-
-    PlaybackCooldownService(
-        Function<ServerPlayer, UUID> playerIdResolver,
-        ToLongFunction<ServerPlayer> tickSource
-    ) {
-        this.playerIdResolver = Objects.requireNonNull(playerIdResolver, "player id resolver");
-        this.tickSource = Objects.requireNonNull(tickSource, "tick source");
-    }
-
     Status status(ServerPlayer player, String emoteId) {
-        UUID playerId = this.playerIdResolver.apply(player);
+        UUID playerId = player.getUUID();
         Map<String, CooldownState> playerStates = this.statesByPlayer.get(playerId);
         if (playerStates == null) {
             return Status.available();
@@ -44,7 +28,7 @@ public final class PlaybackCooldownService implements PlaybackStateListener {
             return Status.available();
         }
 
-        long remainingTicks = coolingDown.readyTick() - this.tickSource.applyAsLong(player);
+        long remainingTicks = coolingDown.readyTick() - player.level().getGameTime();
         if (remainingTicks > 0L) {
             return Status.coolingDown(remainingTicks);
         }
@@ -53,10 +37,7 @@ public final class PlaybackCooldownService implements PlaybackStateListener {
     }
 
     Reservation reservation(ServerPlayer player, String emoteId, int durationTicks) {
-        if (durationTicks <= 0) {
-            throw new IllegalArgumentException("cooldown duration must be positive");
-        }
-        return new Reservation(this.playerIdResolver.apply(player), emoteId, durationTicks);
+        return new Reservation(player.getUUID(), emoteId, durationTicks);
     }
 
     void claim(Reservation reservation) {
@@ -83,24 +64,29 @@ public final class PlaybackCooldownService implements PlaybackStateListener {
 
     @Override
     public void onStopped(ServerPlayer player, PlaybackSession session, PlayerPlaybackState playerState, PlaybackStopReason reason) {
-        onPlaybackEnded(player, session.emoteId());
-    }
-
-    void onPlaybackEnded(ServerPlayer player, String emoteId) {
-        UUID playerId = this.playerIdResolver.apply(player);
+        UUID playerId = player.getUUID();
         Map<String, CooldownState> playerStates = this.statesByPlayer.get(playerId);
         if (playerStates == null) {
             return;
         }
+        String emoteId = session.emoteId();
         CooldownState state = playerStates.get(emoteId);
         if (state instanceof InUse inUse) {
-            long readyTick = this.tickSource.applyAsLong(player) + inUse.durationTicks();
+            long readyTick = player.level().getGameTime() + inUse.durationTicks();
             playerStates.put(emoteId, new CoolingDown(readyTick));
         }
     }
 
     public void clear() {
         this.statesByPlayer.clear();
+    }
+
+    @Override
+    public void onCancelled(ServerPlayer player, PlaybackSession session, PlayerPlaybackState playerState, PlaybackStopReason reason) {
+        Map<String, CooldownState> states = this.statesByPlayer.get(player.getUUID());
+        if (states == null) return;
+        CooldownState state = states.get(session.emoteId());
+        if (state instanceof InUse) removeState(player.getUUID(), session.emoteId(), state);
     }
 
     private void removeState(UUID playerId, String emoteId, CooldownState expectedState) {

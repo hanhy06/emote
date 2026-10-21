@@ -2,12 +2,10 @@ package io.github.hanhy06.emote.application;
 
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.*;
-import io.github.hanhy06.emote.content.PlayableEmote;
-import io.github.hanhy06.emote.content.PreparedSequence;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
-import io.github.hanhy06.emote.playback.session.PlaybackSession;
+import io.github.hanhy06.emote.playback.PlaybackSession;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.*;
@@ -17,7 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class ApiEventDispatcher implements PlaybackEngine.Lifecycle {
     private final CopyOnWriteArrayList<EmotePlayListener> playListeners = new CopyOnWriteArrayList<>();
     private final CopyOnWriteArrayList<EmotePlaybackListener> playbackListeners = new CopyOnWriteArrayList<>();
-    private final Map<UUID, StartDispatch> startingPlaybacks = new HashMap<>();
+    private final Map<UUID, List<EmotePlaybackListener>> startedPlaybacks = new HashMap<>();
 
     public ListenerRegistration addPlayListener(EmotePlayListener listener) {
         return register(this.playListeners, Objects.requireNonNull(listener, "listener"));
@@ -27,8 +25,8 @@ public final class ApiEventDispatcher implements PlaybackEngine.Lifecycle {
         return register(this.playbackListeners, Objects.requireNonNull(listener, "listener"));
     }
 
-    public Component beforePlay(ServerPlayer player, PlayableEmote emote, PlaySource source) {
-        EmotePlayEvent event = new EmotePlayEvent(player, toInfo(emote), source);
+    public Component beforePlay(ServerPlayer player, PreparedEmote emote, PlaySource source) {
+        EmotePlayEvent event = new EmotePlayEvent(player, emote.info(), source);
         for (EmotePlayListener listener : this.playListeners) {
             try {
                 listener.beforePlay(event);
@@ -45,26 +43,19 @@ public final class ApiEventDispatcher implements PlaybackEngine.Lifecycle {
 
     @Override
     public void onStarted(PlaybackSession session) {
-        PlaybackInfo playback = session.playbackInfo();
-        UUID key = session.sessionId();
-        StartDispatch dispatch = new StartDispatch(List.copyOf(this.playbackListeners));
-        if (this.startingPlaybacks.putIfAbsent(key, dispatch) != null) {
+        PlaybackInfo playback = session.info();
+        List<EmotePlaybackListener> notified = new ArrayList<>();
+        if (this.startedPlaybacks.putIfAbsent(session.sessionId(), notified) != null) {
             throw new IllegalStateException("Playback start is already being dispatched: " + session.sessionId());
         }
-        try {
-            for (EmotePlaybackListener listener : dispatch.listeners()) {
-                dispatch.markNotified();
-                try {
-                    listener.onStarted(playback);
-                } catch (RuntimeException exception) {
-                    EmoteMod.LOGGER.warn("Emote playback listener {} failed while handling start", listener.getClass().getName(), exception);
-                }
-                if (dispatch.stopped()) {
-                    break;
-                }
+        for (EmotePlaybackListener listener : List.copyOf(this.playbackListeners)) {
+            notified.add(listener);
+            try {
+                listener.onStarted(playback);
+            } catch (RuntimeException exception) {
+                EmoteMod.LOGGER.warn("Emote playback listener {} failed while handling start", listener.getClass().getName(), exception);
             }
-        } finally {
-            this.startingPlaybacks.remove(key, dispatch);
+            if (!session.isActive()) break;
         }
     }
 
@@ -73,15 +64,9 @@ public final class ApiEventDispatcher implements PlaybackEngine.Lifecycle {
         PlaybackSession session,
         PlaybackStopReason reason
     ) {
-        PlaybackInfo playback = session.playbackInfo();
-        StartDispatch startDispatch = this.startingPlaybacks.get(session.sessionId());
-        List<EmotePlaybackListener> listeners;
-        if (startDispatch == null) {
-            listeners = List.copyOf(this.playbackListeners);
-        } else {
-            startDispatch.markStopped();
-            listeners = startDispatch.notifiedListeners();
-        }
+        PlaybackInfo playback = session.info();
+        List<EmotePlaybackListener> listeners = this.startedPlaybacks.remove(session.sessionId());
+        if (listeners == null) return;
         for (EmotePlaybackListener listener : listeners) {
             try {
                 listener.onStopped(playback, reason);
@@ -91,52 +76,10 @@ public final class ApiEventDispatcher implements PlaybackEngine.Lifecycle {
         }
     }
 
-    public static EmoteInfo toInfo(PlayableEmote emote) {
-        return new EmoteInfo(
-            Identifier.parse(emote.id()),
-            emote instanceof PreparedSequence ? EmoteInfo.Kind.SEQUENCE : EmoteInfo.Kind.ANIMATION,
-            emote.standalone(),
-            emote.metadata(),
-            emote.playerBehavior(),
-            emote instanceof PreparedSequence sequence ? sequence.fixedDurationTicks() : Integer.valueOf(emote.durationTicks()),
-            emote.cooldownTicks(),
-            emote.loopMode()
-        );
-    }
-
     private static <T> ListenerRegistration register(CopyOnWriteArrayList<T> listeners, T listener) {
         listeners.add(listener);
         AtomicBoolean registered = new AtomicBoolean(true);
         return () -> registered.compareAndSet(true, false) && listeners.remove(listener);
     }
 
-    private static final class StartDispatch {
-        private final List<EmotePlaybackListener> listeners;
-        private int notifiedCount;
-        private boolean stopped;
-
-        private StartDispatch(List<EmotePlaybackListener> listeners) {
-            this.listeners = listeners;
-        }
-
-        private List<EmotePlaybackListener> listeners() {
-            return this.listeners;
-        }
-
-        private void markNotified() {
-            this.notifiedCount++;
-        }
-
-        private List<EmotePlaybackListener> notifiedListeners() {
-            return this.listeners.subList(0, this.notifiedCount);
-        }
-
-        private void markStopped() {
-            this.stopped = true;
-        }
-
-        private boolean stopped() {
-            return this.stopped;
-        }
-    }
 }

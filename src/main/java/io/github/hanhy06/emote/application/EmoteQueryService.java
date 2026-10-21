@@ -1,39 +1,31 @@
 package io.github.hanhy06.emote.application;
 
 import io.github.hanhy06.emote.content.EmoteCatalog;
-import io.github.hanhy06.emote.content.PlayableEmote;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.util.EmoteTags;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.*;
-import java.util.function.Predicate;
 
 public class EmoteQueryService {
     private final EmoteCatalog emoteCatalog;
-    private final VisibilityChecker visibilityChecker;
+    private final EmotePlayService playService;
 
-    public EmoteQueryService(EmoteCatalog emoteCatalog, PlaybackPolicyService playbackPolicy) {
-        this(emoteCatalog, playbackPolicy::isVisibleForCommand);
-    }
-
-    EmoteQueryService(EmoteCatalog emoteCatalog, VisibilityChecker visibilityChecker) {
+    public EmoteQueryService(EmoteCatalog emoteCatalog, EmotePlayService playService) {
         this.emoteCatalog = emoteCatalog;
-        this.visibilityChecker = visibilityChecker;
+        this.playService = playService;
     }
 
     public List<EmoteSummary> getAll(ServerPlayer player) {
         return this.emoteCatalog.emotes().stream()
-            .filter(emote -> this.visibilityChecker.isVisible(player, emote))
-            .sorted(Comparator.comparing(PlayableEmote::name).thenComparing(PlayableEmote::id))
+            .filter(emote -> this.playService.isVisibleForCommand(player, emote))
+            .sorted(Comparator.comparing(PreparedEmote::name).thenComparing(PreparedEmote::id))
             .map(emote -> new EmoteSummary(emote.id(), emote.name(), emote.description(), emote.tags()))
             .toList();
     }
 
     public List<EmoteSummary> search(ServerPlayer player, String query) {
-        return filter(getAll(player), query);
-    }
-
-    static List<EmoteSummary> filter(List<EmoteSummary> emotes, String query) {
+        List<EmoteSummary> emotes = getAll(player);
         SearchQuery searchQuery = parseQuery(query);
         if (searchQuery.isEmpty()) {
             return List.copyOf(emotes);
@@ -59,21 +51,14 @@ public class EmoteQueryService {
     }
 
     public List<String> getAllIds() {
-        return collectPlayIds(PlayableEmote::standalone);
+        return this.emoteCatalog.emotes().stream().filter(PreparedEmote::standalone).map(PreparedEmote::id).toList();
     }
 
     public List<String> getPlayableIds(ServerPlayer player) {
-        return collectPlayIds(emote -> this.visibilityChecker.isVisible(player, emote));
-    }
-
-    private List<String> collectPlayIds(Predicate<PlayableEmote> filter) {
-        List<String> ids = new java.util.ArrayList<>();
-        for (PlayableEmote emote : this.emoteCatalog.emotes()) {
-            if (filter.test(emote)) {
-                ids.add(emote.id());
-            }
-        }
-        return List.copyOf(ids);
+        return this.emoteCatalog.emotes().stream()
+            .filter(emote -> this.playService.isVisibleForCommand(player, emote))
+            .map(PreparedEmote::id)
+            .toList();
     }
 
     private static int searchRank(EmoteSummary emote, SearchQuery query) {
@@ -84,13 +69,13 @@ public class EmoteQueryService {
             return 0;
         }
 
-        String displayName = emote.displayName().toLowerCase(Locale.ROOT);
+        String name = emote.name().toLowerCase(Locale.ROOT);
         String id = emote.id().toLowerCase(Locale.ROOT);
         String description = emote.description().toLowerCase(Locale.ROOT);
-        if (displayName.equals(query.text())) return 0;
-        if (displayName.startsWith(query.text())) return 1;
+        if (name.equals(query.text())) return 0;
+        if (name.startsWith(query.text())) return 1;
         if (id.startsWith(query.text())) return 2;
-        if (displayName.contains(query.text()) || id.contains(query.text()) || description.contains(query.text())) return 3;
+        if (name.contains(query.text()) || id.contains(query.text()) || description.contains(query.text())) return 3;
         return Integer.MAX_VALUE;
     }
 
@@ -122,8 +107,4 @@ public class EmoteQueryService {
     private record RankedEntry(EmoteSummary emote, int rank) {
     }
 
-    @FunctionalInterface
-    interface VisibilityChecker {
-        boolean isVisible(ServerPlayer player, PlayableEmote emote);
-    }
 }

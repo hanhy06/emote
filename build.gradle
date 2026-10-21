@@ -24,11 +24,6 @@ loom {
     }
 }
 
-sourceSets.test {
-    compileClasspath += sourceSets.client.output
-    runtimeClasspath += sourceSets.client.output
-}
-
 repositories {
     mavenCentral()
     maven {
@@ -56,9 +51,9 @@ dependencies {
     include(implementation("team.unnamed:mocha:3.0.1"))
     include(implementation("org.javassist:javassist:3.30.2-GA"))
 
-    include(implementation("eu.pb4:polymer-common:${polymer_version}"))
-    include(implementation("eu.pb4:polymer-resource-pack:${polymer_version}"))
-    include(implementation("eu.pb4:polymer-autohost:${polymer_version}"))
+    implementation "eu.pb4:polymer-common:${polymer_version}"
+    implementation "eu.pb4:polymer-resource-pack:${polymer_version}"
+    implementation "eu.pb4:polymer-autohost:${polymer_version}"
 
     testImplementation platform("org.junit:junit-bom:5.12.2")
     testImplementation "org.junit.jupiter:junit-jupiter"
@@ -85,6 +80,10 @@ processResources {
 tasks.register("prodClient", ClientProductionRunTask)
 tasks.register("prodServer", ServerProductionRunTask)
 
+test {
+    useJUnitPlatform()
+}
+
 tasks.withType(JavaCompile).configureEach {
     it.options.release = 25
 }
@@ -99,11 +98,6 @@ java {
     targetCompatibility = JavaVersion.VERSION_25
 }
 
-test {
-    useJUnitPlatform()
-
-    systemProperty "emote.minecraftVersion", project.minecraft_version.toString()
-}
 tasks.withType(Jar).configureEach {
     inputs.property "archivesName", project.base.archivesName
 

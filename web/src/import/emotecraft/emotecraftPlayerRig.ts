@@ -61,15 +61,12 @@ export function createEmotecraftSlices(bentBones: ReadonlySet<string>): Emotecra
   return slices;
 }
 
-export function createEmotecraftNodes(slices: readonly EmotecraftSlice[], matrices: ReadonlyMap<string, Matrix4>): Record<string, ImportedNode> {
+export function createEmotecraftNodes(slices: readonly EmotecraftSlice[]): Record<string, ImportedNode> {
   return Object.fromEntries(slices.map((slice) => {
-    const matrix = matrices.get(slice.id);
-    if (!matrix) throw new Error(`Missing Emotecraft bind matrix for ${slice.id}.`);
     const group = `${slice.source.part}_${slice.order}`;
     return [slice.id, {
       binding: { sourceNodeId: slice.id, skinGroupId: group },
       type: "item_display",
-      defaultMatrix: matrix4ToRowMajor(matrix, `Emotecraft ${slice.id} bind matrix`),
       visible: true,
       itemDisplay: "none",
       itemStack: { id: "minecraft:player_head", count: 1 },

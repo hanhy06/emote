@@ -1,110 +1,62 @@
-import {
-  documentPartAssignments,
-  documentPartOrders,
-  type ConversionDocument,
-  type ConversionNode,
-} from "../domain/conversionDocument";
-import type { PreviewAvailability, PreviewNodeTrack, PreviewProjection } from "../domain/previewProjection";
-import type { PlayerSkinPart } from "../domain/player";
-
-type ConversionItemNode = Extract<ConversionNode, { type: "item_display" }>;
-
-interface SkinCandidate {
-  nodeId: string;
-  partIndex: number;
-  node: ConversionItemNode;
-}
+import type { ConversionAnimation, ConversionDocument } from "../domain/conversionDocument";
+import { evaluatePose } from "../domain/animationIRPose";
+import { matrix4ToRowMajor } from "../format/matrix";
+import { PreviewMolangEvaluator } from "./molangEvaluator";
+import type { ScalarEvaluatorIR } from "../domain/animationIRCurves";
+import type { SelectedFrame } from "../workspace";
 
 export interface PreviewPart {
-  nodeId: string;
+  candidateId: string;
   partIndex: number;
   matrix: readonly number[];
   conversionMatrix?: readonly number[];
 }
 
+export type PreviewAvailability =
+  | { status: "full" }
+  | { status: "approximate"; reason: string }
+  | { status: "unavailable"; reason: string };
+
 export interface PreviewModel {
-  tick: number | null;
-  durationTicks: number;
   availability: PreviewAvailability | null;
   parts: PreviewPart[];
-  assignments: Record<string, PlayerSkinPart | null>;
-  orders: Record<string, number | null>;
-  hasReviewNodes: boolean;
 }
 
-export function createPreviewModel(
-  document: ConversionDocument,
-  nodeIds: readonly string[],
-  projection: PreviewProjection | undefined,
-  previewFrameIndex: number,
-): PreviewModel {
-  const availability = projection?.availability ?? null;
-  const durationTicks = projection?.durationTicks ?? 0;
-  const tick = availability?.status !== "full" || previewFrameIndex === 0
-    ? null
-    : Math.min(previewFrameIndex - 1, Math.max(0, durationTicks));
-  const scopedNodeIds = new Set(nodeIds);
-  const scopedNodes = Object.fromEntries(Object.entries(document.nodes).filter(([nodeId]) => scopedNodeIds.has(nodeId)));
-  const candidates = findSkinCandidates(scopedNodes);
-
-  return {
-    tick,
-    durationTicks,
-    availability,
-    parts: createPreviewParts(candidates, projection, tick),
-    assignments: pickNodeValues(documentPartAssignments(document), scopedNodeIds),
-    orders: pickNodeValues(documentPartOrders(document), scopedNodeIds),
-    hasReviewNodes: candidates.length > 0,
-  };
-}
-
-function pickNodeValues<T>(values: Record<string, T>, nodeIds: ReadonlySet<string>): Record<string, T> {
-  return Object.fromEntries(Object.entries(values).filter(([nodeId]) => nodeIds.has(nodeId)));
-}
-
-function findSkinCandidates(nodes: Readonly<Record<string, ConversionNode>>): SkinCandidate[] {
-  const candidates = Object.entries(nodes).flatMap(([nodeId, node]) => node.type === "item_display" && node.binding.skinGroupId
-    ? [{ nodeId, partIndex: 0, node }]
-    : []);
-  const partIndexByGroup = new Map<string, number>();
-  return candidates.map((candidate) => {
-    const group = candidate.node.binding.skinGroupId!;
-    if (!partIndexByGroup.has(group)) partIndexByGroup.set(group, partIndexByGroup.size);
-    return { ...candidate, partIndex: partIndexByGroup.get(group)! };
-  });
-}
-
-function createPreviewParts(
-  candidates: SkinCandidate[],
-  projection: PreviewProjection | undefined,
-  tick: number | null,
-): PreviewPart[] {
-  const previewTracks = projection?.tracks;
-  return candidates.filter((candidate) => isVisibleAtTick(
-    candidate.node.visible,
-    previewTracks?.[candidate.nodeId],
-    tick,
-  )).map((candidate) => {
-    let sourceMatrix = candidate.node.defaultMatrix;
-    if (tick !== null) {
-      const transforms = previewTracks?.[candidate.nodeId]?.transforms;
-      for (let index = (transforms?.length ?? 0) - 1; index >= 0; index--) {
-        const transform = transforms?.[index];
-        if (!transform || transform.tick > tick) continue;
-        sourceMatrix = transform.matrix;
-        break;
-      }
+export function createPreviewModel(document: ConversionDocument, animation: ConversionAnimation | undefined, frame: SelectedFrame): PreviewModel {
+  const nodeIds = new Set(animation?.nodeIds ?? []);
+  const candidates = Object.entries(document.skinCandidates).filter(([, candidate]) => nodeIds.has(candidate.nodeId));
+  const reasons = new Set<string>();
+  const approximate = (reason: string) => { reasons.add(reason); };
+  const evaluator = new PreviewMolangEvaluator();
+  const evaluate: ScalarEvaluatorIR = (value, progress, base = 0, resolveValue): number => {
+    try {
+      return evaluator.evaluate(typeof value === "number" ? value : value.molang, { animationTime: time, keyframeLerpTime: progress, lifeTime: time, resolveValue });
+    } catch (reason) {
+      approximate(reason instanceof Error ? reason.message : String(reason));
+      return base;
     }
-    return {
-      nodeId: candidate.nodeId,
-      partIndex: candidate.partIndex,
-      matrix: sourceMatrix,
-      ...(candidate.node.playerHeadConversionMatrix ? { conversionMatrix: candidate.node.playerHeadConversionMatrix } : {}),
-    };
-  });
-}
-
-function isVisibleAtTick(defaultVisible: boolean, track: PreviewNodeTrack | undefined, tick: number | null): boolean {
-  if (tick === null) return defaultVisible;
-  return track?.visibility.filter((keyframe) => keyframe.tick <= tick).at(-1)?.visible ?? defaultVisible;
+  };
+  const time = frame.type === "timeline" ? frame.tick / 20 : 0;
+  const parts: PreviewPart[] = [];
+  let availability: PreviewAvailability | null = animation ? { status: "full" } : null;
+  if (animation) {
+    if (animation.clip.clock?.type === "molang") approximate("Runtime animation clock is approximated with elapsed time.");
+    if (animation.clip.molang?.initialize || animation.clip.molang?.tick) approximate("Runtime Molang is preserved; dependent expressions use their base components.");
+    try {
+      const poses = evaluatePose({ ...animation, nodes: Object.fromEntries(animation.nodeIds.map((id) => [id, document.nodes[id]])),
+        animation: frame.type === "create" ? { ...animation.clip, tracks: [] } : animation.clip }, time, evaluate, approximate);
+      const groups = new Map<string, number>();
+      for (const [id, candidate] of candidates) {
+        if (!groups.has(candidate.groupId)) groups.set(candidate.groupId, groups.size);
+        const pose = poses[candidate.nodeId];
+        if (!pose?.attachments[candidate.attachmentId]) continue;
+        parts.push({ candidateId: id, partIndex: groups.get(candidate.groupId)!, matrix: matrix4ToRowMajor(pose.matrix, id),
+          ...(candidate.fittingOperation ? { conversionMatrix: candidate.fittingOperation.value } : {}) });
+      }
+      if (reasons.size) availability = { status: "approximate", reason: [...reasons].join(" ") };
+    } catch (reason) {
+      availability = { status: "unavailable", reason: reason instanceof Error ? reason.message : String(reason) };
+    }
+  }
+  return { availability, parts };
 }

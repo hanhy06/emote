@@ -1,11 +1,10 @@
 package io.github.hanhy06.emote.api.sequence;
 
+import io.github.hanhy06.emote.api.EmoteCallback;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
-import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.Nullable;
-
 
 import java.util.Collection;
 import java.util.List;
@@ -16,11 +15,12 @@ public record EmoteSequence(
     EmoteMetadata metadata,
     Settings settings,
     List<Step> steps,
-    List<EmoteAnimation.Callback> callbacks
+    List<EmoteCallback> callbacks
 ) {
     public enum Control {
         CONTINUE(Identifier.parse("emote:continue")),
-        BREAK(Identifier.parse("emote:break"));
+        BREAK(Identifier.parse("emote:break")),
+        EMPTY(Identifier.parse("emote:empty"));
 
         private final Identifier id;
 
@@ -58,12 +58,12 @@ public record EmoteSequence(
         validateLinearSteps(steps, "sequence");
     }
 
-    public record Settings(int cooldownTicks, EmotePlayerBehavior player) {
+    public record Settings(int cooldownTicks, EmotePlayerBehavior playerBehavior) {
         public Settings {
             if (cooldownTicks < 0) {
                 throw new IllegalArgumentException("cooldown must not be negative");
             }
-            Objects.requireNonNull(player, "player");
+            Objects.requireNonNull(playerBehavior, "playerBehavior");
         }
     }
 
@@ -74,26 +74,23 @@ public record EmoteSequence(
         public AnimationStep {
             choices = List.copyOf(choices);
             if (choices.isEmpty()) {
-                throw new IllegalArgumentException("sequence emote candidates must not be empty");
-            }
-            if (choices.stream().anyMatch(Objects::isNull)) {
-                throw new NullPointerException("choices");
+                throw new IllegalArgumentException("sequence choices must not be empty");
             }
             if (choices.stream().map(Choice::targetId).distinct().count() != choices.size()) {
-                throw new IllegalArgumentException("sequence emote candidates must not contain duplicates");
+                throw new IllegalArgumentException("sequence choices must not contain duplicate targets");
             }
             boolean weighted = choices.getFirst().chance() > 0;
             if (choices.stream().anyMatch(choice -> (choice.chance() > 0) != weighted)) {
-                throw new IllegalArgumentException("sequence emote candidates must use either equal or explicit chances");
+                throw new IllegalArgumentException("sequence choices must use either equal or explicit chances");
             }
             if (weighted && choices.stream().mapToInt(Choice::chance).sum() != 100) {
-                throw new IllegalArgumentException("sequence emote candidate chances must total 100");
+                throw new IllegalArgumentException("sequence choice chances must total 100");
             }
             if (repeat < 1) {
                 throw new IllegalArgumentException("sequence repeat must be at least 1");
             }
             if (transitionTicks < 0) {
-                throw new IllegalArgumentException("sequence transition must not be negative");
+                throw new IllegalArgumentException("sequence transition ticks must not be negative");
             }
         }
 
@@ -130,15 +127,12 @@ public record EmoteSequence(
         public Choice {
             Objects.requireNonNull(targetId, "targetId");
             if (chance < 0 || chance > 100) {
-                throw new IllegalArgumentException("sequence emote candidate chance must be between 1 and 100");
+                throw new IllegalArgumentException("sequence choice chance must be between 0 and 100");
             }
         }
     }
 
     private static void validateLinearSteps(List<Step> steps, String name) {
-        if (steps.isEmpty()) {
-            throw new IllegalArgumentException(name + " steps must not be empty");
-        }
         if (steps.getFirst() instanceof WaitStep || steps.getLast() instanceof WaitStep) {
             throw new IllegalArgumentException(name + " wait steps must be between emote steps");
         }

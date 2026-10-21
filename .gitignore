@@ -35,6 +35,13 @@ __pycache__/
 
 run/
 
+# environment variables
+
+.env
+.env.*
+!.env.example
+!.env.*.example
+
 # java
 
 hs_err_*.log

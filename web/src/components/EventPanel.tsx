@@ -1,45 +1,50 @@
 import { useState } from "preact/hooks";
-import { parseCallbacks, requireEventBody } from "../format/emoteAnimationRuntime";
-import type { EmoteCallback, EmoteEvent } from "../format/emoteAnimation";
+import type { EmoteCallback } from "../domain/emoteDefinition";
+import type { EventIR } from "../domain/animationIR";
 import type { ConversionAnimationEvents } from "../domain/conversionDocument";
-
-interface LifecycleEvents {
-  callbacks: EmoteCallback[];
-  start: EmoteEvent[];
-  loop: EmoteEvent[];
-  stop: EmoteEvent[];
-}
+import { parseMinecraftTime } from "../format/time";
+import { requireArray, requireNumberArray, requireRecord, requireString } from "../format/runtimeValue";
+import { isResourceLocation } from "../format/resourceLocation";
 
 interface EventPanelProps {
   events: ConversionAnimationEvents;
   callbacks?: EmoteCallback[];
   tick: number | null;
   disabled: boolean;
-  onLifecycleChange: (events: LifecycleEvents) => void;
-  onTimelineChange: (tick: number, events: EmoteEvent[]) => void;
+  onLifecycleChange: (events: Pick<ConversionAnimationEvents, "start" | "loop" | "stop"> & { callbacks: EmoteCallback[] }) => void;
+  onTimelineChange: (tick: number, events: EventIR[]) => void;
   onValidityChange: (valid: boolean) => void;
 }
 
 export function EventPanel({ events, callbacks, tick, disabled, onLifecycleChange, onTimelineChange, onValidityChange }: EventPanelProps) {
   const [error, setError] = useState("");
   const initialValue = tick === null
-    ? JSON.stringify({
-      callbacks: callbacks ?? [],
-      start: events.start,
-      loop: events.loop,
-      stop: events.stop,
-    }, null, 2)
+    ? JSON.stringify({ callbacks: callbacks ?? [], start: events.start, loop: events.loop, stop: events.stop }, null, 2)
     : JSON.stringify(events.timeline.flatMap((event) => {
-      if (event.tick !== tick) return [];
-      const { tick: _tick, ...body } = event;
+      if (parseMinecraftTime(event.time) !== tick) return [];
+      const { time: _time, ...body } = event;
       return [body];
     }), null, 2);
-
   function handleInput(value: string) {
     try {
       const parsed: unknown = JSON.parse(value);
-      if (tick === null) onLifecycleChange(parseLifecycleEvents(parsed));
-      else onTimelineChange(tick, parseEventArray(parsed, "Timeline events", true));
+      if (tick !== null) onTimelineChange(tick, parseEventArray(parsed, "Timeline events", true));
+      else {
+        const lifecycle = requireRecord(parsed, "Lifecycle events");
+        const callbacks = lifecycle.callbacks === undefined ? [] : requireArray(lifecycle.callbacks, "callbacks").map((value, index) => {
+          const path = `callbacks[${index}]`;
+          const callback = requireRecord(value, path);
+          const name = requireString(callback.name, `${path}.name`);
+          if (!isResourceLocation(name)) throw new Error(`${path}.name must be a resource location.`);
+          if (callback.payload !== undefined) requireString(callback.payload, `${path}.payload`);
+          return callback as unknown as EmoteCallback;
+        });
+        onLifecycleChange({ callbacks,
+          start: lifecycle.start === undefined ? [] : parseEventArray(lifecycle.start, "start"),
+          loop: lifecycle.loop === undefined ? [] : parseEventArray(lifecycle.loop, "loop"),
+          stop: lifecycle.stop === undefined ? [] : parseEventArray(lifecycle.stop, "stop"),
+        });
+      }
       setError("");
       onValidityChange(true);
     } catch (reason) {
@@ -54,53 +59,50 @@ export function EventPanel({ events, callbacks, tick, disabled, onLifecycleChang
         <div>
           <h3 id="event-editor-heading">Events</h3>
           <p>{tick === null
-            ? "Edit callbacks and start, loop, and stop command events as raw JSON. Changes are saved as soon as the JSON is valid."
-            : "Edit the events at this tick as a JSON array. The selected tick supplies the event time automatically."}</p>
+            ? "Edit callbacks and start, loop, and stop events as JSON. Changes are saved as soon as the JSON is valid."
+            : "Edit the events at this tick as a JSON array. The selected tick supplies the event time automatically. Changes are saved as soon as the JSON is valid."}</p>
         </div>
         <span className="event-scope">{tick === null ? "Create pose · Lifecycle" : `Tick ${tick} · Timeline`}</span>
       </div>
       <div className="event-editor-body">
-        <textarea
-          className="event-json"
-          defaultValue={initialValue}
-          disabled={disabled}
-          spellcheck={false}
-          aria-label={tick === null ? "Lifecycle events JSON" : `Timeline events JSON at tick ${tick}`}
-          aria-invalid={error ? true : undefined}
-          onInput={(event) => handleInput(event.currentTarget.value)}
-        />
+        <textarea className="event-json" defaultValue={initialValue} disabled={disabled} spellcheck={false}
+          aria-label={tick === null ? "Lifecycle events JSON" : `Timeline events JSON at tick ${tick}`} aria-invalid={error ? true : undefined}
+          onInput={(event) => handleInput(event.currentTarget.value)} />
         {error && <p className="event-json-error" role="alert">{error} Fix the JSON or press Ctrl+Z before leaving this event scope.</p>}
       </div>
     </section>
   );
 }
 
-function parseLifecycleEvents(value: unknown): LifecycleEvents {
-  if (!isRecord(value)) throw new Error("Lifecycle events must be a JSON object.");
-  return {
-    callbacks: parseCallbacks(value.callbacks),
-    start: value.start === undefined ? [] : parseEventArray(value.start, "start"),
-    loop: value.loop === undefined ? [] : parseEventArray(value.loop, "loop"),
-    stop: value.stop === undefined ? [] : parseEventArray(value.stop, "stop"),
-  };
-}
-
-function parseEventArray(value: unknown, path: string, timeline = false): EmoteEvent[] {
-  if (!Array.isArray(value)) throw new Error(`${path} must be a JSON array.`);
-  return value.map((event, index) => parseEvent(event, `${path}[${index}]`, timeline));
-}
-
-function parseEvent(value: unknown, path: string, timeline: boolean): EmoteEvent {
-  if (!isRecord(value)) throw new Error(`${path} must be a JSON object.`);
-  if (timeline && ("time" in value || "tick" in value)) throw new Error(`${path} must not contain time or tick; the selected preview tick supplies it.`);
-  const event = requireEventBody(value, path);
-  const origin = event.origin as Record<string, unknown>;
-  if (origin.offset !== undefined && (!Array.isArray(origin.offset) || origin.offset.length !== 3 || origin.offset.some((item) => typeof item !== "number"))) {
-    throw new Error(`${path}.origin.offset must be an array of three numbers.`);
-  }
-  return event as unknown as EmoteEvent;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+function parseEventArray(value: unknown, path: string, timeline = false): EventIR[] {
+  return requireArray(value, path).map((value, index) => {
+    const eventPath = `${path}[${index}]`;
+    const event = requireRecord(value, eventPath);
+    if ("time" in event || "tick" in event) throw new Error(`${eventPath} must not contain time or tick; the selected frame supplies the time.`);
+    if ("direction" in event && (!timeline || !["forward", "backward", "both"].includes(requireString(event.direction, `${eventPath}.direction`)))) {
+      throw new Error(`${eventPath}.direction must be forward, backward, or both, and is only allowed for timeline events.`);
+    }
+    const source = requireRecord(event.source, `${eventPath}.source`);
+    const sourceType = requireString(source.type, `${eventPath}.source.type`);
+    if (!["player", "server", "node"].includes(sourceType)) throw new Error(`${eventPath}.source.type must be player, server, or node.`);
+    if (sourceType === "node") {
+      if (!requireString(source.node, `${eventPath}.source.node`)) throw new Error(`${eventPath}.source.node must not be empty.`);
+      if (!requireString(source.attachment, `${eventPath}.source.attachment`)) throw new Error(`${eventPath}.source.attachment must not be empty.`);
+    }
+    const origin = requireRecord(event.origin, `${eventPath}.origin`);
+    const originType = requireString(origin.type, `${eventPath}.origin.type`);
+    if (!["root", "node"].includes(originType)) throw new Error(`${eventPath}.origin.type must be root or node.`);
+    if (originType === "node" && !requireString(origin.node, `${eventPath}.origin.node`)) throw new Error(`${eventPath}.origin.node must not be empty.`);
+    if (origin.offset !== undefined && requireNumberArray(origin.offset, `${eventPath}.origin.offset`).length !== 3) {
+      throw new Error(`${eventPath}.origin.offset must contain three numbers.`);
+    }
+    const action = requireRecord(event.action, `${eventPath}.action`);
+    if (action.type === "commands") {
+      requireArray(action.commands, `${eventPath}.action.commands`).forEach((command, index) => requireString(command, `${eventPath}.action.commands[${index}]`));
+    } else if (action.type === "external") {
+      if (!isResourceLocation(requireString(action.key, `${eventPath}.action.key`))) throw new Error(`${eventPath}.action.key must be a resource location.`);
+      if (!("data" in action)) throw new Error(`${eventPath}.action.data is required.`);
+    } else throw new Error(`${eventPath}.action.type must be commands or external.`);
+    return event as unknown as EventIR;
+  });
 }

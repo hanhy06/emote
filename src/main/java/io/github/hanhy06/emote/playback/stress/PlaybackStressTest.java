@@ -1,13 +1,13 @@
 package io.github.hanhy06.emote.playback.stress;
 
-import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.content.PreparedEmote;
-import io.github.hanhy06.emote.playback.PlaybackPlayer;
-import io.github.hanhy06.emote.playback.runtime.EntityTimelineTarget;
-import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
-import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
+import io.github.hanhy06.emote.content.PreparedAnimation;
+import io.github.hanhy06.emote.playback.EmotePlayback;
+import io.github.hanhy06.emote.playback.PlaybackScene;
+import io.github.hanhy06.emote.playback.RootTransform;
+import io.github.hanhy06.emote.playback.molang.MolangQuerySource;
+import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -15,34 +15,29 @@ import org.jspecify.annotations.Nullable;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.ToIntFunction;
+import java.util.random.RandomGenerator;
 
 public final class PlaybackStressTest {
-    public static final int DEFAULT_INSTANCE_COUNT = 100;
+    public static final int DEFAULT_INSTANCE_COUNT = 50;
     public static final int MAX_INSTANCE_COUNT = 500;
-    public static final int DEFAULT_PACKET_FANOUT = 20;
-    public static final int MAX_PACKET_FANOUT = 500;
     static final int MIN_INITIAL_TICK = 80;
     static final int MAX_INITIAL_TICK = 175;
     private static final long RANDOM_SEED = 0xE607EL;
 
-    private final PlaybackEntityController entityController;
-    private final StressTestPacketLoad packetLoad = StressTestPacketLoad.INSTANCE;
-
     private @Nullable Session session;
-
-    public PlaybackStressTest(PlaybackEntityController entityController) {
-        this.entityController = Objects.requireNonNull(entityController, "entityController");
-    }
+    private @Nullable Session frameSession;
+    private List<StressTestInstance> frameInstances = List.of();
+    private long preparationNanos;
+    private long applicationNanos;
 
     public StartResult start(
         ServerLevel level,
         Vec3 origin,
         float yaw,
-        List<PreparedEmote> emotes,
+        List<PreparedAnimation> emotes,
         int durationTicks,
         int instanceCount,
-        int packetFanout,
-        @Nullable Map<PlayerSkinRegion, String> preparedSkin,
+        @Nullable Map<String, Map<PlayerSkinRegion, String>> preparedSkin,
         Consumer<PlaybackStressTestReport> completion
     ) {
         if (emotes.isEmpty()) {
@@ -54,24 +49,20 @@ public final class PlaybackStressTest {
         if (durationTicks < 1) {
             throw new IllegalArgumentException("Stress-test duration must be at least one tick");
         }
-        if (packetFanout < 0 || packetFanout > MAX_PACKET_FANOUT) {
-            throw new IllegalArgumentException("Stress-test packet fanout is out of range: " + packetFanout);
-        }
 
         Random random = new Random(RANDOM_SEED);
-        List<PreparedEmote> selection = createRandomizedSelection(emotes, random, instanceCount);
-        return startSelection(level, origin, yaw, selection, durationTicks, packetFanout, preparedSkin, completion, random);
+        List<PreparedAnimation> selection = createRandomizedSelection(emotes, random, instanceCount);
+        return startSelection(level, origin, yaw, selection, durationTicks, preparedSkin, completion, random);
     }
 
     public StartResult startByDisplayCount(
         ServerLevel level,
         Vec3 origin,
         float yaw,
-        List<PreparedEmote> emotes,
+        List<PreparedAnimation> emotes,
         int durationTicks,
         int targetDisplayEntityCount,
-        int packetFanout,
-        @Nullable Map<PlayerSkinRegion, String> preparedSkin,
+        @Nullable Map<String, Map<PlayerSkinRegion, String>> preparedSkin,
         Consumer<PlaybackStressTestReport> completion
     ) {
         if (emotes.isEmpty()) {
@@ -81,33 +72,28 @@ public final class PlaybackStressTest {
             throw new IllegalArgumentException("Stress-test display count must be positive");
         }
         Random random = new Random(RANDOM_SEED);
-        List<PreparedEmote> selection = createDisplayLimitedSelection(emotes, random, targetDisplayEntityCount);
+        List<PreparedAnimation> selection = createDisplayLimitedSelection(emotes, random, targetDisplayEntityCount, PreparedAnimation::displayEntityCount);
         if (selection.isEmpty()) {
             throw new IllegalArgumentException("No registered emote fits within the requested display count: " + targetDisplayEntityCount);
         }
-        return startSelection(level, origin, yaw, selection, durationTicks, packetFanout, preparedSkin, completion, random);
+        return startSelection(level, origin, yaw, selection, durationTicks, preparedSkin, completion, random);
     }
 
     private StartResult startSelection(
         ServerLevel level,
         Vec3 origin,
         float yaw,
-        List<PreparedEmote> selection,
+        List<PreparedAnimation> selection,
         int durationTicks,
-        int packetFanout,
-        @Nullable Map<PlayerSkinRegion, String> preparedSkin,
+        @Nullable Map<String, Map<PlayerSkinRegion, String>> preparedSkin,
         Consumer<PlaybackStressTestReport> completion,
         Random random
     ) {
         if (durationTicks < 1) {
             throw new IllegalArgumentException("Stress-test duration must be at least one tick");
         }
-        if (packetFanout < 0 || packetFanout > MAX_PACKET_FANOUT) {
-            throw new IllegalArgumentException("Stress-test packet fanout is out of range: " + packetFanout);
-        }
 
         stop();
-        this.packetLoad.start(EmoteMod.SERVER, packetFanout);
         long startedNanos = System.nanoTime();
         int startedServerTick = EmoteMod.SERVER.getTickCount();
         long baselineTickNanos = EmoteMod.SERVER.getAverageTickTimeNanos();
@@ -116,40 +102,21 @@ public final class PlaybackStressTest {
         int displayEntityCount = 0;
         try {
             for (int index = 0; index < instanceCount; index++) {
-                PreparedEmote emote = selection.get(index);
-                PlaybackNodes nodes = this.entityController.create(
-                    level,
-                    gridPosition(origin, index, instanceCount),
-                    yaw,
-                    emote
-                );
-                PlaybackPlayer timeline = new PlaybackPlayer(
-                    emote,
-                    new EntityTimelineTarget(emote, nodes, this.entityController)
-                );
-                startAtInitialTick(timeline, emote.model(), initialTick(random, index));
-                this.entityController.applySkin(nodes, emote.skinBindings(), preparedSkin);
-                this.entityController.add(level, nodes);
-                try {
-                    this.packetLoad.register(level, nodes);
-                    instances.add(new StressTestInstance(emote, nodes, timeline));
-                    displayEntityCount += nodes.displayEntityCount();
-                } catch (RuntimeException exception) {
-                    this.packetLoad.unregister(nodes);
-                    this.entityController.remove(level, nodes);
-                    throw exception;
-                }
+                PreparedAnimation emote = selection.get(index);
+                PlaybackScene scene = PlaybackScene.create(level, RootTransform.create(gridPosition(origin, index, instanceCount), yaw), emote);
+                EmotePlayback playback = new EmotePlayback(emote, MolangQuerySource.EMPTY, random);
+                instances.add(new StressTestInstance(emote, scene, playback, initialTick(random, index)));
+                if (preparedSkin != null) scene.setSkins(preparedSkin);
+                scene.applyAnimationSkin(emote.id());
+                displayEntityCount += scene.displayEntityCount();
             }
         } catch (RuntimeException exception) {
-            removeInstances(level, instances);
-            this.packetLoad.stop();
+            instances.forEach(StressTestInstance::close);
             throw exception;
         }
 
-        this.packetLoad.beginRuntime();
         long creationNanos = System.nanoTime() - startedNanos;
         this.session = new Session(
-            level,
             instances,
             instanceCount,
             displayEntityCount,
@@ -165,20 +132,12 @@ public final class PlaybackStressTest {
 
     public @Nullable PlaybackStressTestReport stop() {
         Session current = this.session;
-        if (current == null) {
-            return null;
-        }
-
         this.session = null;
-        StressTestPacketLoad.PacketLoadResult packetLoadResult = this.packetLoad.finishRuntime();
+        if (current == null) return null;
         long cleanupStartedNanos = System.nanoTime();
-        try {
-            removeInstances(current.level(), current.instances());
-        } finally {
-            this.packetLoad.stop();
-        }
-        long cleanupNanos = System.nanoTime() - cleanupStartedNanos;
-        return current.createReport(packetLoadResult, cleanupNanos, System.nanoTime());
+        current.instances.forEach(StressTestInstance::close);
+        long stoppedNanos = System.nanoTime();
+        return current.createReport(stoppedNanos - cleanupStartedNanos, stoppedNanos);
     }
 
     public int displayEntityCount() {
@@ -186,7 +145,7 @@ public final class PlaybackStressTest {
         if (current == null) {
             return 0;
         }
-        return current.activeDisplayEntities();
+        return current.activeDisplayEntities;
     }
 
     public void stopById(String id) {
@@ -195,80 +154,152 @@ public final class PlaybackStressTest {
             return;
         }
 
-        current.instances().removeIf(instance -> {
+        current.instances.removeIf(instance -> {
             if (!instance.emote.id().equals(id)) {
                 return false;
             }
-            this.packetLoad.unregister(instance.nodes);
-            this.entityController.remove(current.level(), instance.nodes);
-            current.removeDisplayEntities(instance.nodes.displayEntityCount());
+            instance.close();
+            current.activeDisplayEntities -= instance.scene.displayEntityCount();
             return true;
         });
     }
 
-    public void tick() {
+    public boolean prepareTick() {
+        if (this.frameSession != null) throw new IllegalStateException("Previous stress-test tick has not finished");
         Session current = this.session;
-        if (current == null) {
+        if (current == null) return false;
+        this.frameSession = current;
+        this.applicationNanos = 0;
+        List<StressTestInstance> frames = new ArrayList<>();
+        long started = System.nanoTime();
+        Iterator<StressTestInstance> iterator = current.instances.iterator();
+        while (iterator.hasNext()) {
+            StressTestInstance instance = iterator.next();
+            instance.frame = null;
+            instance.frameError = null;
+            instance.frameApplied = false;
+            try {
+                instance.scene.preparePlacement(instance.scene.root(), 0);
+                if (instance.restart) {
+                    instance.playback = new EmotePlayback(instance.emote, MolangQuerySource.EMPTY, RandomGenerator.getDefault());
+                    instance.frame = instance.playback.prepareStart(instance.scene);
+                    instance.restart = false;
+                } else if (!instance.added) {
+                    instance.frame = prepareInitialFrame(instance.playback, instance.scene, instance.emote.model(), instance.initialTick);
+                } else {
+                    instance.frame = instance.playback.prepareAdvance();
+                }
+                frames.add(instance);
+            }
+            catch (RuntimeException exception) {
+                EmoteMod.LOGGER.warn("Failed to prepare stress test emote {}", instance.emote.id(), exception);
+                instance.close();
+                iterator.remove();
+                current.activeDisplayEntities -= instance.scene.displayEntityCount();
+                current.failedInstances++;
+            }
+        }
+        this.preparationNanos = System.nanoTime() - started;
+        this.frameInstances = List.copyOf(frames);
+        return !frames.isEmpty();
+    }
+
+    public void calculateFrames() {
+        for (StressTestInstance instance : this.frameInstances) {
+            try { instance.frame.calculate(); }
+            catch (RuntimeException exception) { instance.frameError = exception; }
+        }
+    }
+
+    public void failFrames(RuntimeException exception) {
+        for (StressTestInstance instance : this.frameInstances) instance.frameError = exception;
+    }
+
+    public void applyFrames() {
+        long started = System.nanoTime();
+        Session current = this.frameSession;
+        for (StressTestInstance instance : this.frameInstances) {
+            if (current != this.session || !instance.active || instance.frameError != null) {
+                instance.frame.discard();
+                if (current == this.session && instance.active && instance.frameError != null) {
+                    failInstance(current, instance, instance.frameError);
+                }
+                continue;
+            }
+            try {
+                instance.scene.applyPlacement();
+                instance.frame.apply();
+                instance.frameApplied = true;
+                if (!instance.added) {
+                    instance.scene.add();
+                    instance.added = true;
+                }
+            } catch (RuntimeException exception) {
+                if (!instance.frameApplied) instance.frame.discard();
+                failInstance(current, instance, exception);
+            }
+        }
+        this.applicationNanos = System.nanoTime() - started;
+    }
+
+    private void failInstance(Session current, StressTestInstance instance, RuntimeException exception) {
+        EmoteMod.LOGGER.warn("Failed to run stress test emote {}", instance.emote.id(), exception);
+        instance.close();
+        current.instances.remove(instance);
+        current.activeDisplayEntities -= instance.scene.displayEntityCount();
+        current.failedInstances++;
+    }
+
+    public void discardFrames() {
+        for (StressTestInstance instance : this.frameInstances) {
+            if (!instance.frameApplied) instance.frame.discard();
+        }
+        releaseFrames();
+    }
+
+    public void tick(long endTickStartedNanos, long waitNanos) {
+        Session current = this.frameSession;
+        if (current == null || current != this.session) {
+            releaseFrames();
             return;
         }
-
-        long stressTickStartedNanos = System.nanoTime();
-        long emoteProcessingNanos = 0L;
-        long networkProcessingNanos = 0L;
+        long emoteProcessingNanos = this.preparationNanos + this.applicationNanos + waitNanos;
         try {
-            Iterator<StressTestInstance> iterator = current.instances().iterator();
-            while (iterator.hasNext()) {
-                StressTestInstance instance = iterator.next();
+            for (StressTestInstance instance : this.frameInstances) {
+                if (!instance.active || !instance.frameApplied) continue;
                 try {
                     long emoteStartedNanos = System.nanoTime();
                     try {
-                        PlaybackPlayer.AdvanceResult result = advanceTimeline(instance.timeline);
-                        if (result == PlaybackPlayer.AdvanceResult.FINISHED) {
-                            instance.timeline = new PlaybackPlayer(
-                                instance.emote,
-                                new EntityTimelineTarget(instance.emote, instance.nodes, this.entityController)
-                            );
-                            instance.timeline.start();
-                        }
+                        instance.frame.dispatchEvents();
+                        instance.restart = instance.frame.result() == EmotePlayback.AdvanceResult.FINISHED;
                     } finally {
                         emoteProcessingNanos += System.nanoTime() - emoteStartedNanos;
                     }
-
-                    long networkStartedNanos = System.nanoTime();
-                    try {
-                        this.packetLoad.sync(instance.nodes);
-                    } finally {
-                        networkProcessingNanos += System.nanoTime() - networkStartedNanos;
-                    }
                 } catch (RuntimeException exception) {
-                    EmoteMod.LOGGER.warn("Failed to run stress test emote {}", instance.emote.id(), exception);
-                    this.packetLoad.unregister(instance.nodes);
-                    this.entityController.remove(current.level(), instance.nodes);
-                    iterator.remove();
-                    current.removeDisplayEntities(instance.nodes.displayEntityCount());
-                    current.failedInstances++;
+                    failInstance(current, instance, exception);
                 }
             }
         } finally {
-            current.recordProcessing(emoteProcessingNanos, networkProcessingNanos);
+            current.recordProcessing(emoteProcessingNanos);
+            releaseFrames();
         }
-        this.packetLoad.sampleRuntimeTick();
-        current.recordCompletedServerTick(System.nanoTime() - stressTickStartedNanos);
+        if (current != this.session) return;
+        current.recordCompletedServerTick(System.nanoTime() - endTickStartedNanos);
         current.completedTicks++;
-        if (hasCompletedDuration(current.completedTicks, current.durationTicks)) {
+        if (current.completedTicks >= current.durationTicks) {
             PlaybackStressTestReport report = stop();
-            if (report != null) {
-                current.completion.accept(report);
-            }
+            if (report != null) current.completion.accept(report);
         }
     }
 
-    static int gridSize(int instanceCount) {
-        return (int) Math.ceil(Math.sqrt(instanceCount));
+    private void releaseFrames() {
+        for (StressTestInstance instance : this.frameInstances) instance.frame = null;
+        this.frameInstances = List.of();
+        this.frameSession = null;
     }
 
     static Vec3 gridPosition(Vec3 origin, int index, int instanceCount) {
-        int gridSize = gridSize(instanceCount);
+        int gridSize = (int) Math.ceil(Math.sqrt(instanceCount));
         int column = index % gridSize;
         int row = index / gridSize;
         double halfSpan = (gridSize - 1) / 2.0D;
@@ -319,14 +350,6 @@ public final class PlaybackStressTest {
         return List.copyOf(selection);
     }
 
-    private static List<PreparedEmote> createDisplayLimitedSelection(
-        List<PreparedEmote> emotes,
-        Random random,
-        int displayLimit
-    ) {
-        return createDisplayLimitedSelection(emotes, random, displayLimit, PreparedEmote::displayNodeCount);
-    }
-
     public record StartResult(int instanceCount, int displayEntityCount) {
     }
 
@@ -338,44 +361,20 @@ public final class PlaybackStressTest {
         };
     }
 
-    private void startAtInitialTick(PlaybackPlayer timeline, EmoteAnimation animation, int requestedTick) {
+    private EmotePlayback.Frame prepareInitialFrame(EmotePlayback playback, EmotePlayback.PoseTarget target, EmoteAnimation animation, int requestedTick) {
         int initialTick = requestedTick;
-        if (animation.settings().playback().mode() == EmoteAnimation.LoopMode.ONCE
-            || animation.settings().playback().mode() == EmoteAnimation.LoopMode.HOLD) {
+        if (animation.settings().playback().mode() == EmoteAnimation.PlaybackMode.ONCE
+            || animation.settings().playback().mode() == EmoteAnimation.PlaybackMode.HOLD) {
             initialTick = Math.clamp(
                 initialTick,
                 0,
-                Math.max(0, animation.timeline().durationTicks() - 1)
+                Math.max(0, animation.clip().durationTicks() - 1)
             );
         }
-        timeline.startAtCyclePhase(initialTick);
-    }
-
-    private PlaybackPlayer.AdvanceResult advanceTimeline(PlaybackPlayer timeline) {
-        PlaybackPlayer.AdvanceResult result = timeline.advance();
-        if (result == PlaybackPlayer.AdvanceResult.LOOP_BOUNDARY) {
-            result = timeline.continueAfterLoopEvent();
-        }
-        return result;
-    }
-
-    private void removeInstances(ServerLevel level, List<StressTestInstance> instances) {
-        for (StressTestInstance instance : instances) {
-            this.packetLoad.unregister(instance.nodes);
-            this.entityController.remove(level, instance.nodes);
-        }
-    }
-
-    static boolean hasCompletedDuration(int completedTicks, int durationTicks) {
-        return completedTicks >= durationTicks;
-    }
-
-    static long measureCompletedTickNanos(int completedTick, long[] tickTimesNanos, long stressTickNanos) {
-        return tickTimesNanos[Math.floorMod(completedTick, tickTimesNanos.length)] + stressTickNanos;
+        return playback.prepareStartAtCyclePhase(target, initialTick);
     }
 
     private static final class Session {
-        private final ServerLevel level;
         private final List<StressTestInstance> instances;
         private final int requestedInstances;
         private final int peakDisplayEntities;
@@ -397,11 +396,8 @@ public final class PlaybackStressTest {
         private int processingSamples;
         private long emoteProcessingNanos;
         private long maximumEmoteProcessingNanos;
-        private long networkProcessingNanos;
-        private long maximumNetworkProcessingNanos;
 
         private Session(
-            ServerLevel level,
             List<StressTestInstance> instances,
             int requestedInstances,
             int peakDisplayEntities,
@@ -412,7 +408,6 @@ public final class PlaybackStressTest {
             long baselineTickNanos,
             long creationNanos
         ) {
-            this.level = level;
             this.instances = instances;
             this.requestedInstances = requestedInstances;
             this.peakDisplayEntities = peakDisplayEntities;
@@ -425,39 +420,21 @@ public final class PlaybackStressTest {
             this.creationNanos = creationNanos;
         }
 
-        private ServerLevel level() {
-            return this.level;
-        }
-
-        private List<StressTestInstance> instances() {
-            return this.instances;
-        }
-
-        private int activeDisplayEntities() {
-            return this.activeDisplayEntities;
-        }
-
-        private void removeDisplayEntities(int count) {
-            this.activeDisplayEntities -= count;
-        }
-
-        private void recordProcessing(long emoteNanos, long networkNanos) {
+        private void recordProcessing(long emoteNanos) {
             this.processingSamples++;
             this.emoteProcessingNanos += emoteNanos;
             this.maximumEmoteProcessingNanos = Math.max(this.maximumEmoteProcessingNanos, emoteNanos);
-            this.networkProcessingNanos += networkNanos;
-            this.maximumNetworkProcessingNanos = Math.max(this.maximumNetworkProcessingNanos, networkNanos);
         }
 
         private void recordCompletedServerTick(long stressTickNanos) {
-            int completedTick = EmoteMod.SERVER.getTickCount();
-            if (completedTick < this.startedServerTick || completedTick == this.lastSampledServerTick) {
+            int completedServerTick = EmoteMod.SERVER.getTickCount();
+            if (completedServerTick < this.startedServerTick || completedServerTick == this.lastSampledServerTick) {
                 return;
             }
 
             long[] tickTimesNanos = EmoteMod.SERVER.getTickTimesNanos();
-            long elapsedNanos = measureCompletedTickNanos(completedTick, tickTimesNanos, stressTickNanos);
-            this.lastSampledServerTick = completedTick;
+            long elapsedNanos = tickTimesNanos[Math.floorMod(completedServerTick, tickTimesNanos.length)] + stressTickNanos;
+            this.lastSampledServerTick = completedServerTick;
             if (elapsedNanos <= 0L) {
                 return;
             }
@@ -468,7 +445,6 @@ public final class PlaybackStressTest {
         }
 
         private PlaybackStressTestReport createReport(
-            StressTestPacketLoad.PacketLoadResult packetLoad,
             long cleanupNanos,
             long stoppedNanos
         ) {
@@ -481,13 +457,10 @@ public final class PlaybackStressTest {
                 : nanosToMillis(this.maximumServerTickNanos);
             double percentile95Mspt = this.serverTickSamples == 0
                 ? baselineMspt
-                : nanosToMillis(StressTestStatistics.percentile95(this.serverTickNanosSamples));
+                : nanosToMillis(percentile95(this.serverTickNanosSamples));
             double averageEmoteProcessingMillis = this.processingSamples == 0
                 ? 0.0D
                 : nanosToMillis(this.emoteProcessingNanos) / this.processingSamples;
-            double averageNetworkProcessingMillis = this.processingSamples == 0
-                ? 0.0D
-                : nanosToMillis(this.networkProcessingNanos) / this.processingSamples;
             return new PlaybackStressTestReport(
                 this.requestedInstances,
                 this.instances.size(),
@@ -503,12 +476,19 @@ public final class PlaybackStressTest {
                 maximumMspt,
                 this.emoteProcessingNanos / 1_000_000_000.0D,
                 averageEmoteProcessingMillis,
-                nanosToMillis(this.maximumEmoteProcessingNanos),
-                this.networkProcessingNanos / 1_000_000_000.0D,
-                averageNetworkProcessingMillis,
-                nanosToMillis(this.maximumNetworkProcessingNanos),
-                packetLoad
+                nanosToMillis(this.maximumEmoteProcessingNanos)
             );
+        }
+
+        private static long percentile95(List<Long> samples) {
+            if (samples.isEmpty()) {
+                return 0L;
+            }
+
+            List<Long> sorted = new ArrayList<>(samples);
+            sorted.sort(Long::compareTo);
+            int percentileIndex = Math.max(0, (int) Math.ceil(sorted.size() * 0.95D) - 1);
+            return sorted.get(percentileIndex);
         }
 
         private static double nanosToMillis(long nanos) {
@@ -517,15 +497,26 @@ public final class PlaybackStressTest {
     }
 
     private static final class StressTestInstance {
-        private final PreparedEmote emote;
-        private final PlaybackNodes nodes;
+        private final PreparedAnimation emote;
+        private final PlaybackScene scene;
 
-        private PlaybackPlayer timeline;
+        private EmotePlayback playback;
+        private final int initialTick;
+        private EmotePlayback.@Nullable Frame frame;
+        private @Nullable RuntimeException frameError;
+        private boolean active = true, added, restart, frameApplied;
 
-        private StressTestInstance(PreparedEmote emote, PlaybackNodes nodes, PlaybackPlayer timeline) {
+        private StressTestInstance(PreparedAnimation emote, PlaybackScene scene, EmotePlayback playback, int initialTick) {
             this.emote = emote;
-            this.nodes = nodes;
-            this.timeline = timeline;
+            this.scene = scene;
+            this.playback = playback;
+            this.initialTick = initialTick;
+        }
+
+        private void close() {
+            this.active = false;
+            if (this.frame != null) this.frame.cancelEvents();
+            this.scene.close();
         }
     }
 }

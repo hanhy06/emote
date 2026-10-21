@@ -1,22 +1,24 @@
 package io.github.hanhy06.emote;
 
 import io.github.hanhy06.emote.application.*;
-import io.github.hanhy06.emote.command.*;
+import io.github.hanhy06.emote.command.AccountCommand;
+import io.github.hanhy06.emote.command.AdminCommand;
+import io.github.hanhy06.emote.command.EmoteMenu;
+import io.github.hanhy06.emote.command.UserCommand;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.content.EmoteCatalog;
+import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.PreparedEmote;
-import io.github.hanhy06.emote.content.PreparedSequence;
-import io.github.hanhy06.emote.content.loader.AnimationContentResolver;
 import io.github.hanhy06.emote.content.loader.EmoteDirectoryLoader;
 import io.github.hanhy06.emote.network.PlaybackStateSyncService;
 import io.github.hanhy06.emote.network.WheelSyncService;
 import io.github.hanhy06.emote.network.payload.PlaybackStatePayload;
 import io.github.hanhy06.emote.network.payload.WheelSyncPayload;
 import io.github.hanhy06.emote.permission.PermissionService;
-import io.github.hanhy06.emote.playback.EntityPlaybackManager;
+import io.github.hanhy06.emote.playback.MarkerPlaybackManager;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
-import io.github.hanhy06.emote.resource.PolymerResourcePackDistributor;
+import io.github.hanhy06.emote.resource.ResourcePackService;
 import io.github.hanhy06.emote.server.IdlePlaybackService;
 import io.github.hanhy06.emote.server.ReloadService;
 import io.github.hanhy06.emote.server.ServerLifecycle;
@@ -27,12 +29,11 @@ import io.github.hanhy06.emote.skin.SkinCache;
 import io.github.hanhy06.emote.skin.account.*;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinClient;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinProvider;
+import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.loader.api.FabricLoader;
-
-import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
-import net.fabricmc.api.ModInitializer;
 import net.minecraft.server.MinecraftServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,12 +48,11 @@ public class EmoteMod implements ModInitializer {
         ConfigManager configManager = new ConfigManager(FabricLoader.getInstance().getConfigDir());
         EmoteCatalog catalog = new EmoteCatalog();
         PermissionService permissions = new PermissionService();
-        PlaybackCooldownService cooldowns = new PlaybackCooldownService();
+
         MinecraftAccountManager accounts = new MinecraftAccountManager(
             new AccountCredentialStore(FabricLoader.getInstance().getConfigDir().resolve("emote/accounts.bin")),
             new MinecraftAccountClient()
         );
-        PlaybackPolicyService playbackPolicy = new PlaybackPolicyService(permissions, catalog, cooldowns);
         PlayerSkinBaker skinBaker = new PlayerSkinBaker();
         SkinCache skinCache = new SkinCache();
         MineSkinProvider mineSkin = new MineSkinProvider(skinCache, new MineSkinClient());
@@ -61,29 +61,20 @@ public class EmoteMod implements ModInitializer {
         PlayerSkinManager skins = new PlayerSkinManager(
             new SkinBakeCoordinator(accounts, skinBaker, minecraftSkins, skinCache, accountQueue, mineSkin)
         );
-        catalog.addListener(emotes -> skins.setModelBindings(emotes.stream().flatMap(emote -> switch (emote) {
-            case PreparedEmote animation -> animation.skinBindings().stream();
-            case PreparedSequence sequence -> sequence.layoutAnchor().skinBindings().stream();
-        }).toList()));
+        catalog.addListener(emotes -> skins.setEmotes(catalog.animations(), catalog.fileEmotes().stream()
+            .filter(PreparedAnimation.class::isInstance).map(PreparedEmote::sourcePath).collect(java.util.stream.Collectors.toUnmodifiableSet())));
+
         PlaybackEngine engine = new PlaybackEngine();
         PlayerPlaybackManager playback = new PlayerPlaybackManager(engine, skins);
-        EntityPlaybackManager entityPlayback = new EntityPlaybackManager(engine, catalog, skins);
-        PlaybackStateSyncService playbackStateSync = new PlaybackStateSyncService();
+        MarkerPlaybackManager markerPlayback = new MarkerPlaybackManager(engine, catalog, skins);
+        PlaybackCooldownService cooldowns = new PlaybackCooldownService();
         ApiEventDispatcher apiEvents = new ApiEventDispatcher();
-        EmoteQueryService queries = new EmoteQueryService(catalog, playbackPolicy);
-        EmotePlayService play = new EmotePlayService(catalog, playbackPolicy, playback, apiEvents);
-        IdlePlaybackService idlePlayback = new IdlePlaybackService(playbackPolicy, play, playback, catalog);
+        EmotePlayService play = new EmotePlayService(catalog, permissions, cooldowns, playback, apiEvents);
+        EmoteQueryService queries = new EmoteQueryService(catalog, play);
+        PlaybackStateSyncService playbackStateSync = new PlaybackStateSyncService();
         WheelSyncService wheelSync = new WheelSyncService(queries);
-        PolymerResourcePackDistributor resourcePackDistributor = new PolymerResourcePackDistributor(configManager);
-        ReloadService reload = new ReloadService(
-            configManager,
-            catalog,
-            new EmoteDirectoryLoader(),
-            engine,
-            wheelSync,
-            resourcePackDistributor::rebuild,
-            resourcePackDistributor::pushToOnlinePlayers
-        );
+        playback.addStateListener(cooldowns);
+        playback.addStateListener(playbackStateSync);
 
         EmoteApiImpl api = new EmoteApiImpl(
             catalog,
@@ -91,31 +82,29 @@ public class EmoteMod implements ModInitializer {
             playback,
             engine,
             apiEvents,
-            wheelSync::syncAll,
-            new AnimationContentResolver()
+            wheelSync::syncAll
         );
+        engine.setStateListener(apiEvents);
         ExampleCallbacks.registerAll(api);
-        UserCommand userCommand = new UserCommand(playback, new EmoteMenu(configManager, catalog, queries, playback), queries, play);
-        AdminCommand adminCommand = new AdminCommand(catalog, playback, permissions, reload, configManager, skins);
-        AccountCommand accountCommand = new AccountCommand(accounts);
-        ServerLifecycle lifecycle = new ServerLifecycle(
-            skins, cooldowns, catalog, playback, entityPlayback, reload, wheelSync, idlePlayback,
-            () -> !accounts.hasAccounts() && !mineSkin.available()
-        );
 
-        configManager.addAccessConfigListener(playbackPolicy);
+        IdlePlaybackService idlePlayback = new IdlePlaybackService(play, playback, catalog);
+        configManager.addAccessConfigListener(play);
         configManager.addAccessConfigListener(idlePlayback);
         configManager.addListener(skins);
         configManager.addListener(engine);
-        playback.addStateListener(cooldowns);
-        playback.addStateListener(playbackStateSync);
-        engine.setStateListener(apiEvents);
-        playback.register();
-        entityPlayback.register();
-        registerPayloads();
-        ServerLifecycleEvents.SERVER_STARTED.register(server -> accounts.initialize());
-        lifecycle.register();
-        ServerLifecycleEvents.SERVER_STOPPING.register(server -> accounts.close());
+        ResourcePackService resources = new ResourcePackService(configManager);
+        ReloadService reload = new ReloadService(
+            configManager,
+            catalog,
+            new EmoteDirectoryLoader(),
+            engine,
+            wheelSync,
+            resources
+        );
+
+        UserCommand userCommand = new UserCommand(playback, new EmoteMenu(configManager, catalog, queries, playback), queries, play);
+        AdminCommand adminCommand = new AdminCommand(catalog, playback, permissions, reload, configManager, skins);
+        AccountCommand accountCommand = new AccountCommand(accounts);
         CommandRegistrationCallback.EVENT.register((dispatcher, ignoredRegistryAccess, ignoredEnvironment) -> {
             var root = userCommand.createRoot();
             adminCommand.attachTo(root);
@@ -123,10 +112,17 @@ public class EmoteMod implements ModInitializer {
             dispatcher.register(root);
         });
 
-    }
-
-    private static void registerPayloads() {
+        ServerLifecycle lifecycle = new ServerLifecycle(
+            skins, cooldowns, catalog, playback, markerPlayback, reload, wheelSync, idlePlayback, resources,
+            () -> !accounts.hasAccounts() && !mineSkin.available()
+        );
+        playback.register();
+        markerPlayback.register();
         PayloadTypeRegistry.clientboundPlay().register(PlaybackStatePayload.TYPE, PlaybackStatePayload.STREAM_CODEC);
         PayloadTypeRegistry.clientboundPlay().register(WheelSyncPayload.TYPE, WheelSyncPayload.STREAM_CODEC);
+        ServerLifecycleEvents.SERVER_STARTED.register(server -> accounts.initialize());
+        lifecycle.register();
+        ServerLifecycleEvents.SERVER_STOPPING.register(server -> accounts.close());
     }
+
 }

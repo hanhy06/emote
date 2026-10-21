@@ -5,10 +5,11 @@ import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.application.PlaybackCooldownService;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.network.WheelSyncService;
-import io.github.hanhy06.emote.playback.EntityPlaybackManager;
+import io.github.hanhy06.emote.playback.MarkerPlaybackManager;
 import io.github.hanhy06.emote.playback.PlaybackHooks;
+import io.github.hanhy06.emote.playback.PlaybackScene;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
-import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
+import io.github.hanhy06.emote.resource.ResourcePackService;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -31,10 +32,11 @@ public class ServerLifecycle {
     private final PlaybackCooldownService cooldowns;
     private final EmoteCatalog emoteCatalog;
     private final PlayerPlaybackManager playerPlaybackManager;
-    private final EntityPlaybackManager entityPlayback;
+    private final MarkerPlaybackManager markerPlayback;
     private final ReloadService reloadService;
     private final WheelSyncService wheelSyncService;
     private final IdlePlaybackService idlePlaybackService;
+    private final ResourcePackService resources;
     private final BooleanSupplier missingSkinUploadProvider;
 
     public ServerLifecycle(
@@ -42,20 +44,22 @@ public class ServerLifecycle {
         PlaybackCooldownService cooldowns,
         EmoteCatalog emoteCatalog,
         PlayerPlaybackManager playerPlaybackManager,
-        EntityPlaybackManager entityPlayback,
+        MarkerPlaybackManager markerPlayback,
         ReloadService reloadService,
         WheelSyncService wheelSyncService,
         IdlePlaybackService idlePlaybackService,
+        ResourcePackService resources,
         BooleanSupplier missingSkinUploadProvider
     ) {
         this.playerSkinManager = playerSkinManager;
         this.cooldowns = cooldowns;
         this.emoteCatalog = emoteCatalog;
         this.playerPlaybackManager = playerPlaybackManager;
-        this.entityPlayback = entityPlayback;
+        this.markerPlayback = markerPlayback;
         this.reloadService = reloadService;
         this.wheelSyncService = wheelSyncService;
         this.idlePlaybackService = idlePlaybackService;
+        this.resources = resources;
         this.missingSkinUploadProvider = missingSkinUploadProvider;
     }
 
@@ -63,11 +67,12 @@ public class ServerLifecycle {
         ServerLifecycleEvents.SERVER_STARTED.register(this::handleServerStarted);
         ServerLifecycleEvents.SERVER_STOPPING.register(this::handleServerStopping);
         ServerLifecycleEvents.SERVER_STOPPED.register(this::handleServerStopped);
-        ServerTickEvents.END_SERVER_TICK.register(ignoredServer -> {
-            this.entityPlayback.tick();
-            this.playerPlaybackManager.engine().tick();
+        ServerTickEvents.START_SERVER_TICK.register(ignoredServer -> {
+            this.markerPlayback.tick();
             this.idlePlaybackService.tick();
+            this.playerPlaybackManager.engine().beginTick();
         });
+        ServerTickEvents.END_SERVER_TICK.register(ignoredServer -> this.playerPlaybackManager.engine().tick());
         PlaybackHooks.INTERRUPTION.register(this.playerPlaybackManager::interrupt);
         ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, ignoredSource, ignoredBaseDamage, damageTaken, ignoredBlocked) -> {
             if (damageTaken > 0.0F && entity instanceof ServerPlayer player) {
@@ -84,6 +89,7 @@ public class ServerLifecycle {
             (handler, ignoredSender, ignoredServer) -> {
                 this.wheelSyncService.syncPlayer(handler.player);
                 this.playerSkinManager.checkPlayerSkin(handler.player);
+                this.resources.notifyPlayer(handler.player);
                 if (this.missingSkinUploadProvider.getAsBoolean()) {
                     handler.player.sendSystemMessage(Component.literal(
                         "[Emote] No bake accounts or MineSkin API key configured; only cached skin textures are available"
@@ -93,24 +99,17 @@ public class ServerLifecycle {
             }
         );
         ServerPlayConnectionEvents.DISCONNECT.register(
-            (handler, ignoredServer) -> {
-                if (EmoteMod.SERVER.isSameThread()) {
-                    this.playerPlaybackManager.stop(handler.player, PlaybackStopReason.DISCONNECTED);
-                    this.idlePlaybackService.removePlayer(handler.player);
-                    this.playerSkinManager.removePlayer(handler.player.getUUID());
-                } else {
-                    EmoteMod.SERVER.execute(() -> {
-                        this.playerPlaybackManager.stop(handler.player, PlaybackStopReason.DISCONNECTED);
-                        this.idlePlaybackService.removePlayer(handler.player);
-                        this.playerSkinManager.removePlayer(handler.player.getUUID());
-                    });
-                }
-            }
+            (handler, ignoredServer) -> EmoteMod.SERVER.execute(() -> {
+                this.playerPlaybackManager.stop(handler.player, PlaybackStopReason.DISCONNECTED);
+                this.idlePlaybackService.removePlayer(handler.player);
+                this.playerSkinManager.removePlayer(handler.player.getUUID());
+            })
         );
     }
 
     private void handleServerStarted(MinecraftServer server) {
         EmoteMod.SERVER = server;
+        this.playerPlaybackManager.engine().startWorker();
         removeOrphanedRuntimeEntities(server);
         this.reloadService.reload();
     }
@@ -119,7 +118,7 @@ public class ServerLifecycle {
         List<Entity> orphaned = new ArrayList<>();
         for (var level : server.getAllLevels()) {
             for (Entity entity : level.getAllEntities()) {
-                if (entity.entityTags().contains(PlaybackEntityController.RUNTIME_TAG)) {
+                if (entity.entityTags().contains(PlaybackScene.RUNTIME_TAG)) {
                     orphaned.add(entity);
                 }
             }
@@ -132,6 +131,7 @@ public class ServerLifecycle {
 
     private void handleServerStopping(MinecraftServer ignoredServer) {
         this.playerPlaybackManager.engine().stopAll(PlaybackStopReason.SERVER_STOPPING);
+        this.playerPlaybackManager.engine().stopWorker();
         this.cooldowns.clear();
         this.emoteCatalog.clearApiRegistrations();
         this.idlePlaybackService.clear();

@@ -3,7 +3,7 @@ import type { ConversionDocument } from "../domain/conversionDocument";
 import { generatedResourceFiles } from "./generatedResources";
 import type { ExportResult } from "./types";
 
-export function exportDocumentResourceBundle(document: ConversionDocument, resourceReferences?: ReadonlySet<string>): ExportResult {
+export function exportResourceBundle(document: ConversionDocument, resourceReferences?: ReadonlySet<string>): ExportResult {
   const generatedResources = generatedResourceFiles(document, document.targetMinecraftVersion, resourceReferences);
   const files: Record<string, Uint8Array> = {};
   for (const [path, data] of generatedResources) files[flatResourcePath(path)] = data;

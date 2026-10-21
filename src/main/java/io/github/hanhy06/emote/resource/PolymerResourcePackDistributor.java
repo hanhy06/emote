@@ -7,12 +7,11 @@ import eu.pb4.polymer.resourcepack.api.PolymerResourcePackUtils;
 import eu.pb4.polymer.resourcepack.api.ResourcePackCreator;
 import eu.pb4.polymer.resourcepack.api.ResourcePackStatusConsumer;
 import io.github.hanhy06.emote.EmoteMod;
-import io.github.hanhy06.emote.config.ConfigManager;
+import io.github.hanhy06.emote.resource.ResourcePackService.BuildResult;
 import net.minecraft.network.protocol.common.ClientboundResourcePackPushPacket;
 import net.minecraft.resources.Identifier;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
@@ -22,60 +21,30 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
-public final class PolymerResourcePackDistributor {
+final class PolymerResourcePackDistributor {
     private static final Identifier PACK_ID = Identifier.fromNamespaceAndPath(EmoteMod.MOD_ID, "resources");
     private static final UUID PACK_UUID = UUID.nameUUIDFromBytes(PACK_ID.toString().getBytes(StandardCharsets.UTF_8));
 
-    private final ConfigManager configManager;
-    private final ResourcePackContributor contributor;
     private final Path outputPath;
-    private final PackCompiler packCompiler;
     private volatile PublishedPack publishedPack;
 
-    public PolymerResourcePackDistributor(ConfigManager configManager) {
-        this(
-            configManager,
-            PolymerResourcePackUtils.getMainPath().resolveSibling(EmoteMod.MOD_ID + "_resource_pack.zip"),
-            true,
-            null
-        );
-    }
+    PolymerResourcePackDistributor() {
+        this.outputPath = PolymerResourcePackUtils.getMainPath().resolveSibling(EmoteMod.MOD_ID + "_resource_pack.zip");
 
-    PolymerResourcePackDistributor(
-        ConfigManager configManager,
-        Path outputPath,
-        boolean registerHosting,
-        PackCompiler packCompiler
-    ) {
-        this.configManager = configManager;
-        this.contributor = new ResourcePackContributor();
-        this.outputPath = outputPath;
-        this.packCompiler = packCompiler == null ? this::compilePack : packCompiler;
-
-        if (registerHosting) {
-            AutoHostUtils.registerHostedFile(PACK_ID, outputPath);
-            AutoHostUtils.SEND_RESOURCE_PACK_COLLECTOR.register((provider, context, consumer) -> {
-                PublishedPack published = this.publishedPack;
-                if (published != null) {
-                    consumer.accept(provider.createProperties(context, PACK_UUID, PACK_ID, published.hash()));
-                }
-            });
-        }
-    }
-
-    public BuildResult rebuild() {
-        ResourcePackContributor.Snapshot snapshot;
-        try {
-            this.configManager.configureResourcePack();
-            snapshot = this.contributor.read(this.configManager.getResourcePackDirectory());
+        AutoHostUtils.registerHostedFile(PACK_ID, this.outputPath);
+        AutoHostUtils.SEND_RESOURCE_PACK_COLLECTOR.register((provider, context, consumer) -> {
             PublishedPack published = this.publishedPack;
-            if ((published == null && snapshot.isEmpty())
-                || (published != null && snapshot.hasSameContent(published.snapshot()))) {
-                return BuildResult.UNCHANGED;
+            if (published != null) {
+                consumer.accept(provider.createProperties(context, PACK_UUID, PACK_ID, published.hash()));
             }
-        } catch (IOException exception) {
-            EmoteMod.LOGGER.warn("Failed to inspect emote resource inputs", exception);
-            return BuildResult.FAILED;
+        });
+    }
+
+    BuildResult rebuild(ResourcePackContributor.Snapshot snapshot) {
+        PublishedPack published = this.publishedPack;
+        if ((published == null && snapshot.isEmpty())
+            || (published != null && snapshot.hasSameContent(published.snapshot()))) {
+            return BuildResult.UNCHANGED;
         }
 
         Path stagingPath;
@@ -88,7 +57,7 @@ public final class PolymerResourcePackDistributor {
         }
 
         try {
-            OutputGenerator.Result staged = this.packCompiler.compile(snapshot, stagingPath);
+            OutputGenerator.Result staged = compilePack(snapshot, stagingPath);
             if (staged == null || staged.hadIssues()) {
                 EmoteMod.LOGGER.warn("Failed to complete the emote resource pack build; keeping the previous pack");
                 return BuildResult.FAILED;
@@ -121,10 +90,10 @@ public final class PolymerResourcePackDistributor {
         throws ExecutionException, InterruptedException {
         ResourcePackCreator creator = ResourcePackCreator.create();
         creator.creationEvent.register(builder -> {
-            try {
-                this.contributor.addTo(snapshot, builder);
-            } catch (IOException exception) {
-                throw new UncheckedIOException(exception);
+            for (var entry : snapshot.resources().entrySet()) {
+                if (!builder.addData(entry.getKey(), entry.getValue().data())) {
+                    throw new IllegalStateException("Polymer rejected resource " + entry.getKey());
+                }
             }
         });
         return creator.build(OutputGenerator.zipGenerator(stagingPath), ResourcePackStatusConsumer.nonLogging());
@@ -138,7 +107,7 @@ public final class PolymerResourcePackDistributor {
         }
     }
 
-    public void pushToOnlinePlayers() {
+    void pushToOnlinePlayers() {
         PublishedPack published = this.publishedPack;
         if (published == null) {
             return;
@@ -162,17 +131,5 @@ public final class PolymerResourcePackDistributor {
     }
 
     private record PublishedPack(ResourcePackContributor.Snapshot snapshot, String hash) {
-    }
-
-    @FunctionalInterface
-    interface PackCompiler {
-        OutputGenerator.Result compile(ResourcePackContributor.Snapshot snapshot, Path stagingPath)
-            throws IOException, ExecutionException, InterruptedException;
-    }
-
-    public enum BuildResult {
-        UNCHANGED,
-        BUILT,
-        FAILED
     }
 }

@@ -1,0 +1,17 @@
+{
+  "type": "animation", "schema_version": 5, "id": "test:blockbench_curves",
+  "metadata": { "name": "Blockbench curves", "description": "", "author": "test", "license": "Apache-2.0" },
+  "nodes": { "bone": { "transform": [{ "id": "position", "op": "translate", "value": [0, 0, 0] }] } },
+  "animation": { "duration": "40t", "tracks": [{ "target": { "node": "bone", "operation": "position" }, "channel": "value", "driver": {
+    "type": "curve", "before": "first_pre", "at_key": "pre", "evaluation": "component",
+    "keys": [
+      { "time": "0.5s", "pre": [2, 0, 0], "post": [{ "molang": "q.scoreboard('start') + math.random(0, 0)" }, { "molang": "q.scoreboard('start_y')" }, 0] },
+      { "time": "1.5s", "pre": [{ "molang": "q.scoreboard('end') + math.random(0, 0)" }, { "molang": "q.scoreboard('end_y')" }, 0], "post": [10, 0, 0] }
+    ],
+    "segments": [{ "interpolation": "bezier", "handles": [
+      { "out": { "time": 1, "value": { "molang": "q.scoreboard('out')" }, "relative": true }, "in": { "time": 0, "value": { "molang": "q.scoreboard('in')" }, "relative": true } },
+      { "out": { "time": 0.3333333333333333, "value": 0, "relative": true }, "in": { "time": 0.6666666666666667, "value": 0, "relative": true } },
+      { "out": { "time": 0.3333333333333333, "value": 0, "relative": true }, "in": { "time": 0.6666666666666667, "value": 0, "relative": true } }
+    ] }]
+  } }] }
+}

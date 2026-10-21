@@ -18,12 +18,9 @@ public final class EmoteTags {
         LinkedHashSet<String> tags = new LinkedHashSet<>();
         Matcher matcher = TAG_PATTERN.matcher(description);
         while (matcher.find()) {
-            tags.add(normalize(matcher.group(1)));
+            tags.add(matcher.group(1).toLowerCase(Locale.ROOT));
         }
         return List.copyOf(tags);
     }
 
-    public static String normalize(String tag) {
-        return tag.toLowerCase(Locale.ROOT);
-    }
 }

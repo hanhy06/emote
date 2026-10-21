@@ -67,8 +67,8 @@ final class WheelGeometry {
 
     static BufferedImage createWheelImage(WheelMetrics metrics, int scale, int[] slotColors, int centerColor) {
         int radius = metrics.outerRadius();
-        int size = (radius + 1) * 2;
-        BufferedImage image = new BufferedImage(size * scale, size * scale, BufferedImage.TYPE_INT_ARGB);
+        int imageSize = (radius + 1) * 2;
+        BufferedImage image = new BufferedImage(imageSize * scale, imageSize * scale, BufferedImage.TYPE_INT_ARGB);
         Graphics2D graphics = image.createGraphics();
         try {
             graphics.setComposite(AlphaComposite.Src);
@@ -77,17 +77,17 @@ final class WheelGeometry {
             double center = radius + 1;
             // Fill a continuous disk first; separators are strokes, not angular gaps.
             int baseColor = slotColors[0];
-            int highestCount = 0;
+            int mostFrequentColorCount = 0;
             for (int color : slotColors) {
-                int count = 0;
+                int matchingColorCount = 0;
                 for (int other : slotColors) {
                     if (color == other) {
-                        count++;
+                        matchingColorCount++;
                     }
                 }
-                if (count > highestCount) {
+                if (matchingColorCount > mostFrequentColorCount) {
                     baseColor = color;
-                    highestCount = count;
+                    mostFrequentColorCount = matchingColorCount;
                 }
             }
             graphics.setColor(new Color(baseColor, true));

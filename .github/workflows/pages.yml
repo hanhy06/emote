@@ -48,6 +48,23 @@ jobs:
       - name: Build website
         run: python -m mkdocs build --strict --config-file docs/mkdocs/mkdocs.yml
 
+      - name: Checkout legacy v4 converter
+        uses: actions/checkout@v6
+        with:
+          ref: 5f8d915d36b6726c3f34a6a10592e66114a0dfe7
+          path: .legacy-converter
+          sparse-checkout: |
+            web
+            shared
+
+      - name: Install legacy converter dependencies
+        working-directory: .legacy-converter/web
+        run: npm ci
+
+      - name: Build legacy converter
+        working-directory: .legacy-converter/web
+        run: npm run build -- --outDir "${{ github.workspace }}/docs/mkdocs/site/legacy/converter" --emptyOutDir --base ./
+
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
