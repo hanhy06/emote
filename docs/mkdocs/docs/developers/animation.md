@@ -41,7 +41,7 @@ Animation files are limited to 8 MiB, and timelines are limited to 10 minutes.
 
 | Value | Behavior |
 |---|---|
-| `0` | Follows every change in the player's direction without rotation interpolation. |
+| `0` | Follows every change in the player's direction. |
 | Greater than `0`, less than `180` | Turns when the direction difference exceeds the specified angle. Rotation is interpolated over 3 ticks. |
 | `180` | Keeps the direction from the start of playback. |
 
@@ -94,7 +94,7 @@ Operations include `translate`, `rotate_euler`, `rotate_quaternion`, `scale`, an
 
 A node's `attachments` object defines what appears at that transform. Rendered attachment types are `item_display`, `block_display`, `text_display`, and `player_skin`. A node may have multiple attachments or none. A node without an entity attachment still provides a position for events and callbacks.
 
-Player-skin attachments use `part` and a `region` with `from` and `to` values. The converter writes these regions from the skin-part assignments; they are also used when checking Sequence compatibility.
+Player-skin attachments use `part` and a `region` with `from` and `to` values.
 
 ### Track targets and drivers
 

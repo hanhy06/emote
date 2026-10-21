@@ -197,4 +197,4 @@ Command events defined in each Animation also run within a Sequence.
 
 At a shared boundary, the previous Animation's stop events run before the next Animation's start events.
 
-Sequence `callbacks` use the same format as [Animation callbacks](animation.md#callbacks). The Sequence and each Animation segment have separate callback contexts and state. Each Animation segment also has its own Molang session.
+Sequence `callbacks` use the same format as [Animation callbacks](animation.md#callbacks). The Sequence and each Animation segment have separate callback contexts and state.

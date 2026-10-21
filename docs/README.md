@@ -60,7 +60,7 @@ config/emote/
 ├── emote/
 └── resource-pack/
 ```
-The directory and configuration files are created automatically on first startup, with [20 sample emotes](https://github.com/hanhy06/emote/tree/main/docs/sample) included under `emote/`.
+The directory and configuration files are created automatically on first startup, with [sample emotes](https://github.com/hanhy06/emote/tree/main/docs/sample) included under `emote/`.
 
 Place JSON exported by the converter under `emote/`. Subdirectories are loaded as well, and emotes use the `id` in the JSON rather than the filename. Invalid files are skipped individually, while every file sharing a duplicate ID is rejected.
 
@@ -124,7 +124,7 @@ Use the 3D preview to assign skin parts, then configure metadata, playback behav
 
 ### Animation conversion
 
-The web converter exports transform nodes, display attachments, and animation curves, including Bézier, Catmull-Rom, bounce, and elastic motion. The server evaluates the curves and Molang during playback, while the browser preview helps check skin assignments and may approximate dynamic behavior.
+The web converter supports animation curves including Bézier, Catmull-Rom, bounce, and elastic motion. The browser preview helps check skin assignments and may differ from in-game playback.
 
 Each animation can define a cooldown, player visibility, stop conditions such as movement, jumping, attacking, and taking damage, and events.
 

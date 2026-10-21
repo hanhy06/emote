@@ -71,7 +71,7 @@ Use the optional `animation.molang` object when an Animation needs to initialize
 - `t.*` variables exist only for one expression evaluation.
 - `q.*` values are read-only. Assigning a query is rejected.
 
-A Molang session is retained across an Animation's loops. Each Animation segment in a Sequence creates its own session.
+Persistent variables are retained across loops. Each Animation segment in a Sequence has separate persistent variables.
 
 Track expressions, clock expressions, delays, and curve parameters can read persistent variables but cannot assign them. Use `initialize` and `tick` for those assignments. An Animation that only needs formulas in its tracks can omit `animation.molang`.
 

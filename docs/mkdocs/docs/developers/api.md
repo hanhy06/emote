@@ -76,11 +76,11 @@ Inspect the current playback and its resolved timeline. Use `PlaybackInfo.sessio
 |---|---|
 | `PlaybackInfo.state()` | Current playback state. |
 | `PlaybackInfo.elapsedTicks()` | Elapsed playback ticks. |
-| `PlaybackInfo.timelineTick()` | Current tick in the complete playback timeline. |
+| `PlaybackInfo.tick()` | Current tick in the complete playback timeline. |
 | `PlaybackInfo.position()` | Current segment, Sequence step and repetition, phase, phase-local tick, and active Animation. |
 | `PlaybackInfo.placement()` | Current root position, yaw, and placement mode. |
 | `PlaybackPosition.animationTick()` | Animation-local tick; `null` outside the `ANIMATION` phase. |
-| `PlaybackTimeline.segments()` | Resolved `START_DELAY`, `ANIMATION`, `TRANSITION`, `WAIT`, `LOOP_DELAY`, or `HOLD` segments. Random choices and repeats are already resolved for this session. |
+| `PlaybackTimeline.segments()` | Resolved `START_DELAY`, `ANIMATION`, `TRANSITION`, `WAIT`, `EMPTY`, `LOOP_DELAY`, or `HOLD` segments. Random choices and repeats are already resolved for this session. |
 
 Segment ranges include the start tick and exclude the end tick. An indefinite hold has no end tick. Sequence step and repetition indices are zero-based and refer to the original step and repetition.
 
@@ -94,9 +94,9 @@ Move within a running playback without creating a new session.
 | `setAnimationTick(sessionId, tick)` | Moves within the active Animation; returns `false` outside the Animation phase. |
 | `setStep(sessionId, stepIndex, repeatIndex, tick)` | Moves to the resolved Animation or `emote:empty` at a Sequence step and repetition. |
 
-Position changes are unavailable for `server_sync` playback. Target ticks start at zero and exclude the timeline or Animation end. Invalid indices or out-of-range ticks throw `IllegalArgumentException`; an absent session returns `false`.
+Position changes are unavailable for `server_sync` playback. Target ticks start at zero. Invalid indices or out-of-range ticks throw `IllegalArgumentException`; an absent session returns `false`.
 
-Seeking applies the destination pose and its timeline events without replaying commands at skipped ticks. Changing the active Sequence Animation closes the outgoing segment and starts the incoming segment. Requests made during a callback or frame are applied after that processing completes.
+Seeking applies the destination pose and its timeline events without replaying commands at skipped ticks. Changing the active Sequence Animation closes the outgoing segment and starts the incoming segment.
 
 ## Playback placement
 
