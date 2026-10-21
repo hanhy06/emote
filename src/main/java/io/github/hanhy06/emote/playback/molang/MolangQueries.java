@@ -31,7 +31,6 @@ public final class MolangQueries {
         if (queries.contains("is_using_item")) session.setQuery("is_using_item", 0.0D);
         if (queries.contains("is_sleeping")) session.setQuery("is_sleeping", 0.0D);
         if (queries.contains("is_emoting")) session.setQuery("is_emoting", 0.0D);
-        if (queries.contains("item_is_charged")) session.setQuery("item_is_charged", 0.0D);
         if (queries.contains("sleep_rotation")) session.setQuery("sleep_rotation", 0.0D);
         if (queries.contains("is_on_fire")) session.setQuery("is_on_fire", 0.0D);
         if (queries.contains("is_in_water")) session.setQuery("is_in_water", 0.0D);

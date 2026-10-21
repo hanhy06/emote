@@ -62,7 +62,6 @@ public final class PlayerMolangQueries {
         if (queries.contains("is_using_item")) session.setQuery("is_using_item", usingItem ? 1.0D : 0.0D);
         if (queries.contains("is_sleeping")) session.setQuery("is_sleeping", player.isSleeping() ? 1.0D : 0.0D);
         if (queries.contains("is_emoting")) session.setQuery("is_emoting", 1.0D);
-        if (queries.contains("item_is_charged")) session.setQuery("item_is_charged", CrossbowItem.isCharged(player.getMainHandItem()) ? 1.0D : 0.0D);
         if (queries.contains("sleep_rotation")) session.setQuery("sleep_rotation", sleepRotation);
         if (queries.contains("is_on_fire")) session.setQuery("is_on_fire", player.isOnFire() ? 1.0D : 0.0D);
         if (queries.contains("is_in_water")) session.setQuery("is_in_water", player.isInWater() ? 1.0D : 0.0D);
