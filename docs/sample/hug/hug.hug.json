@@ -1,0 +1,42 @@
+{
+  "type": "sequence",
+  "schema_version": 5,
+  "target_minecraft_version": "26.3",
+  "id": "hug:hug",
+  "metadata": {
+    "name": "Hug",
+    "description": "Hug another player."
+  },
+  "settings": {
+    "cooldown": "0t",
+    "player": {
+      "hidden": true,
+      "stop_conditions": {
+        "movement_distance": 0.3,
+        "jump": true,
+        "submerge": true,
+        "ride": true,
+        "damage": true,
+        "attack": true,
+        "game_mode_change": true
+      }
+    }
+  },
+  "callbacks": [
+    {
+      "name": "emote:hug_callback",
+      "payload": "player_partner_start"
+    }
+  ],
+  "steps": [
+    {
+      "emote": "hug:free_hug"
+    },
+    {
+      "emote": "hug:put_away_sign"
+    },
+    {
+      "emote": "hug:hug_player0"
+    }
+  ]
+}

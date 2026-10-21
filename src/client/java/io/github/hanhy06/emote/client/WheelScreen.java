@@ -210,7 +210,7 @@ public class WheelScreen extends Screen {
 
         graphics.centeredText(
             this.font,
-            fitText(emoteSummary.displayName(), slot.textWidth()),
+            fitText(emoteSummary.name(), slot.textWidth()),
             slot.centerX(),
             slot.centerY() - this.font.lineHeight / 2,
             TITLE_COLOR
@@ -228,7 +228,7 @@ public class WheelScreen extends Screen {
             ? pageEmotes.get(this.hoveredSlotIndex)
             : null;
         if (hoveredEmote != null) {
-            graphics.centeredText(this.font, Component.literal(hoveredEmote.displayName()), metrics.centerX(), metrics.centerY() - 12, TITLE_COLOR);
+            graphics.centeredText(this.font, Component.literal(hoveredEmote.name()), metrics.centerX(), metrics.centerY() - 12, TITLE_COLOR);
         }
         graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.center.release"), metrics.centerX(), metrics.centerY() + 2, BODY_COLOR);
         graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.center.to_play"), metrics.centerX(), metrics.centerY() + 12, BODY_COLOR);
@@ -331,7 +331,7 @@ public class WheelScreen extends Screen {
             if (this.remainder * amount < 0.0D) {
                 this.remainder = 0.0D;
             }
-            this.remainder += amount / 5.0D;
+            this.remainder += amount / 2.0D;
             int pages = (int) (this.remainder + Math.copySign(1.0E-9D, this.remainder));
             this.remainder -= pages;
             if (Math.abs(this.remainder) < 1.0E-9D) {

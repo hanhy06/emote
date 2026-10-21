@@ -1,86 +1,54 @@
-import { compileConversionAnimationArtifact } from "../compiler/animationCompiler";
-import { animationOutputId, type ConversionDocument } from "../domain/conversionDocument";
-import { formatMinecraftTime, parseMinecraftTime } from "../format/time";
+import { compileAnimation } from "../compiler/animationCompiler";
+import type { ConversionDocument } from "../domain/conversionDocument";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
-import { serializeEmoteAnimation } from "../format/serializer";
-import { removeRedundantKeyframes } from "../format/keyframeCleanup";
+import { EMOTE_SCHEMA_VERSION } from "../format/emote";
 import type { ExportResult } from "./types";
-import { isSequenceControlId, type SequenceAnimationStep, type SequenceStep } from "../domain/emoteDefinition";
-import { ConversionError } from "../foundation/diagnostics";
+import { animationReferenceTargets, isSequenceControlId, type SequenceWeightedChoice, type SequenceStep } from "../domain/emoteDefinition";
 
-export async function createDocumentAnimationDownload(document: ConversionDocument, animationIndex: number): Promise<ExportResult[]> {
-  const compiled = compileAnimationFile(document, animationIndex);
-  const files = [compiled.file];
+export async function exportAnimation(document: ConversionDocument, animationIndex: number): Promise<ExportResult[]> {
+  const compiled = compileAnimation(document, animationIndex);
+  const files: ExportResult[] = [{
+    blob: new Blob([JSON.stringify(compiled.animation)], { type: "application/json" }),
+    fileName: animationFileNames(document.animations.map((entry) => entry.id))[animationIndex],
+  }];
   if (compiled.generatedResourceReferences.size > 0) {
-    const { exportDocumentResourceBundle } = await import("./resourceBundleExporter");
-    files.push(exportDocumentResourceBundle(document, compiled.generatedResourceReferences));
+    const { exportResourceBundle } = await import("./resourceBundleExporter");
+    files.push(exportResourceBundle(document, compiled.generatedResourceReferences));
   }
   return files;
 }
 
-export async function createDocumentAnimationBundleDownload(document: ConversionDocument, includeSequence: boolean): Promise<ExportResult[]> {
-  const compiled = compileAnimationFiles(document, includeSequence);
-  if (compiled.generatedResourceReferences.size === 0) return compiled.files;
-  const { exportDocumentResourceBundle } = await import("./resourceBundleExporter");
-  return [...compiled.files, exportDocumentResourceBundle(document, compiled.generatedResourceReferences)];
-}
-
-interface CompiledAnimationFile {
-  generatedResourceReferences: ReadonlySet<string>;
-  file: ExportResult;
-}
-
-interface CompiledAnimationFiles {
-  generatedResourceReferences: ReadonlySet<string>;
-  files: ExportResult[];
-}
-
-function compileAnimationFile(document: ConversionDocument, animationIndex: number): CompiledAnimationFile {
-  const compiled = compileConversionAnimationArtifact(document, animationIndex);
-  const animation = removeRedundantKeyframes(compiled.animation);
-  return {
-    generatedResourceReferences: compiled.generatedResourceReferences,
-    file: {
-      blob: new Blob([serializeEmoteAnimation(animation)], { type: "application/json" }),
-      fileName: animationFileNames(document.animations.map((entry, index) => index === animationIndex ? animation.id : animationOutputId(entry)))[animationIndex],
-    },
-  };
-}
-
-function compileAnimationFiles(document: ConversionDocument, includeSequence: boolean): CompiledAnimationFiles {
+export async function exportAnimations(document: ConversionDocument, includeSequence: boolean): Promise<ExportResult[]> {
   if (document.animations.length === 0) throw new Error("The project does not contain animations.");
-  const compiled = document.animations.map((_, index) => compileConversionAnimationArtifact(
+  const compiled = document.animations.map((_, index) => compileAnimation(
     document,
     index,
-    includeSequence ? { standalone: false } : undefined,
+    includeSequence ? false : undefined,
   ));
-  const animations = compiled.map((entry) => removeRedundantKeyframes(entry.animation));
+  const animations = compiled.map((entry) => entry.animation);
   const fileNames = animationFileNames(animations.map((animation) => animation.id));
   const generatedResourceReferences = new Set(compiled.flatMap((entry) => [...entry.generatedResourceReferences]));
-  const files: ExportResult[] = animations.map((animation, index) => {
-    return {
-      blob: new Blob([serializeEmoteAnimation(animation)], { type: "application/json" }),
-      fileName: fileNames[index],
-    };
-  });
+  const files: ExportResult[] = animations.map((animation, index) => ({
+    blob: new Blob([JSON.stringify(animation)], { type: "application/json" }),
+    fileName: fileNames[index],
+  }));
   if (includeSequence) {
-    const sequenceOutput = document.sequence;
-    const outputIdBySourceId = new Map(document.animations.flatMap((entry, index) => entry.runtime.sourceReferenceId
-      ? [[entry.runtime.sourceReferenceId, animations[index].id] as const] : []));
-    const baseSequenceId = `${sanitizeNamespace(sequenceOutput.namespace)}:${sanitizeResourcePath(sequenceOutput.idPath ?? sequenceOutput.displayName)}`;
+    const sequenceOutput = structuredClone(document.sequence);
+    const references = animationReferenceTargets(document.animations);
+    const baseSequenceId = `${sanitizeNamespace(sequenceOutput.namespace)}:${sanitizeResourcePath(sequenceOutput.idPath ?? sequenceOutput.name)}`;
     let sequenceId = baseSequenceId;
     let suffix = 1;
     while (animations.some((animation) => animation.id === sequenceId)) sequenceId = `${baseSequenceId}.${suffix++}`;
     const sequence = {
       type: "sequence",
-      schema_version: 4,
+      schema_version: EMOTE_SCHEMA_VERSION,
       target_minecraft_version: document.targetMinecraftVersion,
       id: sequenceId,
-      ...(sequenceOutput.callbacks?.length ? { callbacks: sequenceOutput.callbacks.map((callback) => ({ ...callback })) } : {}),
-      metadata: { ...sequenceOutput.additionalMetadata, name: sequenceOutput.displayName, description: sequenceOutput.description },
-      settings: { cooldown: formatMinecraftTime(parseMinecraftTime(sequenceOutput.cooldown)), player: sequenceOutput.player },
+      ...(sequenceOutput.callbacks?.length ? { callbacks: sequenceOutput.callbacks } : {}),
+      metadata: { ...sequenceOutput.additionalMetadata, name: sequenceOutput.name, description: sequenceOutput.description },
+      settings: { cooldown: sequenceOutput.cooldown, player: sequenceOutput.player },
       steps: sequenceOutput.steps
-        ? sequenceOutput.steps.map((step) => remapSequenceStep(step, outputIdBySourceId))
+        ? sequenceOutput.steps.map((step) => remapSequenceStep(step, references))
         : animations.map((animation) => ({ emote: animation.id })),
     };
     const baseFileName = emoteFileName(sequence.id);
@@ -92,7 +60,11 @@ function compileAnimationFiles(document: ConversionDocument, includeSequence: bo
       fileName,
     });
   }
-  return { generatedResourceReferences, files };
+  if (generatedResourceReferences.size > 0) {
+    const { exportResourceBundle } = await import("./resourceBundleExporter");
+    files.push(exportResourceBundle(document, generatedResourceReferences));
+  }
+  return files;
 }
 
 function animationFileNames(animationIds: readonly string[]): string[] {
@@ -112,11 +84,11 @@ function animationFileNames(animationIds: readonly string[]): string[] {
   });
 }
 
-function remapSequenceStep(step: SequenceStep, outputIdBySourceId: ReadonlyMap<string, string>): Record<string, unknown> {
+function remapSequenceStep(step: SequenceStep, references: ReadonlyMap<string, readonly string[]>): Record<string, unknown> {
   if ("wait" in step) return { wait: step.wait };
-  const emote = typeof step.emote === "string"
-    ? requireRemappedAnimationId(step.emote, outputIdBySourceId)
-    : flattenSequenceChoices(step, outputIdBySourceId);
+  const emote = Array.isArray(step.emote)
+    ? flattenSequenceChoices(step.emote, references)
+    : remapAnimationId(step.emote, references);
   return {
     emote,
     ...(step.repeat === undefined ? {} : { repeat: step.repeat }),
@@ -124,19 +96,17 @@ function remapSequenceStep(step: SequenceStep, outputIdBySourceId: ReadonlyMap<s
   };
 }
 
-function flattenSequenceChoices(step: SequenceAnimationStep, outputIdBySourceId: ReadonlyMap<string, string>): unknown[] {
-  const choices = step.emote as Exclude<SequenceAnimationStep["emote"], string>;
+function flattenSequenceChoices(choices: readonly SequenceWeightedChoice[], references: ReadonlyMap<string, readonly string[]>): unknown[] {
   const weighted = choices.some((choice) => choice.chance !== undefined);
   return choices.flatMap((choice) => weighted
-    ? [requireRemappedAnimationId(choice.id, outputIdBySourceId), choice.chance]
-    : [requireRemappedAnimationId(choice.id, outputIdBySourceId)]);
+    ? [remapAnimationId(choice.id, references), choice.chance]
+    : [remapAnimationId(choice.id, references)]);
 }
 
-function requireRemappedAnimationId(sourceId: string, outputIdBySourceId: ReadonlyMap<string, string>): string {
+function remapAnimationId(sourceId: string, references: ReadonlyMap<string, readonly string[]>): string {
   if (isSequenceControlId(sourceId)) return sourceId;
-  const outputId = outputIdBySourceId.get(sourceId);
-  if (!outputId) throw new ConversionError("missing_sequence_animation", `Sequence references an animation that is not in the document: ${sourceId}`, sourceId);
-  return outputId;
+  const targets = references.get(sourceId);
+  return targets?.length === 1 ? targets[0] : sourceId;
 }
 
 export function emoteFileName(id: string): string {

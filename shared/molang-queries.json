@@ -11,6 +11,7 @@
     "on_fire_time"
   ],
   "functions": {
+    "value": { "minimumArguments": 2, "maximumArguments": 2 },
     "all": { "minimumArguments": 2 },
     "any": { "minimumArguments": 2 },
     "approx_eq": { "minimumArguments": 2 },
@@ -26,7 +27,7 @@
   "preview": {
     "bakeableValues": ["anim_time", "delta_time", "key_frame_lerp_time", "life_time"],
     "truthyValues": ["is_on_ground", "is_emoting"],
-    "builtInFunctions": ["all", "any", "approx_eq", "in_range"]
+    "builtInFunctions": ["all", "any", "approx_eq", "in_range", "value"]
   },
   "playerRotationValues": [
     "target_x_rotation", "target_y_rotation", "body_x_rotation", "body_y_rotation", "head_x_rotation", "head_y_rotation",

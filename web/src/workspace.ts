@@ -1,25 +1,27 @@
+import { parseAnimationSeconds, parseMinecraftTime } from "./format/time";
 import {
-  assignDocumentSkinOrder,
-  assignDocumentSkinPart,
-  createConversionDocument,
-  documentPartAssignments,
-  replaceDocumentAnimationTimelineEvents,
-  updateDocumentAnimationLifecycleEvents,
-  updateDocumentAnimationOutput,
-  type AnimationOutputSettings,
+  assignSkinOrder,
+  assignSkinPart,
+  skinPartAssignments,
+  replaceTimelineEvents,
+  updateLifecycleEvents,
+  updateAnimation,
   type ConversionDocument,
 } from "./domain/conversionDocument";
-import type { ImportedProject } from "./domain/conversionSeed";
-import type { EmoteCallback, EmoteEvent, PlayerSkinPart } from "./format/emoteAnimation";
-import { selectNode, selectNodes } from "./preview/skinParts";
+import { animationReferenceTargets, isSequenceControlId, type EmoteCallback } from "./domain/emoteDefinition";
+import type { ConversionIssue } from "./foundation/diagnostics";
+import type { PlayerSkinPart } from "./domain/player";
+import type { AnimationEntryIR, EventIR } from "./domain/animationIR";
+import { TICKS_PER_SECOND } from "./format/time";
 
 export type WorkspacePage = 0 | 1 | 2;
+export type SelectedFrame = { type: "create" } | { type: "timeline"; tick: number };
 
 export interface ConversionSession {
   document: ConversionDocument;
   animationIndex: number;
-  previewFrameIndex: number;
-  selectedNodeIds: Set<string>;
+  selectedFrame: SelectedFrame;
+  selectedCandidateIds: Set<string>;
 }
 
 export interface WorkspaceState {
@@ -34,7 +36,6 @@ export interface WorkspaceState {
 
 export type WorkspaceAction =
   | { type: "open_started"; message: string }
-  | { type: "open_succeeded"; project: ImportedProject; adapterLabel: string }
   | { type: "documents_open_succeeded"; document: ConversionDocument }
   | { type: "open_failed"; message: string }
   | { type: "export_started"; message: string }
@@ -42,15 +43,15 @@ export type WorkspaceAction =
   | { type: "operation_finished" }
   | { type: "page_selected"; page: WorkspacePage }
   | { type: "animation_selected"; index: number }
-  | { type: "preview_frame_selected"; index: number }
-  | { type: "node_selected"; nodeId: string; additive: boolean }
-  | { type: "nodes_selected"; nodeIds: readonly string[]; additive: boolean }
+  | { type: "frame_selected"; frame: SelectedFrame }
+  | { type: "candidate_selected"; candidateId: string; additive: boolean }
+  | { type: "candidates_selected"; candidateIds: readonly string[]; additive: boolean }
   | { type: "skin_part_assigned"; part: PlayerSkinPart | null }
   | { type: "skin_order_assigned"; order: number }
-  | { type: "animation_output_changed"; output: AnimationOutputSettings }
+  | { type: "animation_changed"; ir: AnimationEntryIR }
   | { type: "minecraft_version_changed"; version: string }
-  | { type: "lifecycle_events_changed"; events: { callbacks: EmoteCallback[]; start: EmoteEvent[]; loop: EmoteEvent[]; stop: EmoteEvent[] } }
-  | { type: "timeline_events_changed"; tick: number; events: EmoteEvent[] };
+  | { type: "lifecycle_events_changed"; events: { callbacks: EmoteCallback[]; start: EventIR[]; loop: EventIR[]; stop: EventIR[] } }
+  | { type: "timeline_events_changed"; tick: number; events: EventIR[] };
 
 export const EMPTY_SELECTION = new Set<string>();
 
@@ -66,14 +67,10 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
   switch (action.type) {
     case "open_started":
       return { ...state, openError: "", exportError: "", operation: { type: "opening", message: action.message } };
-    case "open_succeeded": {
-      const session = createConversionSession(action.project, action.adapterLabel);
-      return openedSession(state, session);
-    }
-    case "documents_open_succeeded": {
-      const session = createConversionSessionFromDocument(action.document);
-      return openedSession(state, session);
-    }
+    case "documents_open_succeeded":
+      return { ...state,
+        session: { document: action.document, animationIndex: 0, selectedFrame: { type: "create" }, selectedCandidateIds: new Set() },
+        page: 0, operation: { type: "idle" } };
     case "open_failed":
       return { ...state, openError: action.message, operation: { type: "idle" } };
     case "export_started":
@@ -85,36 +82,36 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
     case "page_selected":
       return { ...state, page: action.page };
     case "animation_selected":
-      return updateSession(state, (session) => selectSessionAnimation(session, action.index), (session) => {
-        const animation = session.document.animations[session.animationIndex];
-        return animation?.preview.availability.status === "unavailable" ? 1 : state.page;
-      });
-    case "preview_frame_selected":
-      return updateSession(state, (session) => ({ ...session, previewFrameIndex: action.index, selectedNodeIds: new Set() }));
-    case "node_selected":
+      return updateSession(state, (session) => selectSessionAnimation(session, action.index));
+    case "frame_selected":
+      return updateSession(state, (session) => ({ ...session,
+        selectedFrame: action.frame.type === "create" ? action.frame : { type: "timeline",
+          tick: Math.max(0, Math.min(action.frame.tick, parseMinecraftTime(session.document.animations[session.animationIndex].clip.duration, 1))) },
+        selectedCandidateIds: new Set() }));
+    case "candidate_selected":
       return updateSession(state, (session) => ({
         ...session,
-        selectedNodeIds: selectNode(session.selectedNodeIds, action.nodeId, action.additive),
+        selectedCandidateIds: selectCandidate(session.selectedCandidateIds, action.candidateId, action.additive),
       }));
-    case "nodes_selected":
+    case "candidates_selected":
       return updateSession(state, (session) => ({
         ...session,
-        selectedNodeIds: selectNodes(session.selectedNodeIds, action.nodeIds, action.additive),
+        selectedCandidateIds: selectCandidates(session.selectedCandidateIds, action.candidateIds, action.additive),
       }));
     case "skin_part_assigned":
       return updateSession(state, (session) => ({
         ...session,
-        document: assignDocumentSkinPart(session.document, session.selectedNodeIds, action.part),
+        document: assignSkinPart(session.document, session.selectedCandidateIds, action.part),
       }));
     case "skin_order_assigned":
       return updateSession(state, (session) => ({
         ...session,
-        document: assignDocumentSkinOrder(session.document, session.selectedNodeIds, action.order),
+        document: assignSkinOrder(session.document, session.selectedCandidateIds, action.order),
       }));
-    case "animation_output_changed":
+    case "animation_changed":
       return updateSession(state, (session) => ({
         ...session,
-        document: updateDocumentAnimationOutput(session.document, session.animationIndex, action.output),
+        document: updateAnimation(session.document, session.animationIndex, action.ir),
       }));
     case "minecraft_version_changed":
       return updateSession(state, (session) => ({
@@ -124,55 +121,91 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
     case "lifecycle_events_changed":
       return updateSession(state, (session) => ({
         ...session,
-        document: updateDocumentAnimationLifecycleEvents(session.document, session.animationIndex, action.events),
+        document: updateLifecycleEvents(session.document, session.animationIndex, action.events),
       }));
     case "timeline_events_changed":
       return updateSession(state, (session) => ({
         ...session,
-        document: replaceDocumentAnimationTimelineEvents(session.document, session.animationIndex, action.tick, action.events),
+        document: replaceTimelineEvents(session.document, session.animationIndex, action.tick, action.events),
       }));
   }
 }
 
 export function assignmentSummary(document: ConversionDocument): string {
-  const assignments = documentPartAssignments(document);
-  const assigned = Object.values(document.skinGroups).filter((group) => group.nodeIds.every((nodeId) => assignments[nodeId])).length;
-  const skin = Object.keys(document.skinGroups).length
-    ? `${assigned}/${Object.keys(document.skinGroups).length} skin parts assigned`
+  const assignments = skinPartAssignments(document);
+  const groups = [...new Set(Object.values(document.skinCandidates).map((candidate) => candidate.groupId))];
+  const assigned = groups.filter((group) => Object.entries(document.skinCandidates).filter(([, candidate]) => candidate.groupId === group).every(([id]) => assignments[id])).length;
+  const skin = groups.length
+    ? `${assigned}/${groups.length} skin parts assigned`
     : "No skin assignment needed";
   return document.resources.size ? `${skin} · ${document.resources.size} resource files` : skin;
 }
 
-function createConversionSession(project: ImportedProject, adapterLabel: string): ConversionSession {
-  return createConversionSessionFromDocument(createConversionDocument(project, adapterLabel));
+export function eventReviewLocations(document: ConversionDocument | null): { owner: string; locations: string[] }[] {
+  if (!document) return [];
+  const review: { owner: string; locations: string[] }[] = [];
+  for (const animation of document.animations) {
+    const events = animation.clip.events;
+    const locations: string[] = [];
+    if (events?.start?.some((event) => event.action.type === "commands" && event.action.commands.length > 0)) locations.push("start");
+    const times = [...new Set(events?.timeline?.filter((event) => event.action.type === "commands" && event.action.commands.length > 0).map((event) => event.time) ?? [])].sort((first, second) => parseAnimationSeconds(first) - parseAnimationSeconds(second));
+    if (times.length) locations.push(`frames: ${times.map((time) => `${Number((parseAnimationSeconds(time) * TICKS_PER_SECOND).toPrecision(12))}t`).join(", ")}`);
+    for (const phase of ["loop", "stop"] as const) {
+      if (events?.[phase]?.some((event) => event.action.type === "commands" && event.action.commands.length > 0)) locations.push(phase);
+    }
+    if (animation.callbacks?.length) locations.push("callbacks");
+    if (locations.length) review.push({ owner: `Animation ${animation.id}`, locations });
+  }
+  if (document.sequence.callbacks?.length) review.push({ owner: `Sequence ${document.sequence.name}`, locations: ["callbacks"] });
+  return review;
 }
 
-function createConversionSessionFromDocument(document: ConversionDocument): ConversionSession {
-  return {
-    document,
-    animationIndex: 0,
-    previewFrameIndex: 0,
-    selectedNodeIds: new Set(),
-  };
+export function sequenceReferenceWarnings(document: ConversionDocument | null): ConversionIssue[] {
+  if (!document) return [];
+  const references = animationReferenceTargets(document.animations);
+  return (document.sequence.steps ?? []).flatMap((step, index) => {
+    if ("wait" in step) return [];
+    const ids = typeof step.emote === "string" ? [step.emote] : step.emote.map((choice) => choice.id);
+    return [...new Set(ids)].flatMap((id) => {
+      if (isSequenceControlId(id)) return [];
+      const targets = references.get(id);
+      if (targets?.length === 1) return [];
+      return [{
+        severity: "warning" as const,
+        code: targets ? "sequence_ambiguous_reference" : "sequence_external_reference",
+        message: targets
+          ? `Sequence ${document.sequence.name}, step ${index + 1}: ${id} matches multiple imported animations. The reference is preserved; choose an output animation ID.`
+          : `Sequence ${document.sequence.name}, step ${index + 1}: ${id} is not included in this export. The reference is preserved; make sure this emote is available on the server.`,
+        sourcePath: `$.steps[${index}].emote`,
+      }];
+    });
+  });
 }
 
-function openedSession(state: WorkspaceState, session: ConversionSession): WorkspaceState {
-  const animation = session.document.animations[session.animationIndex];
-  const page = animation?.preview.availability.status === "unavailable" ? 1 : 0;
-  return { ...state, session, page, operation: { type: "idle" } };
+function selectCandidate(current: ReadonlySet<string>, candidateId: string, additive: boolean): Set<string> {
+  if (!additive) return current.has(candidateId) ? new Set() : new Set([candidateId]);
+  const next = new Set(current);
+  if (next.has(candidateId)) next.delete(candidateId);
+  else next.add(candidateId);
+  return next;
+}
+
+function selectCandidates(current: ReadonlySet<string>, candidateIds: readonly string[], additive: boolean): Set<string> {
+  const next = additive ? new Set(current) : new Set<string>();
+  candidateIds.forEach((candidateId) => next.add(candidateId));
+  return next;
 }
 
 function selectSessionAnimation(session: ConversionSession, animationIndex: number): ConversionSession {
   if (!session.document.animations[animationIndex]) return session;
-  return { ...session, animationIndex, previewFrameIndex: 0, selectedNodeIds: new Set() };
+  return { ...session, animationIndex, selectedFrame: { type: "create" }, selectedCandidateIds: new Set() };
 }
 
 function updateSession(
   state: WorkspaceState,
   edit: (session: ConversionSession) => ConversionSession,
-  page: (session: ConversionSession) => WorkspacePage = () => state.page,
 ): WorkspaceState {
   if (!state.session) return state;
   const session = edit(state.session);
-  return { ...state, session, page: page(session) };
+  return { ...state, session };
 }

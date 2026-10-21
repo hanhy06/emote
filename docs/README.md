@@ -18,7 +18,7 @@ Join the Discord server to share emotes you have made.
 
 Emote is a server-side emote mod that plays animations with Minecraft display entities. All server features work when the mod is installed only on the server. Installing it on the client is optional and adds an emote wheel and automatic third-person view during playback.
 
-The web converter supports BD Engine, GeckoLib, and Animated Java. Configure skin parts, metadata, playback settings, and events without editing Animation JSON.
+The web converter imports BD Engine, GeckoLib, and Animated Java projects, with experimental support for Bedrock and Emotecraft. Configure skin parts, metadata, playback settings, and events before export.
 
 On the server, LuckPerms permissions can assign emotes and idle emotes per player. Sequences can connect multiple animations, with the player's skin applied to compatible animations. A server API is also available for other mods to register emotes, control playback, and receive events.
 
@@ -44,7 +44,7 @@ The emote menu and wheel editor can search by name, ID, description, or `#tags` 
 | `/emote reload`                               | Reloads configuration and animations.                                                                                                                                                         |
 | `/emote enable/disable <id>`                  | Enables or disables an emote.                                                                                                                                                                 |
 | `/emote stop <player>`, `/emote stop @a`      | Stops selected players' emotes; use `@a` for all players.                                                                                                                                     |
-| `/emote stress-test <time> [load] [packets]`  | Measures server performance with concurrent emotes and configurable packet fanout (default 20). `100` or `100i` requests 100 instances; `1000d` requests up to 1,000 display entities.       |
+| `/emote stress-test <time> [load]`            | Measures server and emote processing performance with concurrent emotes (default 50 instances). `50` or `50i` requests 50 instances; `768d` requests up to 768 display entities.                |
 | `/emote account`                              | Lists registered bake accounts and the selected skin provider.                                                                                                                                |
 | `/emote account login`                        | Connects a Minecraft account using Microsoft device login.                                                                                                                                    |
 | `/emote account remove <account>`             | Removes a bake account by name or UUID.                                                                                                                                                       |
@@ -60,7 +60,7 @@ config/emote/
 ├── emote/
 └── resource-pack/
 ```
-The directory and configuration files are created automatically on first startup, with sample emotes included under `emote/`.
+The directory and configuration files are created automatically on first startup, with [sample emotes](https://github.com/hanhy06/emote/tree/main/docs/sample) included under `emote/`.
 
 Place JSON exported by the converter under `emote/`. Subdirectories are loaded as well, and emotes use the `id` in the JSON rather than the filename. Invalid files are skipped individually, while every file sharing a duplicate ID is rejected.
 
@@ -74,7 +74,7 @@ Place JSON exported by the converter under `emote/`. Subdirectories are loaded a
   "mineskin_poll_interval_seconds": 3,
   "mineskin_cache_retention_days": 30,
   "mineskin_cache_max_mib": 256,
-  "max_active_display_entities": 512,
+  "max_active_display_entities": 768,
   "default_skin": ""
 }
 ```
@@ -106,7 +106,7 @@ Set `mineskin_api_key` to generate player skin textures when no bake accounts ar
 }
 ```
 
-`disabled` turns off emotes, while `permissions` determines the emotes and idle emotes available to each player. Valid emote IDs in `emotes` are matched literally; other entries are Java regular expressions matched against the complete emote ID. `*` is a special value that grants every enabled emote. Regular-expression backslashes must also be escaped for JSON. Every player receives `emote.default`. `emote.bypass` is an administrator and development override that ignores `standalone`, disabled IDs, permissions, and cooldowns.
+`disabled` turns off emotes, while `permissions` determines the emotes and idle emotes available to each player. Valid emote IDs in `emotes` are matched literally; other entries are Java regular expressions matched against the complete emote ID. `*` is a special value that grants every enabled standalone emote. Regular-expression backslashes must also be escaped for JSON. `emote.default` is allowed unless explicitly denied. `emote.bypass` is an administrator and development override that ignores `standalone`, disabled IDs, permissions, and cooldowns.
 
 ## Web converter
 
@@ -124,7 +124,7 @@ Use the 3D preview to assign skin parts, then configure metadata, playback behav
 
 ### Animation conversion
 
-The web converter recalculates the source animation's easing and interpolation curves for Minecraft ticks. It preserves important points in Bézier, Catmull-Rom, bounce, and elastic motion, then selects the keyframe placement with the lowest position, rotation, and scale error to keep the result as close to the original movement as possible.
+The web converter supports animation curves including Bézier, Catmull-Rom, bounce, and elastic motion. The browser preview helps check skin assignments and may differ from in-game playback.
 
 Each animation can define a cooldown, player visibility, stop conditions such as movement, jumping, attacking, and taking damage, and events.
 
@@ -132,13 +132,10 @@ Each animation can define a cooldown, player visibility, stop conditions such as
 
 ### Sequence
 
-Connect short animation clips in order and combine waits, weighted random choices, and repeats to create a single emote.
+Connect short animation clips in order and combine waits, weighted random choices, and repeats to create a single emote. Install the Sequence and every referenced Animation together. The following excerpt shows its steps:
 
 ```json
 {
-  "type": "sequence",
-  "schema_version": 4,
-  "id": "sit:idle.sit",
   "steps": [
     {"emote": "sit:sit_down"},
     {"wait": "10t"},

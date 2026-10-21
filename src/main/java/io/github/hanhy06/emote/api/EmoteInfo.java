@@ -11,10 +11,10 @@ public record EmoteInfo(
     Kind kind,
     boolean standalone,
     EmoteMetadata metadata,
-    EmotePlayerBehavior player,
+    EmotePlayerBehavior playerBehavior,
     @Nullable Integer durationTicks,
     int cooldownTicks,
-    EmoteAnimation.LoopMode loopMode
+    EmoteAnimation.PlaybackMode playbackMode
 ) {
     public enum Kind { ANIMATION, SEQUENCE }
 
@@ -22,15 +22,15 @@ public record EmoteInfo(
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(kind, "kind");
         Objects.requireNonNull(metadata, "metadata");
-        Objects.requireNonNull(player, "player");
-        Objects.requireNonNull(loopMode, "loopMode");
+        Objects.requireNonNull(playerBehavior, "playerBehavior");
+        Objects.requireNonNull(playbackMode, "playbackMode");
     }
 
-    public String getName() {
+    public String name() {
         return this.metadata.name();
     }
 
-    public String getDescription() {
+    public String description() {
         return this.metadata.description();
     }
 }

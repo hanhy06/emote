@@ -1,9 +1,11 @@
 package io.github.hanhy06.emote.content.loader;
 
 import com.google.gson.*;
+import io.github.hanhy06.emote.api.EmoteCallback;
+import io.github.hanhy06.emote.api.EmoteLoadException;
+import io.github.hanhy06.emote.api.EmoteMetadata;
+import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation.Node;
-import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
-import io.github.hanhy06.emote.molang.MolangEngine;
 import io.github.hanhy06.emote.util.MinecraftTime;
 import net.minecraft.resources.Identifier;
 
@@ -11,23 +13,20 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 final class EmoteJsonDocument {
     static final int MAX_JSON_BYTES = 8 * 1_024 * 1_024;
 
     private final Path sourcePath;
-    private final byte[] bytes;
     private final JsonObject root;
 
-    private EmoteJsonDocument(Path sourcePath, byte[] bytes, JsonObject root) {
+    private EmoteJsonDocument(Path sourcePath, JsonObject root) {
         this.sourcePath = sourcePath;
-        this.bytes = bytes;
         this.root = root;
     }
 
-    static EmoteJsonDocument read(Path sourcePath) throws EmoteAnimationLoadException {
+    static EmoteJsonDocument read(Path sourcePath) throws EmoteLoadException {
         Objects.requireNonNull(sourcePath, "sourcePath");
         try {
             if (Files.size(sourcePath) > MAX_JSON_BYTES) {
@@ -35,11 +34,11 @@ final class EmoteJsonDocument {
             }
             return parse(sourcePath, Files.readAllBytes(sourcePath));
         } catch (IOException exception) {
-            throw new EmoteAnimationLoadException(sourcePath, "$", "failed to read file", exception);
+            throw new EmoteLoadException(sourcePath, "$", "failed to read file", exception);
         }
     }
 
-    static EmoteJsonDocument parse(Path sourcePath, byte[] bytes) throws EmoteAnimationLoadException {
+    static EmoteJsonDocument parse(Path sourcePath, byte[] bytes) throws EmoteLoadException {
         Objects.requireNonNull(sourcePath, "sourcePath");
         Objects.requireNonNull(bytes, "bytes");
         if (bytes.length > MAX_JSON_BYTES) {
@@ -50,24 +49,20 @@ final class EmoteJsonDocument {
         try {
             rootElement = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8));
         } catch (JsonParseException exception) {
-            throw new EmoteAnimationLoadException(sourcePath, "$", "invalid JSON", exception);
+            throw new EmoteLoadException(sourcePath, "$", "invalid JSON", exception);
         }
         if (!rootElement.isJsonObject()) {
-            throw new EmoteAnimationLoadException(sourcePath, "$", "must be an object");
+            throw new EmoteLoadException(sourcePath, "$", "must be an object");
         }
 
         JsonObject root = rootElement.getAsJsonObject();
-        EmoteJsonDocument document = new EmoteJsonDocument(sourcePath, bytes, root);
+        EmoteJsonDocument document = new EmoteJsonDocument(sourcePath, root);
         document.requireString(root, "type", "$");
         return document;
     }
 
     Path sourcePath() {
         return this.sourcePath;
-    }
-
-    byte[] bytes() {
-        return this.bytes;
     }
 
     JsonObject root() {
@@ -78,18 +73,68 @@ final class EmoteJsonDocument {
         return this.root.get("type").getAsString();
     }
 
-    JsonObject requireObject(JsonObject object, String key, String path) throws EmoteAnimationLoadException {
+    EmoteMetadata metadata() throws EmoteLoadException {
+        JsonObject object = requireObject(this.root, "metadata", "$");
+        String name = requireString(object, "name", "$.metadata");
+        if (name.isBlank()) {
+            throw error("$.metadata.name", "must not be blank");
+        }
+        String description = requireString(object, "description", "$.metadata");
+        LinkedHashMap<String, JsonElement> additional = new LinkedHashMap<>();
+        object.entrySet().stream()
+            .filter(entry -> !entry.getKey().equals("name") && !entry.getKey().equals("description"))
+            .forEach(entry -> additional.put(entry.getKey(), entry.getValue()));
+        return new EmoteMetadata(name, description, additional);
+    }
+
+    List<EmoteCallback> callbacks() throws EmoteLoadException {
+        JsonArray array = optionalArray(this.root, "callbacks", "$");
+        if (array == null) return List.of();
+        List<EmoteCallback> callbacks = new ArrayList<>();
+        for (int index = 0; index < array.size(); index++) {
+            String path = "$.callbacks[" + index + "]";
+            JsonObject callback = requireObject(array.get(index), path);
+            Identifier name = requireIdentifier(requireString(callback, "name", path), path + ".name");
+            String payload = callback.has("payload") ? requireString(callback, "payload", path) : "";
+            callbacks.add(new EmoteCallback(name, payload));
+        }
+        return List.copyOf(callbacks);
+    }
+
+    EmotePlayerBehavior parsePlayerBehavior(JsonObject object, String path) throws EmoteLoadException {
+        boolean hidden = requireBoolean(object, "hidden", path);
+        JsonObject stopObject = requireObject(object, "stop_conditions", path);
+        String stopPath = path + ".stop_conditions";
+        double movementDistance = requireFiniteDouble(
+            requireElement(stopObject, "movement_distance", stopPath),
+            stopPath + ".movement_distance"
+        );
+        if (movementDistance < 0.0D) {
+            throw error(stopPath + ".movement_distance", "must not be negative");
+        }
+        return new EmotePlayerBehavior(hidden, new EmotePlayerBehavior.StopConditions(
+            movementDistance,
+            requireBoolean(stopObject, "jump", stopPath),
+            requireBoolean(stopObject, "submerge", stopPath),
+            requireBoolean(stopObject, "ride", stopPath),
+            requireBoolean(stopObject, "damage", stopPath),
+            requireBoolean(stopObject, "attack", stopPath),
+            requireBoolean(stopObject, "game_mode_change", stopPath)
+        ));
+    }
+
+    JsonObject requireObject(JsonObject object, String key, String path) throws EmoteLoadException {
         return requireObject(requireElement(object, key, path), path + "." + key);
     }
 
-    JsonObject requireObject(JsonElement element, String path) throws EmoteAnimationLoadException {
+    JsonObject requireObject(JsonElement element, String path) throws EmoteLoadException {
         if (!element.isJsonObject()) {
             throw error(path, "must be an object");
         }
         return element.getAsJsonObject();
     }
 
-    JsonObject optionalObject(JsonObject object, String key, String path) throws EmoteAnimationLoadException {
+    JsonObject optionalObject(JsonObject object, String key, String path) throws EmoteLoadException {
         JsonElement element = object.get(key);
         if (element == null || element.isJsonNull()) {
             return null;
@@ -97,7 +142,7 @@ final class EmoteJsonDocument {
         return requireObject(element, path + "." + key);
     }
 
-    JsonArray requireArray(JsonObject object, String key, String path) throws EmoteAnimationLoadException {
+    JsonArray requireArray(JsonObject object, String key, String path) throws EmoteLoadException {
         JsonElement element = requireElement(object, key, path);
         if (!element.isJsonArray()) {
             throw error(path + "." + key, "must be an array");
@@ -105,7 +150,7 @@ final class EmoteJsonDocument {
         return element.getAsJsonArray();
     }
 
-    JsonArray optionalArray(JsonObject object, String key, String path) throws EmoteAnimationLoadException {
+    JsonArray optionalArray(JsonObject object, String key, String path) throws EmoteLoadException {
         JsonElement element = object.get(key);
         if (element == null || element.isJsonNull()) {
             return null;
@@ -116,7 +161,7 @@ final class EmoteJsonDocument {
         return element.getAsJsonArray();
     }
 
-    JsonElement requireElement(JsonObject object, String key, String path) throws EmoteAnimationLoadException {
+    JsonElement requireElement(JsonObject object, String key, String path) throws EmoteLoadException {
         JsonElement element = object.get(key);
         if (element == null || element.isJsonNull()) {
             throw error(path + "." + key, "is required");
@@ -124,7 +169,7 @@ final class EmoteJsonDocument {
         return element;
     }
 
-    String requireString(JsonObject object, String key, String path) throws EmoteAnimationLoadException {
+    String requireString(JsonObject object, String key, String path) throws EmoteLoadException {
         JsonElement element = requireElement(object, key, path);
         if (isNotString(element)) {
             throw error(path + "." + key, "must be a string");
@@ -132,7 +177,7 @@ final class EmoteJsonDocument {
         return element.getAsString();
     }
 
-    boolean requireBoolean(JsonObject object, String key, String path) throws EmoteAnimationLoadException {
+    boolean requireBoolean(JsonObject object, String key, String path) throws EmoteLoadException {
         JsonElement element = requireElement(object, key, path);
         if (isNotBoolean(element)) {
             throw error(path + "." + key, "must be a boolean");
@@ -140,7 +185,7 @@ final class EmoteJsonDocument {
         return element.getAsBoolean();
     }
 
-    int requireInt(JsonObject object, String key, String path) throws EmoteAnimationLoadException {
+    int requireInt(JsonObject object, String key, String path) throws EmoteLoadException {
         JsonElement element = requireElement(object, key, path);
         if (isNotNumber(element)) {
             throw error(path + "." + key, "must be an integer");
@@ -152,18 +197,17 @@ final class EmoteJsonDocument {
         }
     }
 
-    int requireTime(JsonObject object, String key, String path, int minimumTicks)
-        throws EmoteAnimationLoadException {
-        String fieldPath = path + "." + key;
+    int requireTicks(JsonObject object, String key, String path, int minimumTicks)
+        throws EmoteLoadException {
         String value = requireString(object, key, path);
         try {
             return MinecraftTime.parse(value, minimumTicks);
         } catch (IllegalArgumentException exception) {
-            throw error(fieldPath, "must be a valid Minecraft time", exception);
+            throw error(path + "." + key, "must be a valid Minecraft time", exception);
         }
     }
 
-    Identifier requireIdentifier(String value, String path) throws EmoteAnimationLoadException {
+    Identifier requireIdentifier(String value, String path) throws EmoteLoadException {
         int separator = value.indexOf(':');
         if (separator <= 0 || separator == value.length() - 1) {
             throw error(path, "must use namespace:path format");
@@ -175,29 +219,20 @@ final class EmoteJsonDocument {
         return id;
     }
 
-    Node requireNode(Map<String, Node> nodes, String nodeId, String path) throws EmoteAnimationLoadException {
+    Node requireNode(Map<String, Node> nodes, String nodeId, String path) throws EmoteLoadException {
         Node node = nodes.get(nodeId);
         if (node == null) throw error(path, "references unknown node: " + nodeId);
         return node;
     }
 
-    void requireMolang(String source, String path) throws EmoteAnimationLoadException {
-        try {
-            MolangEngine.INSTANCE.compile(source);
-        } catch (MolangEngine.MolangCompileException exception) {
-            throw error(path, "invalid Molang program", exception);
-        }
-    }
-
     void requireExactInt(JsonObject object, String key, String path, int expected)
-        throws EmoteAnimationLoadException {
-        int value = requireInt(object, key, path);
-        if (value != expected) {
+        throws EmoteLoadException {
+        if (requireInt(object, key, path) != expected) {
             throw error(path + "." + key, "must equal " + expected);
         }
     }
 
-    double requireFiniteDouble(JsonElement element, String path) throws EmoteAnimationLoadException {
+    double requireFiniteDouble(JsonElement element, String path) throws EmoteLoadException {
         if (isNotNumber(element)) {
             throw error(path, "must be a number");
         }
@@ -212,12 +247,12 @@ final class EmoteJsonDocument {
         return !element.isJsonPrimitive() || !element.getAsJsonPrimitive().isString();
     }
 
-    EmoteAnimationLoadException error(String fieldPath, String message) {
-        return new EmoteAnimationLoadException(this.sourcePath, fieldPath, message);
+    EmoteLoadException error(String fieldPath, String message) {
+        return new EmoteLoadException(this.sourcePath, fieldPath, message);
     }
 
-    EmoteAnimationLoadException error(String fieldPath, String message, Throwable cause) {
-        return new EmoteAnimationLoadException(this.sourcePath, fieldPath, message, cause);
+    EmoteLoadException error(String fieldPath, String message, Throwable cause) {
+        return new EmoteLoadException(this.sourcePath, fieldPath, message, cause);
     }
 
     private boolean isNotBoolean(JsonElement element) {
@@ -228,8 +263,8 @@ final class EmoteJsonDocument {
         return !element.isJsonPrimitive() || !element.getAsJsonPrimitive().isNumber();
     }
 
-    private static EmoteAnimationLoadException tooLarge(Path sourcePath) {
-        return new EmoteAnimationLoadException(
+    private static EmoteLoadException tooLarge(Path sourcePath) {
+        return new EmoteLoadException(
             sourcePath,
             "$",
             "file must not exceed " + MAX_JSON_BYTES + " bytes"

@@ -1,0 +1,59 @@
+{
+  "format_version": "1.8.0",
+  "animations": {
+    "reference": {
+      "animation_length": 2,
+      "loop": "hold_on_last_frame",
+      "blend_weight": 0.5,
+      "start_delay": 0.15,
+      "loop_delay": "q.is_sneaking * 0.1",
+      "anim_time_update": "q.anim_time + q.delta_time",
+      "bones": {
+        "root": {
+          "position": {
+            "1.5": { "pre": [32, 64, 96], "post": [64, 128, 192] },
+            "0.5": { "pre": [8, 16, 24], "post": [16, 32, 48] }
+          },
+          "rotation": [20, 40, 60],
+          "scale": [2]
+        },
+        "head": { "rotation": [10, 20, 30], "relative_to": { "rotation": "entity" } },
+        "prop": {
+          "position": {
+            "0.0": [0, 0, 0],
+            "0.5": { "pre": [8, 16, 24], "post": [16, 32, 48], "lerp_mode": "catmullrom" },
+            "1.5": { "pre": [48, 96, 144], "post": [64, 128, 192], "lerp_mode": "catmullrom" },
+            "2.0": [80, 160, 240]
+          }
+        }
+      },
+      "timeline": { "0.75": "/say bedrock curve" }
+    },
+    "dynamic": {
+      "animation_length": 2,
+      "blend_weight": "t.weight = q.scoreboard('blend') + math.random(0, 0); return t.weight;",
+      "bones": {
+        "root": {
+          "position": {
+            "0.5": {
+              "pre": [99, 99, 99],
+              "post": ["t.x = q.scoreboard('start_x') + math.random(0, 0); return t.x;", "q.scoreboard('start_y')", "q.scoreboard('start_z')"]
+            },
+            "1.5": {
+              "pre": ["q.scoreboard('end_x')", "q.scoreboard('end_y')", "q.scoreboard('end_z')"],
+              "post": ["q.scoreboard('post_x')", "q.scoreboard('post_y')", "q.scoreboard('post_z')"]
+            }
+          },
+          "rotation": ["t.angle = q.scoreboard('angle'); return t.angle;", "t.angle = q.scoreboard('angle'); return t.angle;", "t.angle = q.scoreboard('angle'); return t.angle;"],
+          "scale": "t.size = q.scoreboard('scale'); return t.size;"
+        },
+        "prop": {
+          "position": {
+            "0.0": ["q.scoreboard('cat_start_x')", "q.scoreboard('cat_start_y')", "q.scoreboard('cat_start_z')"],
+            "1.0": { "post": ["q.scoreboard('cat_end_x')", "q.scoreboard('cat_end_y')", "q.scoreboard('cat_end_z')"], "lerp_mode": "catmullrom" }
+          }
+        }
+      }
+    }
+  }
+}

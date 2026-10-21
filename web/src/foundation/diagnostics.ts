@@ -37,10 +37,6 @@ export class ConversionError extends Error {
     this.sourcePath = sourcePath;
   }
 
-  static fromIssue(issue: ConversionIssue): ConversionError {
-    return new ConversionError(issue.code, issue.message, issue.sourcePath);
-  }
-
   static fromUnknown(reason: unknown, code: string, fallbackMessage: string, sourcePath?: string): ConversionError {
     if (reason instanceof ConversionError) return reason;
     return new ConversionError(code, reason instanceof Error ? reason.message : fallbackMessage, sourcePath, {

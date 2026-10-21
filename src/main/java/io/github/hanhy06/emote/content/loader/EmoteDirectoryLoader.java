@@ -1,9 +1,12 @@
 package io.github.hanhy06.emote.content.loader;
 
 import io.github.hanhy06.emote.EmoteMod;
-import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
-import io.github.hanhy06.emote.content.LoadedSequence;
+import io.github.hanhy06.emote.api.EmoteLoadException;
 import io.github.hanhy06.emote.content.LoadedAnimation;
+import io.github.hanhy06.emote.content.LoadedSequence;
+import io.github.hanhy06.emote.config.JsonFileStore;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -13,29 +16,27 @@ import java.util.*;
 import java.util.stream.Stream;
 
 public final class EmoteDirectoryLoader {
-    private final AnimationJsonParser animationParser;
-    private final SequenceJsonParser sequenceParser;
-    private final AnimationContentResolver contentResolver;
+    private final AnimationJsonParser animationParser = new AnimationJsonParser();
+    private final SequenceJsonParser sequenceParser = new SequenceJsonParser();
 
-    public EmoteDirectoryLoader() {
-        this(new AnimationJsonParser(), new SequenceJsonParser(), new AnimationContentResolver());
-    }
-
-    EmoteDirectoryLoader(
-        AnimationJsonParser animationParser,
-        SequenceJsonParser sequenceParser,
-        AnimationContentResolver contentResolver
-    ) {
-        this.animationParser = animationParser;
-        this.sequenceParser = sequenceParser;
-        this.contentResolver = contentResolver;
+    public static void updateDefaultSkin(Path path, String id, String base64) throws IOException, EmoteLoadException {
+        EmoteJsonDocument document = EmoteJsonDocument.read(path);
+        if (!document.type().equals("animation") || !id.equals(document.requireString(document.root(), "id", "$"))) {
+            throw new IOException("emote file changed while preparing its default skin");
+        }
+        JsonObject root = document.root();
+        JsonObject skin = root.has("skin") ? document.requireObject(root, "skin", "$") : new JsonObject();
+        if (skin.has("default") && skin.get("default").isJsonPrimitive() && base64.equals(skin.get("default").getAsString())) return;
+        skin.addProperty("default", base64);
+        root.add("skin", skin);
+        var gson = new GsonBuilder().disableHtmlEscaping().create();
+        if (gson.toJson(root).getBytes(java.nio.charset.StandardCharsets.UTF_8).length > EmoteJsonDocument.MAX_JSON_BYTES) {
+            throw new IOException("emote JSON exceeds 8 MiB after adding its default skin");
+        }
+        JsonFileStore.writeObjectAtomically(path, root, gson);
     }
 
     public LoadResult load(Path directory) {
-        return load(directory, this.contentResolver::resolve);
-    }
-
-    LoadResult load(Path directory, AnimationResolver resolver) {
         List<LoadedAnimation> candidates = new ArrayList<>();
         List<LoadedSequence> sequenceCandidates = new ArrayList<>();
         List<Path> detectedFiles = findJsonFiles(directory);
@@ -43,14 +44,14 @@ public final class EmoteDirectoryLoader {
             try {
                 EmoteJsonDocument document = EmoteJsonDocument.read(path);
                 switch (document.type()) {
-                    case "animation" -> candidates.add(resolver.resolve(this.animationParser.parse(document)));
+                    case "animation" -> candidates.add(this.animationParser.parse(document));
                     case "sequence" -> sequenceCandidates.add(this.sequenceParser.parse(document));
                     default -> throw document.error(
                         "$.type",
                         "unsupported emote file type: " + document.type()
                     );
                 }
-            } catch (EmoteAnimationLoadException exception) {
+            } catch (EmoteLoadException exception) {
                 EmoteMod.LOGGER.warn("Ignoring invalid emote file: {}", exception.getMessage());
             }
         }
@@ -84,7 +85,7 @@ public final class EmoteDirectoryLoader {
     ) {
         Map<String, List<Path>> pathsById = new LinkedHashMap<>();
         for (LoadedAnimation candidate : candidates) {
-            pathsById.computeIfAbsent(candidate.animation().id().toString(), ignored -> new ArrayList<>())
+            pathsById.computeIfAbsent(candidate.model().id().toString(), ignored -> new ArrayList<>())
                 .add(candidate.sourcePath());
         }
         for (LoadedSequence candidate : sequenceCandidates) {
@@ -97,8 +98,8 @@ public final class EmoteDirectoryLoader {
             .map(Map.Entry::getKey)
             .collect(java.util.stream.Collectors.toUnmodifiableSet());
         List<LoadedAnimation> loaded = candidates.stream()
-            .filter(candidate -> !duplicateIds.contains(candidate.animation().id().toString()))
-            .sorted(Comparator.comparing(candidate -> candidate.animation().id().toString()))
+            .filter(candidate -> !duplicateIds.contains(candidate.model().id().toString()))
+            .sorted(Comparator.comparing(candidate -> candidate.model().id().toString()))
             .toList();
         List<LoadedSequence> sequences = sequenceCandidates.stream()
             .filter(candidate -> !duplicateIds.contains(candidate.id().toString()))
@@ -117,8 +118,4 @@ public final class EmoteDirectoryLoader {
         }
     }
 
-    @FunctionalInterface
-    interface AnimationResolver {
-        LoadedAnimation resolve(LoadedAnimation loaded) throws EmoteAnimationLoadException;
-    }
 }

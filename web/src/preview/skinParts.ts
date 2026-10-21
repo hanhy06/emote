@@ -9,20 +9,5 @@ export const SKIN_PARTS = [
   { id: "right_leg", label: "Right Leg", color: "#74ca86" },
 ] as const;
 
-export type SkinPartId = PlayerSkinPart;
-export type PartAssignments = Record<string, SkinPartId | null>;
+export type PartAssignments = Record<string, PlayerSkinPart | null>;
 export type PartOrders = Record<string, number | null>;
-
-export function selectNode(current: ReadonlySet<string>, nodeId: string, additive: boolean): Set<string> {
-  if (!additive) return current.has(nodeId) ? new Set() : new Set([nodeId]);
-  const next = new Set(current);
-  if (next.has(nodeId)) next.delete(nodeId);
-  else next.add(nodeId);
-  return next;
-}
-
-export function selectNodes(current: ReadonlySet<string>, nodeIds: readonly string[], additive: boolean): Set<string> {
-  const next = additive ? new Set(current) : new Set<string>();
-  nodeIds.forEach((nodeId) => next.add(nodeId));
-  return next;
-}

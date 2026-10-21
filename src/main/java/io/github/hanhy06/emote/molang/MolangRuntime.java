@@ -199,9 +199,9 @@ final class MolangRuntime implements ExpressionVisitor<Value>, ExecutionContext<
             case LTE -> Value.of(expression.left().visit(this).getAsNumber() <= expression.right().visit(this).getAsNumber());
             case GT -> Value.of(expression.left().visit(this).getAsNumber() > expression.right().visit(this).getAsNumber());
             case GTE -> Value.of(expression.left().visit(this).getAsNumber() >= expression.right().visit(this).getAsNumber());
-            case ADD -> number(expression.left().visit(this).getAsNumber() + expression.right().visit(this).getAsNumber());
-            case SUB -> number(expression.left().visit(this).getAsNumber() - expression.right().visit(this).getAsNumber());
-            case MUL -> number(expression.left().visit(this).getAsNumber() * expression.right().visit(this).getAsNumber());
+            case ADD -> NumberValue.of(expression.left().visit(this).getAsNumber() + expression.right().visit(this).getAsNumber());
+            case SUB -> NumberValue.of(expression.left().visit(this).getAsNumber() - expression.right().visit(this).getAsNumber());
+            case MUL -> NumberValue.of(expression.left().visit(this).getAsNumber() * expression.right().visit(this).getAsNumber());
             case DIV -> divide(expression);
             case ARROW -> evaluateArrow(expression);
             case NULL_COALESCE -> evaluateNullCoalesce(expression);
@@ -215,7 +215,7 @@ final class MolangRuntime implements ExpressionVisitor<Value>, ExecutionContext<
     private Value divide(BinaryExpression expression) {
         double dividend = expression.left().visit(this).getAsNumber();
         double divisor = expression.right().visit(this).getAsNumber();
-        return number(divisor == 0.0D ? 0.0D : dividend / divisor);
+        return NumberValue.of(divisor == 0.0D ? 0.0D : dividend / divisor);
     }
 
     private Value evaluateArrow(BinaryExpression expression) {
@@ -247,7 +247,7 @@ final class MolangRuntime implements ExpressionVisitor<Value>, ExecutionContext<
         Value value = expression.expression().visit(this);
         return switch (expression.op()) {
             case LOGICAL_NEGATION -> Value.of(!value.getAsBoolean());
-            case ARITHMETICAL_NEGATION -> number(-value.getAsNumber());
+            case ARITHMETICAL_NEGATION -> NumberValue.of(-value.getAsNumber());
             case RETURN -> {
                 this.returnValue = value;
                 yield NumberValue.zero();
@@ -286,10 +286,6 @@ final class MolangRuntime implements ExpressionVisitor<Value>, ExecutionContext<
     @Override
     public Value visit(Expression expression) {
         throw new UnsupportedOperationException("Unsupported expression type: " + expression);
-    }
-
-    private static NumberValue number(double value) {
-        return NumberValue.of(value);
     }
 
     private final class FunctionArguments implements Function.Arguments {

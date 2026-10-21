@@ -18,9 +18,6 @@ Emote selects the provider automatically based on the registered credentials.
 | One or more Minecraft accounts registered | Custom account provider |
 | No accounts registered                     | MineSkin                |
 
-Both providers check the same cache before generating a texture.
-An image with the same content and model type is not uploaded again when its texture is already cached.
-
 Emote does not automatically fall back to MineSkin when a registered account requires a new login or the credential store cannot be opened.
 Use `/emote account` to inspect the account status, then sign in again or resolve the credential-store problem.
 
@@ -66,8 +63,7 @@ Login uses the Microsoft device-code flow, so the Minecraft server and web brows
 ### Multiple accounts
 
 Run `/emote account login` again to add another account.
-When several accounts are registered, new upload tasks are distributed between them in round-robin order.
-Each account processes one upload at a time, allowing different textures to be handled in parallel when more accounts are added.
+Registering multiple accounts can speed up texture generation.
 
 Signing in with the same Minecraft account again updates its credentials instead of creating a duplicate entry.
 Remove a registered account with `/emote account remove <name or UUID>`.
@@ -84,7 +80,6 @@ config/emote/accounts.bin
 
 - Windows uses DPAPI when `EMOTE_ACCOUNT_KEY` is not set.
 - When `EMOTE_ACCOUNT_KEY` is set, AES-256-GCM is used on every operating system.
-- Access tokens are refreshed when needed and are not stored permanently.
 
 Do not edit `accounts.bin` directly.
 When creating backups, preserve both the file and its encryption key, preferably in separate secure locations.

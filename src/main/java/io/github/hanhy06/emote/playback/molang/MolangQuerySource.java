@@ -1,9 +1,12 @@
 package io.github.hanhy06.emote.playback.molang;
 
 import io.github.hanhy06.emote.molang.MolangEngine;
+import io.github.hanhy06.emote.molang.MolangQueryCatalog;
+import java.util.Set;
 
 @FunctionalInterface
 public interface MolangQuerySource {
     MolangQuerySource EMPTY = MolangQueries::applyEmpty;
-    void apply(MolangEngine.Session session);
+    void apply(MolangEngine.Session session, Set<String> queries);
+    default void apply(MolangEngine.Session session) { apply(session, MolangQueryCatalog.queryNames()); }
 }

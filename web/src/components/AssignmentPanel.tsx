@@ -1,41 +1,40 @@
-import type { TargetedEvent, TargetedMouseEvent } from "preact";
+import type { TargetedEvent } from "preact";
 import { useEffect, useRef } from "preact/hooks";
 import type { PreviewPart } from "../preview/previewModel";
+import type { PlayerSkinPart } from "../domain/player";
 import {
   SKIN_PARTS,
   type PartAssignments,
   type PartOrders,
-  type SkinPartId,
 } from "../preview/skinParts";
 
 interface AssignmentPanelProps {
-  parts: PreviewPart[];
+  parts: Pick<PreviewPart, "candidateId" | "partIndex">[];
   assignments: PartAssignments;
   orders: PartOrders;
-  selectedNodeIds: ReadonlySet<string>;
-  hasSelectedAssignment: boolean;
-  onAssignPart: (skinPart: SkinPartId | null) => void;
+  selectedCandidateIds: ReadonlySet<string>;
+  onAssignPart: (skinPart: PlayerSkinPart | null) => void;
   onAssignOrder: (order: number) => void;
-  onSelectNode: (nodeId: string, additive: boolean) => void;
+  onSelectCandidate: (candidateId: string, additive: boolean) => void;
 }
 
 export function AssignmentPanel({
   parts,
   assignments,
   orders,
-  selectedNodeIds,
-  hasSelectedAssignment,
+  selectedCandidateIds,
   onAssignPart,
   onAssignOrder,
-  onSelectNode,
+  onSelectCandidate,
 }: AssignmentPanelProps) {
-  const hasSelectedSkinPart = parts.some((part) => selectedNodeIds.has(part.nodeId));
-  const selectableItems = parts.map((part) => ({ nodeId: part.nodeId, label: `#${part.partIndex}`, detail: assignmentLabel(assignments[part.nodeId], orders[part.nodeId]) }));
+  const hasSelectedSkinPart = parts.some((part) => selectedCandidateIds.has(part.candidateId));
+  const hasSelectedAssignment = [...selectedCandidateIds].some((candidateId) => assignments[candidateId] != null);
+  const selectableItems = parts.map((part) => ({ candidateId: part.candidateId, label: `#${part.partIndex}`, detail: assignmentLabel(assignments[part.candidateId], orders[part.candidateId]) }));
   const partItems = useRef(new Map<string, HTMLLIElement>());
   const partList = useRef<HTMLUListElement>(null);
-  const selectedOrders = [...selectedNodeIds]
-    .filter((nodeId) => assignments[nodeId] != null && orders[nodeId] != null)
-    .map((nodeId) => orders[nodeId]!);
+  const selectedOrders = [...selectedCandidateIds]
+    .filter((candidateId) => assignments[candidateId] != null && orders[candidateId] != null)
+    .map((candidateId) => orders[candidateId]!);
   const selectedOrder = selectedOrders.length > 0 && selectedOrders.every((order) => order === selectedOrders[0])
     ? String(selectedOrders[0])
     : "";
@@ -43,8 +42,8 @@ export function AssignmentPanel({
   useEffect(() => {
     const list = partList.current;
     const selectedItems = selectableItems
-      .filter((item) => selectedNodeIds.has(item.nodeId))
-      .map((item) => partItems.current.get(item.nodeId))
+      .filter((item) => selectedCandidateIds.has(item.candidateId))
+      .map((item) => partItems.current.get(item.candidateId))
       .filter((item): item is HTMLLIElement => item != null);
     if (!list || selectedItems.length === 0) return;
     const firstItem = selectedItems[0];
@@ -59,23 +58,19 @@ export function AssignmentPanel({
         behavior: "smooth",
       });
     }
-  }, [parts, selectedNodeIds]);
-
-  function handleNodeClick(event: TargetedMouseEvent<HTMLButtonElement>, nodeId: string) {
-    onSelectNode(nodeId, event.ctrlKey || event.metaKey || event.shiftKey);
-  }
+  }, [parts, selectedCandidateIds]);
 
   function assignOrderAndScroll(order: number) {
     onAssignOrder(order);
     const lastSelectedPosition = parts.reduce(
-      (last, part, index) => selectedNodeIds.has(part.nodeId) ? index : last,
+      (last, part, index) => selectedCandidateIds.has(part.candidateId) ? index : last,
       -1,
     );
     const nextPart = parts[lastSelectedPosition + 1];
     if (nextPart) {
       requestAnimationFrame(() => {
         const list = partList.current;
-        const item = partItems.current.get(nextPart.nodeId);
+        const item = partItems.current.get(nextPart.candidateId);
         if (!list || !item) return;
         const itemBottom = item.offsetTop + item.offsetHeight;
         if (itemBottom > list.scrollTop + list.clientHeight) {
@@ -121,16 +116,16 @@ export function AssignmentPanel({
       <ul className="part-list" ref={partList}>
         {selectableItems.map((item) => (
           <li
-            key={item.nodeId}
+            key={item.candidateId}
             ref={(element) => {
-              if (element) partItems.current.set(item.nodeId, element);
-              else partItems.current.delete(item.nodeId);
+              if (element) partItems.current.set(item.candidateId, element);
+              else partItems.current.delete(item.candidateId);
             }}
           >
             <button
               type="button"
-              className={selectedNodeIds.has(item.nodeId) ? "selected" : ""}
-              onClick={(event) => handleNodeClick(event, item.nodeId)}
+              className={selectedCandidateIds.has(item.candidateId) ? "selected" : ""}
+              onClick={(event) => onSelectCandidate(item.candidateId, event.ctrlKey || event.metaKey || event.shiftKey)}
             >
               <span>{item.label}</span>
               <span>{item.detail}</span>
@@ -142,7 +137,7 @@ export function AssignmentPanel({
   );
 }
 
-function assignmentLabel(assignment: SkinPartId | null | undefined, order: number | null | undefined): string {
+function assignmentLabel(assignment: PlayerSkinPart | null | undefined, order: number | null | undefined): string {
   const label = SKIN_PARTS.find((part) => part.id === assignment)?.label ?? "Unassigned";
   return assignment && order != null ? `${label} · ${order}` : label;
 }

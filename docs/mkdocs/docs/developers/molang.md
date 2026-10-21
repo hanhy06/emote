@@ -1,32 +1,114 @@
 # Molang
 
-Animation schema 4 accepts Molang in animation programs, vector track components, visibility track values, and dynamic NBT values. Both the short and long prefixes are supported: `q` or `query`, `v` or `variable`, and `t` or `temp`.
+Animation schema 5 accepts Molang for initialization and ticks, track values, curve parameters, shared values, animation time, and delays. Both the short and long prefixes are supported: `q` or `query`, `v` or `variable`, and `t` or `temp`.
 
-## Programs
+## Track values
 
-Animation-level programs are optional:
+Each component of a translation, Euler rotation, or scale track may be a number or an object containing a `molang` string:
 
 ```json
-"molang": {
-  "initialize": "v.speed = 2;",
-  "tick": "v.phase = v.phase + q.delta_time * v.speed;"
+{
+  "target": {"node": "n1", "operation": "spin"},
+  "channel": "value",
+  "driver": {
+    "type": "expression",
+    "value": [0, {"molang": "q.target_y_rotation"}, 0]
+  }
 }
 ```
 
-- `initialize` runs when a playback cycle begins.
+Visibility values may be booleans or objects containing a `molang` string. A finite result of `0` is hidden; any other finite result is visible.
+
+The same `{ "molang": "..." }` form is used for dynamic easing parameters, curve handles and tangents, and `blend.weight`. A blended three-component track combines `blend.base` with the driver's result using that weight.
+
+### Shared values
+
+`animation.values` defines reusable scalar or three-component drivers. Each definition has a numeric `base` array and uses an `expression` or `curve` driver. Read a component with `q.value('id', index)`.
+
+```json
+"values": {
+  "sway": {
+    "type": "expression",
+    "base": [0],
+    "value": [{"molang": "math.sin(q.anim_time * 180) * 0.1"}]
+  }
+}
+```
+
+A shared curve's optional `time_offset` changes only its sampling time; it does not change animation time, queries, or events.
+
+### Dynamic NBT values
+
+An NBT keyframe can use Molang to produce a compound SNBT string:
+
+```json
+"value": {
+  "merge": {"molang": "q.is_sneaking ? '{Glowing:1b}' : '{Glowing:0b}'"},
+  "remove": []
+}
+```
+
+The expression follows the same read-only track-expression rules as vector and visibility values. Its result must be a string containing valid compound SNBT. It is evaluated once when the keyframe is applied, rather than on every animation tick; a new playback loop or Sequence segment evaluates it again. `q.key_frame_lerp_time` is `0` during evaluation.
+
+NBT keys apply `merge` and `remove` patches. Runtime-owned fields remain forbidden.
+
+## Initialization and ticks
+
+Use the optional `animation.molang` object when an Animation needs to initialize variables or update persistent state on ticks:
+
+```json
+"animation": {
+  "molang": {
+    "initialize": "v.speed = 2;",
+    "tick": "v.phase = v.phase + q.delta_time * v.speed;"
+  }
+}
+```
+
+- `initialize` runs when Animation playback begins.
 - `tick` runs before track values are evaluated on each animation tick.
-- `v.*` variables persist within the current cycle and may be assigned by `initialize` and `tick`.
+- `v.*` variables persist within the Animation playback and may be assigned by `initialize` and `tick`.
 - `t.*` variables exist only for one expression evaluation.
 - `q.*` values are read-only. Assigning a query is rejected.
-- `server_sync` Animations cannot use `molang.tick` because their timeline may begin at an arbitrary synchronized time.
 
-A new Molang session is created for every repeated cycle and every Animation segment in a Sequence.
+Persistent variables are retained across loops. Each Animation segment in a Sequence has separate persistent variables.
+
+Track expressions, clock expressions, delays, and curve parameters can read persistent variables but cannot assign them. Use `initialize` and `tick` for those assignments. An Animation that only needs formulas in its tracks can omit `animation.molang`.
+
+## Animation time and delays
+
+Normally, animation time advances with elapsed server ticks. Set `animation.clock.type` to `molang` and provide `expression` to calculate the next timeline position in seconds:
+
+```json
+"clock": {
+  "type": "molang",
+  "expression": "q.anim_time + q.delta_time * v.speed"
+}
+```
+
+This fragment belongs inside `animation`. A custom clock can change the playback speed or move backward along the timeline. Timeline event `direction` determines which events run when the clock moves forward or backward.
+
+`animation.playback.start_delay` and `loop_delay` accept either Minecraft time strings or a Molang object. Molang delay results use seconds:
+
+```json
+"playback": {
+  "mode": "loop",
+  "start_delay": "5t",
+  "loop_delay": {"molang": "q.is_sneaking ? 0.5 : 0"}
+}
+```
+
+`start_delay` is calculated when the Animation starts, and `loop_delay` is calculated at each completed loop. Results must be finite and non-negative.
+
+`server_sync` playback must be reconstructible from server time. It cannot use a Molang clock, `animation.molang.tick`, Molang delays, or dynamic NBT keys.
 
 ## Math functions
 
 All functions in the Bedrock Molang `math.*` reference are supported, including the easing, random, dice, interpolation, angle, and sign functions. Trigonometric inputs and outputs use degrees.
 
 ## Conditionals
+
+The examples in this section and [Loops](#loops) assign persistent variables, so use them in `animation.molang.initialize` or `animation.molang.tick`.
 
 Bedrock's binary and ternary conditional operators are supported. Only the selected branch is evaluated, and either branch may contain a brace-delimited execution scope:
 
@@ -53,37 +135,6 @@ loop(3, {
 return v.count;
 ```
 
-## Track values
-
-Each position, rotation, or scale component may be a number or a Molang string:
-
-```json
-"rotation": [
-  {
-    "time": "0t",
-    "value": [0, "q.target_y_rotation", "v.offset"]
-  }
-]
-```
-
-Visibility values may be booleans or Molang strings. A finite result of `0` is hidden; any other finite result is visible.
-
-Track values may read persistent variables but cannot assign them. Temporary variables are cleared for each expression evaluation.
-
-### Dynamic NBT values
-
-An NBT keyframe can use Molang to produce a compound SNBT string:
-
-```json
-"value": {
-  "molang": "q.is_sneaking ? '{Glowing:1b}' : '{Glowing:0b}'"
-}
-```
-
-The expression follows the same read-only track-expression rules as vector and visibility values. Its result must be a string containing valid compound SNBT. It is evaluated once when the keyframe is applied, rather than on every animation tick; a new playback loop or Sequence segment evaluates it again. `q.key_frame_lerp_time` is `0` during evaluation.
-
-Runtime-owned fields remain forbidden. The `0t` result establishes the top-level fields that later keyframes may modify, and a dynamic `0t` value must return the same field set on every playback cycle.
-
 ## Queries
 
 The table uses the `q.*` form. The equivalent `query.*` names are also accepted.
@@ -93,10 +144,10 @@ The table uses the `q.*` form. The equivalent `query.*` names are also accepted.
 | `q.anim_time` | Current timeline time in seconds. |
 | `q.anim_time_ticks` | Current timeline time in ticks. |
 | `q.anim_length` | Timeline duration in seconds. |
-| `q.delta_time` | `0.05` during normal ticks and `0` when a cycle is initialized. |
+| `q.delta_time` | `0.05` during normal ticks and `0` when playback is initialized. |
 | `q.loop_count` | Zero-based number of completed loops. |
-| `q.key_frame_lerp_time` | Uneased progress from the current vector keyframe to the next, from `0` to `1`; `0` outside vector evaluation. |
-| `q.life_time` | Alias of `q.anim_time`, for imported Molang compatibility. |
+| `q.key_frame_lerp_time` | Uneased curve-segment progress from `0` to `1`; exact-key sampling follows the driver's `at_key` policy. |
+| `q.life_time` | Elapsed Animation playback time in seconds; continues across timeline loops. |
 | `q.target_x_rotation`, `q.target_y_rotation` | Player look pitch and head yaw relative to the body, in degrees. |
 | `q.body_x_rotation`, `q.body_y_rotation` | Player pitch and absolute body yaw, in degrees. |
 | `q.head_x_rotation`, `q.head_y_rotation` | Player pitch and absolute head yaw, in degrees. |
@@ -142,13 +193,11 @@ The table uses the `q.*` form. The equivalent `query.*` names are also accepted.
 | `q.yaw_speed` | Player yaw change during the current tick, in degrees. |
 | `q.on_fire_time` | Remaining player fire time in seconds. |
 
-Player-state queries refer to the player during player-backed playback. Synthetic stress-test playback has no player and evaluates these queries as `0`.
-
 The three item-use duration queries refer to the item currently being used, in either hand, and return `0` when no item is being used.
 
 ### Query functions
 
-Registered query functions are available in animation programs, vector and visibility tracks, and dynamic NBT values.
+Query functions are available wherever Molang is accepted.
 
 | Query | Value |
 |---|---|
@@ -163,13 +212,14 @@ Registered query functions are available in animation programs, vector and visib
 | `q.item_is_charged()` | `1` if the main-hand crossbow is charged. An optional hand or equipment-slot selector may be supplied. |
 | `q.is_item_name_any(slot, name, ...)` | `1` if the selected equipment item has one of the full identifiers, such as `'minecraft:bow'`. |
 | `q.scoreboard(objective)` | Player score for the named objective, or `0` when the objective or score is absent. |
+| `q.value(id, component)` | Component of a shared driver in `animation.values`; component indices start at `0`. |
 
 Item selectors accept `main_hand`, `off_hand`, `slot.weapon`, `slot.weapon.mainhand`, `slot.weapon.offhand`, and `slot.armor.head`, `slot.armor.chest`, `slot.armor.legs`, or `slot.armor.feet`. Numeric hand selector `0` means main hand and `1` means off hand. Scalar `q.is_item_equipped` and `q.item_is_charged` remain available as main-hand shortcuts.
 
 ## Validation
 
-Each Molang source string is limited to 16,384 characters. Invalid syntax, unsupported query names, query assignments, and persistent-variable assignments in track values reject the Animation during loading. A numeric value that evaluates to a non-finite number stops playback as a runtime failure. A dynamic NBT value also fails at runtime if it does not return a string containing valid compound SNBT or violates the NBT track's field restrictions.
+Invalid syntax or unsupported queries prevent an Animation from loading. A numeric value that evaluates to a non-finite number stops playback.
 
 ## Current limitations
 
-This is not a complete Bedrock Molang environment. Only the queries and query functions listed above are available. Context values, `this`, structs, arrays, resource values, entity references, the arrow operator's entity switching, and `for_each` are not supported. Null coalescing and string equality currently follow the embedded evaluator's behavior rather than full Bedrock semantics.
+This is not a complete Bedrock Molang environment. Only the queries and query functions listed above are available. Context values, `this`, structs, arrays, resource values, entity references, the arrow operator's entity switching, and `for_each` are not supported. Null coalescing and string equality may behave differently from Bedrock Molang.

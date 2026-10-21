@@ -44,8 +44,12 @@ public final class MinecraftAccountManager {
             JsonObject json = this.store.load();
             if (json.has("accounts")) {
                 for (JsonElement element : json.getAsJsonArray("accounts")) {
-                    JsonObject value = element.getAsJsonObject();
-                    Account account = new Account(UUID.fromString(value.get("uuid").getAsString()), value.get("name").getAsString(), value.get("refreshToken").getAsString());
+                    JsonObject accountJson = element.getAsJsonObject();
+                    Account account = new Account(
+                        UUID.fromString(accountJson.get("uuid").getAsString()),
+                        accountJson.get("name").getAsString(),
+                        accountJson.get("refreshToken").getAsString()
+                    );
                     this.accounts.put(account.uuid, account);
                 }
             }
@@ -216,17 +220,17 @@ public final class MinecraftAccountManager {
     }
 
     private void save() throws IOException {
-        JsonObject json = new JsonObject();
-        JsonArray values = new JsonArray();
+        JsonObject accountStore = new JsonObject();
+        JsonArray accountEntries = new JsonArray();
         for (Account account : this.accounts.values()) {
-            JsonObject value = new JsonObject();
-            value.addProperty("uuid", account.uuid.toString());
-            value.addProperty("name", account.name);
-            value.addProperty("refreshToken", account.refreshToken);
-            values.add(value);
+            JsonObject accountJson = new JsonObject();
+            accountJson.addProperty("uuid", account.uuid.toString());
+            accountJson.addProperty("name", account.name);
+            accountJson.addProperty("refreshToken", account.refreshToken);
+            accountEntries.add(accountJson);
         }
-        json.add("accounts", values);
-        this.store.save(json);
+        accountStore.add("accounts", accountEntries);
+        this.store.save(accountStore);
     }
 
     public static final class Account {

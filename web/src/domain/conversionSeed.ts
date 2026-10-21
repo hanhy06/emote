@@ -1,19 +1,16 @@
-import type { EmoteCallback, EmoteEvent, EmoteMetadata, EmotePlayerBehavior, Matrix16, PlayerSkinPart } from "../format/emoteAnimation";
+import type { EmoteMetadata, EmotePlayerBehavior } from "./emoteDefinition";
+import type { Matrix16 } from "./matrix";
+import type { PlayerSkinPart } from "./player";
 import type { BlockStateData, ItemStackData } from "./minecraftData";
 import type { GeneratedResource } from "./generatedResource";
 import type { ConversionIssue } from "../foundation/diagnostics";
-import type { SourceNodeBinding } from "./nodeBindings";
-import type { PreviewNodeTrack, PreviewProjection, PreviewTransformKeyframe, PreviewVisibilityKeyframe } from "./previewProjection";
-import type { AnimationRuntimeData, RuntimeExportAvailability } from "./runtimeProjection";
+import { normalizeResourceLocation } from "../format/resourceLocation";
+import type { AnimationIR } from "./animationIR";
 
-export type { PreviewAvailability, PreviewInterpolation, PreviewNodeTrack, PreviewProjection, PreviewTransformKeyframe, PreviewVisibilityKeyframe } from "./previewProjection";
-
-// Source adapters produce this neutral seed; the editable document consumes it once.
-
-export type ImportSource = "bd_datapack" | "animated_java_blueprint" | "geckolib_bbmodel" | "bedrock_animation_json" | "emotecraft_binary" | "emote_json" | "emote_sequence";
+export type InputFormat = "bd_datapack" | "animated_java_blueprint" | "geckolib_bbmodel" | "bedrock_animation_json" | "emotecraft_binary" | "emote_json" | "emote_sequence";
 
 export interface ImportedProject {
-  source: ImportSource;
+  source: InputFormat;
   sourceName: string;
   suggestedMetadata: EmoteMetadata;
   suggestedPlayer: EmotePlayerBehavior;
@@ -22,19 +19,16 @@ export interface ImportedProject {
   suggestedStandalone?: boolean;
   suggestedCooldown?: string;
   suggestedRotationDeadzone?: number;
-  suggestedDisplayInterpolation?: string;
-  nodes: Record<string, ImportedNode>;
+  nodeHints: Record<string, ImportedNodeHint>;
   animations: ImportedAnimation[];
-  diagnostics: ImportDiagnostic[];
+  diagnostics: ConversionIssue[];
   resources: Map<string, GeneratedResource>;
 }
 
 export interface ImportedNodeBase {
-  binding: SourceNodeBinding;
-  defaultMatrix: Matrix16;
+  binding: { sourceNodeId: string; skinGroupId?: string };
   visible: boolean;
   entityNbt?: string;
-
 }
 
 export type ImportedNode =
@@ -45,6 +39,7 @@ export type ImportedNode =
     skin?: ImportedSkinPart;
     suggestedSkin?: ImportedSkinPart;
     playerHeadConversionMatrix?: Matrix16;
+    modelGeometryMatrix?: Matrix16;
   })
   | (ImportedNodeBase & { type: "block_display"; blockState: BlockStateData })
   | (ImportedNodeBase & { type: "text_display"; text: unknown })
@@ -56,31 +51,31 @@ export interface ImportedSkinPart {
 }
 
 export interface ImportedAnimation {
-  callbacks?: EmoteCallback[];
+  ir: AnimationIR;
   id: string;
   sourceReferenceId?: string;
   name: string;
   suggestedMetadata?: EmoteMetadata;
-  durationTicks: number;
-  playbackMode: "once" | "hold" | "loop" | "server_sync";
-  loopStartTicks?: number;
-  loopDelayTicks: number;
-  events: {
-    start: EmoteEvent[];
-    timeline: ImportedTimelineEvent[];
-    loop: EmoteEvent[];
-    stop: EmoteEvent[];
-  };
-  preview: PreviewProjection;
-  exportAvailability: RuntimeExportAvailability;
-  runtime: AnimationRuntimeData;
 }
 
-export type ImportedTransformKeyframe = PreviewTransformKeyframe;
-export type ImportedVisibilityKeyframe = PreviewVisibilityKeyframe;
-
-export interface ImportedTimelineEvent extends EmoteEvent {
-  tick: number;
+export interface ImportedNodeHint {
+  sourceNodeId: string;
+  skinCandidates?: Record<string, {
+    groupId: string;
+    fittingMatrix?: Matrix16;
+    suggestion?: ImportedSkinPart;
+  }>;
 }
 
-export type ImportDiagnostic = ConversionIssue;
+export function importedNodeHints(nodes: Record<string, ImportedNode>): Record<string, ImportedNodeHint> {
+  return Object.fromEntries(Object.entries(nodes).map(([id, node]) => [id, {
+    sourceNodeId: node.binding.sourceNodeId,
+    ...(node.type === "item_display" && (node.skin || node.suggestedSkin || node.playerHeadConversionMatrix || normalizeResourceLocation(node.itemStack.id) === "minecraft:player_head") ? {
+      skinCandidates: { display: {
+        groupId: node.binding.skinGroupId ?? id,
+        ...(node.playerHeadConversionMatrix ? { fittingMatrix: node.playerHeadConversionMatrix } : {}),
+        ...(node.suggestedSkin ?? node.skin ? { suggestion: node.suggestedSkin ?? node.skin } : {}),
+      } },
+    } : {}),
+  }]));
+}
