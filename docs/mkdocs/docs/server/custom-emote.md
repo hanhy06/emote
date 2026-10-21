@@ -4,13 +4,13 @@ To use your own animation, convert the source project to Emote JSON with the [Em
 
 ## Supported formats
 
-| Source format | Files |
-|---|---|
-| BD Engine | `.zip` |
-| GeckoLib | `.bbmodel` |
-| Animated Java | `.ajblueprint` |
-| Bedrock Edition | `.json` |
-| Emotecraft | `.emotecraft` |
+| Source format | Files | Input |
+|---|---|---|
+| BD Engine | `.zip` | Animation datapack exported from BD Engine |
+| GeckoLib | `.bbmodel` | Original Blockbench project in GeckoLib format |
+| Animated Java | `.ajblueprint` | Original Animated Java project |
+| Bedrock Edition | `.json` | Player animation JSON; experimental support |
+| Emotecraft | `.emotecraft` | Emotecraft file; experimental support |
 
 ## 1. Open files
 
@@ -25,11 +25,12 @@ Select **Choose animation files** in the converter and open one or more source p
 
 In **Review**, select model parts and verify their player-skin assignments. You can reassign any parts that were detected incorrectly.
 
-The preview has limited support for Molang and does not evaluate dynamic NBT values, so it may differ from in-game playback.
-
 In **Settings**, configure the ID, name, description, and playback behavior. The ID must use the `namespace:path` format and must not duplicate another emote on the server.
 
-When the configuration is complete, use **Export** to download the Animation JSON. To connect multiple animations as one emote, download every Animation JSON together with the Sequence file.
+!!! info "[Skin overrides](../developers/animation.md#skin)"
+    In `.ajblueprint` and `.bbmodel` projects, the `override` texture replaces the areas of the player's skin selected by `override_mask` during emote playback.
+
+When the configuration is complete, use **Export** to download the Animation JSON. To connect multiple animations as one emote, configure a Sequence and download it together with every Animation it references.
 
 <img src="../../assets/custom-emote/setting-and-export.gif" alt="Configuring and exporting an emote">
 
@@ -37,10 +38,10 @@ When the configuration is complete, use **Export** to download the Animation JSO
 
 Place the exported JSON files under `config/emote/emote/`.
 
-When an animation requires additional resources, the converter also downloads a `*.resources.zip` file. Place it under `config/emote/resource-pack/`; Emote adds its contents to the Polymer resource pack. Client delivery follows the shared Polymer configuration. See the [Polymer documentation](https://polymer.pb4.eu/latest/) for configuration details.
+When an animation requires additional resources, the converter also downloads a `*.resources.zip` file. Place it under `config/emote/resource-pack/`. Install [Polymer](https://polymer.pb4.eu/latest/) to send these resources to players automatically.
 
 !!! note "Polymer is optional"
-    The emotes bundled with Emote do not require a resource pack.<br>If none of your custom emotes use a `*.resources.zip` file, you can disable Polymer integration.
+    The emotes bundled with Emote do not require a resource pack.<br>If none of your custom emotes use additional resources, Polymer does not need to be installed.
 
 ```text
 config/emote/

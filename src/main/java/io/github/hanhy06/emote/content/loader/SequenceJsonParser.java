@@ -3,9 +3,9 @@ package io.github.hanhy06.emote.content.loader;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import io.github.hanhy06.emote.api.EmoteLoadException;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
-import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.api.sequence.EmoteSequence;
 import io.github.hanhy06.emote.content.LoadedSequence;
 import net.minecraft.resources.Identifier;
@@ -15,35 +15,34 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class SequenceJsonParser {
-    private static final int SCHEMA_VERSION = 4;
+    private static final int SCHEMA_VERSION = io.github.hanhy06.emote.api.animation.EmoteAnimation.SCHEMA_VERSION;
 
-    public LoadedSequence parse(Path sourcePath) throws EmoteAnimationLoadException {
+    public LoadedSequence parse(Path sourcePath) throws EmoteLoadException {
         return parse(EmoteJsonDocument.read(sourcePath));
     }
 
-    LoadedSequence parse(EmoteJsonDocument document) throws EmoteAnimationLoadException {
+    LoadedSequence parse(EmoteJsonDocument document) throws EmoteLoadException {
         JsonObject root = document.root();
         if (!document.type().equals("sequence")) {
             throw document.error("$.type", "must equal sequence");
         }
         document.requireExactInt(root, "schema_version", "$", SCHEMA_VERSION);
         Identifier id = document.requireIdentifier(document.requireString(root, "id", "$"), "$.id");
-        EmoteMetadata metadata = AnimationJsonParser.parseMetadata(document.requireObject(root, "metadata", "$"), document);
+        EmoteMetadata metadata = document.metadata();
         if (root.has("participants") && !root.get("participants").isJsonNull()) {
             throw document.error("$.participants", "two-player matching is no longer supported");
         }
         JsonObject settingsObject = document.requireObject(root, "settings", "$");
-        int cooldownTicks = document.requireTime(settingsObject, "cooldown", "$.settings", 0);
-        EmotePlayerBehavior player = AnimationJsonParser.parsePlayer(
+        int cooldownTicks = document.requireTicks(settingsObject, "cooldown", "$.settings", 0);
+        EmotePlayerBehavior playerBehavior = document.parsePlayerBehavior(
             document.requireObject(settingsObject, "player", "$.settings"),
-            "$.settings.player",
-            document
+            "$.settings.player"
         );
-        EmoteSequence.Settings settings = new EmoteSequence.Settings(cooldownTicks, player);
+        EmoteSequence.Settings settings = new EmoteSequence.Settings(cooldownTicks, playerBehavior);
 
         List<EmoteSequence.Step> steps = parseSteps(document.requireArray(root, "steps", "$"), "$.steps", document);
         try {
-            return new LoadedSequence(document.sourcePath(), new EmoteSequence(id, metadata, settings, steps, AnimationJsonParser.parseCallbacks(root, document)));
+            return new LoadedSequence(document.sourcePath(), new EmoteSequence(id, metadata, settings, steps, document.callbacks()));
         } catch (IllegalArgumentException | NullPointerException exception) {
             throw document.error("$.steps", exception.getMessage(), exception);
         }
@@ -53,7 +52,7 @@ public final class SequenceJsonParser {
         JsonArray stepsArray,
         String stepsPath,
         EmoteJsonDocument document
-    ) throws EmoteAnimationLoadException {
+    ) throws EmoteLoadException {
         if (stepsArray.isEmpty()) {
             throw document.error(stepsPath, "must not be empty");
         }
@@ -70,7 +69,9 @@ public final class SequenceJsonParser {
                 throw document.error(path, "must contain exactly one of emote or wait");
             }
             if (hasWait) {
-                rejectTransition(stepObject, path, document);
+                if (stepObject.has("transition")) {
+                    throw document.error(path + ".transition", "is supported only on an emote step");
+                }
                 if (stepObject.has("repeat")) {
                     throw document.error(path + ".repeat", "is not supported on a wait step");
                 }
@@ -80,7 +81,7 @@ public final class SequenceJsonParser {
                 if (!steps.isEmpty() && steps.getLast() instanceof EmoteSequence.WaitStep) {
                     throw document.error(path + ".wait", "must not follow another wait step");
                 }
-                steps.add(new EmoteSequence.WaitStep(document.requireTime(stepObject, "wait", path, 1)));
+                steps.add(new EmoteSequence.WaitStep(document.requireTicks(stepObject, "wait", path, 1)));
                 continue;
             }
             List<EmoteSequence.Choice> choices = readEmoteChoices(stepObject, path, document);
@@ -91,22 +92,15 @@ public final class SequenceJsonParser {
                 throw document.error(path + ".repeat", "must be at least 1");
             }
             int transitionTicks = stepObject.has("transition")
-                ? document.requireTime(stepObject, "transition", path, 0)
+                ? document.requireTicks(stepObject, "transition", path, 0)
                 : 0;
             steps.add(new EmoteSequence.AnimationStep(choices, repeat, transitionTicks));
         }
         return List.copyOf(steps);
     }
 
-    private void rejectTransition(JsonObject stepObject, String path, EmoteJsonDocument document)
-        throws EmoteAnimationLoadException {
-        if (stepObject.has("transition")) {
-            throw document.error(path + ".transition", "is supported only on an emote step");
-        }
-    }
-
     private List<EmoteSequence.Choice> readEmoteChoices(JsonObject stepObject, String path, EmoteJsonDocument document)
-        throws EmoteAnimationLoadException {
+        throws EmoteLoadException {
         JsonElement element = document.requireElement(stepObject, "emote", path);
         if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
             return List.of(new EmoteSequence.Choice(document.requireIdentifier(element.getAsString(), path + ".emote"), 0));

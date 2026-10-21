@@ -6,10 +6,6 @@ export function bedrockPositionToCanonical<T>(values: readonly T[], negate: (val
   return [negate(values[0]), values[1], values[2]];
 }
 
-export function bedrockRotationToCanonical<T>(values: readonly T[], negate: (value: T) => T): [T, T, T] {
-  return [negate(values[0]), negate(values[1]), values[2]];
-}
-
 export function bedrockBoundsToCanonical(
   from: readonly number[],
   to: readonly number[],

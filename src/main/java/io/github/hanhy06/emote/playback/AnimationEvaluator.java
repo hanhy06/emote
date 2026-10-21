@@ -1,479 +1,563 @@
 package io.github.hanhy06.emote.playback;
 
-import net.minecraft.world.phys.Vec3;
-import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.content.PreparedEmote;
-import io.github.hanhy06.emote.content.PreparedAnimationTimeline;
+import com.mojang.math.Transformation;
+import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.molang.MolangEngine;
 import io.github.hanhy06.emote.playback.molang.MolangQuerySource;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.TagParser;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
+import org.joml.Quaterniond;
 import org.joml.Quaternionf;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
-import static io.github.hanhy06.emote.content.PreparedAnimationTimeline.*;
 
 final class AnimationEvaluator {
-    private static final Set<String> RUNTIME_OWNED_NBT_FIELDS = Set.of(
-        "id", "UUID", "Pos", "Motion", "Rotation", "Tags", "Passengers",
-        "transformation", "interpolation_duration", "start_interpolation", "teleport_duration"
-    );
-    private final PreparedEmote animation;
-    private final PreparedAnimationTimeline timeline;
+    private final PreparedAnimation animation;
     private final MolangQuerySource querySource;
-    private final NodeState[] nodes;
-    private final Map<String, Integer> nodeIndexes;
-    private final Matrix4f localMatrix = new Matrix4f();
-    private final Quaternionf rotation = new Quaternionf();
-    private final Quaternionf endRotation = new Quaternionf();
-    private final double[] position = new double[3];
-    private final double[] rotationVector = new double[3];
-    private final double[] scale = new double[3];
-    private final double[] endVector = new double[3];
-
+    private final List<String> nodeIds;
+    private final Matrix4f[] matrices;
+    private final Matrix4fc[] poseMatrices;
+    private final Transformation[] transformations;
+    private final Transformation[] transitionStarts, transitionEnds;
+    private Map<String, Matrix4f> transitionInput;
+    private long sampleGeneration, transitionGeneration;
+    private final Quaternionf[] orientations;
+    private final boolean[] visibility;
+    private final List<Map<String, Boolean>> attachmentVisibility = new ArrayList<>();
+    private final Map<Track, double[]> sampledValues = new IdentityHashMap<>();
+    private final Map<Track, Boolean> sampledVisibility = new IdentityHashMap<>();
+    private final Map<Track, double[]> blendedValues = new IdentityHashMap<>();
+    private final Map<Driver, int[]> keyCursors = new IdentityHashMap<>();
+    private final Matrix4f local = new Matrix4f(), operationMatrix = new Matrix4f();
+    private final Matrix4f displayMatrix = new Matrix4f();
+    private final Matrix4f inherited = new Matrix4f(), residual = new Matrix4f(), parentLinear = new Matrix4f();
+    private final Quaternionf operationRotation = new Quaternionf();
+    private final Quaterniond quaternion = new Quaterniond(), slerpStart = new Quaterniond(), slerpEnd = new Quaterniond();
+    private final Map<String, Map<String, CompoundTag>> nbt = new HashMap<>();
+    private final Map<String, Map<String, Set<String>>> nbtRemoved = new HashMap<>();
+    private final Map<String, CompoundTag> nbtCaptures = new HashMap<>();
+    private int nbtCycle;
     private MolangEngine.Session session;
+    private final Map<String, double[]> sharedValues = new HashMap<>();
+    private final Set<String> evaluatingValues = new HashSet<>();
+    private int sampleTick, sampleLoop;
+    private double sampleProgress;
 
-    AnimationEvaluator(PreparedEmote animation, MolangQuerySource querySource) {
+    AnimationEvaluator(PreparedAnimation animation, MolangQuerySource querySource) {
         this.animation = animation;
-        this.timeline = animation.preparedTimeline();
         this.querySource = querySource;
-        this.nodes = new NodeState[this.timeline.nodeOrder().size()];
-        Map<String, Integer> indexes = new HashMap<>();
-        EmoteAnimation source = animation.model();
-        for (int index = 0; index < this.nodes.length; index++) {
-            String nodeId = this.timeline.nodeOrder().get(index);
-            Node node = source.nodes().get(nodeId);
-            Integer parentIndex = node.parentId() == null ? null : indexes.get(node.parentId());
-            if (node.parentId() != null && parentIndex == null) {
-                throw new IllegalStateException("Parent node was not prepared before child: " + nodeId);
-            }
-            this.nodes[index] = new NodeState(
-                nodeId,
-                node,
-                this.timeline.tracks().get(nodeId),
-                parentIndex == null ? -1 : parentIndex
-            );
-            indexes.put(nodeId, index);
+        this.nodeIds = animation.nodeOrder();
+        this.matrices = new Matrix4f[this.nodeIds.size()];
+        this.poseMatrices = new Matrix4fc[this.nodeIds.size()];
+        this.transformations = new Transformation[this.nodeIds.size()];
+        this.transitionStarts = new Transformation[this.nodeIds.size()];
+        this.transitionEnds = new Transformation[this.nodeIds.size()];
+        this.orientations = new Quaternionf[this.nodeIds.size()];
+        this.visibility = new boolean[this.nodeIds.size()];
+        for (Track track : animation.model().clip().tracks()) {
+            if (track.blend() != null) this.blendedValues.put(track, new double[track.blend().base().size()]);
         }
-        this.nodeIndexes = Map.copyOf(indexes);
+        for (int index = 0; index < this.nodeIds.size(); index++) {
+            this.matrices[index] = new Matrix4f();
+            this.orientations[index] = new Quaternionf();
+            this.attachmentVisibility.add(new LinkedHashMap<>());
+        }
     }
 
-    void beginCycle(int tick, int loopCount) {
+    void initialize(int loopCount, long lifetimeTicks) {
+        if (this.session != null) return;
         this.session = MolangEngine.INSTANCE.createSession();
-        setQueries(tick, loopCount, 0.0D);
-        if (this.timeline.initialize() != null) {
-            this.session.evaluate(this.timeline.initialize());
-        }
-        for (NodeState node : this.nodes) node.resetCursors(tick);
-        evaluate(tick, loopCount, 0.0D, this.timeline.tick() != null);
-    }
-
-    void rewindLoop(int tick, int loopCount) {
-        for (NodeState node : this.nodes) node.resetCursors(tick);
-        evaluate(tick, loopCount, 0.0D, this.timeline.tick() != null);
-    }
-
-    void setTick(int tick, int loopCount) {
-        for (NodeState node : this.nodes) node.resetCursors(tick);
-        evaluate(tick, loopCount, 0.0D, false);
-    }
-
-    void evaluate(int tick, int loopCount) {
-        evaluate(tick, loopCount, 0.05D, this.timeline.tick() != null);
-    }
-
-    int nodeCount() {
-        return this.nodes.length;
-    }
-
-    int displayInterpolationTicks() {
-        return this.animation.model().settings().displayInterpolationTicks();
-    }
-
-    String nodeId(int index) {
-        return this.nodes[index].id;
-    }
-
-    Matrix4fc matrix(int index) {
-        return this.nodes[index].worldMatrix;
-    }
-
-    Matrix4fc matrix(String nodeId) {
-        Integer index = this.nodeIndexes.get(nodeId);
-        return index == null ? null : this.nodes[index].worldMatrix;
-    }
-
-    boolean preservesMatrix(int index) {
-        return this.nodes[index].node instanceof AnchorNode;
-    }
-
-    boolean preservesMatrix(String nodeId) {
-        Integer index = this.nodeIndexes.get(nodeId);
-        return index != null && preservesMatrix(index);
-    }
-
-    boolean visible(int index) {
-        return this.nodes[index].visible;
-    }
-
-    CompoundTag nbt(int index) {
-        NodeState state = this.nodes[index];
-        if (!state.nbtChanged) {
-            return null;
-        }
-        state.nbtChanged = false;
-        return state.nbtState.copy();
-    }
-
-    private void evaluate(int tick, int loopCount, double deltaTime, boolean runTick) {
-        setQueries(tick, loopCount, deltaTime);
-        if (runTick) {
-            this.session.evaluate(this.timeline.tick());
-        }
-
-        for (NodeState state : this.nodes) {
-            CompiledNodeTracks tracks = state.tracks;
-            LocalTransform defaults = state.node.transform();
-            if (state.staticLocalMatrix == null) {
-                state.positionCursor = vector(
-                    tracks == null ? List.of() : tracks.position(),
-                    state.positionCursor,
-                    tick,
-                    defaults.position(),
-                    this.position
-                );
-                state.scaleCursor = vector(
-                    tracks == null ? List.of() : tracks.scale(),
-                    state.scaleCursor,
-                    tick,
-                    defaults.scale(),
-                    this.scale
-                );
-                state.rotationCursor = rotation(
-                    tracks == null ? List.of() : tracks.rotation(),
-                    state.rotationCursor,
-                    tick,
-                    defaults.rotation(),
-                    this.rotation
-                );
-                this.localMatrix.identity()
-                    .translate((float) this.position[0], (float) this.position[1], (float) this.position[2])
-                    .rotate(this.rotation)
-                    .scale((float) this.scale[0], (float) this.scale[1], (float) this.scale[2]);
-            } else {
-                this.localMatrix.set(state.staticLocalMatrix);
-            }
-            if (state.parentIndex < 0) {
-                state.worldMatrix.set(this.localMatrix);
-            } else {
-                state.worldMatrix.set(this.nodes[state.parentIndex].worldMatrix).mul(this.localMatrix);
-            }
-            state.visibilityCursor = visible(state, tick);
-            evaluateNbt(state, tick);
+        this.session.setQueryFunction("value", arguments -> {
+            if (!arguments.isString(0) || !arguments.isNumber(1)) throw new IllegalStateException("q.value requires a value id and component index");
+            return MolangEngine.QueryValue.number(sharedValue(arguments.string(0), arguments.number(1)));
+        });
+        this.nbtCycle = loopCount;
+        prepareFrame(0, loopCount, 0, lifetimeTicks);
+        if (this.animation.model().molang().initialize() != null) {
+            this.session.evaluate(this.animation.expression("$.animation.molang.initialize"));
         }
     }
 
-    private void setQueries(int tick, int loopCount, double deltaTime) {
-        double animationTime = tick / 20.0D;
-        this.session.setQuery("anim_time", animationTime);
+    void prepareFrame(int tick, int loopCount, int deltaTicks, long lifetimeTicks) {
+        setFrameQueries(tick, loopCount, deltaTicks, lifetimeTicks);
+        this.querySource.apply(this.session, this.animation.queryNames());
+    }
+
+    int nextTick(int previousTick, int loopCount, int deltaTicks, long lifetimeTicks) {
+        prepareFrame(previousTick, loopCount, deltaTicks, lifetimeTicks);
+        if (this.animation.model().clip().clock() == null) return Math.addExact(previousTick, deltaTicks);
+        double tick = this.session.evaluate(this.animation.expression("$.animation.clock.expression")) * 20;
+        if (!Double.isFinite(tick) || tick > Integer.MAX_VALUE) throw new IllegalStateException("$.animation.clock.expression produced an invalid tick count");
+        return (int) Math.round(Math.max(0, tick));
+    }
+
+    int delay(ScalarValue delay, int tick, int loopCount, int deltaTicks, long lifetimeTicks) {
+        setFrameQueries(tick, loopCount, deltaTicks, lifetimeTicks);
+        double value = switch (delay) {
+            case ConstantValue constant -> constant.value();
+            case MolangValue molang -> this.session.evaluate(this.animation.expression(molang.path())) * 20;
+        };
+        if (!Double.isFinite(value) || value < 0 || value > Integer.MAX_VALUE) {
+            String path = delay instanceof MolangValue molang ? molang.path() : "$.animation.playback";
+            throw new IllegalStateException(path + " must evaluate to a finite non-negative delay");
+        }
+        return (int) Math.round(value);
+    }
+
+    int nodeCount() { return this.nodeIds.size(); }
+    String nodeId(int index) { return this.nodeIds.get(index); }
+    Matrix4fc matrix(int index) { return this.matrices[index]; }
+    Matrix4fc poseMatrix(int index) { return this.poseMatrices[index]; }
+    Transformation transformation(int index) { return this.transformations[index]; }
+    boolean visible(int index) { return this.visibility[index]; }
+    Map<String, Boolean> attachmentVisibility(int index) { return this.attachmentVisibility.get(index); }
+    Map<String, CompoundTag> nbt(int index) { return this.nbt.getOrDefault(nodeId(index), Map.of()); }
+    Set<String> nbtRemoved(int index, String attachmentId) { return this.nbtRemoved.get(nodeId(index)).get(attachmentId); }
+
+    private void setFrameQueries(int tick, int loopCount, int deltaTicks, long lifetimeTicks) {
+        if (tick != this.sampleTick || loopCount != this.sampleLoop) this.sharedValues.clear();
+        this.sampleTick = tick;
+        this.sampleLoop = loopCount;
+        this.sampleProgress = 0;
+        this.session.setQuery("anim_time", tick / 20.0);
         this.session.setQuery("anim_time_ticks", tick);
-        this.session.setQuery("anim_length", this.animation.durationTicks() / 20.0D);
-        this.session.setQuery("delta_time", deltaTime);
+        this.session.setQuery("anim_length", this.animation.model().clip().durationTicks() / 20.0);
+        this.session.setQuery("delta_time", deltaTicks / 20.0);
         this.session.setQuery("loop_count", loopCount);
-        this.session.setQuery("key_frame_lerp_time", 0.0D);
-        this.session.setQuery("life_time", animationTime);
-        this.querySource.apply(this.session);
+        this.session.setQuery("key_frame_lerp_time", 0);
+        this.session.setQuery("life_time", lifetimeTicks / 20.0);
     }
 
-    private int vector(List<CompiledVectorKeyframe> frames, int currentIndex, int tick, Vec3 defaults, double[] target) {
-        if (frames.isEmpty()) {
-            target[0] = defaults.x();
-            target[1] = defaults.y();
-            target[2] = defaults.z();
-            return 0;
-        }
-        currentIndex = advanceCursor(frames, currentIndex, tick);
-        CompiledVectorKeyframe current = frames.get(currentIndex);
-        CompiledVectorKeyframe next = currentIndex + 1 < frames.size() ? frames.get(currentIndex + 1) : null;
-        double progress = progress(current, next, tick);
-        this.session.setQuery("key_frame_lerp_time", progress);
-        current.post().evaluate(this.session, target);
-        if (next == null || current.interpolation() == Interpolation.STEP) {
-            return currentIndex;
-        }
-        next.pre().evaluate(this.session, this.endVector);
-        progress = easing(current.easing(), progress);
-        target[0] = lerp(target[0], this.endVector[0], progress);
-        target[1] = lerp(target[1], this.endVector[1], progress);
-        target[2] = lerp(target[2], this.endVector[2], progress);
-        return currentIndex;
+    void evaluateFrame(int tick, int loopCount, int deltaTicks, long lifetimeTicks, boolean runMolangTick) {
+        sampleFrame(tick, loopCount, deltaTicks, lifetimeTicks, runMolangTick, true);
+        finishFrame();
+        calculatePose(capturePose(), new Matrix4f(), null, 0);
     }
 
-    private int rotation(
-        List<CompiledVectorKeyframe> frames,
-        int currentIndex,
-        int tick,
-        Vec3 defaults,
-        Quaternionf target
-    ) {
-        if (frames.isEmpty()) {
-            target.rotationXYZ(
-                (float) Math.toRadians(defaults.x()),
-                (float) Math.toRadians(defaults.y()),
-                (float) Math.toRadians(defaults.z())
-            );
-            return 0;
+    void sampleFrame(int tick, int loopCount, int deltaTicks, long lifetimeTicks, boolean runMolangTick, boolean captureNbt) {
+        this.sampleGeneration++;
+        tick = Math.min(tick, this.animation.model().clip().durationTicks());
+        this.sharedValues.clear();
+        setFrameQueries(tick, loopCount, deltaTicks, lifetimeTicks);
+        if (runMolangTick && this.animation.model().molang().tick() != null) {
+            this.session.evaluate(this.animation.expression("$.animation.molang.tick"));
         }
-        currentIndex = advanceCursor(frames, currentIndex, tick);
-        CompiledVectorKeyframe current = frames.get(currentIndex);
-        CompiledVectorKeyframe next = currentIndex + 1 < frames.size() ? frames.get(currentIndex + 1) : null;
-        double progress = progress(current, next, tick);
-        this.session.setQuery("key_frame_lerp_time", progress);
-        current.post().evaluate(this.session, this.rotationVector);
-        quaternion(this.rotationVector, target);
-        if (next == null || current.interpolation() == Interpolation.STEP) {
-            return currentIndex;
+        if (!this.animation.hasNbtTracks() || this.animation.playbackMode() == PlaybackMode.SERVER_SYNC) this.nbtCycle = loopCount;
+        Map<String, double[]> frameValues = captureNbt && this.nbtCycle < loopCount ? new HashMap<>(this.sharedValues) : null;
+        while (captureNbt && this.nbtCycle < loopCount) {
+            setFrameQueries(this.animation.model().clip().durationTicks(), this.nbtCycle, deltaTicks, lifetimeTicks);
+            evaluateNbt(this.animation.model().clip().durationTicks());
+            this.nbtCaptures.clear();
+            this.nbtCycle++;
+            setFrameQueries(this.animation.model().settings().playback().loopStartTick(), this.nbtCycle, deltaTicks, lifetimeTicks);
+            evaluateNbt(this.animation.model().settings().playback().loopStartTick());
         }
-        next.pre().evaluate(this.session, this.endVector);
-        quaternion(this.endVector, this.endRotation);
-        target.slerp(this.endRotation, (float) easing(current.easing(), progress));
-        return currentIndex;
-    }
-
-    private int visible(NodeState state, int tick) {
-        if (state.node instanceof AnchorNode) {
-            state.visible = true;
-            return 0;
+        setFrameQueries(tick, loopCount, deltaTicks, lifetimeTicks);
+        if (frameValues != null) {
+            this.sharedValues.clear();
+            this.sharedValues.putAll(frameValues);
         }
-        CompiledNodeTracks tracks = state.tracks;
-        if (tracks == null || tracks.visible().isEmpty()) {
-            state.visible = state.node.visible();
-            return 0;
-        }
-        int currentIndex = advanceVisibilityCursor(tracks.visible(), state.visibilityCursor, tick);
-        CompiledVisibilityKeyframe current = tracks.visible().get(currentIndex);
-        this.session.setQuery("key_frame_lerp_time", 0.0D);
-        state.visible = current.value().evaluate(this.session) != 0.0D;
-        return currentIndex;
-    }
-
-    private int advanceCursor(List<CompiledVectorKeyframe> frames, int currentIndex, int tick) {
-        while (currentIndex + 1 < frames.size() && frames.get(currentIndex + 1).tick() <= tick) {
-            currentIndex++;
-        }
-        return currentIndex;
-    }
-
-    private int advanceVisibilityCursor(List<CompiledVisibilityKeyframe> frames, int currentIndex, int tick) {
-        while (currentIndex + 1 < frames.size() && frames.get(currentIndex + 1).tick() <= tick) {
-            currentIndex++;
-        }
-        return currentIndex;
-    }
-
-    private void evaluateNbt(NodeState state, int tick) {
-        List<CompiledNbtKeyframe> frames = state.tracks == null ? List.of() : state.tracks.nbt();
-        while (state.nbtCursor + 1 < frames.size() && frames.get(state.nbtCursor + 1).tick() <= tick) {
-            CompiledNbtKeyframe frame = frames.get(++state.nbtCursor);
-            this.session.setQuery("key_frame_lerp_time", 0.0D);
-            CompoundTag patch = frame.evaluate(this.session);
-            validateNbtPatch(state, frame, patch);
-            state.nbtState.merge(patch);
-            state.nbtChanged = true;
-        }
-    }
-
-    private void validateNbtPatch(NodeState state, CompiledNbtKeyframe frame, CompoundTag patch) {
-        String path = frame.path() == null ? "NBT keyframe at " + frame.tick() + "t" : frame.path();
-        for (String field : RUNTIME_OWNED_NBT_FIELDS) {
-            if (patch.contains(field)) throw new IllegalStateException(path + " must not modify runtime-owned field " + field);
-        }
-        Set<String> fields = Set.copyOf(patch.keySet());
-        if (state.nbtCursor == 0) {
-            if (state.nbtInitialFields == null) state.nbtInitialFields = fields;
-            else if (!state.nbtInitialFields.equals(fields)) {
-                throw new IllegalStateException(path + " must declare the same fields on every cycle");
+        this.sampledValues.clear();
+        this.sampledVisibility.clear();
+        for (Track track : this.animation.model().clip().tracks()) {
+            if (track.channel() == Channel.VALUE) {
+                Operation operation = this.animation.operation(track);
+                double weight = track.blend() == null ? 1 : scalar(track.blend().weight(), 0);
+                double[] value = sample(track.driver(), tick, operation.value());
+                if (track.blend() != null) {
+                    double[] blended = this.blendedValues.get(track);
+                    for (int componentIndex = 0; componentIndex < value.length; componentIndex++) {
+                        double base = track.blend().base().get(componentIndex);
+                        blended[componentIndex] = base + (value[componentIndex] - base) * weight;
+                    }
+                    value = blended;
+                }
+                this.sampledValues.put(track, value);
+            } else if (track.channel() == Channel.VISIBLE) {
+                this.sampledVisibility.put(track, sampleVisibility(track, tick, this.animation.defaultVisibility(track)));
             }
-        } else if (!state.nbtInitialFields.containsAll(fields)) {
-            throw new IllegalStateException(path + " must only modify fields declared by the 0t keyframe");
         }
     }
 
-    private double progress(CompiledVectorKeyframe current, CompiledVectorKeyframe next, int tick) {
-        if (next == null) return 0.0D;
-        return Math.clamp((double) (tick - current.tick()) / (next.tick() - current.tick()), 0.0D, 1.0D);
+    Pose capturePose() {
+        Pose pose = new Pose(this.sampleGeneration, this.nodeIds.size());
+        this.sampledValues.forEach((track, values) -> pose.values.put(track, values.clone()));
+        pose.sampledVisibility.putAll(this.sampledVisibility);
+        this.nbt.forEach((node, attachments) -> {
+            Map<String, CompoundTag> states = new HashMap<>();
+            attachments.forEach((attachment, state) -> states.put(attachment, state.copy()));
+            pose.nbt.put(node, states);
+        });
+        this.nbtRemoved.forEach((node, attachments) -> {
+            Map<String, Set<String>> removed = new HashMap<>();
+            attachments.forEach((attachment, fields) -> removed.put(attachment, Set.copyOf(fields)));
+            pose.nbtRemoved.put(node, removed);
+        });
+        return pose;
     }
 
-    private void quaternion(double[] degrees, Quaternionf target) {
-        target.rotationXYZ(
-            (float) Math.toRadians(degrees[0]),
-            (float) Math.toRadians(degrees[1]),
-            (float) Math.toRadians(degrees[2])
-        );
-    }
+    static final class Pose {
+        private final long generation;
+        private final Map<Track, double[]> values = new IdentityHashMap<>();
+        private final Map<Track, Boolean> sampledVisibility = new IdentityHashMap<>();
+        final Matrix4fc[] matrices;
+        final Transformation[] transformations;
+        final boolean[] visibility;
+        final List<Map<String, Boolean>> attachmentVisibility = new ArrayList<>();
+        final Map<String, Map<String, CompoundTag>> nbt = new HashMap<>();
+        final Map<String, Map<String, Set<String>>> nbtRemoved = new HashMap<>();
 
-    private double easing(Easing easing, double value) {
-        return switch (easing) {
-            case LINEAR -> value;
-            case EASE_IN_SINE -> in(EasingKind.SINE, value);
-            case EASE_OUT_SINE -> out(EasingKind.SINE, value);
-            case EASE_IN_OUT_SINE -> inOut(EasingKind.SINE, value);
-            case EASE_IN_QUAD -> in(EasingKind.QUAD, value);
-            case EASE_OUT_QUAD -> out(EasingKind.QUAD, value);
-            case EASE_IN_OUT_QUAD -> inOut(EasingKind.QUAD, value);
-            case EASE_IN_CUBIC -> in(EasingKind.CUBIC, value);
-            case EASE_OUT_CUBIC -> out(EasingKind.CUBIC, value);
-            case EASE_IN_OUT_CUBIC -> inOut(EasingKind.CUBIC, value);
-            case EASE_IN_QUART -> in(EasingKind.QUART, value);
-            case EASE_OUT_QUART -> out(EasingKind.QUART, value);
-            case EASE_IN_OUT_QUART -> inOut(EasingKind.QUART, value);
-            case EASE_IN_QUINT -> in(EasingKind.QUINT, value);
-            case EASE_OUT_QUINT -> out(EasingKind.QUINT, value);
-            case EASE_IN_OUT_QUINT -> inOut(EasingKind.QUINT, value);
-            case EASE_IN_EXPO -> in(EasingKind.EXPO, value);
-            case EASE_OUT_EXPO -> out(EasingKind.EXPO, value);
-            case EASE_IN_OUT_EXPO -> inOut(EasingKind.EXPO, value);
-            case EASE_IN_CIRC -> in(EasingKind.CIRC, value);
-            case EASE_OUT_CIRC -> out(EasingKind.CIRC, value);
-            case EASE_IN_OUT_CIRC -> inOut(EasingKind.CIRC, value);
-            case EASE_IN_BACK -> in(EasingKind.BACK, value);
-            case EASE_OUT_BACK -> out(EasingKind.BACK, value);
-            case EASE_IN_OUT_BACK -> inOut(EasingKind.BACK, value);
-            case EASE_IN_ELASTIC -> in(EasingKind.ELASTIC, value);
-            case EASE_OUT_ELASTIC -> out(EasingKind.ELASTIC, value);
-            case EASE_IN_OUT_ELASTIC -> inOut(EasingKind.ELASTIC, value);
-            case EASE_IN_BOUNCE -> in(EasingKind.BOUNCE, value);
-            case EASE_OUT_BOUNCE -> out(EasingKind.BOUNCE, value);
-            case EASE_IN_OUT_BOUNCE -> inOut(EasingKind.BOUNCE, value);
-        };
-    }
-
-    private double in(EasingKind kind, double value) {
-        return switch (kind) {
-            case SINE -> 1.0D - Math.cos(Math.PI * value / 2.0D);
-            case QUAD -> value * value;
-            case CUBIC -> value * value * value;
-            case QUART -> Math.pow(value, 4.0D);
-            case QUINT -> Math.pow(value, 5.0D);
-            case EXPO -> value == 0.0D ? 0.0D : Math.pow(2.0D, 10.0D * (value - 1.0D));
-            case CIRC -> 1.0D - Math.sqrt(1.0D - value * value);
-            case BACK -> value * value * ((1.70158D + 1.0D) * value - 1.70158D);
-            case ELASTIC -> 1.0D - Math.pow(Math.cos(Math.PI * value / 2.0D), 3.0D) * Math.cos(Math.PI * value);
-            case BOUNCE -> Math.min(
-                Math.min(121.0D / 16.0D * value * value, 121.0D / 8.0D * Math.pow(value - 6.0D / 11.0D, 2.0D) + 0.5D),
-                Math.min(
-                    121.0D / 4.0D * Math.pow(value - 9.0D / 11.0D, 2.0D) + 0.75D,
-                    121.0D / 2.0D * Math.pow(value - 10.5D / 11.0D, 2.0D) + 0.875D
-                )
-            );
-        };
-    }
-
-    private double out(EasingKind kind, double value) {
-        return 1.0D - in(kind, 1.0D - value);
-    }
-
-    private double inOut(EasingKind kind, double value) {
-        return value < 0.5D ? in(kind, value * 2.0D) / 2.0D : 1.0D - in(kind, (1.0D - value) * 2.0D) / 2.0D;
-    }
-
-    private double lerp(double start, double end, double progress) {
-        return start + (end - start) * progress;
-    }
-
-    private static int findVectorCursor(List<CompiledVectorKeyframe> frames, int tick) {
-        int low = 1;
-        int high = frames.size();
-        while (low < high) {
-            int middle = (low + high) >>> 1;
-            if (frames.get(middle).tick() <= tick) low = middle + 1;
-            else high = middle;
+        private Pose(long generation, int count) {
+            this.generation = generation;
+            this.matrices = new Matrix4fc[count];
+            this.transformations = new Transformation[count];
+            this.visibility = new boolean[count];
         }
-        return Math.max(0, low - 1);
     }
 
-    private static int findVisibilityCursor(List<CompiledVisibilityKeyframe> frames, int tick) {
-        int low = 1;
-        int high = frames.size();
-        while (low < high) {
-            int middle = (low + high) >>> 1;
-            if (frames.get(middle).tick() <= tick) low = middle + 1;
-            else high = middle;
+    void calculatePose(Pose pose, Matrix4fc rootMatrix, Map<String, Matrix4f> transitionStart, float progress) {
+        boolean prepareTransition = transitionStart != null && (transitionStart != this.transitionInput || pose.generation != this.transitionGeneration);
+        for (int index = 0; index < this.nodeIds.size(); index++) {
+            Node node = this.animation.node(index);
+            Matrix4f world = this.matrices[index];
+            int parentIndex = this.animation.parentIndex(index);
+            if (transitionStart == null || prepareTransition) {
+                this.local.identity();
+                Quaternionf orientation = this.orientations[index].identity();
+                for (int operationIndex = 0; operationIndex < node.transform().size(); operationIndex++) {
+                    Operation operation = node.transform().get(operationIndex);
+                    Track track = this.animation.track(index, operationIndex);
+                    boolean rotation = operation.op() == OperationType.ROTATE_EULER || operation.op() == OperationType.ROTATE_QUATERNION;
+                    if (track == null) {
+                        this.local.mul(this.animation.operationMatrix(operation));
+                        if (rotation) orientation.mul(this.animation.operationRotation(operation)).normalize();
+                    } else if (rotation) {
+                        PreparedAnimation.operationRotation(operation, pose.values.get(track), this.operationRotation, this.quaternion);
+                        this.local.mul(this.operationMatrix.rotation(this.operationRotation));
+                        orientation.mul(this.operationRotation).normalize();
+                    } else {
+                        this.local.mul(PreparedAnimation.operationMatrix(operation, pose.values.get(track), this.operationMatrix));
+                    }
+                }
+                if (parentIndex < 0) world.set(this.local);
+                else {
+                    Matrix4f parent = this.matrices[parentIndex];
+                    Quaternionf parentOrientation = this.orientations[parentIndex];
+                    if (node.inherit().rotation() == RotationInheritance.PARENT && node.inherit().scale()) {
+                        world.set(parent).mul(this.local);
+                    } else {
+                        this.inherited.identity();
+                        if (node.inherit().rotation() == RotationInheritance.PARENT) this.inherited.rotation(parentOrientation);
+                        if (node.inherit().scale()) {
+                            this.residual.rotation(parentOrientation).invert().mul(this.parentLinear.set(parent).setTranslation(0, 0, 0));
+                            this.inherited.mul(this.residual);
+                        }
+                        world.set(this.inherited.setTranslation(parent.m30(), parent.m31(), parent.m32())).mul(this.local);
+                    }
+                    if (node.inherit().rotation() == RotationInheritance.PARENT) orientation.premul(parentOrientation).normalize();
+                }
+                if (!world.isFinite()) throw new IllegalStateException("Node " + nodeId(index) + " produced a non-finite transform");
+            }
+            Matrix4fc matrix = world;
+            if (transitionStart != null) {
+                if (prepareTransition) {
+                    this.transitionStarts[index] = new Transformation(new Matrix4f(transitionStart.get(nodeId(index))));
+                    this.transitionEnds[index] = new Transformation(new Matrix4f(world));
+                }
+                matrix = this.transitionStarts[index].slerp(this.transitionEnds[index], progress).getMatrix();
+            }
+            this.poseMatrices[index] = matrix;
+            this.displayMatrix.set(rootMatrix).mul(matrix);
+            Transformation previous = this.transformations[index];
+            if (previous == null || !previous.getMatrix().equals(this.displayMatrix)) {
+                // Transformation retains its matrix and Display retains its decomposed components.
+                var transformation = new Transformation(new Matrix4f(this.displayMatrix));
+                transformation.translation();
+                transformation.leftRotation();
+                transformation.scale();
+                transformation.rightRotation();
+                this.transformations[index] = transformation;
+            }
+            boolean visible = pose.sampledVisibility.getOrDefault(this.animation.visibilityTrack(index), node.visible());
+            if (parentIndex >= 0 && node.inherit().visibility()) visible &= this.visibility[parentIndex];
+            this.visibility[index] = visible;
+            Map<String, Boolean> attachments = this.attachmentVisibility.get(index);
+            for (String attachmentId : this.animation.attachmentIds(index)) {
+                attachments.put(attachmentId, pose.sampledVisibility.getOrDefault(
+                    this.animation.visibilityTrack(index, attachmentId), node.attachments().get(attachmentId).visible()));
+            }
+            pose.matrices[index] = new Matrix4f(matrix);
+            pose.transformations[index] = this.transformations[index];
+            pose.visibility[index] = visible;
+            pose.attachmentVisibility.add(Map.copyOf(attachments));
         }
-        return Math.max(0, low - 1);
+        this.transitionInput = transitionStart;
+        this.transitionGeneration = pose.generation;
     }
 
-    private static final class NodeState {
-        private final String id;
-        private final Node node;
-        private final CompiledNodeTracks tracks;
-        private final int parentIndex;
-        private final Matrix4f staticLocalMatrix;
-        private final Matrix4f worldMatrix = new Matrix4f();
+    void finishFrame() {
+        evaluateNbt(this.sampleTick);
+    }
 
-        private int positionCursor;
-        private int rotationCursor;
-        private int scaleCursor;
-        private int visibilityCursor;
-        private int nbtCursor = -1;
-        private CompoundTag nbtState = new CompoundTag();
-        private Set<String> nbtInitialFields;
-        private boolean nbtChanged;
-        private boolean visible;
+    private void evaluateNbt(double tick) {
+        this.sampleProgress = 0;
+        this.session.setQuery("key_frame_lerp_time", 0);
+        for (int index = 0; index < this.nodeIds.size(); index++) {
+            String nodeId = this.nodeIds.get(index);
+            Map<String, Track> tracks = this.animation.nbtTracks(index);
+            Map<String, CompoundTag> states = this.nbt.computeIfAbsent(nodeId, ignored -> new LinkedHashMap<>());
+            Map<String, Set<String>> removedStates = this.nbtRemoved.computeIfAbsent(nodeId, ignored -> new HashMap<>());
+            for (String attachmentId : tracks.keySet()) {
+                CompoundTag state = new CompoundTag();
+                Set<String> removed = new HashSet<>();
+                for (Keyframe key : tracks.get(attachmentId).driver().keys()) {
+                    if (key.tick() > tick) break;
+                    NbtValue patch = (NbtValue) key.post();
+                    List<String> remove = patch instanceof ConstantNbtValue constant ? constant.remove() : ((MolangNbtValue) patch).remove();
+                    remove.forEach(state::remove);
+                    removed.addAll(remove);
+                    CompoundTag merge;
+                    if (patch instanceof ConstantNbtValue constant) merge = constant.value();
+                    else {
+                        MolangNbtValue molang = (MolangNbtValue) patch;
+                        merge = this.nbtCaptures.get(molang.path());
+                        if (merge == null) {
+                            try {
+                                merge = TagParser.parseCompoundFully(this.session.evaluateString(this.animation.expression(molang.path())));
+                            } catch (Exception exception) {
+                                throw new IllegalStateException(molang.path() + " must return valid compound SNBT", exception);
+                            }
+                            for (String field : merge.keySet()) {
+                                if (RUNTIME_NBT_FIELDS.contains(field)) throw new IllegalStateException(molang.path() + ": runtime-owned field " + field);
+                            }
+                            this.nbtCaptures.put(molang.path(), merge);
+                        }
+                    }
+                    state.merge(merge);
+                }
+                states.put(attachmentId, state);
+                removedStates.put(attachmentId, removed);
+            }
+        }
+    }
 
-        private NodeState(String id, Node node, CompiledNodeTracks tracks, int parentIndex) {
-            this.id = id;
-            this.node = node;
-            this.tracks = tracks;
-            this.parentIndex = parentIndex;
-            boolean staticTransform = tracks == null
-                || tracks.position().isEmpty() && tracks.rotation().isEmpty() && tracks.scale().isEmpty();
-            if (staticTransform) {
-                LocalTransform transform = node.transform();
-                this.staticLocalMatrix = new Matrix4f()
-                    .translate((float) transform.position().x(), (float) transform.position().y(), (float) transform.position().z())
-                    .rotate(new Quaternionf().rotationXYZ(
-                        (float) Math.toRadians(transform.rotation().x()),
-                        (float) Math.toRadians(transform.rotation().y()),
-                        (float) Math.toRadians(transform.rotation().z())
-                    ))
-                    .scale((float) transform.scale().x(), (float) transform.scale().y(), (float) transform.scale().z());
+    private boolean sampleVisibility(Track track, double tick, boolean base) {
+        if (track == null) return base;
+        Driver driver = track.driver();
+        VisibilityValue value;
+        if (driver.type() == DriverType.EXPRESSION) value = (VisibilityValue) driver.value();
+        else {
+            List<Keyframe> keys = driver.keys();
+            if (tick < keys.getFirst().tick()) {
+                if (!driver.firstPre()) return base;
+                value = (VisibilityValue) keys.getFirst().pre();
             } else {
-                this.staticLocalMatrix = null;
+                int index = keyIndex(driver, tick);
+                value = (VisibilityValue) keys.get(index).post();
             }
         }
-
-        private void resetCursors(int tick) {
-            this.positionCursor = this.tracks == null || this.tracks.position().isEmpty()
-                ? 0 : findVectorCursor(this.tracks.position(), tick);
-            this.rotationCursor = this.tracks == null || this.tracks.rotation().isEmpty()
-                ? 0 : findVectorCursor(this.tracks.rotation(), tick);
-            this.scaleCursor = this.tracks == null || this.tracks.scale().isEmpty()
-                ? 0 : findVectorCursor(this.tracks.scale(), tick);
-            this.visibilityCursor = this.tracks == null || this.tracks.visible().isEmpty()
-                ? 0 : findVisibilityCursor(this.tracks.visible(), tick);
-            this.nbtCursor = -1;
-            this.nbtState = new CompoundTag();
-            this.nbtChanged = false;
-        }
+        return switch (value) {
+            case ConstantVisibility constant -> constant.value();
+            case MolangVisibility molang -> scalar(new MolangValue(molang.source(), molang.path()), 0) != 0;
+        };
     }
 
-    private enum EasingKind {
-        SINE,
-        QUAD,
-        CUBIC,
-        QUART,
-        QUINT,
-        EXPO,
-        CIRC,
-        BACK,
-        ELASTIC,
-        BOUNCE
+    private double[] sample(Driver driver, double tick, List<Double> base) {
+        if (driver == null) return this.animation.baseValue(base);
+        if (driver.type() == DriverType.EXPRESSION) return vector((VectorValue) driver.value(), 0);
+        List<Keyframe> keys = driver.keys();
+        if (tick < keys.getFirst().tick()) return driver.firstPre() ? vector((VectorValue) keys.getFirst().pre(), 0) : this.animation.baseValue(base);
+        int index = keyIndex(driver, tick);
+        if (driver.atKey() == KeyPolicy.SEGMENT && keys.size() > 1) index = Math.min(index, keys.size() - 2);
+        Keyframe left = keys.get(index);
+        if (driver.atKey() != KeyPolicy.SEGMENT && tick == left.tick()) return vector((VectorValue) (driver.atKey() == KeyPolicy.PRE ? left.pre() : left.post()), 1);
+        if (index == keys.size() - 1) return vector((VectorValue) left.post(), 1);
+        Keyframe right = keys.get(index + 1);
+        double progress = Math.min(1, (tick - left.tick()) / (right.tick() - left.tick()));
+        Segment segment = driver.segments().get(index);
+        VectorValue startValues = (VectorValue) left.post(), endValues = (VectorValue) right.pre();
+        if (segment.interpolation() == Interpolation.STEP && driver.atKey() != KeyPolicy.SEGMENT) return vector(startValues, progress);
+        boolean component = driver.componentEvaluation();
+        double[] start = component ? null : vector(startValues, progress);
+        double[] end = component ? null : vector(endValues, progress);
+        if (driver.atKey() == KeyPolicy.SEGMENT && progress == 1) return component ? vector(endValues, progress) : end;
+        if (segment.interpolation() == Interpolation.STEP || driver.atKey() == KeyPolicy.SEGMENT && segment.interpolation() == Interpolation.BEZIER && progress == 0) return component ? vector(startValues, progress) : start;
+        double eased = component ? progress : easing(segment.easing(), progress);
+        if (segment.interpolation() == Interpolation.SLERP) {
+            Quaterniond rotation = this.slerpStart.set(start[0], start[1], start[2], start[3]).normalize()
+                .slerp(this.slerpEnd.set(end[0], end[1], end[2], end[3]).normalize(), eased).normalize();
+            return new double[]{rotation.x, rotation.y, rotation.z, rotation.w};
+        }
+        double[] previous = !component && segment.interpolation() == Interpolation.CATMULL_ROM && segment.previous() != null ? vector(segment.previous(), progress) : start;
+        double[] following = !component && segment.interpolation() == Interpolation.CATMULL_ROM && segment.following() != null ? vector(segment.following(), progress) : end;
+        double[] out = !component && segment.interpolation() == Interpolation.HERMITE ? vector(segment.outTangent(), progress) : null;
+        double[] in = !component && segment.interpolation() == Interpolation.HERMITE ? vector(segment.inTangent(), progress) : null;
+        double durationSeconds = (right.tick() - left.tick()) / 20.0;
+        double[] result = new double[startValues.components().size()];
+        for (int componentIndex = 0; componentIndex < result.length; componentIndex++) {
+            double t = component ? easing(segment.easing(), progress) : eased;
+            double p0 = component && segment.interpolation() == Interpolation.CATMULL_ROM && segment.previous() != null ? scalar(segment.previous().components().get(componentIndex), progress) : previous == null ? 0 : previous[componentIndex];
+            double a = component ? scalar(startValues.components().get(componentIndex), progress) : start[componentIndex];
+            double b = component ? scalar(endValues.components().get(componentIndex), progress) : end[componentIndex];
+            double p1 = component && segment.interpolation() == Interpolation.CATMULL_ROM && segment.following() != null ? scalar(segment.following().components().get(componentIndex), progress) : following == null ? 0 : following[componentIndex];
+            result[componentIndex] = switch (segment.interpolation()) {
+                case LINEAR -> a + (b - a) * t;
+                case CATMULL_ROM, HERMITE -> {
+                    double m0 = segment.interpolation() == Interpolation.HERMITE ? (component ? scalar(segment.outTangent().components().get(componentIndex), progress) : out[componentIndex]) * durationSeconds : segment.tension() * (b - (segment.previous() == null ? a : p0));
+                    double m1 = segment.interpolation() == Interpolation.HERMITE ? (component ? scalar(segment.inTangent().components().get(componentIndex), progress) : in[componentIndex]) * durationSeconds : segment.tension() * ((segment.following() == null ? b : p1) - a);
+                    double t2 = t * t, t3 = t2 * t;
+                    yield (2 * t3 - 3 * t2 + 1) * a + (t3 - 2 * t2 + t) * m0
+                        + (-2 * t3 + 3 * t2) * b + (t3 - t2) * m1;
+                }
+                case BEZIER -> {
+                    BezierHandle handle = segment.handles().get(componentIndex);
+                    double outTime, inTime, outValue, inValue;
+                    if (segment.inControlFirst()) {
+                        inValue = scalar(handle.inValue(), progress);
+                        inTime = scalar(handle.inTime(), progress);
+                        outValue = scalar(handle.outValue(), progress);
+                        outTime = scalar(handle.outTime(), progress);
+                    } else {
+                        outTime = scalar(handle.outTime(), progress);
+                        inTime = scalar(handle.inTime(), progress);
+                        if (!handle.outRescale() && !(outTime >= 0 && outTime <= 1) || !handle.inRescale() && !(inTime >= 0 && inTime <= 1)) throw new IllegalStateException("Bezier time handles must be within [0, 1]");
+                        outValue = scalar(handle.outValue(), progress);
+                        inValue = scalar(handle.inValue(), progress);
+                    }
+                    if (handle.outRescale()) { double clamped = Math.clamp(outTime, 0, 1); outValue /= 1 + Math.abs(clamped - outTime); outTime = clamped; }
+                    if (handle.inRescale()) { double clamped = Math.clamp(inTime, 0, 1); inValue /= 1 + Math.abs(clamped - inTime); inTime = clamped; }
+                    if (!(outTime >= 0 && outTime <= 1 && inTime >= 0 && inTime <= 1)) throw new IllegalStateException("Bezier time handles must be within [0, 1]");
+                    double h1 = outValue + (handle.outRelative() ? a : 0);
+                    double h2 = inValue + (handle.inRelative() ? b : 0);
+                    double low = 0, high = 1;
+                    for (int iteration = 0; iteration < 48; iteration++) {
+                        double k = (low + high) / 2;
+                        double x = cubic(0, outTime, inTime, 1, k);
+                        if (x == t) { low = high = k; break; }
+                        if (x < t) low = k;
+                        else high = k;
+                    }
+                    yield cubic(a, h1, h2, b, (low + high) / 2);
+                }
+                default -> throw new IllegalStateException("Unexpected interpolation " + segment.interpolation());
+            };
+        }
+        return result;
+    }
+
+    private int keyIndex(Driver driver, double tick) {
+        int[] cursor = this.keyCursors.computeIfAbsent(driver, ignored -> new int[1]);
+        List<Keyframe> keys = driver.keys();
+        int index = cursor[0];
+        if (keys.get(index).tick() > tick) {
+            int low = 0, high = index;
+            while (low < high) {
+                int middle = (low + high + 1) >>> 1;
+                if (keys.get(middle).tick() <= tick) low = middle;
+                else high = middle - 1;
+            }
+            index = low;
+        } else {
+            while (index + 1 < keys.size() && keys.get(index + 1).tick() <= tick) index++;
+        }
+        cursor[0] = index;
+        return index;
+    }
+
+    private static double cubic(double a, double b, double c, double d, double t) {
+        double s = 1 - t;
+        return s * s * s * a + 3 * s * s * t * b + 3 * s * t * t * c + t * t * t * d;
+    }
+
+    private double easing(Easing easing, double u) {
+        if (easing == null || easing.kernel().equals("linear")) return u;
+        double parameter = scalar(easing.parameter(), u);
+        if (easing.kernel().equals("power") && parameter <= 0
+            || Set.of("steps", "blockbench_steps").contains(easing.kernel()) && (parameter < 2 || parameter != Math.floor(parameter))) throw new IllegalStateException("Invalid easing parameter");
+        return switch (easing.direction()) {
+            case "in" -> easingBase(easing.kernel(), parameter, u);
+            case "out" -> 1 - easingBase(easing.kernel(), parameter, 1 - u);
+            case "in_out" -> u < 0.5 ? easingBase(easing.kernel(), parameter, 2 * u) / 2 : 1 - easingBase(easing.kernel(), parameter, 2 - 2 * u) / 2;
+            default -> throw new IllegalStateException("Unexpected easing direction " + easing.direction());
+        };
+    }
+
+    private static double easingBase(String kernel, double parameter, double u) {
+        return switch (kernel) {
+            case "power" -> Math.pow(u, parameter);
+            case "sine" -> 1 - Math.cos(Math.PI * u / 2);
+            case "expo" -> u == 0 ? 0 : Math.pow(2, 10 * (u - 1));
+            case "blockbench_expo" -> Math.pow(2, 10 * (u - 1));
+            case "circ" -> 1 - Math.sqrt(1 - u * u);
+            case "back" -> u * u * ((parameter + 1) * u - parameter);
+            case "blockbench_elastic" -> 1 - Math.pow(Math.cos(Math.PI * u / 2), 3) * Math.cos(Math.PI * parameter * u);
+            case "blockbench_bounce" -> Math.min(Math.min(121.0 / 16 * u * u, 121.0 / 4 * parameter * Math.pow(u - 6.0 / 11, 2) + 1 - parameter),
+                Math.min(121 * parameter * parameter * Math.pow(u - 9.0 / 11, 2) + 1 - parameter * parameter,
+                    484 * parameter * parameter * parameter * Math.pow(u - 10.5 / 11, 2) + 1 - parameter * parameter * parameter));
+            case "steps" -> Math.floor(u * parameter) / parameter;
+            case "blockbench_steps" -> {
+                double step = 1 / parameter;
+                if (u > (parameter - 1) * step) yield (parameter - 1) * step;
+                double low = 0, high = parameter - 1;
+                while (high - low > 1) {
+                    double middle = low + Math.floor((high - low) / 2);
+                    if (u >= middle * step) low = middle;
+                    else high = middle;
+                }
+                yield low * step;
+            }
+            default -> throw new IllegalStateException("Unexpected easing kernel " + kernel);
+        };
+    }
+
+    private double[] vector(VectorValue value, double progress) {
+        double[] constant = this.animation.constantVector(value);
+        if (constant != null) {
+            if (constant.length > 0) {
+                this.sampleProgress = progress;
+                this.session.setQuery("key_frame_lerp_time", progress);
+            }
+            return constant;
+        }
+        double[] result = new double[value.components().size()];
+        for (int componentIndex = 0; componentIndex < result.length; componentIndex++) {
+            result[componentIndex] = scalar(value.components().get(componentIndex), progress);
+        }
+        return result;
+    }
+
+    private double scalar(ScalarValue value, double progress) {
+        this.sampleProgress = progress;
+        this.session.setQuery("key_frame_lerp_time", progress);
+        double result = switch (value) {
+            case ConstantValue constant -> constant.value();
+            case MolangValue molang -> this.session.evaluate(this.animation.expression(molang.path()));
+        };
+        if (!Double.isFinite(result)) throw new IllegalStateException("Transform component evaluated to a non-finite value");
+        return result;
+    }
+
+    private double sharedValue(String id, double component) {
+        SharedValue definition = this.animation.model().clip().values().get(id);
+        if (definition == null) throw new IllegalStateException("Unknown shared value " + id);
+        if (component != Math.floor(component) || component < 0 || component >= definition.base().size()) throw new IllegalStateException("Invalid component for shared value " + id);
+        double[] value = this.sharedValues.get(id);
+        if (value == null) {
+            if (!this.evaluatingValues.add(id)) throw new IllegalStateException("Cyclic shared value " + id);
+            double progress = this.sampleProgress;
+            try {
+                value = sample(definition.driver(), Math.addExact(this.sampleTick, definition.timeOffsetTicks()), definition.base());
+                this.sharedValues.put(id, value);
+            } finally {
+                this.evaluatingValues.remove(id);
+                this.sampleProgress = progress;
+                this.session.setQuery("key_frame_lerp_time", progress);
+            }
+        }
+        return value[(int) component];
     }
 }

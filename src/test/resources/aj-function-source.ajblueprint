@@ -1,0 +1,33 @@
+{
+  "meta": { "format": "animated-java:format/blueprint", "format_version": "1.10.2" },
+  "name": "aj_functions",
+  "resolution": { "width": 64, "height": 64 },
+  "textures": [],
+  "elements": [
+    { "uuid": "arm", "name": "arm", "type": "cube", "from": [16,32,48], "to": [20,44,52], "faces": {} },
+    { "uuid": "locator", "name": "tip", "type": "locator", "position": [24,36,40], "rotation": [20,10,15] }
+  ],
+  "groups": [{
+    "uuid": "bone", "name": "left_arm", "origin": [16,32,48], "rotation": [0,30,0],
+    "configs": { "variants": { "apply": { "on_apply_function": "/say skin apply" } } }
+  }],
+  "outliner": [{ "uuid": "bone", "children": ["arm", "locator"] }],
+  "variants": { "list": [{ "uuid": "apply", "name": "apply" }] },
+  "animations": [{
+    "name": "functions", "length": 1, "loop": "once", "animators": {
+      "bone": { "keyframes": [
+        { "channel": "rotation", "time": 0, "data_points": [{ "x": 0, "y": 0, "z": 0 }] },
+        { "channel": "rotation", "time": 1, "data_points": [{ "x": 0, "y": 60, "z": 0 }] },
+        { "channel": "scale", "time": 0, "data_points": [{ "x": 2, "y": 2, "z": 2 }] }
+      ] },
+      "locator": { "keyframes": [
+        { "channel": "function", "time": 0, "data_points": [{ "function": "/say locator start" }] },
+        { "channel": "function", "time": 0.5, "data_points": [{ "function": "/say locator middle", "execute_condition": "if entity @s[tag=probe]" }] },
+        { "channel": "function", "time": 1, "data_points": [{ "function": "/say locator end" }] }
+      ] },
+      "effects": { "type": "effect", "keyframes": [
+        { "channel": "variant", "time": 0.5, "data_points": [{ "variant": "apply" }] }
+      ] }
+    }
+  }]
+}

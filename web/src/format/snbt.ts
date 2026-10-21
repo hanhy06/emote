@@ -52,11 +52,6 @@ export function readSnbtString(raw: string): string | null {
   return null;
 }
 
-export function readSnbtCompoundField(compound: string, name: string): string | null {
-  const raw = readSnbtRawField(compound, name);
-  return raw?.startsWith("{") && raw.endsWith("}") ? raw : null;
-}
-
 export function omitSnbtFields(compound: string, omittedNames: ReadonlySet<string>): string | undefined {
   const fields = parseSnbtCompound(compound).filter((field) => !omittedNames.has(field.name));
   return fields.length ? `{${fields.map((field) => field.raw).join(",")}}` : undefined;

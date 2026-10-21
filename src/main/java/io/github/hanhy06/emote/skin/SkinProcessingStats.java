@@ -6,7 +6,4 @@ public record SkinProcessingStats(
     int queuedJobs,
     int retryingJobs
 ) {
-    public static SkinProcessingStats unavailable() {
-        return new SkinProcessingStats("Unavailable", 0, 0, 0);
-    }
 }

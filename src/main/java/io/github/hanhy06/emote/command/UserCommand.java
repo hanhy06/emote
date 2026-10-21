@@ -5,8 +5,6 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
-import com.mojang.brigadier.suggestion.Suggestions;
-import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaySource;
 import io.github.hanhy06.emote.application.EmotePlayService;
@@ -18,10 +16,8 @@ import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.IdentifierArgument;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Entity;
 
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 public final class UserCommand {
     private final PlayerPlaybackManager playerPlaybackManager;
@@ -43,7 +39,7 @@ public final class UserCommand {
 
     public LiteralArgumentBuilder<CommandSourceStack> createRoot() {
         return Commands.literal("emote")
-            .executes(context -> openMenu(context.getSource()))
+            .executes(context -> openMenu(context.getSource(), 1))
             .then(Commands.argument("page", IntegerArgumentType.integer(1))
                 .executes(context -> openMenu(
                     context.getSource(),
@@ -74,15 +70,10 @@ public final class UserCommand {
     private LiteralArgumentBuilder<CommandSourceStack> createPlayCommand() {
         return Commands.literal("play")
             .then(Commands.argument("id", IdentifierArgument.id())
-                .suggests((context, builder) -> suggestPlayIds(
-                    getSuggestedPlayIds(context.getSource()),
-                    builder
+                .suggests((context, builder) -> SharedSuggestionProvider.suggestResource(
+                    getSuggestedPlayIds(context.getSource()).stream().map(Identifier::parse), builder
                 ))
                 .executes(this::play));
-    }
-
-    static CompletableFuture<Suggestions> suggestPlayIds(List<String> ids, SuggestionsBuilder builder) {
-        return SharedSuggestionProvider.suggestResource(ids.stream().map(Identifier::parse), builder);
     }
 
     private LiteralArgumentBuilder<CommandSourceStack> createStopCommand() {
@@ -91,14 +82,9 @@ public final class UserCommand {
     }
 
     private List<String> getSuggestedPlayIds(CommandSourceStack source) {
-        ServerPlayer player = findPlayer(source);
-        return player == null
-            ? this.emoteQueryService.getAllIds()
-            : this.emoteQueryService.getPlayableIds(player);
-    }
-
-    private int openMenu(CommandSourceStack source) throws CommandSyntaxException {
-        return openMenu(source, 1);
+        return source.getEntity() instanceof ServerPlayer player
+            ? this.emoteQueryService.getPlayableIds(player)
+            : this.emoteQueryService.getAllIds();
     }
 
     private int openMenu(
@@ -126,22 +112,15 @@ public final class UserCommand {
         return 1;
     }
 
-    private static int applyPlayResult(CommandSourceStack source, PlayResult playResult) {
-        if (!playResult.isSuccess()) {
-            source.sendFailure(playResult.errorMessage());
-            return 0;
-        }
-
-        return 1;
-    }
-
     private int play(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         CommandSourceStack source = context.getSource();
         ServerPlayer player = source.getPlayerOrException();
-        return applyPlayResult(
-            source,
-            this.playService.play(player, IdentifierArgument.getId(context, "id").toString(), PlaySource.COMMAND)
-        );
+        PlayResult result = this.playService.play(player, IdentifierArgument.getId(context, "id").toString(), PlaySource.COMMAND);
+        if (!result.isSuccess()) {
+            source.sendFailure(result.errorMessage());
+            return 0;
+        }
+        return 1;
     }
 
     private int stop(CommandSourceStack source) throws CommandSyntaxException {
@@ -149,8 +128,4 @@ public final class UserCommand {
         return this.playerPlaybackManager.stop(player) == null ? 0 : 1;
     }
 
-    private static ServerPlayer findPlayer(CommandSourceStack source) {
-        Entity entity = source.getEntity();
-        return entity instanceof ServerPlayer player ? player : null;
-    }
 }

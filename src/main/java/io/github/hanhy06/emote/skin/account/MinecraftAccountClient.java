@@ -43,7 +43,8 @@ public class MinecraftAccountClient {
     public MicrosoftTokens poll(DeviceLogin login) throws IOException, InterruptedException {
         JsonObject response = form("token", Map.of("client_id", CLIENT_ID,
             "grant_type", "urn:ietf:params:oauth:grant-type:device_code", "device_code", login.deviceCode()));
-        return tokens(response);
+        if (!response.has("refresh_token")) throw new IOException("Microsoft did not issue a refresh token");
+        return new MicrosoftTokens(response.get("access_token").getAsString(), response.get("refresh_token").getAsString());
     }
 
     public MicrosoftTokens refresh(String refreshToken) throws IOException, InterruptedException {
@@ -85,11 +86,6 @@ public class MinecraftAccountClient {
         UUID uuid = UUID.fromString(id.replaceFirst("(\\w{8})(\\w{4})(\\w{4})(\\w{4})(\\w{12})", "$1-$2-$3-$4-$5"));
         return new MinecraftSession(uuid, profile.get("name").getAsString(), accessToken,
             System.currentTimeMillis() + minecraft.get("expires_in").getAsLong() * 1000);
-    }
-
-    private MicrosoftTokens tokens(JsonObject response) throws IOException {
-        if (!response.has("refresh_token")) throw new IOException("Microsoft did not issue a refresh token");
-        return new MicrosoftTokens(response.get("access_token").getAsString(), response.get("refresh_token").getAsString());
     }
 
     private JsonObject form(String path, Map<String, String> values) throws IOException, InterruptedException {

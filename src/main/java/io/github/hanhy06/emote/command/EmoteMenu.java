@@ -6,9 +6,9 @@ import io.github.hanhy06.emote.application.EmoteQueryService;
 import io.github.hanhy06.emote.application.EmoteSummary;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.content.EmoteCatalog;
-import io.github.hanhy06.emote.content.PlayableEmote;
+import io.github.hanhy06.emote.content.PreparedEmote;
+import io.github.hanhy06.emote.playback.PlaybackSession;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
-import io.github.hanhy06.emote.playback.session.PlaybackSession;
 import net.minecraft.core.Holder;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
@@ -84,14 +84,14 @@ public final class EmoteMenu {
     }
 
     private Dialog createRootDialog(ServerPlayer player, int requestedPageNumber, String query) {
-        List<EmoteSummary> emoteSummaryList = this.emoteQueryService.search(player, query);
-        DialogPage dialogPage = createDialogPage(emoteSummaryList.size(), requestedPageNumber);
+        List<EmoteSummary> emotes = this.emoteQueryService.search(player, query);
+        DialogPage dialogPage = createDialogPage(emotes.size(), requestedPageNumber);
 
         List<ActionButton> actionButtons = new ArrayList<>();
-        for (EmoteSummary emoteSummary : emoteSummaryList.subList(dialogPage.startIndex(), dialogPage.endIndex())) {
+        for (EmoteSummary emoteSummary : emotes.subList(dialogPage.startIndex(), dialogPage.endIndex())) {
             String command = "/" + emoteSummary.createPlayCommand();
             actionButtons.add(createRunCommandButton(
-                emoteSummary.displayName(),
+                emoteSummary.name(),
                 emoteSummary.description(),
                 command
             ));
@@ -215,11 +215,11 @@ public final class EmoteMenu {
     }
 
     private String createActivePlaybackText(PlaybackSession session) {
-        PlayableEmote emote = this.emoteCatalog.find(session.emoteId());
-        String displayName = emote == null
+        PreparedEmote emote = this.emoteCatalog.find(session.emoteId());
+        String name = emote == null
             ? session.emoteId()
             : emote.name();
-        return " Active: " + displayName;
+        return " Active: " + name;
     }
 
     private record DialogPage(

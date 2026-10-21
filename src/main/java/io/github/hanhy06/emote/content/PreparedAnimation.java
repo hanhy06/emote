@@ -1,0 +1,400 @@
+package io.github.hanhy06.emote.content;
+
+import com.google.gson.JsonPrimitive;
+import com.mojang.serialization.JsonOps;
+import io.github.hanhy06.emote.EmoteMod;
+import io.github.hanhy06.emote.api.EmoteCallback;
+import io.github.hanhy06.emote.api.EmoteLoadException;
+import io.github.hanhy06.emote.api.EmoteMetadata;
+import io.github.hanhy06.emote.api.EmotePlayerBehavior;
+import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.molang.MolangEngine;
+import io.github.hanhy06.emote.molang.MolangQueryCatalog;
+import io.github.hanhy06.emote.skin.SkinBinding;
+import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.network.chat.ComponentSerialization;
+import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.state.BlockState;
+import org.joml.*;
+import org.jspecify.annotations.Nullable;
+
+import java.lang.Math;
+import java.nio.file.Path;
+import java.util.*;
+
+import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
+
+public final class PreparedAnimation implements PreparedEmote {
+    private final List<SkinBinding> skinBindings;
+    private final EmoteAnimation model;
+    private final List<String> nodeOrder;
+    private final List<Node> orderedNodes;
+    private final int[] parentIndices;
+    private final List<List<String>> attachmentIds;
+    private final Track[][] operationTracks;
+    private final Track[] nodeVisibilityTracks;
+    private final List<Map<String, Track>> attachmentVisibilityTracks = new ArrayList<>();
+    private final List<Map<String, Track>> nbtTracks = new ArrayList<>();
+    private final boolean hasNbtTracks;
+    private final Map<Track, Boolean> defaultVisibility = new IdentityHashMap<>();
+    private final Map<Track, Operation> trackOperations = new IdentityHashMap<>();
+    private final Map<List<Double>, double[]> baseValues = new IdentityHashMap<>();
+    private final Map<VectorValue, double[]> constantVectors = new IdentityHashMap<>();
+    private final Map<Operation, Matrix4f> operationMatrices = new IdentityHashMap<>();
+    private final Map<Operation, Quaternionf> operationRotations = new IdentityHashMap<>();
+    private final Map<String, MolangEngine.CompiledExpression> expressions;
+    private final Set<String> queryNames;
+    private final Map<String, Matrix4f> defaultMatrices;
+    private final int displayEntityCount;
+    private final Path sourcePath;
+    private final Map<String, Map<String, DisplayData>> displayContents;
+
+    private PreparedAnimation(LoadedAnimation source, Map<String, Map<String, DisplayData>> displayContents) {
+        this.sourcePath = source.sourcePath();
+        this.model = source.model();
+        this.skinBindings = compileSkinBindings(this.model);
+        this.nodeOrder = nodeOrder(this.model.nodes());
+        this.orderedNodes = this.nodeOrder.stream().map(this.model.nodes()::get).toList();
+        this.parentIndices = new int[this.nodeOrder.size()];
+        this.operationTracks = new Track[this.nodeOrder.size()][];
+        this.nodeVisibilityTracks = new Track[this.nodeOrder.size()];
+        Map<String, Integer> nodeIndices = new HashMap<>();
+        for (int index = 0; index < this.nodeOrder.size(); index++) nodeIndices.put(this.nodeOrder.get(index), index);
+        List<List<String>> attachments = new ArrayList<>(this.nodeOrder.size());
+        Map<String, Matrix4f> matrices = new HashMap<>();
+        for (int index = 0; index < this.orderedNodes.size(); index++) {
+            Node node = this.orderedNodes.get(index);
+            this.operationTracks[index] = new Track[node.transform().size()];
+            this.attachmentVisibilityTracks.add(new HashMap<>());
+            this.nbtTracks.add(new TreeMap<>());
+            this.parentIndices[index] = node.parentId() == null ? -1 : nodeIndices.get(node.parentId());
+            attachments.add(node.attachments().keySet().stream().sorted().toList());
+            Matrix4f matrix = new Matrix4f();
+            for (Operation operation : node.transform()) {
+                double[] value = operation.value().stream().mapToDouble(Double::doubleValue).toArray();
+                this.baseValues.put(operation.value(), value);
+                Matrix4f operationMatrix = operationMatrix(operation, value);
+                this.operationMatrices.put(operation, operationMatrix);
+                if (operation.op() == OperationType.ROTATE_EULER || operation.op() == OperationType.ROTATE_QUATERNION) {
+                    this.operationRotations.put(operation, operationRotation(operation, value));
+                }
+                matrix.mul(operationMatrix);
+            }
+            matrices.put(this.nodeOrder.get(index), matrix);
+        }
+        this.attachmentIds = List.copyOf(attachments);
+        for (Track track : this.model.clip().tracks()) {
+            int index = nodeIndices.get(track.target().node());
+            Node node = this.orderedNodes.get(index);
+            if (track.channel() == Channel.VALUE) {
+                Operation operation = node.transform().stream().filter(op -> op.id().equals(track.target().operation())).findFirst().orElseThrow();
+                this.trackOperations.put(track, operation);
+                this.operationTracks[index][node.transform().indexOf(operation)] = track;
+            } else if (track.channel() == Channel.NBT) {
+                this.nbtTracks.get(index).put(track.target().attachment(), track);
+            } else if (track.target().attachment() == null) {
+                this.nodeVisibilityTracks[index] = track;
+                this.defaultVisibility.put(track, node.visible());
+            } else {
+                this.attachmentVisibilityTracks.get(index).put(track.target().attachment(), track);
+                this.defaultVisibility.put(track, node.attachments().get(track.target().attachment()).visible());
+            }
+        }
+        this.hasNbtTracks = this.nbtTracks.stream().anyMatch(tracks -> !tracks.isEmpty());
+        for (SharedValue value : this.model.clip().values().values()) {
+            this.baseValues.put(value.base(), value.base().stream().mapToDouble(Double::doubleValue).toArray());
+        }
+        this.expressions = compileExpressions(this.model, this.constantVectors);
+        this.queryNames = this.expressions.values().stream().flatMap(expression -> expression.queryUses().stream())
+            .map(MolangEngine.QueryUse::name).collect(java.util.stream.Collectors.toUnmodifiableSet());
+        this.defaultMatrices = Map.copyOf(matrices);
+        this.displayContents = Map.copyOf(displayContents);
+        this.displayEntityCount = displayContents.values().stream().mapToInt(Map::size).sum();
+        requireSupportedPlayback();
+    }
+
+    public static PreparedAnimation prepare(LoadedAnimation loaded) throws EmoteLoadException {
+        return prepare(loaded, EmoteMod.SERVER.registryAccess());
+    }
+
+    public static PreparedAnimation prepare(LoadedAnimation loaded, HolderLookup.Provider registries) throws EmoteLoadException {
+        Objects.requireNonNull(loaded, "loaded");
+        Objects.requireNonNull(registries, "registries");
+        if (loaded.model().clip().durationTicks() > 12000) throw new EmoteLoadException(loaded.sourcePath(), "$.animation.duration", "must not exceed 12000 ticks");
+        try {
+            return new PreparedAnimation(loaded, resolveDisplayContents(loaded, registries));
+        } catch (IllegalArgumentException exception) {
+            String message = exception.getMessage();
+            int separator = message == null ? -1 : message.indexOf(' ');
+            String path = message != null && message.startsWith("$.") ? (separator < 0 ? message : message.substring(0, separator)).replaceAll(":$", "") : "$";
+            String detail = message != null && message.startsWith("$.") && separator >= 0 ? message.substring(separator + 1) : message;
+            throw new EmoteLoadException(loaded.sourcePath(), path, detail, exception);
+        }
+    }
+
+    private static List<SkinBinding> compileSkinBindings(EmoteAnimation animation) {
+        List<SkinBinding> bindings = new ArrayList<>();
+        animation.nodes().entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(node ->
+            node.getValue().attachments().entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(attachment -> {
+                if (attachment.getValue() instanceof EmoteAnimation.SkinAttachment skin) {
+                    bindings.add(new SkinBinding(node.getKey(), attachment.getKey(),
+                        new PlayerSkinRegion(skin.part(), skin.from(), skin.to())));
+                }
+            }));
+        return List.copyOf(bindings);
+    }
+
+    private static Map<String, Map<String, DisplayData>> resolveDisplayContents(LoadedAnimation loaded, HolderLookup.Provider registries) throws EmoteLoadException {
+        Map<String, Map<String, DisplayData>> content = new LinkedHashMap<>();
+        for (var entry : loaded.model().nodes().entrySet()) {
+            Map<String, DisplayData> attachments = new LinkedHashMap<>();
+            for (var attachment : entry.getValue().attachments().entrySet()) {
+                String path = "$.nodes." + entry.getKey() + ".attachments." + attachment.getKey();
+                Attachment value = attachment.getValue();
+                if (value instanceof ExternalAttachment) continue;
+                try {
+                    DisplayData data = switch (value) {
+                        case ItemAttachment item -> new DisplayData.Item(ItemStack.CODEC.parse(registries.createSerializationContext(NbtOps.INSTANCE), item.itemStackNbt()).getOrThrow(),
+                            ItemDisplayContext.CODEC.parse(JsonOps.INSTANCE, new JsonPrimitive(item.itemDisplay())).getOrThrow());
+                        case BlockAttachment block -> new DisplayData.Block(BlockState.CODEC.parse(registries.createSerializationContext(NbtOps.INSTANCE), block.blockStateNbt()).getOrThrow());
+                        case TextAttachment text -> new DisplayData.Text(ComponentSerialization.CODEC.parse(registries.createSerializationContext(JsonOps.INSTANCE), text.text()).getOrThrow());
+                        case SkinAttachment ignored -> new DisplayData.Item(new ItemStack(Items.PLAYER_HEAD), ItemDisplayContext.NONE);
+                        default -> throw new IllegalStateException("Unsupported attachment");
+                    };
+                    attachments.put(attachment.getKey(), data);
+                } catch (RuntimeException exception) {
+                    String field = value instanceof ItemAttachment ? "item_stack_snbt" : value instanceof BlockAttachment ? "block_state_snbt" : "text";
+                    throw new EmoteLoadException(loaded.sourcePath(), path + "." + field, "value is not valid for Minecraft", exception);
+                }
+            }
+            content.put(entry.getKey(), Map.copyOf(attachments));
+        }
+        return Map.copyOf(content);
+    }
+
+
+    @Override public Map<String, EmoteAnimation.Node> nodes() { return this.model.nodes(); }
+    @Override public Map<String, Map<String, DisplayData>> displayContents() { return this.displayContents; }
+
+    public EmoteAnimation model() {
+        return this.model;
+    }
+
+    public List<String> nodeOrder() { return this.nodeOrder; }
+    public Node node(int nodeIndex) { return this.orderedNodes.get(nodeIndex); }
+    public int parentIndex(int nodeIndex) { return this.parentIndices[nodeIndex]; }
+    public List<String> attachmentIds(int nodeIndex) { return this.attachmentIds.get(nodeIndex); }
+    public @Nullable Track track(int nodeIndex, int operationIndex) { return this.operationTracks[nodeIndex][operationIndex]; }
+    public @Nullable Track visibilityTrack(int nodeIndex) { return this.nodeVisibilityTracks[nodeIndex]; }
+    public @Nullable Track visibilityTrack(int nodeIndex, String attachmentId) { return this.attachmentVisibilityTracks.get(nodeIndex).get(attachmentId); }
+    public Map<String, Track> nbtTracks(int nodeIndex) { return this.nbtTracks.get(nodeIndex); }
+    public boolean hasNbtTracks() { return this.hasNbtTracks; }
+    public boolean defaultVisibility(Track track) { return this.defaultVisibility.get(track); }
+    public Operation operation(Track track) { return this.trackOperations.get(track); }
+    public double[] baseValue(List<Double> value) { return this.baseValues.get(value); }
+    public double[] constantVector(VectorValue value) { return this.constantVectors.get(value); }
+    public Matrix4fc operationMatrix(Operation operation) { return this.operationMatrices.get(operation); }
+    public Quaternionfc operationRotation(Operation operation) { return this.operationRotations.get(operation); }
+
+    public MolangEngine.CompiledExpression expression(String path) {
+        return this.expressions.get(path);
+    }
+
+    public Set<String> queryNames() { return this.queryNames; }
+
+    private static List<String> nodeOrder(Map<String, EmoteAnimation.Node> nodes) {
+        List<String> result = new ArrayList<>();
+        Set<String> pending = new TreeSet<>(nodes.keySet());
+        while (!pending.isEmpty()) {
+            List<String> ready = pending.stream().filter(id -> nodes.get(id).parentId() == null || result.contains(nodes.get(id).parentId())).toList();
+            if (ready.isEmpty()) throw new IllegalArgumentException("Missing parent or cyclic node hierarchy");
+            result.addAll(ready);
+            pending.removeAll(ready);
+        }
+        return List.copyOf(result);
+    }
+
+    private static Map<String, MolangEngine.CompiledExpression> compileExpressions(
+        EmoteAnimation animation, Map<VectorValue, double[]> constantVectors) {
+        Map<String, MolangEngine.CompiledExpression> result = new HashMap<>();
+        List<Driver> drivers = new ArrayList<>();
+        for (var track : animation.clip().tracks()) {
+            drivers.add(track.driver());
+            if (track.blend() != null && track.blend().weight() instanceof MolangValue m) compileExpression(result, m.source(), m.path(), false);
+        }
+        animation.clip().values().values().forEach(value -> drivers.add(value.driver()));
+        for (var driver : drivers) {
+            List<EmoteAnimation.Value> values = new ArrayList<>();
+            if (driver.value() != null) values.add(driver.value());
+            for (var key : driver.keys()) { values.add(key.pre()); values.add(key.post()); }
+            List<EmoteAnimation.ScalarValue> scalars = new ArrayList<>();
+            for (var segment : driver.segments()) {
+                if (segment.easing() != null) scalars.add(segment.easing().parameter());
+                if (segment.previous() != null) values.add(segment.previous());
+                if (segment.following() != null) values.add(segment.following());
+                if (segment.outTangent() != null) values.add(segment.outTangent());
+                if (segment.inTangent() != null) values.add(segment.inTangent());
+                for (var handle : segment.handles()) {
+                    scalars.add(handle.outTime()); scalars.add(handle.outValue()); scalars.add(handle.inTime()); scalars.add(handle.inValue());
+                }
+            }
+            for (var value : values) {
+                if (value instanceof EmoteAnimation.VectorValue vector) {
+                    scalars.addAll(vector.components());
+                    if (vector.components().stream().allMatch(ConstantValue.class::isInstance)) {
+                        constantVectors.put(vector, vector.components().stream().mapToDouble(component -> ((ConstantValue) component).value()).toArray());
+                    }
+                }
+                else if (value instanceof EmoteAnimation.MolangVisibility m) scalars.add(new EmoteAnimation.MolangValue(m.source(), m.path()));
+                else if (value instanceof EmoteAnimation.MolangNbtValue m) scalars.add(new EmoteAnimation.MolangValue(m.source(), m.path()));
+            }
+            for (var scalar : scalars) {
+                if (scalar instanceof EmoteAnimation.MolangValue m) compileExpression(result, m.source(), m.path(), false);
+            }
+        }
+        if (animation.clip().clock() != null) compileExpression(result, animation.clip().clock(), "$.animation.clock.expression", false);
+        if (animation.molang().initialize() != null) compileExpression(result, animation.molang().initialize(), "$.animation.molang.initialize", true);
+        if (animation.molang().tick() != null) compileExpression(result, animation.molang().tick(), "$.animation.molang.tick", true);
+        for (var delay : List.of(animation.settings().playback().startDelay(), animation.settings().playback().loopDelay())) {
+            if (delay instanceof EmoteAnimation.MolangValue m) compileExpression(result, m.source(), m.path(), false);
+        }
+        return Map.copyOf(result);
+    }
+
+    private static void compileExpression(Map<String, MolangEngine.CompiledExpression> result,
+                                          String source, String path, boolean allowPersistentWrites) {
+        if (result.containsKey(path)) return;
+        try {
+            var expression = MolangEngine.INSTANCE.compile(source);
+            MolangQueryCatalog.validate(expression, path);
+            if (!allowPersistentWrites && expression.assignsPersistentVariables()) throw new IllegalArgumentException(path + " must not assign persistent variables");
+            result.put(path, expression);
+        } catch (MolangEngine.MolangCompileException e) {
+            throw new IllegalArgumentException(path + " contains invalid Molang", e);
+        }
+    }
+
+    private void requireSupportedPlayback() {
+        var playback = model.settings().playback();
+        if (playback.mode() == EmoteAnimation.PlaybackMode.SERVER_SYNC && (model.clip().clock() != null || model.molang().tick() != null
+            || !(playback.startDelay() instanceof EmoteAnimation.ConstantValue) || !(playback.loopDelay() instanceof EmoteAnimation.ConstantValue))) {
+            throw new IllegalArgumentException("$.animation.playback: server_sync requires reconstructible clock and state");
+        }
+        var events = model.clip().events();
+        Map<String, List<EmoteAnimation.Event>> phases = Map.of("start", events.start(), "timeline", events.timeline().stream().map(EmoteAnimation.TimelineEvent::event).toList(), "loop", events.loop(), "stop", events.stop());
+        phases.forEach((phase, actions) -> {
+            for (int index = 0; index < actions.size(); index++) {
+                if (actions.get(index).externalKey() != null) throw new IllegalArgumentException("$.animation.events." + phase + "[" + index + "].action: no resolver for external action " + actions.get(index).externalKey());
+            }
+        });
+        Set<String> unknownOrientations = new HashSet<>();
+        for (String id : this.nodeOrder) {
+            var node = model.nodes().get(id);
+            boolean parentUnknown = node.parentId() != null && unknownOrientations.contains(node.parentId());
+            if (parentUnknown && (node.inherit().rotation() == EmoteAnimation.RotationInheritance.ENTITY || !node.inherit().scale())) {
+                throw new IllegalArgumentException("$.nodes." + id + ".inherit requires orientation unavailable from a matrix ancestor");
+            }
+            if (parentUnknown || node.transform().stream().anyMatch(op -> op.op() == EmoteAnimation.OperationType.MATRIX)) unknownOrientations.add(id);
+        }
+        for (var track : model.clip().tracks()) {
+            if (playback.mode() == EmoteAnimation.PlaybackMode.SERVER_SYNC && track.driver().keys().stream().anyMatch(key -> key.post() instanceof EmoteAnimation.MolangNbtValue)) {
+                throw new IllegalArgumentException("$.animation.playback: server_sync cannot reconstruct dynamic NBT");
+            }
+        }
+    }
+
+    public static Matrix4f operationMatrix(EmoteAnimation.Operation operation, double[] value) {
+        return operationMatrix(operation, value, new Matrix4f());
+    }
+
+    public static Matrix4f operationMatrix(EmoteAnimation.Operation operation, double[] value, Matrix4f matrix) {
+        matrix.identity();
+        switch (operation.op()) {
+            case TRANSLATE -> matrix.translate((float) value[0], (float) value[1], (float) value[2]);
+            case SCALE -> matrix.scale((float) value[0], (float) value[1], (float) value[2]);
+            case ROTATE_EULER, ROTATE_QUATERNION -> matrix.rotation(operationRotation(operation, value));
+            case MATRIX -> matrix.set((float) value[0], (float) value[4], (float) value[8], (float) value[12],
+                (float) value[1], (float) value[5], (float) value[9], (float) value[13],
+                (float) value[2], (float) value[6], (float) value[10], (float) value[14],
+                (float) value[3], (float) value[7], (float) value[11], (float) value[15]);
+        }
+        return matrix;
+    }
+
+    public static Quaternionf operationRotation(EmoteAnimation.Operation operation, double[] value) {
+        return operationRotation(operation, value, new Quaternionf(), operation.op() == OperationType.ROTATE_QUATERNION ? new Quaterniond() : null);
+    }
+
+    public static Quaternionf operationRotation(EmoteAnimation.Operation operation, double[] value, Quaternionf rotation, Quaterniond quaternion) {
+        if (operation.op() == EmoteAnimation.OperationType.ROTATE_QUATERNION) {
+            quaternion.set(value[0], value[1], value[2], value[3]);
+            if (quaternion.lengthSquared() == 0) throw new IllegalArgumentException("Zero quaternion");
+            return rotation.set(quaternion.normalize());
+        }
+        rotation.identity();
+        for (char axis : operation.order().name().toCharArray()) {
+            float radians = (float) Math.toRadians(value[axis == 'X' ? 0 : axis == 'Y' ? 1 : 2]);
+            if (axis == 'X') rotation.rotateX(radians);
+            else if (axis == 'Y') rotation.rotateY(radians);
+            else rotation.rotateZ(radians);
+        }
+        return rotation.normalize();
+    }
+
+    public String id() {
+        return this.model.id().toString();
+    }
+
+    public EmoteMetadata metadata() {
+        return this.model.metadata();
+    }
+
+    @Override
+    public boolean standalone() {
+        return this.model.settings().standalone();
+    }
+
+    public EmotePlayerBehavior playerBehavior() {
+        return this.model.settings().playerBehavior();
+    }
+
+    public Path sourcePath() {
+        return this.sourcePath;
+    }
+
+    @Override
+    public @Nullable Integer durationTicks() {
+        return this.model.clip().clock() == null ? this.model.clip().durationTicks() : null;
+    }
+
+    @Override
+    public int cooldownTicks() {
+        return this.model.settings().cooldownTicks();
+    }
+
+    @Override
+    public EmoteAnimation.PlaybackMode playbackMode() {
+        return this.model.settings().playback().mode();
+    }
+
+    public List<SkinBinding> skinBindings() {
+        return this.skinBindings;
+    }
+
+    public float rotationDeadzone() { return this.model.settings().rotationDeadzone(); }
+    public int displayEntityCount() { return this.displayEntityCount; }
+    public List<EmoteCallback> callbacks() { return this.model.callbacks(); }
+
+    public Matrix4fc defaultMatrix(String nodeId) {
+        Matrix4f matrix = this.defaultMatrices.get(nodeId);
+        if (matrix == null) {
+            throw new IllegalStateException("Missing default matrix for node: " + nodeId);
+        }
+        return matrix;
+    }
+
+}

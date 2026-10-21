@@ -1,11 +1,11 @@
 {
     "type": "sequence",
-    "schema_version": 4,
+    "schema_version": 5,
     "target_minecraft_version": "26.3",
-    "id": "sit:idle.sit",
+    "id": "example:sequence",
     "metadata": {
-        "name": "Sit",
-        "description": "Sequence format reference. Install the referenced sit Animations and register example:sequence before playback.",
+        "name": "Sequence Format Reference",
+        "description": "Sit down, wait, choose idle actions, and stand up. Install the referenced sit Animations and register example:sequence before playback.",
         "author": "@soji2318"
     },
     "settings": {

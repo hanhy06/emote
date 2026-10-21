@@ -15,11 +15,7 @@ public record PlaybackStressTestReport(
     double maximumMspt,
     double emoteProcessingSeconds,
     double averageEmoteProcessingMillis,
-    double maximumEmoteProcessingMillis,
-    double networkProcessingSeconds,
-    double averageNetworkProcessingMillis,
-    double maximumNetworkProcessingMillis,
-    StressTestPacketLoad.PacketLoadResult packetLoad
+    double maximumEmoteProcessingMillis
 ) {
     public double runtimeSeconds() {
         return Math.max(0.0D, this.elapsedSeconds - this.creationMillis / 1_000.0D - this.cleanupMillis / 1_000.0D);

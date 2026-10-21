@@ -5,13 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
     "test": "vitest run",
+    "build": "tsc -b && vite build",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
     "check": "npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
     "@nbsjs/core": "^6.1.0",
+    "fast-png": "8.0.0",
     "fflate": "^0.8.3",
     "jsonc-parser": "^3.3.1",
     "molangjs": "^1.7.0",

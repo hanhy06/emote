@@ -7,7 +7,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.content.EmoteCatalog;
-import io.github.hanhy06.emote.content.PlayableEmote;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.server.ReloadResult;
@@ -66,57 +66,50 @@ public final class AdminCommand {
 
     LiteralArgumentBuilder<CommandSourceStack> createInfoCommand() {
         return Commands.literal("info")
-            .requires(this.permissionService.requireManage())
+            .requires(this.permissionService::canManage)
             .executes(context -> info(context.getSource()));
     }
 
     private int info(CommandSourceStack source) {
-        SkinProcessingStats skinStats = this.playerSkinManager.processingStats();
-        AdminInfoSnapshot snapshot = new AdminInfoSnapshot(
-            this.playerPlaybackManager.engine().activeSessionCount(),
-            this.playerPlaybackManager.activePlayerCount(),
-            this.playerPlaybackManager.engine().activeDisplayEntityCount(),
-            this.configManager.getConfig().maxActiveDisplayEntities(),
-            skinStats,
-            this.emoteCatalog.size(),
-            this.configManager.getAccessConfig().disabled().size()
-        );
-        source.sendSuccess(() -> createInfoSummary(snapshot), false);
-        return snapshot.activeSessions();
-    }
+        SkinProcessingStats skin = this.playerSkinManager.processingStats();
+        int activeSessions = this.playerPlaybackManager.engine().activeSessionCount();
+        int activePlayers = this.playerPlaybackManager.activePlayerCount();
+        int activeDisplays = this.playerPlaybackManager.engine().activeDisplayEntityCount();
+        int displayLimit = this.configManager.getConfig().maxActiveDisplayEntities();
+        int loadedEmotes = this.emoteCatalog.size();
+        int disableRules = this.configManager.getAccessConfig().disabled().size();
+        source.sendSuccess(() -> {
+            String displayUsage = displayLimit == 0
+                ? activeDisplays + " / unlimited"
+                : String.format(
+                    Locale.ROOT,
+                    "%d / %d (%.1f%%)",
+                    activeDisplays,
+                    displayLimit,
+                    activeDisplays * 100.0D / displayLimit
+                );
+            ChatFormatting displayColor = displayUsageColor(activeDisplays, displayLimit);
 
-    static Component createInfoSummary(AdminInfoSnapshot snapshot) {
-        int displayLimit = snapshot.displayLimit();
-        String displayUsage = displayLimit == 0
-            ? snapshot.activeDisplays() + " / unlimited"
-            : String.format(
-                Locale.ROOT,
-                "%d / %d (%.1f%%)",
-                snapshot.activeDisplays(),
-                displayLimit,
-                snapshot.activeDisplays() * 100.0D / displayLimit
-            );
-        ChatFormatting displayColor = displayUsageColor(snapshot.activeDisplays(), displayLimit);
-        SkinProcessingStats skin = snapshot.skin();
-
-        return Component.literal("\n\n\n\n\nEmote server info").withStyle(ChatFormatting.GRAY)
-            .append(Component.literal("\n\nPlayback").withStyle(ChatFormatting.GRAY))
-            .append(Component.literal("\n• Sessions: ").withStyle(ChatFormatting.YELLOW))
-            .append(Component.literal(Integer.toString(snapshot.activeSessions())).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal("\n• Players: ").withStyle(ChatFormatting.GREEN))
-            .append(Component.literal(Integer.toString(snapshot.activeParticipants())).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal("\n• Displays: ").withStyle(displayColor))
-            .append(Component.literal(displayUsage).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal("\n\nSkin processing").withStyle(ChatFormatting.GRAY))
-            .append(Component.literal("\n• Provider: ").withStyle(ChatFormatting.AQUA))
-            .append(Component.literal(skin.provider()).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal("\n• Jobs: ").withStyle(ChatFormatting.YELLOW))
-            .append(Component.literal(skin.activeJobs() + " active · " + skin.queuedJobs() + " queued").withStyle(ChatFormatting.WHITE))
-            .append(Component.literal("\n• Retries: ").withStyle(ChatFormatting.GOLD))
-            .append(Component.literal(Integer.toString(skin.retryingJobs())).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal("\n\nContent").withStyle(ChatFormatting.GRAY))
-            .append(Component.literal("\n• Emotes: ").withStyle(ChatFormatting.LIGHT_PURPLE))
-            .append(Component.literal(snapshot.loadedEmotes() + " loaded · " + snapshot.disableRules() + " disable rules").withStyle(ChatFormatting.WHITE));
+            return Component.literal("\n\n\n\n\nEmote server info").withStyle(ChatFormatting.GRAY)
+                .append(Component.literal("\n\nPlayback").withStyle(ChatFormatting.GRAY))
+                .append(Component.literal("\n• Sessions: ").withStyle(ChatFormatting.YELLOW))
+                .append(Component.literal(Integer.toString(activeSessions)).withStyle(ChatFormatting.WHITE))
+                .append(Component.literal("\n• Players: ").withStyle(ChatFormatting.GREEN))
+                .append(Component.literal(Integer.toString(activePlayers)).withStyle(ChatFormatting.WHITE))
+                .append(Component.literal("\n• Displays: ").withStyle(displayColor))
+                .append(Component.literal(displayUsage).withStyle(ChatFormatting.WHITE))
+                .append(Component.literal("\n\nSkin processing").withStyle(ChatFormatting.GRAY))
+                .append(Component.literal("\n• Provider: ").withStyle(ChatFormatting.AQUA))
+                .append(Component.literal(skin.provider()).withStyle(ChatFormatting.WHITE))
+                .append(Component.literal("\n• Jobs: ").withStyle(ChatFormatting.YELLOW))
+                .append(Component.literal(skin.activeJobs() + " active · " + skin.queuedJobs() + " queued").withStyle(ChatFormatting.WHITE))
+                .append(Component.literal("\n• Retries: ").withStyle(ChatFormatting.GOLD))
+                .append(Component.literal(Integer.toString(skin.retryingJobs())).withStyle(ChatFormatting.WHITE))
+                .append(Component.literal("\n\nContent").withStyle(ChatFormatting.GRAY))
+                .append(Component.literal("\n• Emotes: ").withStyle(ChatFormatting.LIGHT_PURPLE))
+                .append(Component.literal(loadedEmotes + " loaded · " + disableRules + " disable rules").withStyle(ChatFormatting.WHITE));
+        }, false);
+        return activeSessions;
     }
 
     static ChatFormatting displayUsageColor(int activeDisplays, int displayLimit) {
@@ -125,39 +118,28 @@ public final class AdminCommand {
         return ChatFormatting.RED;
     }
 
-    record AdminInfoSnapshot(
-        int activeSessions,
-        int activeParticipants,
-        int activeDisplays,
-        int displayLimit,
-        SkinProcessingStats skin,
-        int loadedEmotes,
-        int disableRules
-    ) {
-    }
-
     LiteralArgumentBuilder<CommandSourceStack> createReloadCommand() {
         return Commands.literal("reload")
-            .requires(this.permissionService.requireManage())
+            .requires(this.permissionService::canManage)
             .executes(context -> reload(context.getSource()));
     }
 
     LiteralArgumentBuilder<CommandSourceStack> createListCommand() {
         return Commands.literal("list")
-            .requires(this.permissionService.requireManage())
+            .requires(this.permissionService::canManage)
             .executes(context -> list(context.getSource()));
     }
 
     LiteralArgumentBuilder<CommandSourceStack> createStopPlayerCommand() {
         return Commands.literal("stop")
             .then(Commands.argument("player", EntityArgument.players())
-                .requires(this.permissionService.requireManage())
+                .requires(this.permissionService::canManage)
                 .executes(this::stopPlayer));
     }
 
     LiteralArgumentBuilder<CommandSourceStack> createEnableCommand() {
         return Commands.literal("enable")
-            .requires(this.permissionService.requireManage())
+            .requires(this.permissionService::canManage)
             .then(Commands.argument("id", IdentifierArgument.id())
                 .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
                     this.configManager.getAccessConfig().disabled(),
@@ -172,10 +154,10 @@ public final class AdminCommand {
 
     LiteralArgumentBuilder<CommandSourceStack> createDisableCommand() {
         return Commands.literal("disable")
-            .requires(this.permissionService.requireManage())
+            .requires(this.permissionService::canManage)
             .then(Commands.argument("id", IdentifierArgument.id())
                 .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
-                    this.emoteCatalog.fileEmotes().stream().map(PlayableEmote::id),
+                    this.emoteCatalog.fileEmotes().stream().map(PreparedEmote::id),
                     builder
                 ))
                 .executes(context -> setEnabled(
@@ -218,7 +200,7 @@ public final class AdminCommand {
     }
 
     private int list(CommandSourceStack source) {
-        List<PlayableEmote> emotes = this.emoteCatalog.emotes();
+        List<PreparedEmote> emotes = this.emoteCatalog.emotes();
         if (emotes.isEmpty()) {
             source.sendSuccess(() -> Component.literal("No emotes are loaded."), false);
             return 0;
@@ -230,7 +212,7 @@ public final class AdminCommand {
             false
         );
 
-        for (PlayableEmote emote : emotes) {
+        for (PreparedEmote emote : emotes) {
             source.sendSystemMessage(createListEntry(
                 emote.id(),
                 emote.metadata(),
@@ -245,21 +227,21 @@ public final class AdminCommand {
     static Component createListEntry(
         String id,
         EmoteMetadata metadata,
-        int durationTicks,
+        @org.jspecify.annotations.Nullable Integer durationTicks,
         boolean standalone
     ) {
-        var entry = Component.literal("\n• " + metadata.name()).withStyle(ChatFormatting.WHITE)
+        var listEntry = Component.literal("\n• " + metadata.name()).withStyle(ChatFormatting.WHITE)
             .append(Component.literal("  " + metadata.description()).withStyle(ChatFormatting.GRAY))
             .append(Component.literal("\n  " + id).withStyle(ChatFormatting.AQUA))
-            .append(Component.literal(String.format(Locale.ROOT, " · %.1f seconds", durationTicks / 20.0D))
+            .append(Component.literal(durationTicks == null ? " · duration unknown" : String.format(Locale.ROOT, " · %.1f seconds", durationTicks / 20.0))
                 .withStyle(ChatFormatting.GRAY));
         if (!standalone) {
-            entry.append(Component.literal(" · Sequence only").withStyle(ChatFormatting.GRAY));
+            listEntry.append(Component.literal(" · Sequence only").withStyle(ChatFormatting.GRAY));
         }
         for (Map.Entry<String, JsonElement> metadataEntry : metadata.additional().entrySet()) {
-            appendMetadata(entry, metadataEntry.getKey(), metadataEntry.getValue(), 0);
+            appendMetadata(listEntry, metadataEntry.getKey(), metadataEntry.getValue(), 0);
         }
-        return entry;
+        return listEntry;
     }
 
     private static void appendMetadata(MutableComponent entry, String key, JsonElement value, int depth) {
@@ -312,10 +294,10 @@ public final class AdminCommand {
                 continue;
             }
 
-            PlayableEmote emote = this.emoteCatalog.find(session.emoteId());
-            String displayName = emote == null ? session.emoteId() : emote.name();
+            PreparedEmote emote = this.emoteCatalog.find(session.emoteId());
+            String name = emote == null ? session.emoteId() : emote.name();
             source.sendSuccess(
-                () -> Component.literal("Stopped " + displayName + " for " + player.getName().getString() + "."),
+                () -> Component.literal("Stopped " + name + " for " + player.getName().getString() + "."),
                 true
             );
             stoppedCount++;
@@ -328,12 +310,11 @@ public final class AdminCommand {
     }
 
     private int setEnabled(CommandSourceStack source, String id, boolean enabled) {
-        if (enabled) {
-            if (this.configManager.getAccessConfig().isEnabled(id)) {
-                source.sendFailure(Component.literal("That emote is already enabled: " + id));
-                return 0;
-            }
-        } else if (this.emoteCatalog.findFileEmote(id) == null) {
+        if (enabled && this.configManager.getAccessConfig().isEnabled(id)) {
+            source.sendFailure(Component.literal("That emote is already enabled: " + id));
+            return 0;
+        }
+        if (!enabled && (!this.configManager.getAccessConfig().isEnabled(id) || this.emoteCatalog.findFileEmote(id) == null)) {
             source.sendFailure(Component.literal("That emote is not currently enabled: " + id));
             return 0;
         }

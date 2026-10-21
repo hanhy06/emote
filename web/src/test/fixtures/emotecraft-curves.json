@@ -1,0 +1,33 @@
+{
+  "uuid": "00000000-0000-0000-0000-000000000001", "lengthTicks": 40, "loop": "hold", "loopStartTick": 0,
+  "format": "geckolib", "applyBendToOtherBones": true, "easeBeforeKeyframe": true,
+  "effects": { "sounds": [], "particles": [], "instructions": [] }, "pivots": {}, "parents": { "head": "controls" },
+  "bones": {
+    "body": {
+      "rotation": [
+        [{ "startTick": 0, "endTick": 20, "start": 0, "end": 1.0471975511965976, "easing": "linear", "easingArgs": [] }],
+        [{ "startTick": 0, "endTick": 40, "start": 0, "end": 0.5235987755982988, "easing": "linear", "easingArgs": [] }],
+        [{ "startTick": 0, "endTick": 10, "start": 0, "end": 0.3490658503988659, "easing": "linear", "easingArgs": [] }]
+      ],
+      "position": [[{ "startTick": 0, "endTick": 40, "start": 0, "end": 16, "easing": "linear", "easingArgs": [] }], [], []],
+      "scale": [
+        [{ "startTick": 0, "endTick": 20, "start": 1, "end": 2, "easing": "linear", "easingArgs": [] }],
+        [{ "startTick": 0, "endTick": 20, "start": 1, "end": 3, "easing": "linear", "easingArgs": [] }],
+        [{ "startTick": 0, "endTick": 20, "start": 1, "end": 4, "easing": "linear", "easingArgs": [] }]
+      ], "bend": []
+    },
+    "torso": { "position": [[], [], []], "rotation": [[], [], []], "scale": [[], [], []],
+      "bend": [{ "startTick": 0, "endTick": 20, "start": 0, "end": 1.0471975511965976, "easing": "linear", "easingArgs": [] }]
+    },
+    "head": { "position": [[], [], []], "rotation": [[{ "startTick": 0, "endTick": 40, "start": 0, "end": 0.7853981633974483, "easing": "linear", "easingArgs": [] }], [], []], "scale": [[], [], []], "bend": [] },
+    "right_arm": { "position": [[], [], []], "rotation": [[], [], []], "scale": [[], [], []],
+      "bend": [{ "startTick": 0, "endTick": 20, "start": 0, "end": 0.5235987755982988, "easing": "catmullrom", "easingArgs": [[0], [1.0471975511965976]] }]
+    },
+    "controls": { "rotation": [[], [], []], "scale": [[], [], []], "bend": [],
+      "position": [[{ "startTick": 0, "endTick": 20, "start": 0, "end": 16, "easing": "bezier", "easingArgs": [[4], [-2], [8], [2]] }], [], []]
+    },
+    "long": { "rotation": [[], [], []], "scale": [[], [], []], "bend": [],
+      "position": [[{ "startTick": 0, "endTick": 80, "start": 0, "end": 32, "easing": "linear", "easingArgs": [] }], [], []]
+    }
+  }
+}

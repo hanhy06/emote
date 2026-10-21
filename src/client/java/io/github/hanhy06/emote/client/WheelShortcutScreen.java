@@ -145,17 +145,19 @@ public class WheelShortcutScreen extends Screen {
 
     void refreshLists() {
         this.selectedList.updateEntries(this.controller.shortcuts().selectedEmotes());
-        String query = this.searchBox == null ? "" : this.searchBox.getValue();
-        this.availableList.updateEntries(EmoteQueryService.filterPreservingOrder(this.controller.shortcuts().availableEmotes(), query));
+        this.availableList.updateEntries(EmoteQueryService.filterPreservingOrder(
+            this.controller.shortcuts().availableEmotes(),
+            this.searchBox == null ? "" : this.searchBox.getValue()
+        ));
     }
 
     private Component fitText(Component text, int maxWidth) {
-        String value = text.getString();
-        if (this.font.width(value) <= maxWidth) {
+        String textValue = text.getString();
+        if (this.font.width(textValue) <= maxWidth) {
             return text;
         }
 
         String ellipsis = "...";
-        return Component.literal(this.font.plainSubstrByWidth(value, Math.max(0, maxWidth - this.font.width(ellipsis))) + ellipsis);
+        return Component.literal(this.font.plainSubstrByWidth(textValue, Math.max(0, maxWidth - this.font.width(ellipsis))) + ellipsis);
     }
 }

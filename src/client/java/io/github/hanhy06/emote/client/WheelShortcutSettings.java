@@ -126,14 +126,6 @@ public class WheelShortcutSettings {
         updateSelectedIds(nextIds);
     }
 
-    public void moveUp(String id) {
-        move(id, -1);
-    }
-
-    public void moveDown(String id) {
-        move(id, 1);
-    }
-
     public void moveToIndex(String id, int targetVisibleIndex) {
         List<EmoteSummary> visibleSelection = selectedEmotes();
         int visibleIndex = -1;
@@ -157,35 +149,6 @@ public class WheelShortcutSettings {
         nextIds.remove(id);
         int targetIndex = nextIds.indexOf(targetId);
         nextIds.add(targetIndex + (clampedTargetIndex > visibleIndex ? 1 : 0), id);
-        updateSelectedIds(nextIds);
-    }
-
-    private void move(String id, int direction) {
-        List<EmoteSummary> visibleSelection = selectedEmotes();
-        if (visibleSelection.size() <= 1) {
-            return;
-        }
-
-        int visibleIndex = -1;
-        for (int index = 0; index < visibleSelection.size(); index++) {
-            if (visibleSelection.get(index).id().equals(id)) {
-                visibleIndex = index;
-                break;
-            }
-        }
-
-        if (visibleIndex < 0) {
-            return;
-        }
-
-        int targetVisibleIndex = Math.floorMod(visibleIndex + direction, visibleSelection.size());
-        String targetId = visibleSelection.get(targetVisibleIndex).id();
-        List<String> nextIds = new ArrayList<>(this.selectedIds);
-        nextIds.remove(id);
-        int targetIndex = nextIds.indexOf(targetId);
-        boolean moveAfterTarget = direction < 0 && visibleIndex == 0
-            || direction > 0 && visibleIndex + 1 < visibleSelection.size();
-        nextIds.add(targetIndex + (moveAfterTarget ? 1 : 0), id);
         updateSelectedIds(nextIds);
     }
 

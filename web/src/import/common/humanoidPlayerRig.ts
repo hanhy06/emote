@@ -1,7 +1,6 @@
 import { Euler, Matrix4, Quaternion, Vector3 } from "three";
-import type { ImportedSkinPart } from "../../domain/conversionSeed";
+import type { PlayerSkinPart } from "../../domain/player";
 
-export type HumanoidPart = ImportedSkinPart["part"];
 export type HumanoidSliceMotion = "upper" | "lower";
 
 export interface HumanoidSliceSpec {
@@ -45,13 +44,13 @@ const BENT_LIMB: readonly HumanoidSliceSpec[] = [
   { order: 3, startY: 8, endY: 12, motion: "lower" },
 ];
 
-export function humanoidSkinSlices(part: HumanoidPart, jointed: boolean): readonly HumanoidSliceSpec[] {
+export function humanoidSkinSlices(part: PlayerSkinPart, jointed: boolean): readonly HumanoidSliceSpec[] {
   if (part === "head") return HEAD;
   if (!jointed) return RIGID;
   return part === "body" ? BENT_BODY : BENT_LIMB;
 }
 
-export function humanoidRenderPieces(part: HumanoidPart, jointed: boolean): readonly HumanoidRenderPieceSpec[] {
+export function humanoidRenderPieces(part: PlayerSkinPart, jointed: boolean): readonly HumanoidRenderPieceSpec[] {
   const slices = humanoidSkinSlices(part, jointed).map((slice) => ({ ...slice, kind: "slice" as const }));
   if (!jointed || part === "head" || part === "body") return slices;
   return [
@@ -64,7 +63,7 @@ export function humanoidRenderPieces(part: HumanoidPart, jointed: boolean): read
   ];
 }
 
-export function humanoidJointFillMatrix(base: Matrix4, part: HumanoidPart, side: HumanoidJointSide): Matrix4 {
+export function humanoidJointFillMatrix(base: Matrix4, part: PlayerSkinPart, side: HumanoidJointSide): Matrix4 {
   if (part === "head" || part === "body") throw new Error(`${part} does not support limb joint fillers.`);
   const position = new Vector3();
   const rotation = new Quaternion();
@@ -89,11 +88,11 @@ export function humanoidJointFillMatrix(base: Matrix4, part: HumanoidPart, side:
   return new Matrix4().compose(position, rotation, scale);
 }
 
-export function humanoidSkinPartHeight(part: HumanoidPart): number {
+export function humanoidSkinPartHeight(part: PlayerSkinPart): number {
   return part === "head" ? 8 : 12;
 }
 
-export function inferHumanoidPart(name: string): HumanoidPart | undefined {
+export function inferHumanoidPart(name: string): PlayerSkinPart | undefined {
   const normalized = name.toLowerCase().replaceAll(/[^a-z0-9]/g, "");
   if (normalized.includes("left") && (normalized.includes("arm") || normalized.includes("hand") || normalized.includes("wing"))) return "left_arm";
   if (normalized.includes("right") && (normalized.includes("arm") || normalized.includes("hand") || normalized.includes("wing"))) return "right_arm";
@@ -104,7 +103,7 @@ export function inferHumanoidPart(name: string): HumanoidPart | undefined {
   return undefined;
 }
 
-export function isStandardHumanoidPartSize(part: HumanoidPart, size: readonly number[]): boolean {
+export function isStandardHumanoidPartSize(part: PlayerSkinPart, size: readonly number[]): boolean {
   const closeTo = (value: number, expected: number) => Math.abs(value - expected) <= 1e-3;
   if (part === "head") return closeTo(size[0], 8) && closeTo(size[1], 8) && closeTo(size[2], 8);
   if (part === "body") return closeTo(size[0], 8) && closeTo(size[1], 12) && closeTo(size[2], 4);

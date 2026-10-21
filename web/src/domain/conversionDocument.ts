@@ -1,324 +1,260 @@
 import type { ConversionIssue } from "../foundation/diagnostics";
-import type { EmoteCallback, EmoteEvent, EmoteMetadata, EmotePlayerBehavior, PlayerSkinPart } from "../format/emoteAnimation";
-import { normalizeResourceLocation, sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
+import type { PlayerSkinPart } from "./player";
+import { attachmentTargetId, orderedNodeIds, type AnimationEntryIR, type AnimationIR, type AttachmentIR, type AnimationSetIR, type ClipIR, type EventIR, type NodeIR, type TransformOperationIR } from "./animationIR";
+import { normalizeAnimationTimes, remapClip } from "./animationIRConversion";
+import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
+import { parseAnimationSeconds, parseMinecraftTime } from "../format/time";
 import type { GeneratedResource } from "./generatedResource";
-import type { EditorNodeBinding } from "./nodeBindings";
-import type { AnimationRuntimeProjection } from "./runtimeProjection";
-import type { SequenceStep } from "./emoteDefinition";
-import type { PreviewProjection } from "./previewProjection";
-import type {
-  ImportedAnimation,
-  ImportedNode,
-  ImportedProject,
-  ImportedSkinPart,
-  ImportedTimelineEvent,
-  ImportSource,
-} from "./conversionSeed";
-
-type ImportedItemNode = Extract<ImportedNode, { type: "item_display" }>;
-type ImportedBlockNode = Extract<ImportedNode, { type: "block_display" }>;
-type ImportedTextNode = Extract<ImportedNode, { type: "text_display" }>;
-type ImportedAnchorNode = Extract<ImportedNode, { type: "anchor" }>;
+import type { EmoteCallback, EmotePlayerBehavior, SequenceStep } from "./emoteDefinition";
+import type { ImportedProject, ImportedSkinPart, InputFormat } from "./conversionSeed";
 
 export const DEFAULT_TARGET_MINECRAFT_VERSION = "26.3";
 
-export type ConversionNode =
-  | (Omit<ImportedItemNode, "binding" | "skin" | "suggestedSkin"> & {
-    binding: EditorNodeBinding;
-
-  })
-  | (Omit<ImportedBlockNode, "binding"> & { binding: EditorNodeBinding })
-  | (Omit<ImportedTextNode, "binding"> & { binding: EditorNodeBinding })
-  | (Omit<ImportedAnchorNode, "binding"> & { binding: EditorNodeBinding });
-
-export interface SkinGroup {
-  nodeIds: string[];
-  assignment: {
-    part: PlayerSkinPart;
-    order: number;
-  } | null;
+export interface SkinCandidate {
+  nodeId: string;
+  groupId: string;
+  sceneId: string;
+  attachmentId: string;
+  originalAttachment: AttachmentIR;
+  fittingOperation?: TransformOperationIR;
+  order?: number;
 }
 
-export interface AnimationOutputSettings {
-  namespace: string;
-  playbackMode: "source" | ImportedAnimation["playbackMode"];
-  displayName: string;
-  description: string;
-  player: EmotePlayerBehavior;
-  additionalMetadata: Record<string, unknown>;
-  standalone: boolean;
-  cooldown: string;
-  rotationDeadzone: number;
-  displayInterpolation: string;
-  loopStart: string;
-  loopDelay: string;
+export interface ConversionAnimation extends AnimationEntryIR {
+  sourceName: string;
+  sourceReferenceId?: string;
+  sourcePlayback: ClipIR["playback"];
+  playbackMode: "source" | NonNullable<NonNullable<ClipIR["playback"]>["mode"]>;
 }
 
-export interface ConversionAnimation {
-  callbacks?: EmoteCallback[];
-  preview: PreviewProjection;
-  runtime: AnimationRuntimeProjection;
-  events: ConversionAnimationEvents;
-  output: AnimationOutputSettings;
-  nodeIds: string[];
-}
-
-export function animationOutputId(animation: ConversionAnimation, output: AnimationOutputSettings = animation.output): string {
-  return `${sanitizeNamespace(output.namespace || output.displayName)}:${sanitizeResourcePath(animation.runtime.id)}`;
-}
-
-export interface ConversionAnimationEvents {
-  start: EmoteEvent[];
-  timeline: ImportedTimelineEvent[];
-  loop: EmoteEvent[];
-  stop: EmoteEvent[];
-}
+export type ConversionAnimationEvents = Required<NonNullable<AnimationIR["animation"]["events"]>>;
 
 export interface SequenceOutputSettings {
   callbacks?: EmoteCallback[];
   namespace: string;
   idPath?: string;
-  displayName: string;
+  name: string;
   description: string;
   additionalMetadata: Record<string, unknown>;
   cooldown: string;
   player: EmotePlayerBehavior;
-  sourceReferenceId?: string;
   steps?: SequenceStep[];
 }
 
-export interface ConversionDocument {
-  origin: {
-    source: ImportSource;
-    sourceName: string;
-    adapterLabel: string;
-    minecraftVersion?: string;
-  };
-  targetMinecraftVersion: string;
-  nodes: Record<string, ConversionNode>;
-  skinGroups: Record<string, SkinGroup>;
+export interface ConversionDocument extends AnimationSetIR {
+  origin: { source: InputFormat; sourceName: string; formatLabel: string };
   animations: ConversionAnimation[];
+  skinCandidates: Record<string, SkinCandidate>;
   sequence: SequenceOutputSettings;
   diagnostics: ConversionIssue[];
   resources: Map<string, GeneratedResource>;
 }
 
-export function createConversionDocument(project: ImportedProject, adapterLabel: string): ConversionDocument {
-  const skinGroups: Record<string, SkinGroup> = {};
-  const nodes = Object.fromEntries(Object.entries(project.nodes).map(([nodeId, importedNode]) => {
-    const binding: EditorNodeBinding = { ...importedNode.binding, editorNodeId: nodeId };
-    const suggestedSkin = importedNode.type === "item_display" ? importedNode.suggestedSkin ?? importedNode.skin : undefined;
-    if (importedNode.type !== "item_display") {
-      const { binding: _binding, ...node } = importedNode;
-      return [nodeId, { ...node, binding }];
-    }
-
-    const {
-      binding: _binding,
-      skin: _skin,
-      suggestedSkin: _suggestedSkin,
-      ...itemNode
-    } = importedNode;
-    if (!isSkinCandidate(importedNode)) return [nodeId, { ...itemNode, binding }];
-    const skinGroupId = importedNode.binding.skinGroupId ?? nodeId;
-    const group = skinGroups[skinGroupId] ?? { nodeIds: [], assignment: null };
-    group.nodeIds.push(nodeId);
-    if (!group.assignment && suggestedSkin) {
-      group.assignment = { part: suggestedSkin.part, order: suggestedSkin.order };
-    }
-    skinGroups[skinGroupId] = group;
-    return [nodeId, { ...itemNode, binding: { ...binding, skinGroupId } }];
-  })) as Record<string, ConversionNode>;
-
-  const additionalMetadata = Object.fromEntries(Object.entries(project.suggestedMetadata)
-    .filter(([key]) => key !== "name" && key !== "description"));
+export function createConversionDocument(project: ImportedProject, formatLabel: string): ConversionDocument {
+  const nodes: Record<string, NodeIR> = {};
+  const skinCandidates: Record<string, SkinCandidate> = {};
+  const suggestions: Record<string, ImportedSkinPart> = {};
+  const variants = new Map<string, string[]>();
+  const reservedIds = new Set(project.animations.flatMap((animation) => Object.keys(animation.ir.nodes)));
+  const additionalMetadata = Object.fromEntries(Object.entries(project.suggestedMetadata).filter(([key]) => key !== "name" && key !== "description"));
   const namespace = project.suggestedNamespace ?? "emote";
-  return {
-    origin: { source: project.source, sourceName: project.sourceName, adapterLabel, ...(project.suggestedMinecraftVersion ? { minecraftVersion: project.suggestedMinecraftVersion } : {}) },
+  const animations = project.animations.map((animation): ConversionAnimation => {
+    const ir = structuredClone(animation.ir);
+    if (project.source !== "emote_json") ir.id = `${sanitizeNamespace(namespace)}:${sanitizeResourcePath(animation.id)}`;
+    if (project.source !== "emote_json") ir.metadata = animation.suggestedMetadata ?? { ...additionalMetadata, name: animation.name, description: `${animation.name} emote.` };
+    ir.settings = {
+      standalone: project.suggestedStandalone ?? true,
+      cooldown: project.suggestedCooldown ?? "0t",
+      rotation_deadzone: project.suggestedRotationDeadzone ?? 50,
+      player: structuredClone(project.suggestedPlayer), ...ir.settings,
+    };
+    Reflect.deleteProperty(ir.settings, "display_interpolation_ticks");
+    ir.animation.events = {
+      start: ir.animation.events?.start ?? [],
+      timeline: ir.animation.events?.timeline ?? [],
+      loop: ir.animation.events?.loop ?? [],
+      stop: ir.animation.events?.stop ?? [],
+    };
+    normalizeAnimationTimes(ir, project.source !== "emote_json");
+    const ids = new Map<string, string>();
+    for (const sourceId of orderedNodeIds(ir.nodes)) {
+      const sourceNode = ir.nodes[sourceId];
+      const importedId = typeof sourceNode.source?.editor_node_id === "string" ? sourceNode.source.editor_node_id : sourceId;
+      const node = structuredClone(sourceNode);
+      if (node.parent) node.parent = ids.get(node.parent)!;
+      if (node.source && Object.hasOwn(node.source, "editor_node_id")) {
+        delete node.source.editor_node_id;
+        node.source.node_id ??= project.nodeHints[importedId]?.sourceNodeId ?? importedId;
+      }
+      let id = variants.get(sourceId)?.find((candidate) => JSON.stringify(nodes[candidate]) === JSON.stringify(node));
+      if (!id) {
+        id = sourceId;
+        let suffix = 2;
+        while (nodes[id] || (id !== sourceId && reservedIds.has(id))) id = `${sourceId}_${suffix++}`;
+        nodes[id] = node;
+        variants.set(sourceId, [...(variants.get(sourceId) ?? []), id]);
+        for (const [attachmentId, candidate] of Object.entries(project.nodeHints[importedId]?.skinCandidates ?? {})) {
+          if (node.attachments?.[attachmentId]?.type !== "item_display" && node.attachments?.[attachmentId]?.type !== "player_skin") continue;
+          let operationId = "skin_conversion";
+          let operationSuffix = 2;
+          while (node.transform?.some((operation) => operation.id === operationId)) operationId = `skin_conversion_${operationSuffix++}`;
+          const candidateId = attachmentTargetId(id, attachmentId);
+          skinCandidates[candidateId] = {
+            nodeId: id, groupId: candidate.groupId, sceneId: "input", attachmentId,
+            originalAttachment: structuredClone(node.attachments[attachmentId]),
+            ...(candidate.fittingMatrix ? { fittingOperation: { id: operationId, op: "matrix", value: candidate.fittingMatrix } } : {}),
+          };
+          const suggested = candidate.suggestion;
+          if (suggested) {
+            suggestions[candidateId] = suggested;
+            skinCandidates[candidateId].order = suggested.order;
+          }
+        }
+      }
+      ids.set(sourceId, id);
+    }
+    const { nodes: _nodes, animation: sourceClip, target_minecraft_version: _version, ...fields } = ir;
+    const clip = remapClip(sourceClip, (id) => ids.get(id) ?? id);
+    return { ...fields, clip, nodeIds: [...ids.values()], sourceName: animation.name, sourcePlayback: structuredClone(sourceClip.playback), playbackMode: "source",
+      sourceReferenceId: animation.sourceReferenceId };
+  });
+  let document: ConversionDocument = {
+    origin: { source: project.source, sourceName: project.sourceName, formatLabel },
     targetMinecraftVersion: project.suggestedMinecraftVersion && Object.hasOwn(MINECRAFT_VERSION_PROFILES, project.suggestedMinecraftVersion)
       ? project.suggestedMinecraftVersion : DEFAULT_TARGET_MINECRAFT_VERSION,
-    nodes,
-    skinGroups,
-    animations: project.animations.map((animation) => {
-      const metadata = animation.suggestedMetadata;
-      const animationAdditionalMetadata = metadata
-        ? Object.fromEntries(Object.entries(metadata).filter(([key]) => key !== "name" && key !== "description"))
-        : additionalMetadata;
-      return {
-        callbacks: animation.callbacks?.map((callback) => ({ ...callback })),
-        preview: animation.preview,
-        runtime: {
-          id: animation.id,
-          sourceName: animation.name,
-          ...(animation.sourceReferenceId ? { sourceReferenceId: animation.sourceReferenceId } : {}),
-          durationTicks: animation.durationTicks,
-          sourcePlaybackMode: animation.playbackMode,
-          availability: animation.exportAvailability,
-          data: animation.runtime,
-        },
-        events: {
-          start: [...animation.events.start],
-          timeline: [...animation.events.timeline],
-          loop: [...animation.events.loop],
-          stop: [...animation.events.stop],
-        },
-        nodeIds: Object.keys(nodes),
-        output: {
-          namespace,
-          playbackMode: "source",
-          displayName: metadata?.name ?? animation.name,
-          description: metadata?.description ?? `${animation.name} emote.`,
-          player: project.suggestedPlayer,
-          additionalMetadata: animationAdditionalMetadata,
-          standalone: project.suggestedStandalone ?? true,
-          cooldown: project.suggestedCooldown ?? "0t",
-          rotationDeadzone: project.suggestedRotationDeadzone ?? 50,
-          displayInterpolation: project.suggestedDisplayInterpolation ?? "1t",
-          loopStart: `${animation.loopStartTicks ?? 0}t`,
-          loopDelay: `${animation.loopDelayTicks}t`,
-        },
-      };
-    }),
-    sequence: {
-      namespace,
-      displayName: project.suggestedMetadata.name,
-      description: project.suggestedMetadata.description,
-      additionalMetadata,
-      cooldown: project.suggestedCooldown ?? "0t",
-      player: project.suggestedPlayer,
-    },
-    diagnostics: project.diagnostics,
-    resources: project.resources,
+    nodes, skinCandidates, animations,
+    sequence: { namespace, name: project.suggestedMetadata.name, description: project.suggestedMetadata.description,
+      additionalMetadata, cooldown: project.suggestedCooldown ?? "0t", player: project.suggestedPlayer },
+    diagnostics: project.diagnostics, resources: project.resources,
   };
-}
-
-export function documentMetadata(settings: AnimationOutputSettings): EmoteMetadata {
-  return { ...settings.additionalMetadata, name: settings.displayName, description: settings.description };
-}
-
-export function documentSkinAssignments(document: ConversionDocument): Record<string, ImportedSkinPart | null> {
-  const entries: Array<[string, ImportedSkinPart | null]> = [];
-  for (const [nodeId, node] of Object.entries(document.nodes)) {
-    if (node.type !== "item_display" || !node.binding.skinGroupId) continue;
-    const assignment = document.skinGroups[node.binding.skinGroupId]?.assignment;
-    entries.push([nodeId, assignment ? {
-      part: assignment.part,
-      order: assignment.order,
-    } : null]);
+  for (const part of [...new Set(Object.values(suggestions).map((suggestion) => suggestion.part))]) {
+    const groups = new Map(Object.entries(suggestions).filter(([, suggestion]) => suggestion.part === part)
+      .map(([id, suggestion]) => [skinCandidates[id].groupId, suggestion.order]));
+    document = applySkinGroups(document, part, groups, "input");
   }
-  return Object.fromEntries(entries);
+  return document;
 }
 
-
-export function documentPartAssignments(document: ConversionDocument): Record<string, PlayerSkinPart | null> {
-  return Object.fromEntries(Object.entries(document.nodes).flatMap(([nodeId, node]) => node.type === "item_display" && node.binding.skinGroupId
-    ? [[nodeId, document.skinGroups[node.binding.skinGroupId]?.assignment?.part ?? null]]
-    : []));
-}
-
-export function documentPartOrders(document: ConversionDocument): Record<string, number | null> {
-  return Object.fromEntries(Object.entries(document.nodes).flatMap(([nodeId, node]) => node.type === "item_display" && node.binding.skinGroupId
-    ? [[nodeId, document.skinGroups[node.binding.skinGroupId]?.assignment?.order ?? null]]
-    : []));
-}
-
-export function assignDocumentSkinPart(
-  document: ConversionDocument,
-  selectedNodeIds: ReadonlySet<string>,
-  part: PlayerSkinPart | null,
-): ConversionDocument {
-  const selectedGroupIds = selectedSkinGroupIds(document, selectedNodeIds);
-  if (selectedGroupIds.size === 0) return document;
-  const order = selectedGroupIds.size === 1 && part !== null
-    ? new Set(Object.entries(document.skinGroups)
-      .filter(([groupId, group]) => !selectedGroupIds.has(groupId) && group.assignment?.part === part)
-      .map(([groupId]) => groupId)).size
-    : null;
-  const skinGroups = { ...document.skinGroups };
-  for (const groupId of selectedGroupIds) {
-    const group = skinGroups[groupId];
-    skinGroups[groupId] = {
-      ...group,
-      assignment: part === null ? null : { part, order: order ?? group.assignment?.order ?? 0 },
-    };
-  }
-  return { ...document, skinGroups };
-}
-
-export function assignDocumentSkinOrder(
-  document: ConversionDocument,
-  selectedNodeIds: ReadonlySet<string>,
-  order: number,
-): ConversionDocument {
-  const selectedGroupIds = selectedSkinGroupIds(document, selectedNodeIds);
-  const skinGroups = { ...document.skinGroups };
-  for (const groupId of selectedGroupIds) {
-    const group = skinGroups[groupId];
-    if (group.assignment) skinGroups[groupId] = { ...group, assignment: { ...group.assignment, order } };
-  }
-  return { ...document, skinGroups };
-}
-
-
-export function updateDocumentAnimationLifecycleEvents(
-  document: ConversionDocument,
-  animationIndex: number,
-  events: Pick<ConversionAnimationEvents, "start" | "loop" | "stop"> & { callbacks: EmoteCallback[] },
-): ConversionDocument {
-  if (!document.animations[animationIndex]) return document;
-  const { callbacks, ...commandEvents } = events;
-  return {
-    ...document,
-    animations: document.animations.map((animation, index) => index === animationIndex
-      ? { ...animation, callbacks, events: { ...animation.events, ...commandEvents } }
-      : animation),
-  };
-}
-
-export function replaceDocumentAnimationTimelineEvents(
-  document: ConversionDocument,
-  animationIndex: number,
-  tick: number,
-  events: EmoteEvent[],
-): ConversionDocument {
-  if (!document.animations[animationIndex]) return document;
-  return {
-    ...document,
-    animations: document.animations.map((animation, index) => index === animationIndex
-      ? {
-          ...animation,
-          events: {
-            ...animation.events,
-            timeline: [
-              ...animation.events.timeline.filter((event) => event.tick !== tick),
-              ...events.map((event) => ({ ...event, tick })),
-            ].sort((first, second) => first.tick - second.tick),
-          },
-        }
-      : animation),
-  };
-}
-
-export function updateDocumentAnimationOutput(
-  document: ConversionDocument,
-  animationIndex: number,
-  output: AnimationOutputSettings,
-): ConversionDocument {
-  if (!document.animations[animationIndex]) return document;
-  return {
-    ...document,
-    animations: document.animations.map((animation, index) => index === animationIndex ? { ...animation, output } : animation),
-  };
-}
-
-function isSkinCandidate(node: ImportedItemNode): boolean {
-  return Boolean(node.skin || node.suggestedSkin || node.playerHeadConversionMatrix || normalizeResourceLocation(node.itemStack.id) === "minecraft:player_head");
-}
-
-function selectedSkinGroupIds(document: ConversionDocument, selectedNodeIds: ReadonlySet<string>): Set<string> {
-  return new Set([...selectedNodeIds].flatMap((nodeId) => {
-    const node = document.nodes[nodeId];
-    return node?.type === "item_display" && node.binding.skinGroupId ? [node.binding.skinGroupId] : [];
+export function skinPartAssignments(document: ConversionDocument): Record<string, PlayerSkinPart | null> {
+  return Object.fromEntries(Object.entries(document.skinCandidates).map(([id, candidate]) => {
+    const attachment = document.nodes[candidate.nodeId].attachments?.[candidate.attachmentId];
+    return [id, attachment?.type === "player_skin" ? attachment.part : null];
   }));
+}
+
+export function skinPartOrders(document: ConversionDocument): Record<string, number | null> {
+  return Object.fromEntries(Object.entries(document.skinCandidates).map(([id, candidate]) => {
+    const attachment = document.nodes[candidate.nodeId].attachments?.[candidate.attachmentId];
+    if (attachment?.type !== "player_skin") return [id, null];
+    return [id, candidate.order ?? orderedSkinGroups(document, attachment.part, candidate.sceneId).get(candidate.groupId)!];
+  }));
+}
+
+export function assignSkinPart(document: ConversionDocument, selectedCandidateIds: ReadonlySet<string>, part: PlayerSkinPart | null): ConversionDocument {
+  const groups = new Set([...selectedCandidateIds].flatMap((id) => document.skinCandidates[id] ? [document.skinCandidates[id].groupId] : []));
+  if (!groups.size) return document;
+  const scenes = new Set([...selectedCandidateIds].flatMap((id) => document.skinCandidates[id] ? [document.skinCandidates[id].sceneId] : []));
+  const targetOrders = new Map([...scenes].map((scene) => [scene, part ? orderedSkinGroups(document, part, scene) : new Map<string, number>()]));
+  const previousParts = new Set<PlayerSkinPart>();
+  const nodes = { ...document.nodes };
+  for (const candidate of Object.values(document.skinCandidates)) {
+    if (!groups.has(candidate.groupId)) continue;
+    const node = nodes[candidate.nodeId];
+    const attachment = node.attachments?.[candidate.attachmentId];
+    if (attachment?.type !== "player_skin") continue;
+    previousParts.add(attachment.part);
+    const restored = structuredClone(candidate.originalAttachment);
+    if (attachment.visible === undefined) delete restored.visible;
+    else restored.visible = attachment.visible;
+    if (attachment.entity_nbt === undefined) delete restored.entity_nbt;
+    else restored.entity_nbt = attachment.entity_nbt;
+    nodes[candidate.nodeId] = { ...node, attachments: { ...node.attachments, [candidate.attachmentId]: restored } };
+  }
+  let result = { ...document, nodes };
+  for (const scene of scenes) {
+    for (const previous of previousParts) result = applySkinGroups(result, previous, orderedSkinGroups(result, previous, scene), scene);
+    const sceneGroups = [...groups].filter((group) => Object.values(document.skinCandidates).some((candidate) => candidate.sceneId === scene && candidate.groupId === group));
+    if (part) {
+      const order = targetOrders.get(scene)!;
+      const nextOrder = groups.size === 1 ? [...order.keys()].filter((group) => !groups.has(group)).length + 1 : null;
+      for (const group of sceneGroups) {
+        const previousOrder = Object.values(document.skinCandidates).find((candidate) => candidate.sceneId === scene && candidate.groupId === group)?.order;
+        order.set(group, nextOrder ?? previousOrder ?? 0);
+      }
+      result = applySkinGroups(result, part, order, scene);
+    }
+  }
+  return result;
+}
+
+export function assignSkinOrder(document: ConversionDocument, selectedCandidateIds: ReadonlySet<string>, order: number): ConversionDocument {
+  const selected = new Set([...selectedCandidateIds].flatMap((id) => document.skinCandidates[id] ? [document.skinCandidates[id].groupId] : []));
+  const scenes = new Set([...selectedCandidateIds].flatMap((id) => document.skinCandidates[id] ? [document.skinCandidates[id].sceneId] : []));
+  let result = document;
+  for (const scene of scenes) for (const part of [...new Set(Object.values(skinPartAssignments(document)).filter((part): part is PlayerSkinPart => part !== null))]) {
+    const groups = orderedSkinGroups(document, part, scene);
+    if (![...groups.keys()].some((id) => selected.has(id))) continue;
+    for (const id of groups.keys()) if (selected.has(id)) groups.set(id, order);
+    result = applySkinGroups(result, part, groups, scene);
+  }
+  return result;
+}
+
+function orderedSkinGroups(document: ConversionDocument, part: PlayerSkinPart, scene: string): Map<string, number> {
+  const groups = Object.values(document.skinCandidates).flatMap((candidate) => {
+    if (candidate.sceneId !== scene) return [];
+    const attachment = document.nodes[candidate.nodeId].attachments?.[candidate.attachmentId];
+    return attachment?.type === "player_skin" && attachment.part === part ? [{ id: candidate.groupId, order: candidate.order, from: attachment.region.from }] : [];
+  }).sort((first, second) => first.from - second.from);
+  const orders = new Map<string, number>();
+  for (const group of groups) if (!orders.has(group.id)) orders.set(group.id, group.order ?? orders.size);
+  return orders;
+}
+
+function applySkinGroups(document: ConversionDocument, part: PlayerSkinPart, groups: Map<string, number>, scene: string): ConversionDocument {
+  const nodes = { ...document.nodes };
+  const skinCandidates = { ...document.skinCandidates };
+  const orders = [...new Set(groups.values())].sort((first, second) => first - second);
+  for (const [id, candidate] of Object.entries(document.skinCandidates)) {
+    if (candidate.sceneId !== scene) continue;
+    const order = groups.get(candidate.groupId);
+    if (order === undefined) continue;
+    const index = orders.indexOf(order);
+    const node = nodes[candidate.nodeId];
+    const attachment = node.attachments?.[candidate.attachmentId] ?? candidate.originalAttachment;
+    nodes[candidate.nodeId] = { ...node,
+      attachments: { ...node.attachments, [candidate.attachmentId]: { type: "player_skin", part, region: { from: index / orders.length, to: (index + 1) / orders.length },
+        ...(attachment.visible === undefined ? {} : { visible: attachment.visible }), ...(attachment.entity_nbt === undefined ? {} : { entity_nbt: attachment.entity_nbt }) } },
+    };
+    skinCandidates[id] = { ...candidate, order };
+  }
+  return { ...document, nodes, skinCandidates };
+}
+
+export function updateLifecycleEvents(document: ConversionDocument, animationIndex: number,
+  events: Pick<ConversionAnimationEvents, "start" | "loop" | "stop"> & { callbacks: EmoteCallback[] }): ConversionDocument {
+  const animation = document.animations[animationIndex];
+  if (!animation) return document;
+  const { callbacks, ...commandEvents } = events;
+  return updateAnimation(document, animationIndex, { ...animation, callbacks: structuredClone(callbacks),
+    clip: { ...animation.clip, events: { ...structuredClone(commandEvents), timeline: structuredClone(animation.clip.events?.timeline ?? []) } } });
+}
+
+export function replaceTimelineEvents(document: ConversionDocument, animationIndex: number, tick: number, events: EventIR[]): ConversionDocument {
+  const animation = document.animations[animationIndex];
+  if (!animation) return document;
+  if (!Number.isInteger(tick) || tick < 0 || tick > parseMinecraftTime(animation.clip.duration, 1)) throw new Error("Event tick must be within the animation duration.");
+  return updateAnimation(document, animationIndex, { ...animation,
+    clip: { ...animation.clip, events: { ...animation.clip.events, timeline: [
+      ...(animation.clip.events?.timeline ?? []).filter((event) => parseMinecraftTime(event.time) !== tick),
+      ...structuredClone(events).map((event) => ({ ...event, time: `${tick}t` })),
+    ].sort((first, second) => parseAnimationSeconds(first.time) - parseAnimationSeconds(second.time)) } } });
+}
+
+export function updateAnimation(document: ConversionDocument, animationIndex: number, animation: AnimationEntryIR): ConversionDocument {
+  if (!document.animations[animationIndex]) return document;
+  const normalized = structuredClone(animation);
+  normalizeAnimationTimes(normalized);
+  return { ...document, animations: document.animations.map((entry, index) => index === animationIndex ? { ...entry, ...normalized } : entry) };
 }

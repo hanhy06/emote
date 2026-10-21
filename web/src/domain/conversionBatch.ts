@@ -2,45 +2,48 @@ import { ConversionError } from "../foundation/diagnostics";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
 import type { GeneratedResource } from "./generatedResource";
-import type { ConversionAnimation, ConversionDocument, ConversionNode, SkinGroup } from "./conversionDocument";
-import { remapAnimationRuntimeData, remapImportedAnimationEvents, remapPreviewProjection } from "./importedAnimationRemapper";
-import { remapEditorNodeBinding } from "./nodeBindings";
-import { isSequenceControlId, type ImportedSequence, type SequenceAnimationStep, type SequenceStep } from "./emoteDefinition";
+import type { ConversionAnimation, ConversionDocument, SkinCandidate } from "./conversionDocument";
+import { attachmentTargetId, type NodeIR } from "./animationIR";
+import { remapClip } from "./animationIRConversion";
+import type { ImportedSequence } from "./emoteDefinition";
 
 export function combineConversionDocuments(documents: readonly ConversionDocument[], importedSequences: readonly ImportedSequence[] = []): ConversionDocument {
   if (documents.length === 0) throw new ConversionError("empty_import", "No animation projects were imported.");
   if (importedSequences.length > 1) throw new ConversionError("multiple_sequences", "Open at most one sequence at a time.");
   if (documents.length === 1) return applyImportedSequence(documents[0], importedSequences[0]);
 
-  const nodes: Record<string, ConversionNode> = {};
-  const skinGroups: Record<string, SkinGroup> = {};
+  const nodes: Record<string, NodeIR> = {};
+  const skinCandidates: Record<string, SkinCandidate> = {};
   const animations: ConversionAnimation[] = [];
   const animationIds = new Set<string>();
+  const reservedAnimationIds = new Set(documents.flatMap((document) => document.animations.map((animation) => {
+    const separator = animation.id.indexOf(":");
+    return `${sanitizeNamespace(animation.id.slice(0, separator))}:${sanitizeResourcePath(animation.id.slice(separator + 1))}`;
+  })));
   const resources = new Map(documents[0].resources);
 
   documents.forEach((document, index) => {
     const prefix = `input_${index + 1}__`;
-    const nodeId = (id: string) => `${prefix}${id}`;
-    const groupId = (id: string) => `${prefix}${id}`;
+    const prefixId = (id: string) => `${prefix}${id}`;
 
     for (const [id, node] of Object.entries(document.nodes)) {
-      nodes[nodeId(id)] = {
+      nodes[prefixId(id)] = {
         ...node,
-        binding: remapEditorNodeBinding(node.binding, { editorNodeId: nodeId, editorGroupId: groupId }),
+        ...(node.parent ? { parent: prefixId(node.parent) } : {}),
       };
     }
-    for (const [id, group] of Object.entries(document.skinGroups)) {
-      skinGroups[groupId(id)] = { ...group, nodeIds: group.nodeIds.map(nodeId) };
+    for (const candidate of Object.values(document.skinCandidates)) {
+      const nodeId = prefixId(candidate.nodeId);
+      skinCandidates[attachmentTargetId(nodeId, candidate.attachmentId)] = { ...candidate, nodeId, groupId: prefixId(candidate.groupId), sceneId: prefixId(candidate.sceneId) };
     }
     animations.push(...document.animations.map((animation) => {
-      const ids = { editorNodeId: nodeId, runtimeNodeId: nodeId, editorGroupId: groupId };
-      const id = uniqueAnimationId(animation.output.namespace, animation.runtime.id, animationIds);
+      const separator = animation.id.indexOf(":");
+      const id = uniqueAnimationId(animation.id.slice(0, separator), animation.id.slice(separator + 1), animationIds, reservedAnimationIds);
       return {
         ...animation,
-        nodeIds: animation.nodeIds.map(nodeId),
-        preview: remapPreviewProjection(animation.preview, ids),
-        runtime: { ...animation.runtime, id, data: remapAnimationRuntimeData(animation.runtime.data, ids) },
-        events: remapImportedAnimationEvents(animation.events, nodeId),
+        id: `${animation.id.slice(0, separator)}:${id}`,
+        nodeIds: animation.nodeIds.map(prefixId),
+        clip: remapClip(animation.clip, prefixId),
       };
     }));
     if (index > 0) mergeResources(resources, document.resources);
@@ -52,10 +55,10 @@ export function combineConversionDocuments(documents: readonly ConversionDocumen
     origin: {
       ...first.origin,
       sourceName: documents.map((document) => document.origin.sourceName).join(", "),
-      adapterLabel: [...new Set(documents.map((document) => document.origin.adapterLabel))].join(", "),
+      formatLabel: [...new Set(documents.map((document) => document.origin.formatLabel))].join(", "),
     },
     nodes,
-    skinGroups,
+    skinCandidates,
     animations,
     sequence: { ...first.sequence, namespace: "emote" },
     diagnostics: documents.flatMap((document) => document.diagnostics),
@@ -65,20 +68,6 @@ export function combineConversionDocuments(documents: readonly ConversionDocumen
 
 function applyImportedSequence(document: ConversionDocument, sequence: ImportedSequence | undefined): ConversionDocument {
   if (!sequence) return document;
-  const animationIds = new Set<string>();
-  for (const animation of document.animations) {
-    const id = animation.runtime.sourceReferenceId;
-    if (!id) continue;
-    if (animationIds.has(id)) throw new ConversionError("duplicate_source_animation_id", `Multiple imported animations use the same id: ${id}`, id);
-    animationIds.add(id);
-  }
-  if (animationIds.has(sequence.id)) {
-    throw new ConversionError("duplicate_emote_id", `Animation and sequence use the same id: ${sequence.id}`, sequence.id);
-  }
-  for (const id of sequenceAnimationReferences(sequence.steps)) {
-    if (isSequenceControlId(id)) continue;
-    if (!animationIds.has(id)) throw new ConversionError("missing_sequence_animation", `Sequence references an animation that was not opened: ${id}`, id);
-  }
   const separator = sequence.id.indexOf(":");
   return {
     ...document,
@@ -87,30 +76,22 @@ function applyImportedSequence(document: ConversionDocument, sequence: ImportedS
     sequence: {
       namespace: sequence.id.slice(0, separator),
       idPath: sequence.id.slice(separator + 1),
-      displayName: sequence.metadata.name,
+      name: sequence.metadata.name,
       description: sequence.metadata.description,
       additionalMetadata: Object.fromEntries(Object.entries(sequence.metadata).filter(([key]) => key !== "name" && key !== "description")),
       cooldown: sequence.cooldown,
       player: sequence.player,
-      sourceReferenceId: sequence.id,
       steps: sequence.steps,
       callbacks: sequence.callbacks?.map((callback) => ({ ...callback })),
     },
   };
 }
 
-function sequenceAnimationReferences(steps: readonly SequenceStep[]): string[] {
-  return steps.flatMap((step) => "wait" in step ? [] : animationStepReferences(step));
-}
-
-function animationStepReferences(step: SequenceAnimationStep): string[] {
-  return typeof step.emote === "string" ? [step.emote] : step.emote.map((choice) => choice.id);
-}
-
-function uniqueAnimationId(namespace: string, sourceId: string, usedIds: Set<string>): string {
+function uniqueAnimationId(namespace: string, sourceId: string, usedIds: Set<string>, reservedIds: ReadonlySet<string>): string {
   let id = sourceId;
   let suffix = 2;
-  while (usedIds.has(`${sanitizeNamespace(namespace)}:${sanitizeResourcePath(id)}`)) id = `${sourceId}_${suffix++}`;
+  while (usedIds.has(`${sanitizeNamespace(namespace)}:${sanitizeResourcePath(id)}`)
+    || id !== sourceId && reservedIds.has(`${sanitizeNamespace(namespace)}:${sanitizeResourcePath(id)}`)) id = `${sourceId}_${suffix++}`;
   usedIds.add(`${sanitizeNamespace(namespace)}:${sanitizeResourcePath(id)}`);
   return id;
 }

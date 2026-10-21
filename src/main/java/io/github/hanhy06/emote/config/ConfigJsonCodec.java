@@ -10,7 +10,10 @@ import java.util.List;
 import java.util.Optional;
 
 final class ConfigJsonCodec {
-    JsonObject writeConfig(Config config) {
+    private ConfigJsonCodec() {
+    }
+
+    static JsonObject writeConfig(Config config) {
         JsonObject object = new JsonObject();
         object.addProperty("schema_version", config.schemaVersion());
         object.addProperty("menu_page_size", config.menuPageSize());
@@ -23,7 +26,7 @@ final class ConfigJsonCodec {
         return object;
     }
 
-    JsonObject writeAccessConfig(AccessConfig config) {
+    static JsonObject writeAccessConfig(AccessConfig config) {
         JsonObject object = new JsonObject();
         object.addProperty("schema_version", AccessConfig.CURRENT_SCHEMA_VERSION);
         JsonArray disabledJson = new JsonArray();
@@ -56,7 +59,7 @@ final class ConfigJsonCodec {
         return object;
     }
 
-    Config readConfig(JsonObject object) {
+    static Config readConfig(JsonObject object) {
         if (object == null) {
             return null;
         }
@@ -79,7 +82,7 @@ final class ConfigJsonCodec {
         );
     }
 
-    AccessConfig readAccessConfig(JsonObject object) {
+    static AccessConfig readAccessConfig(JsonObject object) {
         if (object == null) {
             return null;
         }
@@ -151,12 +154,12 @@ final class ConfigJsonCodec {
         return new AccessConfig(disabled, permissions);
     }
 
-    private int readInt(JsonObject object, String key, int defaultValue) {
+    private static int readInt(JsonObject object, String key, int defaultValue) {
         JsonElement element = object.get(key);
         return element == null || element.isJsonNull() ? defaultValue : element.getAsInt();
     }
 
-    private AccessConfig.CooldownModifier readCooldownModifier(JsonElement element) {
+    private static AccessConfig.CooldownModifier readCooldownModifier(JsonElement element) {
         String value = readRequiredString(element);
         if (value == null) {
             return null;
@@ -171,7 +174,7 @@ final class ConfigJsonCodec {
         }
     }
 
-    private AccessConfig.IdleSettings readIdleSettings(JsonElement element) {
+    private static AccessConfig.IdleSettings readIdleSettings(JsonElement element) {
         if (!element.isJsonObject()) {
             return null;
         }
@@ -198,7 +201,7 @@ final class ConfigJsonCodec {
         return new AccessConfig.IdleSettings(delayTicks, choices);
     }
 
-    private List<AccessConfig.IdleSettings.Choice> readIdleChoices(JsonArray array) {
+    private static List<AccessConfig.IdleSettings.Choice> readIdleChoices(JsonArray array) {
         if (array.isEmpty()) {
             return null;
         }
@@ -211,10 +214,9 @@ final class ConfigJsonCodec {
         }
 
         List<AccessConfig.IdleSettings.Choice> choices = new ArrayList<>();
-        int totalChance = 0;
         for (int index = 0; index < array.size(); index += stride) {
             String id = readRequiredString(array.get(index));
-            if (id == null || choices.stream().anyMatch(choice -> choice.id().equals(id))) {
+            if (id == null) {
                 return null;
             }
             int chance = 0;
@@ -223,17 +225,13 @@ final class ConfigJsonCodec {
                 if (chance < 1) {
                     return null;
                 }
-                totalChance += chance;
             }
             choices.add(new AccessConfig.IdleSettings.Choice(id, chance));
-        }
-        if (weighted && totalChance != 100) {
-            return null;
         }
         return List.copyOf(choices);
     }
 
-    private int readChance(JsonElement element) {
+    private static int readChance(JsonElement element) {
         if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isNumber()) {
             return -1;
         }
@@ -244,7 +242,7 @@ final class ConfigJsonCodec {
         }
     }
 
-    private List<String> readRequiredStringList(JsonElement element) {
+    private static List<String> readRequiredStringList(JsonElement element) {
         if (element == null || !element.isJsonArray()) {
             return null;
         }
@@ -259,7 +257,7 @@ final class ConfigJsonCodec {
         return List.copyOf(values);
     }
 
-    private String readRequiredString(JsonElement element) {
+    private static String readRequiredString(JsonElement element) {
         if (element == null || !element.isJsonPrimitive() || !element.getAsJsonPrimitive().isString()) {
             return null;
         }

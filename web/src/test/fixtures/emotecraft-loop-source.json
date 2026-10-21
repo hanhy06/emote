@@ -1,0 +1,17 @@
+{
+  "uuid": "00000000-0000-0000-0000-000000000003",
+  "lengthTicks": 40, "loop": "loop_from_tick", "loopStartTick": 0,
+  "format": "player_animator", "applyBendToOtherBones": false, "easeBeforeKeyframe": true,
+  "effects": { "sounds": [], "particles": [], "instructions": [] }, "pivots": {}, "parents": {},
+  "bones": {
+    "body": {
+      "rotation": [[], [], []], "scale": [[], [], []], "bend": [],
+      "position": [
+        [
+          { "startTick": 0, "endTick": 10, "start": 0, "end": 0, "easing": "linear", "easingArgs": [] },
+          { "startTick": 10, "endTick": 20, "start": 0, "end": 16, "easing": "easeinquad", "easingArgs": [] }
+        ], [], []
+      ]
+    }
+  }
+}

@@ -1,0 +1,83 @@
+import type { CurveIR, CurveKeyIR, EasingIR, NodeIR, SegmentIR, VectorValueIR } from "../../domain/animationIR";
+import { affineScalarIR, scalarIR } from "../../domain/animationIRConversion";
+import type { ImportedNode } from "../../domain/conversionSeed";
+import { minecraftVersionProfile } from "../../format/minecraftVersionProfiles";
+import { writeBlockState, writeItemStack } from "../../format/minecraftData";
+import type { BbKeyframe } from "./blockbenchCubeSchema";
+import { sourceSecondsTime } from "../../format/time";
+import { mapMolangResult } from "../../format/molang/sourceTransformer";
+
+export function importedNodeIR(node: ImportedNode, parent?: string): NodeIR {
+  const profile = minecraftVersionProfile("26.3");
+  const common = { ...(parent ? { parent } : {}), ...(node.type === "anchor" ? {} : { visible: node.visible }) };
+  if (node.type === "anchor") return common;
+  const content = node.type === "item_display" ? { type: "item_display" as const, item_stack_snbt: writeItemStack(node.itemStack, profile), item_display: node.itemDisplay }
+    : node.type === "block_display" ? { type: "block_display" as const, block_state_snbt: writeBlockState(node.blockState, profile) }
+    : { type: "text_display" as const, text: node.text };
+  return { ...common,
+    ...(node.type === "item_display" && node.modelGeometryMatrix ? { transform: [{ id: "model_geometry", op: "matrix" as const, value: node.modelGeometryMatrix }] } : {}),
+    attachments: { display: { ...content, ...(node.entityNbt ? { entity_nbt: node.entityNbt } : {}) } },
+  };
+}
+
+export function blockbenchCurveIR(frames: readonly BbKeyframe[]): CurveIR | undefined {
+  if (!frames.length) return undefined;
+  const grouped: BbKeyframe[][] = [];
+  for (const frame of [...frames].sort((a, b) => a.time - b.time)) {
+    if (grouped.at(-1)?.[0].time === frame.time) grouped.at(-1)!.push(frame);
+    else grouped.push([frame]);
+  }
+  const values = (frame: BbKeyframe, post: boolean): VectorValueIR => {
+    const point = frame.data_points[post ? frame.data_points.length - 1 : 0];
+    return [point?.x, point?.y, point?.z].map((value) => scalarIR(value ?? (frame.channel === "scale" ? 1 : 0)));
+  };
+  const keys: CurveKeyIR[] = grouped.map((group) => group.length === 1 && group[0].data_points.length === 1 ? { time: sourceSecondsTime(group[0].time), value: values(group[0], true) }
+    : { time: sourceSecondsTime(group[0].time), pre: values(group[0], false), post: values(group.at(-1)!, true) });
+  const segments: SegmentIR[] = grouped.slice(0, -1).map((group, index) => {
+    const left = group.at(-1)!, right = grouped[index + 1][0];
+    if (left.interpolation === "step") return { interpolation: "step" };
+    const interpolation = left.interpolation === "catmullrom" || right.interpolation === "catmullrom" ? "catmull_rom"
+      : left.interpolation === "bezier" || right.interpolation === "bezier" ? "bezier" : "linear";
+    if (interpolation === "catmull_rom") {
+      const previous = grouped[index - 1];
+      const following = grouped[index + 2];
+      return { interpolation: "catmull_rom", ...(previous && left.data_points.length === 1 ? { previous: values(previous.at(-1)!, true) } : {}),
+        ...(following && right.data_points.length === 1 ? { following: values(following[0], false) } : {}) };
+    }
+    if (interpolation === "bezier") {
+      const duration = right.time - left.time;
+      const handleTime = (raw: number | string, incoming: boolean) => {
+        const time = affineScalarIR(scalarIR(raw), 1 / duration, incoming ? 1 : 0);
+        return typeof time === "number" ? Math.max(0, Math.min(1, time)) : { molang: mapMolangResult(time.molang, (result) => `math.clamp(${result}, 0, 1)`) };
+      };
+      return { interpolation: "bezier", handles: [0, 1, 2].map((axis) => ({
+        out: { time: handleTime(left.bezier_right_time?.[axis] ?? 0.1, false), value: scalarIR(left.bezier_right_value?.[axis] ?? 0), relative: true },
+        in: { time: handleTime(right.bezier_left_time?.[axis] ?? -0.1, true), value: scalarIR(right.bezier_left_value?.[axis] ?? 0), relative: true },
+      })) };
+    }
+    const easing = blockbenchEasingIR(right.easing, right.easingArgs);
+    return { interpolation: "linear", ...(easing ? { easing } : {}) };
+  });
+  return { type: "curve", before: "first_pre", at_key: "pre", evaluation: "component", keys, segments };
+}
+
+export function blockbenchEasingIR(name: string | undefined, args?: readonly (number | string)[]): EasingIR | undefined {
+  const normalized = (name ?? "linear").replaceAll("_", "").toLowerCase();
+  if (normalized === "linear" || normalized === "none") return undefined;
+  if (normalized === "step") {
+    const raw = scalarIR(args?.[0] ?? 5);
+    const count = typeof raw === "number" ? Math.max(2, Math.floor(raw)) : { molang: mapMolangResult(raw.molang, (result) => `math.max(2, math.floor(${result}))`) };
+    return { kernel: "blockbench_steps", direction: "in", count };
+  }
+  const match = /^ease(inout|in|out)(sine|quad|cubic|quart|quint|expo|circ|back|elastic|bounce)$/.exec(normalized);
+  if (!match) throw new Error(`Unsupported easing ${name}.`);
+  const direction = match[1] === "inout" ? "in_out" : match[1] as "in" | "out";
+  const kind = match[2];
+  const exponent = ({ quad: 2, cubic: 3, quart: 4, quint: 5 } as Record<string, number>)[kind];
+  if (exponent) return { kernel: "power", direction, exponent };
+  if (kind === "back") return { kernel: "back", direction, overshoot: affineScalarIR(scalarIR(args?.[0] ?? 1), 1.70158) };
+  if (kind === "elastic") return { kernel: "blockbench_elastic", direction, frequency: scalarIR(args?.[0] ?? 1) };
+  if (kind === "bounce") return { kernel: "blockbench_bounce", direction, bounciness: scalarIR(args?.[0] ?? 0.5) };
+  if (kind === "expo") return { kernel: "blockbench_expo", direction };
+  return { kernel: kind as "sine" | "circ", direction };
+}
