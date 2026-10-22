@@ -9,53 +9,21 @@ import java.util.function.ToDoubleFunction;
 public final class MolangQueries {
     static void applyEmpty(MolangEngine.Session session, Set<String> queries) {
         setSpatialQueries(session, Vec3.ZERO, Vec3.ZERO, queries);
-        if (queries.contains("target_x_rotation")) session.setQuery("target_x_rotation", 0.0D);
-        if (queries.contains("target_y_rotation")) session.setQuery("target_y_rotation", 0.0D);
-        if (queries.contains("body_x_rotation")) session.setQuery("body_x_rotation", 0.0D);
-        if (queries.contains("body_y_rotation")) session.setQuery("body_y_rotation", 0.0D);
-        if (queries.contains("head_x_rotation")) session.setQuery("head_x_rotation", 0.0D);
-        if (queries.contains("head_y_rotation")) session.setQuery("head_y_rotation", 0.0D);
-        if (queries.contains("eye_target_x_rotation")) session.setQuery("eye_target_x_rotation", 0.0D);
-        if (queries.contains("eye_target_y_rotation")) session.setQuery("eye_target_y_rotation", 0.0D);
-        if (queries.contains("ground_speed")) session.setQuery("ground_speed", 0.0D);
-        if (queries.contains("vertical_speed")) session.setQuery("vertical_speed", 0.0D);
-        if (queries.contains("modified_distance_moved")) session.setQuery("modified_distance_moved", 0.0D);
-        if (queries.contains("walk_distance")) session.setQuery("walk_distance", 0.0D);
-        if (queries.contains("is_moving")) session.setQuery("is_moving", 0.0D);
-        if (queries.contains("is_on_ground")) session.setQuery("is_on_ground", 0.0D);
-        if (queries.contains("is_sneaking")) session.setQuery("is_sneaking", 0.0D);
-        if (queries.contains("is_sprinting")) session.setQuery("is_sprinting", 0.0D);
-        if (queries.contains("is_swimming")) session.setQuery("is_swimming", 0.0D);
-        if (queries.contains("is_gliding")) session.setQuery("is_gliding", 0.0D);
-        if (queries.contains("is_riding")) session.setQuery("is_riding", 0.0D);
-        if (queries.contains("is_using_item")) session.setQuery("is_using_item", 0.0D);
-        if (queries.contains("is_sleeping")) session.setQuery("is_sleeping", 0.0D);
-        if (queries.contains("is_emoting")) session.setQuery("is_emoting", 0.0D);
-        if (queries.contains("sleep_rotation")) session.setQuery("sleep_rotation", 0.0D);
-        if (queries.contains("is_on_fire")) session.setQuery("is_on_fire", 0.0D);
-        if (queries.contains("is_in_water")) session.setQuery("is_in_water", 0.0D);
-        if (queries.contains("health")) session.setQuery("health", 0.0D);
-        if (queries.contains("max_health")) session.setQuery("max_health", 0.0D);
-        if (queries.contains("is_alive")) session.setQuery("is_alive", 0.0D);
-        if (queries.contains("is_spectator")) session.setQuery("is_spectator", 0.0D);
-        if (queries.contains("head_is_in_water")) session.setQuery("head_is_in_water", 0.0D);
-        if (queries.contains("is_in_lava")) session.setQuery("is_in_lava", 0.0D);
-        if (queries.contains("is_in_water_or_rain")) session.setQuery("is_in_water_or_rain", 0.0D);
-        if (queries.contains("hurt_time")) session.setQuery("hurt_time", 0.0D);
-        if (queries.contains("death_ticks")) session.setQuery("death_ticks", 0.0D);
-        if (queries.contains("invulnerable_ticks")) session.setQuery("invulnerable_ticks", 0.0D);
-        if (queries.contains("player_level")) session.setQuery("player_level", 0.0D);
-        if (queries.contains("item_in_use_duration")) session.setQuery("item_in_use_duration", 0.0D);
-        if (queries.contains("item_remaining_use_duration")) session.setQuery("item_remaining_use_duration", 0.0D);
-        if (queries.contains("item_max_use_duration")) session.setQuery("item_max_use_duration", 0.0D);
-        if (queries.contains("blocking")) session.setQuery("blocking", 0.0D);
-        if (queries.contains("is_eating")) session.setQuery("is_eating", 0.0D);
-        if (queries.contains("is_jumping")) session.setQuery("is_jumping", 0.0D);
-        if (queries.contains("is_crawling")) session.setQuery("is_crawling", 0.0D);
-        if (queries.contains("is_invisible")) session.setQuery("is_invisible", 0.0D);
-        if (queries.contains("is_levitating")) session.setQuery("is_levitating", 0.0D);
-        if (queries.contains("yaw_speed")) session.setQuery("yaw_speed", 0.0D);
-        if (queries.contains("on_fire_time")) session.setQuery("on_fire_time", 0.0D);
+        for (String query : queries) {
+            switch (query) {
+                case "target_x_rotation", "target_y_rotation", "body_x_rotation", "body_y_rotation",
+                     "head_x_rotation", "head_y_rotation", "eye_target_x_rotation", "eye_target_y_rotation",
+                     "ground_speed", "vertical_speed", "modified_distance_moved", "walk_distance",
+                     "is_moving", "is_on_ground", "is_sneaking", "is_sprinting", "is_swimming", "is_gliding",
+                     "is_riding", "is_using_item", "is_sleeping", "is_emoting", "sleep_rotation", "is_on_fire",
+                     "is_in_water", "health", "max_health", "is_alive", "is_spectator", "head_is_in_water",
+                     "is_in_lava", "is_in_water_or_rain", "hurt_time", "death_ticks", "invulnerable_ticks",
+                     "player_level", "item_in_use_duration", "item_remaining_use_duration", "item_max_use_duration",
+                     "blocking", "is_eating", "is_jumping", "is_crawling", "is_invisible", "is_levitating",
+                     "yaw_speed", "on_fire_time" -> session.setQuery(query, 0.0D);
+                default -> {}
+            }
+        }
         if (queries.contains("is_item_equipped") || queries.contains("item_is_charged") || queries.contains("is_item_name_any")) setItemQueries(
             session,
             queries,

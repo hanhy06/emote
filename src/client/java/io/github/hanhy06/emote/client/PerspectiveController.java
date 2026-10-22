@@ -9,7 +9,6 @@ import net.minecraft.client.Minecraft;
 public class PerspectiveController {
     public static PerspectiveController INSTANCE;
 
-    private CameraType previousCameraType = CameraType.FIRST_PERSON;
     private boolean restoreCameraOnStop;
     private boolean hideLocalPlayerEquipment;
 
@@ -19,8 +18,6 @@ public class PerspectiveController {
 
     public void clear() {
         restorePerspectiveIfNeeded();
-        this.previousCameraType = CameraType.FIRST_PERSON;
-        this.restoreCameraOnStop = false;
         this.hideLocalPlayerEquipment = false;
     }
 
@@ -39,13 +36,11 @@ public class PerspectiveController {
     }
 
     private void switchToThirdPersonIfNeeded() {
-        CameraType currentCameraType = Minecraft.getInstance().options.getCameraType();
-        if (!currentCameraType.isFirstPerson()) {
+        if (!Minecraft.getInstance().options.getCameraType().isFirstPerson()) {
             this.restoreCameraOnStop = false;
             return;
         }
 
-        this.previousCameraType = currentCameraType;
         this.restoreCameraOnStop = true;
         Minecraft.getInstance().options.setCameraType(CameraType.THIRD_PERSON_FRONT);
     }
@@ -55,7 +50,7 @@ public class PerspectiveController {
             return;
         }
 
-        Minecraft.getInstance().options.setCameraType(this.previousCameraType);
+        Minecraft.getInstance().options.setCameraType(CameraType.FIRST_PERSON);
         this.restoreCameraOnStop = false;
     }
 }

@@ -31,7 +31,6 @@ import java.util.Map;
 public final class AdminCommand {
     private final EmoteCatalog emoteCatalog;
     private final PlayerPlaybackManager playerPlaybackManager;
-    private final PermissionService permissionService;
     private final ReloadService reloadService;
     private final ConfigManager configManager;
     private final PlayerSkinManager playerSkinManager;
@@ -40,18 +39,16 @@ public final class AdminCommand {
     public AdminCommand(
         EmoteCatalog emoteCatalog,
         PlayerPlaybackManager playerPlaybackManager,
-        PermissionService permissionService,
         ReloadService reloadService,
         ConfigManager configManager,
         PlayerSkinManager playerSkinManager
     ) {
         this.emoteCatalog = emoteCatalog;
         this.playerPlaybackManager = playerPlaybackManager;
-        this.permissionService = permissionService;
         this.reloadService = reloadService;
         this.configManager = configManager;
         this.playerSkinManager = playerSkinManager;
-        this.stressTestCommand = new StressTestCommand(emoteCatalog, playerPlaybackManager, permissionService);
+        this.stressTestCommand = new StressTestCommand(emoteCatalog, playerPlaybackManager);
     }
 
     public void attachTo(LiteralArgumentBuilder<CommandSourceStack> root) {
@@ -66,7 +63,7 @@ public final class AdminCommand {
 
     LiteralArgumentBuilder<CommandSourceStack> createInfoCommand() {
         return Commands.literal("info")
-            .requires(this.permissionService::canManage)
+            .requires(PermissionService::canManage)
             .executes(context -> info(context.getSource()));
     }
 
@@ -120,26 +117,26 @@ public final class AdminCommand {
 
     LiteralArgumentBuilder<CommandSourceStack> createReloadCommand() {
         return Commands.literal("reload")
-            .requires(this.permissionService::canManage)
+            .requires(PermissionService::canManage)
             .executes(context -> reload(context.getSource()));
     }
 
     LiteralArgumentBuilder<CommandSourceStack> createListCommand() {
         return Commands.literal("list")
-            .requires(this.permissionService::canManage)
+            .requires(PermissionService::canManage)
             .executes(context -> list(context.getSource()));
     }
 
     LiteralArgumentBuilder<CommandSourceStack> createStopPlayerCommand() {
         return Commands.literal("stop")
             .then(Commands.argument("player", EntityArgument.players())
-                .requires(this.permissionService::canManage)
+                .requires(PermissionService::canManage)
                 .executes(this::stopPlayer));
     }
 
     LiteralArgumentBuilder<CommandSourceStack> createEnableCommand() {
         return Commands.literal("enable")
-            .requires(this.permissionService::canManage)
+            .requires(PermissionService::canManage)
             .then(Commands.argument("id", IdentifierArgument.id())
                 .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
                     this.configManager.getAccessConfig().disabled(),
@@ -154,7 +151,7 @@ public final class AdminCommand {
 
     LiteralArgumentBuilder<CommandSourceStack> createDisableCommand() {
         return Commands.literal("disable")
-            .requires(this.permissionService::canManage)
+            .requires(PermissionService::canManage)
             .then(Commands.argument("id", IdentifierArgument.id())
                 .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
                     this.emoteCatalog.fileEmotes().stream().map(PreparedEmote::id),

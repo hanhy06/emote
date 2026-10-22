@@ -23,7 +23,6 @@ public class EmotePlayService implements AccessConfigListener {
     private final EmoteCatalog emoteCatalog;
     private final PlayerPlaybackManager playerPlaybackManager;
     private final ApiEventDispatcher apiEvents;
-    private final PermissionService permissionService;
     private final PlaybackCooldownService cooldowns;
 
     private List<AccessConfig.PermissionEntry> permissionEntries = List.of();
@@ -34,13 +33,11 @@ public class EmotePlayService implements AccessConfigListener {
 
     public EmotePlayService(
         EmoteCatalog emoteCatalog,
-        PermissionService permissionService,
         PlaybackCooldownService cooldowns,
         PlayerPlaybackManager playerPlaybackManager,
         ApiEventDispatcher apiEvents
     ) {
         this.emoteCatalog = Objects.requireNonNull(emoteCatalog, "emote catalog");
-        this.permissionService = Objects.requireNonNull(permissionService, "permission service");
         this.cooldowns = Objects.requireNonNull(cooldowns, "cooldowns");
         this.playerPlaybackManager = playerPlaybackManager;
         this.apiEvents = apiEvents;
@@ -167,8 +164,7 @@ public class EmotePlayService implements AccessConfigListener {
             if (entry.idle().isEmpty()) {
                 continue;
             }
-            boolean grantedByDefault = entry.permission().equals(DEFAULT_PERMISSION);
-            if (this.permissionService.has(player, entry.permission(), grantedByDefault)) {
+            if (PermissionService.has(player, entry.permission(), entry.permission().equals(DEFAULT_PERMISSION))) {
                 return entry.idle();
             }
         }
@@ -179,7 +175,7 @@ public class EmotePlayService implements AccessConfigListener {
         if (source == PlaySource.API) {
             return UNRESTRICTED_RULES;
         }
-        if (this.permissionService.has(player, PermissionService.BYPASS_PERMISSION, false)) {
+        if (PermissionService.has(player, PermissionService.BYPASS_PERMISSION, false)) {
             return UNRESTRICTED_RULES;
         }
         return source == PlaySource.IDLE ? IDLE_RULES : COMMAND_RULES;
@@ -188,8 +184,7 @@ public class EmotePlayService implements AccessConfigListener {
     private PermissionResolution resolvePermission(ServerPlayer player, String emoteId) {
         boolean allowed = false;
         for (AccessConfig.PermissionEntry entry : this.permissionEntriesByEmoteId.getOrDefault(emoteId, this.wildcardPermissionEntries)) {
-            boolean grantedByDefault = entry.permission().equals(DEFAULT_PERMISSION);
-            if (this.permissionService.has(player, entry.permission(), grantedByDefault)) {
+            if (PermissionService.has(player, entry.permission(), entry.permission().equals(DEFAULT_PERMISSION))) {
                 allowed = true;
                 if (entry.cooldown().isPresent()) {
                     return new PermissionResolution(true, entry.cooldown());
