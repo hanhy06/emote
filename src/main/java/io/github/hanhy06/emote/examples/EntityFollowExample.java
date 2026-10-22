@@ -150,7 +150,7 @@ public final class EntityFollowExample {
             entity.setYRot(yaw);
             entity.setYBodyRot(yaw);
             entity.setYHeadRot(yaw);
-            entity.setXRot((float) Mth.clamp(
+            entity.setXRot((float) Math.clamp(
                 -(Mth.atan2(movement.y, horizontalDistance) * Mth.RAD_TO_DEG),
                 -35.0D, 35.0D
             ));

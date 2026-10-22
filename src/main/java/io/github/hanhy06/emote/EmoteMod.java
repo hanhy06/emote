@@ -14,7 +14,6 @@ import io.github.hanhy06.emote.network.PlaybackStateSyncService;
 import io.github.hanhy06.emote.network.WheelSyncService;
 import io.github.hanhy06.emote.network.payload.PlaybackStatePayload;
 import io.github.hanhy06.emote.network.payload.WheelSyncPayload;
-import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.MarkerPlaybackManager;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
@@ -47,7 +46,6 @@ public class EmoteMod implements ModInitializer {
     public void onInitialize() {
         ConfigManager configManager = new ConfigManager(FabricLoader.getInstance().getConfigDir());
         EmoteCatalog catalog = new EmoteCatalog();
-        PermissionService permissions = new PermissionService();
 
         MinecraftAccountManager accounts = new MinecraftAccountManager(
             new AccountCredentialStore(FabricLoader.getInstance().getConfigDir().resolve("emote/accounts.bin")),
@@ -69,7 +67,7 @@ public class EmoteMod implements ModInitializer {
         MarkerPlaybackManager markerPlayback = new MarkerPlaybackManager(engine, catalog, skins);
         PlaybackCooldownService cooldowns = new PlaybackCooldownService();
         ApiEventDispatcher apiEvents = new ApiEventDispatcher();
-        EmotePlayService play = new EmotePlayService(catalog, permissions, cooldowns, playback, apiEvents);
+        EmotePlayService play = new EmotePlayService(catalog, cooldowns, playback, apiEvents);
         EmoteQueryService queries = new EmoteQueryService(catalog, play);
         PlaybackStateSyncService playbackStateSync = new PlaybackStateSyncService();
         WheelSyncService wheelSync = new WheelSyncService(queries);
@@ -103,7 +101,7 @@ public class EmoteMod implements ModInitializer {
         );
 
         UserCommand userCommand = new UserCommand(playback, new EmoteMenu(configManager, catalog, queries, playback), queries, play);
-        AdminCommand adminCommand = new AdminCommand(catalog, playback, permissions, reload, configManager, skins);
+        AdminCommand adminCommand = new AdminCommand(catalog, playback, reload, configManager, skins);
         AccountCommand accountCommand = new AccountCommand(accounts);
         CommandRegistrationCallback.EVENT.register((dispatcher, ignoredRegistryAccess, ignoredEnvironment) -> {
             var root = userCommand.createRoot();

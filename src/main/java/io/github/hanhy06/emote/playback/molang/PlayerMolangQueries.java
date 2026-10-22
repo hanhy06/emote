@@ -36,7 +36,7 @@ public final class PlayerMolangQueries {
         boolean itemTiming = queries.contains("item_in_use_duration") || queries.contains("item_remaining_use_duration") || queries.contains("item_max_use_duration");
         boolean usingItem = (itemTiming || queries.contains("is_using_item") || queries.contains("is_eating")) && player.isUsingItem();
         int maxUseTicks = itemTiming && usingItem ? player.getUseItem().getUseDuration(player) : 0;
-        int remainingUseTicks = itemTiming && usingItem ? Mth.clamp(player.getUseItemRemainingTicks(), 0, maxUseTicks) : 0;
+        int remainingUseTicks = itemTiming && usingItem ? Math.clamp(player.getUseItemRemainingTicks(), 0, maxUseTicks) : 0;
         var movement = queries.contains("position_delta") || queries.contains("movement_direction") || queries.contains("ground_speed")
             || queries.contains("vertical_speed") || queries.contains("is_moving") ? player.getKnownMovement() : Vec3.ZERO;
         setSpatialQueries(session, queries.contains("position") ? player.position() : Vec3.ZERO, movement, queries);
