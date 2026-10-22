@@ -2,7 +2,6 @@ import { useState } from "preact/hooks";
 import type { TimeValueIR } from "../domain/animationIR";
 import type { ConversionAnimation } from "../domain/conversionDocument";
 import { AdditionalMetadataEditor } from "./AdditionalMetadataEditor";
-import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
 import { createDefaultPlayerBehavior } from "../domain/emoteDefinition";
 import { parseMinecraftTime } from "../format/time";
 
@@ -13,14 +12,12 @@ const STOP_CONDITION_OPTIONS = [
 
 interface SettingsPanelProps {
   animation: ConversionAnimation;
-  minecraftVersion: string;
   disabled: boolean;
   onChange: (animation: ConversionAnimation) => void;
   onValidityChange: (valid: boolean) => void;
-  onMinecraftVersionChange: (minecraftVersion: string) => void;
 }
 
-export function SettingsPanel({ animation, minecraftVersion, disabled, onChange, onValidityChange, onMinecraftVersionChange }: SettingsPanelProps) {
+export function SettingsPanel({ animation, disabled, onChange, onValidityChange }: SettingsPanelProps) {
   const [drafts, setDrafts] = useState<Record<string, { value: string; error: string }>>({});
   const settings = animation.settings ?? {};
   const playback = animation.clip.playback ?? {};
@@ -68,13 +65,6 @@ export function SettingsPanel({ animation, minecraftVersion, disabled, onChange,
     <section className="export settings-page">
       <div className="section-heading export-heading">
         <div><span className="step-label">Page 2</span><h2>Metadata &amp; settings</h2><p>Edit the JSON-facing metadata and playback behavior.</p></div>
-      </div>
-      <div className="minecraft-version-field">
-        <label>Target Minecraft version
-          <select value={minecraftVersion} disabled={disabled} onChange={(event) => onMinecraftVersionChange(event.currentTarget.value)}>
-            {Object.keys(MINECRAFT_VERSION_PROFILES).map((version) => <option key={version} value={version}>{version}</option>)}
-          </select>
-        </label>
       </div>
       <section className="settings-section" aria-labelledby="metadata-heading">
         <h3 id="metadata-heading">Metadata</h3>

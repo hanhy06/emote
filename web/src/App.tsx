@@ -21,6 +21,7 @@ import {
 } from "./workspace";
 import { createPreviewModel } from "./preview/previewModel";
 import { parseMinecraftTime } from "./format/time";
+import { MINECRAFT_VERSION_PROFILES } from "./format/minecraftVersionProfiles";
 import { skinPartAssignments, skinPartOrders } from "./domain/conversionDocument";
 const PartPreview = lazy(() => import("./components/PartPreview"));
 const ACCEPTED_EXTENSIONS = [...new Set(Object.values(INPUT_FORMATS).map((format) => format.extension))]
@@ -220,15 +221,23 @@ export function App() {
               <span>Imported {project.origin.sourceName.includes(", ") ? "files" : "file"}</span>
               <strong>{project.origin.sourceName}</strong>
             </div>
-            <label className="project-animation">
-              <span>Animation</span>
-              <select value={animationIndex} disabled={project.animations.length === 1 || !eventJsonValid || !settingsValid} onChange={(event) => {
-                const nextIndex = Number(event.currentTarget.value);
-                dispatch({ type: "animation_selected", index: nextIndex });
-              }}>
-                {project.animations.map((item, index) => <option value={index} key={index}>{item.metadata.name}</option>)}
-              </select>
-            </label>
+            <div className="project-selectors">
+              <label className="project-animation">
+                <span>Animation</span>
+                <select value={animationIndex} disabled={project.animations.length === 1 || !eventJsonValid || !settingsValid} onChange={(event) => {
+                  const nextIndex = Number(event.currentTarget.value);
+                  dispatch({ type: "animation_selected", index: nextIndex });
+                }}>
+                  {project.animations.map((item, index) => <option value={index} key={index}>{item.metadata.name}</option>)}
+                </select>
+              </label>
+              <label className="project-version">
+                <span>Minecraft version</span>
+                <select value={project.targetMinecraftVersion} disabled={busy} onChange={(event) => dispatch({ type: "minecraft_version_changed", version: event.currentTarget.value })}>
+                  {Object.keys(MINECRAFT_VERSION_PROFILES).map((version) => <option key={version} value={version}>{version}</option>)}
+                </select>
+              </label>
+            </div>
             <dl>
               <div><dt>Format</dt><dd>{project.origin.formatLabel}</dd></div>
               <div><dt>Nodes</dt><dd>{Object.keys(project.nodes).length}</dd></div>
@@ -293,14 +302,27 @@ export function App() {
               </div>
               <div className="preview-controls">
                 {availability?.status === "approximate" && <output title={availability.reason}>Approximate preview</output>}
-                <label className="frame-slider">
-                  <span>Animation frame</span>
-                  <input type="range" min="0" max={durationTicks + 1} step="1" value={frameIndex} disabled={!eventJsonValid} onChange={(event) => {
+                <div className="frame-slider">
+                  <span id="animation-frame-label">Animation frame</span>
+                  <input type="range" aria-labelledby="animation-frame-label" min="0" max={durationTicks + 1} step="1" value={frameIndex} disabled={!eventJsonValid} onChange={(event) => {
                     const index = Number(event.currentTarget.value);
                     dispatch({ type: "frame_selected", frame: index === 0 ? { type: "create" } : { type: "timeline", tick: index - 1 } });
                   }} />
-                  <output>{selectedTick === null ? "Create pose" : `${selectedTick} tick`}</output>
-                </label>
+                  {selectedTick === null ? <output>Create pose</output> : <label className="frame-tick">
+                    <input key={`${eventEditorRevision}:${animationIndex}:${selectedTick}`} type="number" aria-label="Animation tick"
+                      min="0" max={durationTicks} step="1" defaultValue={selectedTick} disabled={!eventJsonValid} onBlur={(event) => {
+                        const input = event.currentTarget;
+                        const tick = Number(input.value);
+                        if (!input.validity.valid || !Number.isInteger(tick) || tick < 0 || tick > durationTicks) {
+                          input.value = String(selectedTick);
+                          return;
+                        }
+                        input.value = String(tick);
+                        if (tick !== selectedTick) dispatch({ type: "frame_selected", frame: { type: "timeline", tick } });
+                      }} />
+                    tick
+                  </label>}
+                </div>
               </div>
             </div>
             {hasReviewNodes ? (
@@ -353,11 +375,9 @@ export function App() {
           {page === 1 && selectedAnimation && <SettingsPanel
             key={`${eventEditorRevision}:${animationIndex}`}
             animation={selectedAnimation}
-            minecraftVersion={project.targetMinecraftVersion}
             disabled={busy}
             onChange={(ir) => dispatch({ type: "animation_changed", ir })}
             onValidityChange={setSettingsValid}
-            onMinecraftVersionChange={(version) => dispatch({ type: "minecraft_version_changed", version })}
           />}
 
           {page === 2 && <ExportPanel
