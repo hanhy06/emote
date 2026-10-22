@@ -106,8 +106,8 @@ public final class PlayerSkinBaker {
         drawFace(outputImage, bakingImage, createSegment(baseFaces.left(), region), BASE_LEFT);
         drawFace(outputImage, bakingImage, createSegment(baseFaces.back(), region), BASE_BACK);
 
-        drawFace(outputImage, bakingImage, overlayFaces.top(), OVERLAY_TOP);
-        drawFace(outputImage, bakingImage, overlayFaces.bottom(), OVERLAY_BOTTOM);
+        if (region.from() == 0) drawFace(outputImage, bakingImage, overlayFaces.top(), OVERLAY_TOP);
+        if (region.to() == 1) drawFace(outputImage, bakingImage, overlayFaces.bottom(), OVERLAY_BOTTOM);
         drawFace(outputImage, bakingImage, createSegment(overlayFaces.right(), region), OVERLAY_RIGHT);
         drawFace(outputImage, bakingImage, createSegment(overlayFaces.front(), region), OVERLAY_FRONT);
         drawFace(outputImage, bakingImage, createSegment(overlayFaces.left(), region), OVERLAY_LEFT);
