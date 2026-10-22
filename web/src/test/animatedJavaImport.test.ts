@@ -1,7 +1,7 @@
+import { createTestDocument } from "./testProject";
 import { expect, it } from "vitest";
 import { readFile } from "node:fs/promises";
 import { Euler, Matrix4 } from "three";
-import { createConversionDocument } from "../domain/conversionDocument";
 import { compileAnimation } from "../compiler/animationCompiler";
 import { evaluatePose } from "../domain/animationIRPose";
 import { readInput } from "../import/formats";
@@ -18,7 +18,7 @@ async function importProject(extra: Partial<AjProject> = {}) {
     animations: [{ name: "motion", length: 1, loop: "once", animators: {} }], ...extra,
   };
   const input = await readInput("animated_java_blueprint", { name: "model.ajblueprint", bytes: new TextEncoder().encode(JSON.stringify(project)) });
-  const document = createConversionDocument(input, "AJ");
+  const document = createTestDocument(input, "AJ");
   return { input, document, output: compileAnimation(document, 0).animation };
 }
 
@@ -245,7 +245,7 @@ it("preserves single-command conditions and skips only animations with condition
 it("exports locator functions with animated node origins and keeps the exact v5 artifact consumed by the mod test", async () => {
   const path = new URL("../../../src/test/resources/aj-function-source.ajblueprint", import.meta.url);
   const input = await readInput("animated_java_blueprint", { name: "aj-function-source.ajblueprint", bytes: await readFile(path) });
-  const document = createConversionDocument(input, "AJ");
+  const document = createTestDocument(input, "AJ");
   const [json] = await exportAnimation(document, 0);
   const output = JSON.parse(await json.blob.text());
   expect(output).toEqual(JSON.parse(await readFile(new URL("../../../src/test/resources/aj-function-export.json", import.meta.url), "utf8")));

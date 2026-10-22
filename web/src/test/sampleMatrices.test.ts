@@ -1,9 +1,9 @@
+import { createTestDocument } from "./testProject";
 import { readFile } from "node:fs/promises";
 import MolangParser from "molangjs/dist/molang.esm.js";
 import { expect, it } from "vitest";
 import type { AnimationIR, ScalarIR } from "../domain/animationIR";
 import { evaluatePose } from "../domain/animationIRPose";
-import { createConversionDocument } from "../domain/conversionDocument";
 import { exportAnimation } from "../export/projectExporter";
 import { parseMinecraftTime } from "../format/time";
 import { readInput } from "../import/formats";
@@ -16,7 +16,7 @@ it("preserves the 11 documentation sample matrices with shared player render sca
     ["docs/reference/aj/sit.ajblueprint", "animated_java_blueprint", ["sit_down", "idle_sky", "idle_flower", "stand_up1", "stand_up2"]],
   ] as const) {
     const project = await readInput(format, { name: path.split("/").at(-1)!, bytes: await readFile(new URL(`../../../${path}`, import.meta.url)) });
-    const document = createConversionDocument(project, format);
+    const document = createTestDocument(project, format);
     for (const name of names) {
       const index = document.animations.findIndex((animation) => animation.sourceName === name);
       expect(index, `${path}: missing ${name}`).toBeGreaterThanOrEqual(0);

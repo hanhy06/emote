@@ -1,14 +1,14 @@
+import { createTestDocument, importTestFileBatch, TEST_MINECRAFT_VERSION } from "./testProject";
 import { expect, it } from "vitest";
-import { createConversionDocument, skinPartOrders } from "../domain/conversionDocument";
+import { skinPartOrders } from "../domain/conversionDocument";
 import { evaluatePose } from "../domain/animationIRPose";
 import { exportAnimation, exportAnimations } from "../export/projectExporter";
-import { importFileBatch } from "../import/importBatch";
 import { createDefaultPlayerBehavior } from "../domain/emoteDefinition";
 import type { AnimationJson } from "../format/animation";
 import { detectInputFormat, readInput } from "../import/formats";
 
 const legacy = {
-  type: "animation", schema_version: 4, id: "example:legacy", target_minecraft_version: "26.3",
+  type: "animation", schema_version: 4, id: "example:legacy", target_minecraft_version: TEST_MINECRAFT_VERSION,
   metadata: { name: "Legacy", description: "Migration fixture", author: "Author" },
   callbacks: [{ name: "example:ready", payload: "original" }],
   settings: { standalone: false, cooldown: "0.25s", rotation_deadzone: 25, display_interpolation: "2t", playback: { mode: "loop", loop_start: "2t" } },
@@ -41,7 +41,7 @@ it("imports schema 4 into editable IR and exports schema 5 with transforms, skin
   const input = { name: "legacy.json", bytes: new TextEncoder().encode(JSON.stringify(legacy)) };
   expect(await detectInputFormat(input)).toBe("emote_json");
   const project = await readInput("emote_json", input);
-  const document = createConversionDocument(project, "Emote JSON");
+  const document = createTestDocument(project, "Emote JSON");
   expect(skinPartOrders(document)).toEqual({ '["arm","display"]': 9, '["lower","display"]': 15, '["duplicate","display"]': 9 });
   expect(document.nodes.arm.attachments!.display).toMatchObject({ type: "player_skin", part: "left_arm", region: { from: 0, to: 0.5 } });
   expect(document.nodes.duplicate.attachments!.display).toEqual(document.nodes.arm.attachments!.display);
@@ -72,7 +72,7 @@ it("imports schema 4 into editable IR and exports schema 5 with transforms, skin
   expect(half[1]).toBeCloseTo(Math.SQRT1_2);
   expect(evaluatePose(actual, 1, (value) => typeof value === "number" ? value : 1).prop.matrix.elements[12]).toBeCloseTo(4);
   const reopened = await readInput("emote_json", { name: "migrated.json", bytes: new TextEncoder().encode(JSON.stringify(actual)) });
-  const [reexported] = await exportAnimation(createConversionDocument(reopened, "Emote JSON"), 0);
+  const [reexported] = await exportAnimation(createTestDocument(reopened, "Emote JSON"), 0);
   expect(JSON.parse(await reexported.blob.text())).toEqual(actual);
 });
 
@@ -88,7 +88,7 @@ it("keeps Molang Euler rotation and skips unsupported fields without losing the 
     ] } },
   };
   const project = await readInput("emote_json", { name: "partial.json", bytes: new TextEncoder().encode(JSON.stringify(source)) });
-  const [output] = await exportAnimation(createConversionDocument(project, "Emote JSON"), 0);
+  const [output] = await exportAnimation(createTestDocument(project, "Emote JSON"), 0);
   const actual: AnimationJson = JSON.parse(await output.blob.text());
   expect(actual.nodes.prop.transform![1]).toMatchObject({ op: "rotate_euler", order: "XYZ" });
   expect(actual.nodes.unknown).toMatchObject({ parent: "root" });
@@ -104,7 +104,7 @@ it("keeps Molang Euler rotation and skips unsupported fields without losing the 
 
 it("imports a schema 4 sequence with animations and exports its steps and references as schema 5", async () => {
   const sequence = {
-    type: "sequence", schema_version: 4, id: "example:sequence", target_minecraft_version: "26.3",
+    type: "sequence", schema_version: 4, id: "example:sequence", target_minecraft_version: TEST_MINECRAFT_VERSION,
     metadata: { name: "Sequence", description: "Keep steps", author: "Author" },
     settings: { cooldown: "0.5s", player: createDefaultPlayerBehavior() }, callbacks: [{ name: "example:sequence" }],
     steps: [
@@ -114,7 +114,7 @@ it("imports a schema 4 sequence with animations and exports its steps and refere
   };
   const input = { name: "sequence.json", bytes: new TextEncoder().encode(JSON.stringify(sequence)) };
   expect(await detectInputFormat(input)).toBe("emote_sequence");
-  const document = await importFileBatch([legacy, sequence].map((value, index) => ({ name: `${index}.json`,
+  const document = await importTestFileBatch([legacy, sequence].map((value, index) => ({ name: `${index}.json`,
     arrayBuffer: async () => new TextEncoder().encode(JSON.stringify(value)).buffer })));
   const outputs = await exportAnimations(document, true);
   const actual = JSON.parse(await outputs.at(-1)!.blob.text());
