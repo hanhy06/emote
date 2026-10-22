@@ -195,14 +195,14 @@ final class StressTestCommand {
             .append(Component.literal("\n• Main: ").withStyle(ChatFormatting.GREEN))
             .append(Component.literal(String.format(
                 Locale.ROOT,
-                "avg %.3f ms / max %.3f ms",
+                "avg %.2f ms / max %.2f ms",
                 report.averageMainProcessingMillis(),
                 report.maximumMainProcessingMillis()
             )).withStyle(ChatFormatting.WHITE))
             .append(Component.literal("\n• Worker: ").withStyle(ChatFormatting.AQUA))
             .append(Component.literal(String.format(
                 Locale.ROOT,
-                "avg %.3f ms / max %.3f ms",
+                "avg %.2f ms / max %.2f ms",
                 report.averageWorkerProcessingMillis(),
                 report.maximumWorkerProcessingMillis()
             )).withStyle(ChatFormatting.WHITE));
