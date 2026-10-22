@@ -9,11 +9,13 @@ public final class PermissionService {
     public static final String MANAGE_PERMISSION = "emote.manage";
     public static final String BYPASS_PERMISSION = "emote.bypass";
 
-    public boolean canManage(CommandSourceStack source) {
+    private PermissionService() {}
+
+    public static boolean canManage(CommandSourceStack source) {
         return Permissions.check(source, MANAGE_PERMISSION, PermissionLevel.GAMEMASTERS);
     }
 
-    public boolean has(ServerPlayer player, String permission, boolean defaultValue) {
+    public static boolean has(ServerPlayer player, String permission, boolean defaultValue) {
         return Permissions.check(player, permission, defaultValue);
     }
 

@@ -12,7 +12,6 @@ export interface PreviewMolangContext {
 }
 
 const NUMERIC_LITERAL = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/;
-const NONDETERMINISTIC_FUNCTION = /math\.(?:random|random_integer|die_roll|die_roll_integer)\b/i;
 
 export class PreviewMolangEvaluator {
   private readonly parser = new MolangParser();
@@ -30,7 +29,7 @@ export class PreviewMolangEvaluator {
   evaluate(expression: string | number, context: PreviewMolangContext): number {
     if (typeof expression === "number") return this.requireFinite(expression, expression);
     if (NUMERIC_LITERAL.test(expression.trim())) return this.requireFinite(Number(expression), expression);
-    if (usesRuntimeMolangState(expression) || NONDETERMINISTIC_FUNCTION.test(expression)) throw this.error(expression);
+    if (usesRuntimeMolangState(expression)) throw this.error(expression);
 
     try {
       const variables: Record<string, number | SharedValueResolverIR> = {

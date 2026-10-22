@@ -36,21 +36,15 @@ final class StressTestCommand {
     ));
     private final EmoteCatalog emoteCatalog;
     private final PlayerPlaybackManager playerPlaybackManager;
-    private final PermissionService permissionService;
 
-    StressTestCommand(
-        EmoteCatalog emoteCatalog,
-        PlayerPlaybackManager playerPlaybackManager,
-        PermissionService permissionService
-    ) {
+    StressTestCommand(EmoteCatalog emoteCatalog, PlayerPlaybackManager playerPlaybackManager) {
         this.emoteCatalog = emoteCatalog;
         this.playerPlaybackManager = playerPlaybackManager;
-        this.permissionService = permissionService;
     }
 
     LiteralArgumentBuilder<CommandSourceStack> createCommand() {
         return Commands.literal("stress-test")
-            .requires(this.permissionService::canManage)
+            .requires(PermissionService::canManage)
             .then(Commands.argument("time", TimeArgument.time(1))
                 .executes(context -> startStressTest(
                     context.getSource(),

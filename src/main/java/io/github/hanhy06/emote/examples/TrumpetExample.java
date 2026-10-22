@@ -11,7 +11,6 @@ import net.minecraft.network.protocol.game.ClientboundStopSoundPacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.*;
@@ -265,7 +264,7 @@ public final class TrumpetExample implements EmoteCallbacks {
 
         // Convert a MIDI note to a pitch multiplier for the chosen sound sample.
         double frequency = 440.0 * Math.pow(2.0, (midi + PITCH_OFFSET - 12.0 - 69.0) / 12.0);
-        float pitch = Mth.clamp((float) (frequency / BASE_FREQUENCY), 0.5F, 2.0F);
+        float pitch = Math.clamp((float) (frequency / BASE_FREQUENCY), 0.5F, 2.0F);
         send.accept(new ClientboundSoundPacket(
             Holder.direct(SoundEvent.createFixedRangeEvent(SOUND, RANGE)), SoundSource.RECORDS,
             origin.x, origin.y, origin.z, volume, pitch, seed
