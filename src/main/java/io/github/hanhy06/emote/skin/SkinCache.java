@@ -20,6 +20,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 public final class SkinCache {
+    private static final int BAKE_VERSION = 1;
     private static final int CONTENT_CACHE_VERSION = 1;
     private static final int JOB_CACHE_VERSION = 1;
     private static final int SKIN_MEMORY_CACHE_MAX_ENTRIES = 1_024;
@@ -96,7 +97,7 @@ public final class SkinCache {
 
         try {
             JsonObject skinJson = JsonFileStore.readObject(filePath);
-            if (skinJson == null) {
+            if (skinJson == null || !Objects.equals(readInt(skinJson, "bake_version"), BAKE_VERSION)) {
                 return cacheSkinTextures(cacheKey, Map.of(), expectedEpoch);
             }
 
@@ -512,6 +513,7 @@ public final class SkinCache {
 
     private JsonObject createSkinJson(String textureHash, boolean slimModel, Map<PlayerSkinRegion, String> textureUrlMap) {
         JsonObject skinJson = new JsonObject();
+        skinJson.addProperty("bake_version", BAKE_VERSION);
         skinJson.addProperty("texture_hash", textureHash);
         skinJson.addProperty("slim_model", slimModel);
 
