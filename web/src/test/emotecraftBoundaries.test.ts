@@ -1,10 +1,10 @@
+import { createTestDocument } from "./testProject";
 import { readFile } from "node:fs/promises";
 import MolangParser from "molangjs/dist/molang.esm.js";
 import { Matrix4 } from "three";
 import { expect, it } from "vitest";
 import type { AnimationIR } from "../domain/animationIR";
 import { evaluatePose } from "../domain/animationIRPose";
-import { createConversionDocument } from "../domain/conversionDocument";
 import { exportAnimation } from "../export/projectExporter";
 import type { PalAnimation } from "../import/emotecraft/emotecraftBinary";
 import { importEmotecraftFile } from "../import/emotecraft/emotecraftImporter";
@@ -14,7 +14,7 @@ import capeSource from "./fixtures/emotecraft-cape-source.json";
 
 async function exported(source: PalAnimation, name: string): Promise<AnimationIR> {
   const project = importEmotecraftFile({ animation: source, metadata: { name, badges: [] } }, `${name}.emotecraft`);
-  const [file] = await exportAnimation(createConversionDocument(project, "Emotecraft"), 0);
+  const [file] = await exportAnimation(createTestDocument(project, "Emotecraft"), 0);
   const animation = JSON.parse(await file.blob.text());
   expect(animation).toEqual(JSON.parse(await readFile(new URL(`../../../src/test/resources/${name}.json`, import.meta.url), "utf8")));
   return animation;

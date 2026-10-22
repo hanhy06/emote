@@ -1,6 +1,7 @@
+import { createTestDocument } from "./testProject";
 import { readFile } from "node:fs/promises";
 import { expect, it } from "vitest";
-import { createConversionDocument, assignSkinPart } from "../domain/conversionDocument";
+import { assignSkinPart } from "../domain/conversionDocument";
 import { compileAnimation } from "../compiler/animationCompiler";
 import { readInput } from "../import/formats";
 import type { BbCube } from "../import/common/blockbenchCubeSchema";
@@ -45,7 +46,7 @@ it("preserves root cube pivots and locator coordinates beside unnamed groups and
       outliner: [{ uuid: "root", children: ["nested"] }, "loose", "tip"],
       textures: [{ uuid: "unused", source: "file:///unused.png" }, { uuid: "used", source: `data:image/png;base64,${texture}` }],
     });
-    const document = createConversionDocument(project, format);
+    const document = createTestDocument(project, format);
     const output = compileAnimation(document, 0).animation;
     expect(output.nodes["group:root"].name).toBe("");
     expect(orderedNodeIds(output.nodes)).toHaveLength(Object.keys(output.nodes).length);
@@ -75,7 +76,7 @@ it("preserves decorations and unaligned limb geometry through both model input p
     ["left_arm", [cube("low", [0, 0, 0], [4, 7, 4]), cube("high", [0, 7, 0], [4, 12, 4])]],
   ] as const) {
     const input = await importModel(format, name, [...cubes]);
-    const document = createConversionDocument(input, format);
+    const document = createTestDocument(input, format);
     const output = compileAnimation(document, 0);
     const displays = Object.values(output.animation.nodes).flatMap((node) => Object.values(node.attachments ?? {}));
     expect(displays).toHaveLength(2);
@@ -101,7 +102,7 @@ it("excludes actual skin overlays while preserving skin assignment and restorati
       cube("headwear", [0, 0, 0], [8, 8, 8], { inflate: 0.5, faces: { north: { uv: [40, 8, 48, 16], texture: 0 } } }),
       cube("decoration", [0, 0, 0], [8, 8, 8], { inflate: 0.2, faces: { north: { uv: [8, 8, 16, 16], texture: 0 } } }),
     ]);
-    const document = createConversionDocument(input, format);
+    const document = createTestDocument(input, format);
     const attachments = Object.values(document.nodes).flatMap((node) => Object.values(node.attachments ?? {}));
     expect(attachments.filter((attachment) => attachment.type === "player_skin")).toHaveLength(1);
     expect(attachments.filter((attachment) => attachment.type === "item_display")).toHaveLength(1);
@@ -110,7 +111,7 @@ it("excludes actual skin overlays while preserving skin assignment and restorati
   }
   const path = "docs/reference/aj/sit.ajblueprint";
   const input = await readInput("animated_java_blueprint", { name: "sit.ajblueprint", bytes: await readFile(new URL(`../../../${path}`, import.meta.url)) });
-  const document = createConversionDocument(input, "AJ");
+  const document = createTestDocument(input, "AJ");
   const index = document.animations.findIndex((entry) => entry.sourceName === "sit_down");
   expect(index).toBeGreaterThanOrEqual(0);
   const output = compileAnimation(document, index);
@@ -121,7 +122,7 @@ it("excludes actual skin overlays while preserving skin assignment and restorati
 it("keeps reserved IDs distinct and routes source cube state to every generated slice", async () => {
   for (const format of formats) {
     const input = await importModel(format, "scene", [cube("cube", [0, 0, 0], [2, 2, 2])]);
-    const document = createConversionDocument(input, format);
+    const document = createTestDocument(input, format);
     const output = compileAnimation(document, 0).animation;
     expect(orderedNodeIds(output.nodes)).toHaveLength(3);
     expect(output.nodes.scene.parent).toBeUndefined();
@@ -140,7 +141,7 @@ it("keeps reserved IDs distinct and routes source cube state to every generated 
       limb: { keyframes: [{ channel: "visibility", time: 0.5, data_points: [{ x: 0 }] }] },
     } }],
   });
-  const document = createConversionDocument(input, "AJ");
+  const document = createTestDocument(input, "AJ");
   const output = compileAnimation(document, 0).animation;
   expect(output.nodes.left_arm.attachments?.display).toMatchObject({ type: "item_display", item_stack_snbt: '{id:"minecraft:stone",count:1}' });
   const slices = Object.entries(output.nodes).filter(([, node]) => node.source?.node_id === "limb");
@@ -167,7 +168,7 @@ it("normalizes oversized or displaced models without changing their animated geo
         { channel: "position", time: 1, data_points: [{ x: 16, y: 8, z: -16 }] },
       ] } } }],
     });
-    const document = createConversionDocument(input, format);
+    const document = createTestDocument(input, format);
     const original = compileAnimation(document, 0).animation;
     const nodeId = Object.keys(original.nodes).find((id) => original.nodes[id].attachments?.display)!;
     expect(original.nodes[nodeId].transform?.some((operation) => operation.id === "model_geometry")).toBe(true);

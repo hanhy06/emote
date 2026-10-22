@@ -1,5 +1,5 @@
+import { createTestDocument } from "./testProject";
 import { expect, it } from "vitest";
-import { createConversionDocument } from "../domain/conversionDocument";
 import { exportAnimation } from "../export/projectExporter";
 import { readInput } from "../import/formats";
 
@@ -13,7 +13,7 @@ async function exportSong(version: number, song: Uint8Array) {
   new DataView(bytes.buffer).setInt32(animationPacket.length + 2, song.length);
   bytes.set(song, animationPacket.length + 6);
   const project = await readInput("emotecraft_binary", { name: "music.emotecraft", bytes });
-  const [output] = await exportAnimation(createConversionDocument(project, "Emotecraft"), 0);
+  const [output] = await exportAnimation(createTestDocument(project, "Emotecraft"), 0);
   return { project, animation: JSON.parse(await output.blob.text()) };
 }
 
@@ -55,7 +55,7 @@ it.each([
   [2, Uint8Array.of(0), "emotecraft_song_invalid"],
 ])("exports the complete animation when optional music version %i cannot be converted", async (version, song, warning) => {
   const baseline = await readInput("emotecraft_binary", { name: "music.emotecraft", bytes: animationPacket });
-  const [baselineOutput] = await exportAnimation(createConversionDocument(baseline, "Emotecraft"), 0);
+  const [baselineOutput] = await exportAnimation(createTestDocument(baseline, "Emotecraft"), 0);
   const result = await exportSong(version, song);
   expect(result.animation).toEqual(JSON.parse(await baselineOutput.blob.text()));
   expect(result.project.diagnostics.map((issue) => issue.code)).toContain(warning);

@@ -1,7 +1,8 @@
+import { createTestDocument } from "./testProject";
 import { readFile } from "node:fs/promises";
 import { strFromU8, unzipSync } from "fflate";
 import { expect, it } from "vitest";
-import { assignSkinPart, createConversionDocument } from "../domain/conversionDocument";
+import { assignSkinPart } from "../domain/conversionDocument";
 import { exportAnimation } from "../export/projectExporter";
 import { readInput } from "../import/formats";
 
@@ -11,7 +12,7 @@ it("packages the generated models and textures referenced by exported AJ and bbm
     ["docs/reference/bbmodel/emote.bbmodel", "geckolib_bbmodel", "hello"],
   ] as const) {
     const project = await readInput(format, { name: path.split("/").at(-1)!, bytes: await readFile(new URL(`../../../${path}`, import.meta.url)) });
-    const imported = createConversionDocument(project, format);
+    const imported = createTestDocument(project, format);
     const document = assignSkinPart(imported, new Set(Object.keys(imported.skinCandidates)), null);
     const index = document.animations.findIndex((animation) => animation.sourceName === name);
     expect(index, path).toBeGreaterThanOrEqual(0);

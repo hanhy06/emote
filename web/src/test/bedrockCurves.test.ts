@@ -1,10 +1,10 @@
+import { createTestDocument } from "./testProject";
 import { readFile } from "node:fs/promises";
 import { Euler, Matrix4 } from "three";
 import MolangParser from "molangjs/dist/molang.esm.js";
 import { expect, it } from "vitest";
 import { evaluatePose } from "../domain/animationIRPose";
 import type { ScalarEvaluatorIR } from "../domain/animationIRCurves";
-import { createConversionDocument } from "../domain/conversionDocument";
 import { exportAnimation } from "../export/projectExporter";
 import { readInput } from "../import/formats";
 import { createBedrockAnimationIR } from "../import/bedrockAnimation/bedrockAnimationIR";
@@ -14,7 +14,7 @@ import source from "./fixtures/bedrock-curves.json";
 it("preserves Bedrock coordinates, pre/post, Catmull boundaries and playback through export", async () => {
   const bytes = new TextEncoder().encode(JSON.stringify(source));
   const project = await readInput("bedrock_animation_json", { name: "curves.animation.json", bytes });
-  const document = createConversionDocument(project, "Bedrock");
+  const document = createTestDocument(project, "Bedrock");
   for (const [index, name] of ["reference", "dynamic"].entries()) {
     const [output] = await exportAnimation(document, index);
     const exported = JSON.parse(await output.blob.text());
