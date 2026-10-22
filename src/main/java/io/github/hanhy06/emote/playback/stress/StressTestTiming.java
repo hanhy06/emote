@@ -12,10 +12,13 @@ public final class StressTestTiming {
 
     // Earlier phases own overlapping wall time; parallel work is never added twice.
     public enum Phase { SETUP, CLEANUP, EMOTE, NETWORK, SERVER_IDLE }
+    public enum ThreadRole { MAIN, WORKER }
 
     private final LongSupplier clock;
     private final int[] active = new int[Phase.values().length];
     private final long[] durations = new long[Phase.values().length];
+    private final int[] activeThreads = new int[ThreadRole.values().length];
+    private final long[] threadNanos = new long[ThreadRole.values().length];
     private long lastNanos;
     private boolean finished;
 
@@ -43,6 +46,25 @@ public final class StressTestTiming {
         return this.durations[phase.ordinal()];
     }
 
+    public synchronized void begin(ThreadRole thread) {
+        if (this.finished) return;
+        update(this.clock.getAsLong());
+        this.active[Phase.EMOTE.ordinal()]++;
+        this.activeThreads[thread.ordinal()]++;
+    }
+
+    public synchronized void end(ThreadRole thread) {
+        if (this.finished) return;
+        update(this.clock.getAsLong());
+        this.active[Phase.EMOTE.ordinal()]--;
+        this.activeThreads[thread.ordinal()]--;
+    }
+
+    public synchronized long nanos(ThreadRole thread) {
+        if (!this.finished) update(this.clock.getAsLong());
+        return this.threadNanos[thread.ordinal()];
+    }
+
     public synchronized long[] finish() {
         if (!this.finished) {
             update(this.clock.getAsLong());
@@ -61,6 +83,9 @@ public final class StressTestTiming {
             }
         }
         this.durations[phase] += now - this.lastNanos;
+        for (int index = 0; index < this.activeThreads.length; index++) {
+            if (this.activeThreads[index] > 0) this.threadNanos[index] += now - this.lastNanos;
+        }
         this.lastNanos = now;
     }
 

@@ -15,8 +15,10 @@ public record PlaybackStressTestReport(
     double maximumMspt,
     double emoteProcessingSeconds,
     double networkProcessingSeconds,
-    double averageEmoteProcessingMillis,
-    double maximumEmoteProcessingMillis
+    double averageMainProcessingMillis,
+    double maximumMainProcessingMillis,
+    double averageWorkerProcessingMillis,
+    double maximumWorkerProcessingMillis
 ) {
     public long[] durationTenths() {
         double setupSeconds = this.creationMillis / 1_000.0D;

@@ -18,6 +18,7 @@ import java.util.function.ToIntFunction;
 import java.util.random.RandomGenerator;
 
 import static io.github.hanhy06.emote.playback.stress.StressTestTiming.Phase.*;
+import static io.github.hanhy06.emote.playback.stress.StressTestTiming.ThreadRole.*;
 
 public final class PlaybackStressTest {
     public static final int DEFAULT_INSTANCE_COUNT = 50;
@@ -174,7 +175,7 @@ public final class PlaybackStressTest {
         if (current == null) return false;
         this.frameSession = current;
         List<StressTestInstance> frames = new ArrayList<>();
-        current.timing.begin(EMOTE);
+        current.timing.begin(MAIN);
         try {
             Iterator<StressTestInstance> iterator = current.instances.iterator();
             while (iterator.hasNext()) {
@@ -205,19 +206,19 @@ public final class PlaybackStressTest {
             }
             this.frameInstances = List.copyOf(frames);
             return !frames.isEmpty();
-        } finally { current.timing.end(EMOTE); }
+        } finally { current.timing.end(MAIN); }
     }
 
     public void calculateFrames() {
         Session current = this.frameSession;
         if (current == null) return;
-        current.timing.begin(EMOTE);
+        current.timing.begin(WORKER);
         try {
             for (StressTestInstance instance : this.frameInstances) {
                 try { instance.frame.calculate(); }
                 catch (RuntimeException exception) { instance.frameError = exception; }
             }
-        } finally { current.timing.end(EMOTE); }
+        } finally { current.timing.end(WORKER); }
     }
 
     public void failFrames(RuntimeException exception) {
@@ -227,7 +228,7 @@ public final class PlaybackStressTest {
     public void applyFrames() {
         Session current = this.frameSession;
         if (current == null) return;
-        current.timing.begin(EMOTE);
+        current.timing.begin(MAIN);
         try {
             for (StressTestInstance instance : this.frameInstances) {
                 if (current != this.session || !instance.active || instance.frameError != null) {
@@ -250,7 +251,7 @@ public final class PlaybackStressTest {
                     failInstance(current, instance, exception);
                 }
             }
-        } finally { current.timing.end(EMOTE); }
+        } finally { current.timing.end(MAIN); }
     }
 
     private void failInstance(Session current, StressTestInstance instance, RuntimeException exception) {
@@ -274,7 +275,7 @@ public final class PlaybackStressTest {
             releaseFrames();
             return;
         }
-        current.timing.begin(EMOTE);
+        current.timing.begin(MAIN);
         try {
             for (StressTestInstance instance : this.frameInstances) {
                 if (!instance.active || !instance.frameApplied) continue;
@@ -286,8 +287,8 @@ public final class PlaybackStressTest {
                 }
             }
         } finally {
-            current.timing.end(EMOTE);
-            current.recordProcessing(current.timing.nanos(EMOTE));
+            current.timing.end(MAIN);
+            current.recordProcessing();
             releaseFrames();
         }
         if (current != this.session) return;
@@ -400,8 +401,10 @@ public final class PlaybackStressTest {
         private long maximumServerTickNanos;
         private final List<Long> serverTickNanosSamples = new ArrayList<>();
         private int processingSamples;
-        private long emoteProcessingNanos;
-        private long maximumEmoteProcessingNanos;
+        private long mainProcessingNanos;
+        private long maximumMainProcessingNanos;
+        private long workerProcessingNanos;
+        private long maximumWorkerProcessingNanos;
 
         private Session(
             List<StressTestInstance> instances,
@@ -424,10 +427,14 @@ public final class PlaybackStressTest {
             this.baselineTickNanos = baselineTickNanos;
         }
 
-        private void recordProcessing(long totalEmoteNanos) {
+        private void recordProcessing() {
+            long mainNanos = this.timing.nanos(MAIN);
+            long workerNanos = this.timing.nanos(WORKER);
             this.processingSamples++;
-            this.maximumEmoteProcessingNanos = Math.max(this.maximumEmoteProcessingNanos, totalEmoteNanos - this.emoteProcessingNanos);
-            this.emoteProcessingNanos = totalEmoteNanos;
+            this.maximumMainProcessingNanos = Math.max(this.maximumMainProcessingNanos, mainNanos - this.mainProcessingNanos);
+            this.maximumWorkerProcessingNanos = Math.max(this.maximumWorkerProcessingNanos, workerNanos - this.workerProcessingNanos);
+            this.mainProcessingNanos = mainNanos;
+            this.workerProcessingNanos = workerNanos;
         }
 
         private void recordCompletedServerTick(long stressTickNanos) {
@@ -449,7 +456,7 @@ public final class PlaybackStressTest {
         }
 
         private PlaybackStressTestReport createReport(long[] durations) {
-            if (durations[EMOTE.ordinal()] > this.emoteProcessingNanos) recordProcessing(durations[EMOTE.ordinal()]);
+            if (this.timing.nanos(MAIN) > this.mainProcessingNanos || this.timing.nanos(WORKER) > this.workerProcessingNanos) recordProcessing();
             double baselineMspt = nanosToMillis(this.baselineTickNanos);
             double averageMspt = this.serverTickSamples == 0
                 ? baselineMspt
@@ -460,9 +467,12 @@ public final class PlaybackStressTest {
             double percentile95Mspt = this.serverTickSamples == 0
                 ? baselineMspt
                 : nanosToMillis(percentile95(this.serverTickNanosSamples));
-            double averageEmoteProcessingMillis = this.processingSamples == 0
+            double averageMainProcessingMillis = this.processingSamples == 0
                 ? 0.0D
-                : nanosToMillis(this.emoteProcessingNanos) / this.processingSamples;
+                : nanosToMillis(this.mainProcessingNanos) / this.processingSamples;
+            double averageWorkerProcessingMillis = this.processingSamples == 0
+                ? 0.0D
+                : nanosToMillis(this.workerProcessingNanos) / this.processingSamples;
             return new PlaybackStressTestReport(
                 this.requestedInstances,
                 this.instances.size(),
@@ -476,10 +486,12 @@ public final class PlaybackStressTest {
                 averageMspt,
                 percentile95Mspt,
                 maximumMspt,
-                this.emoteProcessingNanos / 1_000_000_000.0D,
+                durations[EMOTE.ordinal()] / 1_000_000_000.0D,
                 durations[NETWORK.ordinal()] / 1_000_000_000.0D,
-                averageEmoteProcessingMillis,
-                nanosToMillis(this.maximumEmoteProcessingNanos)
+                averageMainProcessingMillis,
+                nanosToMillis(this.maximumMainProcessingNanos),
+                averageWorkerProcessingMillis,
+                nanosToMillis(this.maximumWorkerProcessingNanos)
             );
         }
 

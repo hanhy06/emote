@@ -12,6 +12,7 @@ import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static io.github.hanhy06.emote.playback.stress.StressTestTiming.Phase.*;
+import static io.github.hanhy06.emote.playback.stress.StressTestTiming.ThreadRole.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class StressTestTimingTest {
@@ -27,26 +28,32 @@ class StressTestTimingTest {
         clock.set(30);
         timing.end(NETWORK);
         clock.set(40);
-        timing.begin(EMOTE);
+        timing.begin(MAIN);
         clock.set(45);
-        timing.begin(EMOTE);
+        timing.begin(WORKER);
         clock.set(50);
         timing.begin(NETWORK);
         clock.set(60);
-        timing.end(EMOTE);
+        timing.end(MAIN);
         clock.set(70);
-        timing.end(EMOTE);
+        timing.end(WORKER);
         clock.set(80);
         timing.end(NETWORK);
         clock.set(90);
         timing.begin(CLEANUP);
+        clock.set(95);
+        timing.begin(WORKER);
         clock.set(100);
         long[] durations = timing.finish();
         assertArrayEquals(new long[]{20, 10, 30, 20, 20}, durations);
         assertEquals(100, Arrays.stream(durations).sum());
+        assertEquals(20, timing.nanos(MAIN));
+        assertEquals(30, timing.nanos(WORKER));
         clock.set(200);
         timing.end(CLEANUP);
+        timing.end(WORKER);
         assertArrayEquals(durations, timing.finish());
+        assertEquals(30, timing.nanos(WORKER));
     }
 
     @Test
@@ -118,7 +125,7 @@ class StressTestTimingTest {
             double elapsed = setup + emote + network + idle + cleanup;
             PlaybackStressTestReport report = new PlaybackStressTestReport(
                 1, 1, 1, 0, 200, elapsed, setup * 1_000, cleanup * 1_000,
-                0, 0, 0, 0, emote, network, 0, 0
+                0, 0, 0, 0, emote, network, 0, 0, 0, 0
             );
             long[] tenths = report.durationTenths();
             assertEquals(Math.round(elapsed * 10), Arrays.stream(tenths).sum());

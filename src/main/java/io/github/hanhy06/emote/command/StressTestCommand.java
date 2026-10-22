@@ -192,12 +192,19 @@ final class StressTestCommand {
             .append(createStressStatistic("\n  ", "p95", "%.2f ms", ChatFormatting.GOLD, report.percentile95Mspt()))
             .append(createStressStatistic("  ", "max", "%.2f ms", ChatFormatting.RED, report.maximumMspt()))
             .append(Component.literal("\n\nEmote processing").withStyle(ChatFormatting.GRAY))
-            .append(Component.literal("\n• Tick: ").withStyle(ChatFormatting.GREEN))
+            .append(Component.literal("\n• Main: ").withStyle(ChatFormatting.GREEN))
             .append(Component.literal(String.format(
                 Locale.ROOT,
                 "avg %.3f ms / max %.3f ms",
-                report.averageEmoteProcessingMillis(),
-                report.maximumEmoteProcessingMillis()
+                report.averageMainProcessingMillis(),
+                report.maximumMainProcessingMillis()
+            )).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("\n• Worker: ").withStyle(ChatFormatting.AQUA))
+            .append(Component.literal(String.format(
+                Locale.ROOT,
+                "avg %.3f ms / max %.3f ms",
+                report.averageWorkerProcessingMillis(),
+                report.maximumWorkerProcessingMillis()
             )).withStyle(ChatFormatting.WHITE));
         source.sendSuccess(() -> message, true);
     }
