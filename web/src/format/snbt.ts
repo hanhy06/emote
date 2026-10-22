@@ -134,17 +134,8 @@ function serializeSnbtKey(value: string): string {
 }
 
 function parseSnbtKey(value: string, label: string): string {
-  if (value.startsWith('"') && value.endsWith('"')) {
-    try {
-      const parsed = JSON.parse(value) as unknown;
-      if (typeof parsed === "string") return parsed;
-    } catch {
-      // Report the common invalid-key error below.
-    }
-  } else if (value.startsWith("'") && value.endsWith("'")) {
-    return value.slice(1, -1).replaceAll("\\'", "'").replaceAll("\\\\", "\\");
-  } else if (/^[A-Za-z0-9._+-]+$/.test(value)) {
-    return value;
-  }
+  const parsed = readSnbtString(value);
+  if (parsed !== null) return parsed;
+  if (/^[A-Za-z0-9._+-]+$/.test(value)) return value;
   throw new Error(`${label} contains an invalid key: ${value}`);
 }
