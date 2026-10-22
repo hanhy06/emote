@@ -41,11 +41,6 @@ public final class StressTestTiming {
         this.active[phase.ordinal()]--;
     }
 
-    public synchronized long nanos(Phase phase) {
-        if (!this.finished) update(this.clock.getAsLong());
-        return this.durations[phase.ordinal()];
-    }
-
     public synchronized void begin(ThreadRole thread) {
         if (this.finished) return;
         update(this.clock.getAsLong());
@@ -93,25 +88,17 @@ public final class StressTestTiming {
         @Override
         public void write(ChannelHandlerContext context, Object message, ChannelPromise promise) throws Exception {
             StressTestTiming timing = INSTANCE;
-            if (timing == null) {
-                context.write(message, promise);
-                return;
-            }
-            timing.begin(Phase.NETWORK);
+            if (timing != null) timing.begin(Phase.NETWORK);
             try { context.write(message, promise); }
-            finally { timing.end(Phase.NETWORK); }
+            finally { if (timing != null) timing.end(Phase.NETWORK); }
         }
 
         @Override
         public void flush(ChannelHandlerContext context) throws Exception {
             StressTestTiming timing = INSTANCE;
-            if (timing == null) {
-                context.flush();
-                return;
-            }
-            timing.begin(Phase.NETWORK);
+            if (timing != null) timing.begin(Phase.NETWORK);
             try { context.flush(); }
-            finally { timing.end(Phase.NETWORK); }
+            finally { if (timing != null) timing.end(Phase.NETWORK); }
         }
     }
 }
