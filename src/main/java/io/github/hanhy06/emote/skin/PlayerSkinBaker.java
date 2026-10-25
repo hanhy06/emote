@@ -117,14 +117,10 @@ public final class PlayerSkinBaker {
     }
 
     boolean resolveSlimModel(BufferedImage sourceImage, boolean slimModel) {
-        return slimModel && sourceImage.getWidth() == 64 && sourceImage.getHeight() == 64;
+        return slimModel && sourceImage.getHeight() == 64;
     }
 
     private BufferedImage normalizeSkinImage(BufferedImage sourceImage) {
-        if (sourceImage.getWidth() != 64 || (sourceImage.getHeight() != 32 && sourceImage.getHeight() != 64)) {
-            throw new IllegalArgumentException("skin image must be 64x32 or 64x64");
-        }
-
         if (sourceImage.getHeight() == 64) {
             return sourceImage;
         }

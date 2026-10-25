@@ -38,12 +38,11 @@ public final class AnimationJsonParser {
         JsonObject playback = object(clip, "playback", "$.animation", document);
         PlaybackMode mode = enumeration(PlaybackMode.class, text(playback, "mode", "once", "$.animation.playback", document), "$.animation.playback.mode", document);
         int loopStartTick = playback.has("loop_start") ? document.requireTicks(playback, "loop_start", "$.animation.playback", 0) : 0;
-        if (loopStartTick < 0 || loopStartTick >= durationTicks || mode != PlaybackMode.LOOP && loopStartTick != 0) throw document.error("$.animation.playback.loop_start", "invalid loop start");
+        if (loopStartTick >= durationTicks || mode != PlaybackMode.LOOP && loopStartTick != 0) throw document.error("$.animation.playback.loop_start", "invalid loop start");
         ScalarValue startDelay = delay(playback, "start_delay", document), loopDelay = delay(playback, "loop_delay", document);
         JsonObject settings = object(root, "settings", "$", document);
         int cooldownTicks = settings.has("cooldown") ? document.requireTicks(settings, "cooldown", "$.settings", 0) : 0;
         double deadzone = number(settings, "rotation_deadzone", 50, "$.settings", document);
-        if (cooldownTicks < 0) throw document.error("$.settings.cooldown", "must not be negative");
         if (deadzone < 0 || deadzone > 180) throw document.error("$.settings.rotation_deadzone", "must be between 0 and 180");
         EmotePlayerBehavior playerBehavior = parsePlayerBehavior(object(settings, "player", "$.settings", document), document);
         JsonObject molangObject = object(clip, "molang", "$.animation", document);
@@ -69,7 +68,9 @@ public final class AnimationJsonParser {
         PlayerSkinSource defaultSource = null;
         if (skin.has("default")) {
             try {
-                defaultSource = PlayerSkinSource.fromPng(Base64.getDecoder().decode(document.requireString(skin, "default", "$.skin")));
+                byte[] png = Base64.getDecoder().decode(document.requireString(skin, "default", "$.skin"));
+                PlayerSkinSource.readPng(png);
+                defaultSource = PlayerSkinSource.fromPng(png);
             } catch (IllegalArgumentException | java.io.IOException exception) {
                 throw document.error("$.skin.default", exception.getMessage());
             }
@@ -226,14 +227,14 @@ public final class AnimationJsonParser {
 
     private Driver driver(JsonObject driver, Channel channel, int componentCount, int durationTicks, String p, EmoteJsonDocument document) throws EmoteLoadException {
         DriverType driverType = enumeration(DriverType.class, nonempty(driver, "type", p, document), p + ".type", document);
-        boolean useFirstPre = text(driver, "before", "base", p, document).equals("first_pre");
+        String before = text(driver, "before", "base", p, document);
         String keyPolicy = text(driver, "at_key", "post", p, document);
         if (!Set.of("pre", "post", "segment").contains(keyPolicy)) throw document.error(p + ".at_key", "invalid key policy");
         if (keyPolicy.equals("segment") && (driverType != DriverType.CURVE || componentCount != 1 && componentCount != 3)) throw document.error(p + ".at_key", "segment sampling requires a scalar or three-component curve");
         String evaluationOrder = text(driver, "evaluation", "vector", p, document);
         if (!Set.of("vector", "component").contains(evaluationOrder)) throw document.error(p + ".evaluation", "invalid evaluation order");
         if (evaluationOrder.equals("component") && (driverType != DriverType.CURVE || componentCount != 1 && componentCount != 3)) throw document.error(p + ".evaluation", "component evaluation requires a scalar or three-component curve");
-        if (!Set.of("base", "first_pre").contains(text(driver, "before", "base", p, document))) throw document.error(p + ".before", "invalid before policy");
+        if (!Set.of("base", "first_pre").contains(before)) throw document.error(p + ".before", "invalid before policy");
         Value expression = null;
         List<Keyframe> keys = new ArrayList<>();
         List<Segment> segments = new ArrayList<>();
@@ -249,7 +250,7 @@ public final class AnimationJsonParser {
                 String kp = p + ".keys[" + k + "]";
                 JsonObject keyframe = document.requireObject(array.get(k), kp);
                 int tick = document.requireTicks(keyframe, "time", kp, 0);
-                if (tick < 0 || driverType == DriverType.STATE && tick > durationTicks || tick < previousTick || tick == previousTick && channel != Channel.NBT) {
+                if (driverType == DriverType.STATE && tick > durationTicks || tick < previousTick || tick == previousTick && channel != Channel.NBT) {
                     throw document.error(kp + ".time", driverType == DriverType.CURVE ? "must increase strictly and be non-negative" : channel == Channel.NBT ? "must not decrease and must be within duration" : "must increase strictly within duration");
                 }
                 previousTick = tick;
@@ -270,7 +271,7 @@ public final class AnimationJsonParser {
                 for (int s = 0; s < arraySegments.size(); s++) segments.add(segment(document.requireObject(arraySegments.get(s), p + ".segments[" + s + "]"), componentCount, p + ".segments[" + s + "]", document));
             }
         }
-        return new Driver(driverType, expression, keys, segments, useFirstPre, enumeration(KeyPolicy.class, keyPolicy, p + ".at_key", document), evaluationOrder.equals("component"));
+        return new Driver(driverType, expression, keys, segments, before.equals("first_pre"), enumeration(KeyPolicy.class, keyPolicy, p + ".at_key", document), evaluationOrder.equals("component"));
     }
 
     private Segment segment(JsonObject raw, int componentCount, String path, EmoteJsonDocument document) throws EmoteLoadException {
@@ -390,7 +391,7 @@ public final class AnimationJsonParser {
                 else throw document.error(p + ".action.type", "unknown action");
                 if (phase.equals("timeline")) {
                     int tick = document.requireTicks(event, "time", p, 0);
-                    if (tick < 0 || tick > durationTicks) throw document.error(p + ".time", "must be within duration");
+                    if (tick > durationTicks) throw document.error(p + ".time", "must be within duration");
                     timeline.add(new TimelineEvent(tick, enumeration(Direction.class, text(event, "direction", "forward", p, document), p + ".direction", document), parsed));
                 } else {
                     if (event.has("time") || event.has("direction")) throw document.error(p, "time/direction require timeline phase");

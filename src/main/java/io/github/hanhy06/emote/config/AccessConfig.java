@@ -11,7 +11,7 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
     public static final int LEGACY_SCHEMA_VERSION = 2;
 
     public AccessConfig {
-        disabled = normalizeIds(disabled, "disabled", "disabled emote id must not be blank", false);
+        disabled = normalizeIds(disabled, "disabled", "disabled emote id must not be blank");
 
         Objects.requireNonNull(permissions, "permissions");
         Set<String> seenPermissions = new HashSet<>();
@@ -56,16 +56,16 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
             Optional<CooldownModifier> cooldown,
             Optional<IdleSettings> idle
         ) {
+            permission = permission == null ? null : permission.trim();
             if (permission == null || permission.isBlank()) {
                 throw new IllegalArgumentException("permission must not be blank");
             }
-            this.permission = permission.trim();
+            this.permission = permission;
 
             this.emotes = normalizeIds(
                 emotes,
                 "permission emotes",
-                "permission emote pattern must not be blank",
-                false
+                "permission emote pattern must not be blank"
             );
             this.cooldown = Objects.requireNonNull(cooldown, "cooldown");
             this.idle = Objects.requireNonNull(idle, "idle");
@@ -214,12 +214,7 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
         }
 
         public IdleSettings(int delayTicks, Collection<String> emotes) {
-            this(delayTicks, normalizeIds(
-                List.copyOf(emotes),
-                "idle emote",
-                "idle emote id must not be blank",
-                true
-            ).stream().map(id -> new Choice(id, 0)).toList());
+            this(delayTicks, emotes.stream().map(id -> new Choice(id, 0)).distinct().toList());
         }
 
         public List<Choice> resolveChoices(Collection<String> availableIds) {
@@ -243,10 +238,10 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
 
         public record Choice(String id, int chance) {
             public Choice {
+                id = id == null ? null : id.trim();
                 if (id == null || id.isBlank()) {
                     throw new IllegalArgumentException("idle emote id must not be blank");
                 }
-                id = id.trim();
                 if (chance < 0 || chance > 100) {
                     throw new IllegalArgumentException("idle emote chance must be between 1 and 100");
                 }
@@ -267,19 +262,16 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
     private static List<String> normalizeIds(
         List<String> ids,
         String fieldName,
-        String invalidIdMessage,
-        boolean requireNonEmpty
+        String invalidIdMessage
     ) {
         Objects.requireNonNull(ids, fieldName);
-        if (requireNonEmpty && ids.isEmpty()) {
-            throw new IllegalArgumentException(fieldName + " must not be empty");
-        }
         return ids.stream()
             .map(id -> {
+                id = id == null ? null : id.trim();
                 if (id == null || id.isBlank()) {
                     throw new IllegalArgumentException(invalidIdMessage);
                 }
-                return id.trim();
+                return id;
             })
             .distinct()
             .toList();

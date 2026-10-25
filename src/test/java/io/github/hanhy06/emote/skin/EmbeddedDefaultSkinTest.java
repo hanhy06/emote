@@ -81,6 +81,9 @@ class EmbeddedDefaultSkinTest {
         saved.getAsJsonObject("skin").addProperty("default", "invalid");
         Files.writeString(path, saved.toString());
         assertEquals("$.skin.default", assertThrows(EmoteLoadException.class, () -> new AnimationJsonParser().parse(path)).fieldPath());
+        saved.getAsJsonObject("skin").addProperty("default", Base64.getEncoder().encodeToString(new byte[8]));
+        Files.writeString(path, saved.toString());
+        assertEquals("$.skin.default", assertThrows(EmoteLoadException.class, () -> new AnimationJsonParser().parse(path)).fieldPath());
     }
 
     @Test

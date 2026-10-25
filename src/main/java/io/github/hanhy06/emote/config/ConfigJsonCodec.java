@@ -160,7 +160,7 @@ final class ConfigJsonCodec {
     }
 
     private static AccessConfig.CooldownModifier readCooldownModifier(JsonElement element) {
-        String value = readRequiredString(element);
+        String value = normalizeRequiredValue(readRequiredString(element));
         if (value == null) {
             return null;
         }
@@ -261,7 +261,7 @@ final class ConfigJsonCodec {
         if (element == null || !element.isJsonPrimitive() || !element.getAsJsonPrimitive().isString()) {
             return null;
         }
-        return normalizeRequiredValue(element.getAsString());
+        return element.getAsString();
     }
 
     static String normalizeRequiredValue(String value) {
