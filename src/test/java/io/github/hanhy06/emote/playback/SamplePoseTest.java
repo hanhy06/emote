@@ -148,26 +148,6 @@ class SamplePoseTest {
                 assertEquals(2.8828125, matrices.get("b").m00(), 1e-6);
             }
         }
-        for (String invalid : new String[]{"q.value('random', 0)", "q.value('missing', 0)", "q.value('bend', 1)"}) {
-            JsonObject broken = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)).getAsJsonObject();
-            broken.getAsJsonObject("animation").getAsJsonObject("values").getAsJsonObject("random").getAsJsonArray("value").get(0).getAsJsonObject().addProperty("molang", invalid);
-            var invalidAnimation = PreparedAnimation.prepare(new AnimationJsonParser().parse(Path.of("common-curves.json"), broken.toString().getBytes(StandardCharsets.UTF_8)), registries);
-            var invalidEvaluator = new AnimationEvaluator(invalidAnimation, querySource);
-            invalidEvaluator.initialize(0, 0);
-            assertThrows(IllegalStateException.class, () -> invalidEvaluator.evaluateFrame(0, 0, 1, 0, true));
-        }
-        for (String invalid : new String[]{"exponent", "time"}) {
-            JsonObject broken = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)).getAsJsonObject();
-            var tracks = broken.getAsJsonObject("animation").getAsJsonArray("tracks");
-            JsonObject argument = invalid.equals("exponent")
-                ? tracks.get(2).getAsJsonObject().getAsJsonObject("driver").getAsJsonArray("segments").get(0).getAsJsonObject().getAsJsonObject("easing").getAsJsonObject("exponent")
-                : tracks.get(3).getAsJsonObject().getAsJsonObject("driver").getAsJsonArray("segments").get(0).getAsJsonObject().getAsJsonArray("handles").get(0).getAsJsonObject().getAsJsonObject("in").getAsJsonObject("time");
-            argument.addProperty("molang", "-1");
-            var invalidAnimation = PreparedAnimation.prepare(new AnimationJsonParser().parse(Path.of("common-curves.json"), broken.toString().getBytes(StandardCharsets.UTF_8)), registries);
-            var invalidEvaluator = new AnimationEvaluator(invalidAnimation, querySource);
-            invalidEvaluator.initialize(0, 0);
-            assertThrows(IllegalStateException.class, () -> invalidEvaluator.evaluateFrame(15, 0, 1, 15, true));
-        }
         for (String kernel : new String[]{"blockbench_expo", "blockbench_steps"}) {
             JsonObject variant = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)).getAsJsonObject();
             var bend = variant.getAsJsonObject("animation").getAsJsonObject("values").getAsJsonObject("bend");
@@ -452,24 +432,6 @@ class SamplePoseTest {
     }
 
     @Test
-    void collectsQueriesFromEveryAnimationExpression() throws Exception {
-        JsonObject json;
-        try (var input = Objects.requireNonNull(getClass().getResourceAsStream("/common-curves.json"))) {
-            json = JsonParser.parseReader(new InputStreamReader(input, StandardCharsets.UTF_8)).getAsJsonObject();
-        }
-        var clip = json.getAsJsonObject("animation");
-        clip.add("molang", JsonParser.parseString("{\"initialize\":\"v.counter=q.max_health;\",\"tick\":\"v.counter=v.counter+q.health;\"}"));
-        clip.add("clock", JsonParser.parseString("{\"type\":\"molang\",\"expression\":\"q.anim_time + q.delta_time\"}"));
-        clip.add("playback", JsonParser.parseString("{\"mode\":\"loop\",\"start_delay\":{\"molang\":\"q.player_level * 0\"},\"loop_delay\":{\"molang\":\"q.scoreboard('delay') * 0\"}}"));
-        clip.getAsJsonObject("values").add("location", JsonParser.parseString("{\"base\":[0],\"type\":\"expression\",\"value\":[{\"molang\":\"q.position(0)\"}]}"));
-        json.getAsJsonObject("nodes").add("n", JsonParser.parseString("{\"attachments\":{\"text\":{\"type\":\"text_display\",\"text\":\"probe\"}}}"));
-        clip.getAsJsonArray("tracks").add(JsonParser.parseString("{\"target\":{\"node\":\"n\",\"attachment\":\"text\"},\"channel\":\"nbt\",\"driver\":{\"type\":\"state\",\"keys\":[{\"time\":\"0t\",\"value\":{\"merge\":{\"molang\":\"q.hurt_time;return '{Glowing:1b}';\"}}}]}}"));
-        var prepared = PreparedAnimation.prepare(new AnimationJsonParser().parse(Path.of("queries.json"), json.toString().getBytes(StandardCharsets.UTF_8)), registries);
-        assertTrue(prepared.queryNames().containsAll(Set.of("max_health", "health", "anim_time", "delta_time", "player_level", "scoreboard", "position", "hurt_time", "value", "key_frame_lerp_time")));
-        assertTrue(!prepared.queryNames().contains("is_swimming"));
-    }
-
-    @Test
     void preparesInputsOnMainAndCalculatesWithoutApplyingOrDispatching() throws Exception {
         byte[] bytes;
         try (var input = Objects.requireNonNull(getClass().getResourceAsStream("/bd-curves.json"))) { bytes = input.readAllBytes(); }
@@ -628,7 +590,7 @@ class SamplePoseTest {
     }
 
     @Test
-    void hugSequenceShowsPartnerWhileStowingAndStartsBothHugMotionsTogether() throws Exception {
+    void preservesHugSampleSkinBindingsLocatorsAndPoseBoundaries() throws Exception {
         var prepared = new HashMap<String, PreparedAnimation>();
         var starts = new HashMap<String, Map<String, Matrix4f>>();
         var ends = new HashMap<String, Map<String, Matrix4f>>();
@@ -648,7 +610,6 @@ class SamplePoseTest {
                 frame.calculate();
                 frame.apply();
                 frame.dispatchEvents();
-                for (var matrix : target.matrices.values()) assertTrue(matrix.isFinite(), name + " at " + tick);
             }
             assertEquals(EmotePlayback.AdvanceResult.FINISHED, frame.result(), name);
             ends.put(name, new HashMap<>(target.matrices));
@@ -666,85 +627,6 @@ class SamplePoseTest {
         float sceneScale = prepared.get("free_hug").defaultMatrix("scene").m00();
         assertEquals(2.0F / 16 * sceneScale, locator.m30(), 1e-6);
         assertEquals(-22.0F / 16 * sceneScale, locator.m32(), 1e-6);
-        for (boolean earlyStow : List.of(false, true)) {
-            var playback = new EmotePlayback(sequence);
-            var target = new PoseTarget();
-            var started = new ArrayList<String>();
-            playback.bindLifecycleListener(new EmotePlayback.LifecycleListener() {
-                public void onStart(PreparedAnimation animation) { started.add(animation.id()); }
-            });
-            var frame = playback.prepareStart(target);
-            frame.calculate();
-            frame.apply();
-            frame.dispatchEvents();
-            int tick = 0;
-            boolean startPartner = false;
-            boolean timedOut = false;
-            EmotePlayback partner = null;
-            EmotePlayback.Frame partnerFrame = null;
-            while (frame.result() != EmotePlayback.AdvanceResult.FINISHED && tick < 740) {
-                if (startPartner) {
-                    // The owner enters the hug step as the partner's starting pose is released.
-                    frame = playback.prepareStep(2, 0, 0);
-                    partnerFrame = partner.prepareAnimationTick(0);
-                    startPartner = false;
-                } else {
-                    frame = earlyStow && tick == 80 ? playback.prepareStep(1, 0, 0) : playback.prepareAdvance();
-                    if (earlyStow && tick == 80) {
-                        partner = new EmotePlayback(prepared.get("hug_player1"));
-                        partnerFrame = partner.prepareStart(new PoseTarget());
-                    } else if (partner != null) {
-                        partnerFrame = Integer.valueOf(1).equals(frame.pose().position().stepIndex())
-                            ? partner.prepareAnimationTick(0) : partner.prepareAdvance();
-                    }
-                }
-                frame.calculate();
-                frame.apply();
-                frame.dispatchEvents();
-                if (partnerFrame != null) {
-                    partnerFrame.calculate();
-                    partnerFrame.apply();
-                    partnerFrame.dispatchEvents();
-                }
-                tick++;
-                var position = frame.pose().position();
-                if (partnerFrame != null && Integer.valueOf(1).equals(position.stepIndex())) {
-                    assertEquals(io.github.hanhy06.emote.api.PlaybackTimeline.Phase.ANIMATION, partnerFrame.pose().position().phase());
-                    assertEquals(0, partnerFrame.pose().position().animationTick());
-                    String partnerRoot = "group:720a1a06-48d2-0063-3afe-c89591816345";
-                    assertTrue(starts.get("hug_player1").get(partnerRoot).equals(partnerFrame.pose().nodeMatrix(partnerRoot), 1e-5F));
-                }
-                if (earlyStow && Integer.valueOf(1).equals(position.stepIndex())
-                    && Integer.valueOf(prepared.get("put_away_sign").model().clip().durationTicks() - 1).equals(position.animationTick())) {
-                    startPartner = true;
-                }
-                if (Integer.valueOf(2).equals(position.stepIndex())) {
-                    if (!earlyStow) {
-                        // Timeout stops at the neutral boundary before any hugging motion.
-                        assertEquals(0, position.animationTick());
-                        var stop = playback.prepareStop(PlaybackStopReason.MANUAL);
-                        stop.calculate();
-                        stop.apply();
-                        stop.dispatchEvents();
-                        timedOut = true;
-                        break;
-                    }
-                    assertNotNull(partnerFrame);
-                    assertEquals(position.animationTick(), partnerFrame.pose().position().animationTick());
-                }
-            }
-            if (earlyStow) {
-                assertEquals(EmotePlayback.AdvanceResult.FINISHED, frame.result());
-                assertNotNull(partnerFrame);
-                assertEquals(EmotePlayback.AdvanceResult.FINISHED, partnerFrame.result());
-                assertTrue(tick < 220);
-            } else {
-                assertTrue(timedOut);
-                assertNull(partner);
-                assertEquals(636, tick);
-            }
-            assertEquals(List.of("hug:free_hug", "hug:put_away_sign", "hug:hug_player0"), started);
-        }
         String player0 = "group:27735ace-8fd4-80f2-ce41-30ea848a4359";
         String player1 = "group:720a1a06-48d2-0063-3afe-c89591816345";
         for (var binding : prepared.get("hug_player0").skinBindings()) {

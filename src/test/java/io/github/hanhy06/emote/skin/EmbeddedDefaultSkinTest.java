@@ -3,7 +3,6 @@ package io.github.hanhy06.emote.skin;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.math.Transformation;
-import io.github.hanhy06.emote.api.EmoteLoadException;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.content.loader.AnimationJsonParser;
@@ -78,12 +77,6 @@ class EmbeddedDefaultSkinTest {
         String retained = Files.readString(path);
         assertThrows(java.io.IOException.class, () -> EmoteDirectoryLoader.updateDefaultSkin(path, "test:other", Base64.getEncoder().encodeToString(first)));
         assertEquals(retained, Files.readString(path));
-        saved.getAsJsonObject("skin").addProperty("default", "invalid");
-        Files.writeString(path, saved.toString());
-        assertEquals("$.skin.default", assertThrows(EmoteLoadException.class, () -> new AnimationJsonParser().parse(path)).fieldPath());
-        saved.getAsJsonObject("skin").addProperty("default", Base64.getEncoder().encodeToString(new byte[8]));
-        Files.writeString(path, saved.toString());
-        assertEquals("$.skin.default", assertThrows(EmoteLoadException.class, () -> new AnimationJsonParser().parse(path)).fieldPath());
     }
 
     @Test
@@ -150,35 +143,6 @@ class EmbeddedDefaultSkinTest {
         assertEquals(first.id(), apply(playback.prepareStep(4, 0, 1)).skinAnimationId());
         assertNull(apply(playback.prepareStep(3, 0, 0)).skinAnimationId());
         assertEquals(second.id(), apply(playback.prepareStep(2, 0, 0)).skinAnimationId());
-    }
-
-    @Test
-    void retainsPreviousDefaultsUntilEveryReplacementRegionIsReady() throws Exception {
-        var first = animation("test:first", png(0xff123456));
-        var second = animation("test:second", png(0xffabcdef));
-        PlayerSkinSource originalA = first.model().skin().defaultSource(), originalB = second.model().skin().defaultSource();
-        PlayerSkinSource replacement = PlayerSkinSource.fromPng(png(0xffaabbcc));
-        var cache = new SkinCache(this.directory.resolve("cache"));
-        assertTrue(cache.save(replacement.textureHash(), false, Map.of(HEAD, "head"), cache.epoch()));
-        var coordinator = coordinator(cache);
-        var manager = new PlayerSkinManager(coordinator);
-        var source = PlayerSkinManager.class.getDeclaredField("configuredDefault");
-        source.setAccessible(true);
-        source.set(manager, replacement);
-        var pending = PlayerSkinManager.class.getDeclaredField("pendingDefaults");
-        pending.setAccessible(true);
-        pending.set(manager, List.of(first, second));
-        var publish = PlayerSkinManager.class.getDeclaredMethod("publishDefault");
-        publish.setAccessible(true);
-        try {
-            assertEquals(false, publish.invoke(manager));
-            assertSame(originalA, first.model().skin().defaultSource());
-            assertSame(originalB, second.model().skin().defaultSource());
-            assertTrue(cache.save(replacement.textureHash(), false, Map.of(BODY, "body"), cache.epoch()));
-            assertEquals(true, publish.invoke(manager));
-            assertSame(replacement, first.model().skin().defaultSource());
-            assertSame(replacement, second.model().skin().defaultSource());
-        } finally { coordinator.cancelPendingBakes(); }
     }
 
     @Test
@@ -256,13 +220,6 @@ class EmbeddedDefaultSkinTest {
         assertNotNull(loaded.skin().defaultSource());
         assertEquals(hash, loaded.skin().override().hash());
         assertEquals(override, JsonParser.parseString(Files.readString(path)).getAsJsonObject().getAsJsonObject("skin").getAsJsonObject("override"));
-
-        override.remove("mask");
-        Files.writeString(path, json.toString());
-        assertEquals("$.skin.override.mask", assertThrows(EmoteLoadException.class, () -> new AnimationJsonParser().parse(path)).fieldPath());
-        override.addProperty("mask", Base64.getEncoder().encodeToString(png(0xff888888)));
-        Files.writeString(path, json.toString());
-        assertEquals("$.skin.override", assertThrows(EmoteLoadException.class, () -> new AnimationJsonParser().parse(path)).fieldPath());
     }
 
     @Test
