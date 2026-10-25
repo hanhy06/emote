@@ -6,7 +6,7 @@ import java.util.Set;
 
 @FunctionalInterface
 public interface MolangQuerySource {
-    MolangQuerySource EMPTY = MolangQueries::applyEmpty;
+    MolangQuerySource EMPTY = (session, queries) -> MolangQueries.applyEntity(null, session, queries);
     void apply(MolangEngine.Session session, Set<String> queries);
     default void apply(MolangEngine.Session session) { apply(session, MolangQueryCatalog.queryNames()); }
 }
