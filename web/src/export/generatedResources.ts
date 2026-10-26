@@ -18,6 +18,7 @@ export function generatedResourceFiles(
   const files = new Map<string, Uint8Array>();
   const includedPaths = resourceReferences ? referencedResourcePaths(resourceReferences, project.resources) : undefined;
   for (const [path, resource] of project.resources) {
+    if (includedPaths && !includedPaths.has(path)) continue;
     if (path === "pack.mcmeta") throw new Error("Generated resources cannot replace pack.mcmeta.");
     const segments = path.split("/");
     if (
@@ -27,7 +28,6 @@ export function generatedResourceFiles(
     ) {
       throw new Error(`Generated resource has an invalid pack path: ${path}`);
     }
-    if (includedPaths && !includedPaths.has(path)) continue;
     if (resource instanceof Uint8Array) {
       files.set(path, resource);
       continue;
