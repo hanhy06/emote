@@ -100,7 +100,6 @@ public final class AnimationJsonParser {
     }
 
     private Map<String, Node> nodes(JsonObject input, EmoteJsonDocument document) throws EmoteLoadException {
-        if (input.isEmpty()) throw document.error("$.nodes", "must not be empty");
         Map<String, Node> nodes = new LinkedHashMap<>();
         for (var entry : input.entrySet()) {
             String path = "$.nodes." + entry.getKey();
