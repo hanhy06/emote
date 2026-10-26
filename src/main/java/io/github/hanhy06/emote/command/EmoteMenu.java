@@ -9,6 +9,7 @@ import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.playback.PlaybackSession;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
+import net.minecraft.SharedConstants;
 import net.minecraft.core.Holder;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
@@ -30,6 +31,8 @@ public final class EmoteMenu {
     private static final int SMALL_BUTTON_WIDTH = 150;
     private static final int WIDE_BUTTON_WIDTH = 310;
     static final String SEARCH_COMMAND_TEMPLATE = "/emote search \"$(query)\"";
+    private static final int SEARCH_QUERY_MAX_LENGTH = (SharedConstants.MAX_USER_INPUT_COMMAND_LENGTH
+        - SEARCH_COMMAND_TEMPLATE.replace("$(query)", "").length() - (" " + Integer.MAX_VALUE).length()) / 2;
     private static final ParsedTemplate SEARCH_COMMAND = ParsedTemplate.CODEC
         .parse(JsonOps.INSTANCE, new JsonPrimitive(SEARCH_COMMAND_TEMPLATE))
         .getOrThrow();
@@ -67,7 +70,7 @@ public final class EmoteMenu {
             Component.literal("Search"),
             true,
             "",
-            64,
+            SEARCH_QUERY_MAX_LENGTH,
             Optional.empty()
         )));
         CommonDialogData commonDialogData = new CommonDialogData(
