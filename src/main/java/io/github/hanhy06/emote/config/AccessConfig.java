@@ -13,14 +13,6 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
     public AccessConfig {
         disabled = normalizeIds(disabled, "disabled", "disabled emote id must not be blank");
 
-        Objects.requireNonNull(permissions, "permissions");
-        Set<String> seenPermissions = new HashSet<>();
-        for (PermissionEntry entry : permissions) {
-            Objects.requireNonNull(entry, "permission entry");
-            if (!seenPermissions.add(entry.permission())) {
-                throw new IllegalArgumentException("duplicate permission: " + entry.permission());
-            }
-        }
         permissions = List.copyOf(permissions);
     }
 
