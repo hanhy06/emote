@@ -55,7 +55,6 @@ public record EmoteSequence(
         if (steps.isEmpty()) {
             throw new IllegalArgumentException("sequence steps must not be empty");
         }
-        validateLinearSteps(steps, "sequence");
     }
 
     public record Settings(int cooldownTicks, EmotePlayerBehavior playerBehavior) {
@@ -132,14 +131,4 @@ public record EmoteSequence(
         }
     }
 
-    private static void validateLinearSteps(List<Step> steps, String name) {
-        if (steps.getFirst() instanceof WaitStep || steps.getLast() instanceof WaitStep) {
-            throw new IllegalArgumentException(name + " wait steps must be between emote steps");
-        }
-        for (int index = 1; index < steps.size(); index++) {
-            if (steps.get(index - 1) instanceof WaitStep && steps.get(index) instanceof WaitStep) {
-                throw new IllegalArgumentException(name + " wait steps must not be consecutive");
-            }
-        }
-    }
 }
