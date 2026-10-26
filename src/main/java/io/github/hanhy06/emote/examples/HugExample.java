@@ -197,9 +197,8 @@ public final class HugExample implements EmoteCallbacks {
             return;
         }
 
-        // A player can only participate in one active interaction or emote at a time.
-        if (this.api.getPlayback(partner).isPresent()
-            || this.hugs.values().stream().anyMatch(active -> active.owner == partner || active.partner == partner)) {
+        // A player can only participate in one active hug at a time.
+        if (this.hugs.values().stream().anyMatch(active -> active.owner == partner || active.partner == partner)) {
             return;
         }
 
