@@ -30,7 +30,7 @@ import java.util.Optional;
 public final class EmoteMenu {
     private static final int SMALL_BUTTON_WIDTH = 150;
     private static final int WIDE_BUTTON_WIDTH = 310;
-    static final String SEARCH_COMMAND_TEMPLATE = "/emote search \"$(query)\"";
+    private static final String SEARCH_COMMAND_TEMPLATE = "/emote search \"$(query)\"";
     private static final int SEARCH_QUERY_MAX_LENGTH = (SharedConstants.MAX_USER_INPUT_COMMAND_LENGTH
         - SEARCH_COMMAND_TEMPLATE.replace("$(query)", "").length() - (" " + Integer.MAX_VALUE).length()) / 2;
     private static final ParsedTemplate SEARCH_COMMAND = ParsedTemplate.CODEC

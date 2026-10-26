@@ -12,7 +12,6 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
 
     public AccessConfig {
         disabled = normalizeIds(disabled, "disabled", "disabled emote id must not be blank");
-
         permissions = List.copyOf(permissions);
     }
 
