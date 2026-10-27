@@ -14,7 +14,6 @@ public record PlaybackStressTestReport(
     double percentile95Mspt,
     double maximumMspt,
     double emoteProcessingSeconds,
-    double networkProcessingSeconds,
     double averageMainProcessingMillis,
     double maximumMainProcessingMillis,
     double averageWorkerProcessingMillis,
@@ -23,8 +22,8 @@ public record PlaybackStressTestReport(
     public long[] durationTenths() {
         double setupSeconds = this.creationMillis / 1_000.0D;
         double cleanupSeconds = this.cleanupMillis / 1_000.0D;
-        double serverAndIdleSeconds = Math.max(0.0D, this.elapsedSeconds - setupSeconds - this.emoteProcessingSeconds - this.networkProcessingSeconds - cleanupSeconds);
-        double[] seconds = {setupSeconds, this.emoteProcessingSeconds, this.networkProcessingSeconds, serverAndIdleSeconds, cleanupSeconds};
+        double serverAndIdleSeconds = Math.max(0.0D, this.elapsedSeconds - setupSeconds - this.emoteProcessingSeconds - cleanupSeconds);
+        double[] seconds = {setupSeconds, this.emoteProcessingSeconds, serverAndIdleSeconds, cleanupSeconds};
         long[] tenths = new long[seconds.length];
         long total = Math.round(this.elapsedSeconds * 10.0D);
         long previous = 0;

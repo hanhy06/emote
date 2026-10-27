@@ -3,7 +3,6 @@
     "package": "io.github.hanhy06.emote.mixin",
     "compatibilityLevel": "JAVA_25",
     "mixins": [
-        "ConnectionMixin",
         "EntityMixin",
         "LivingEntityMixin",
         "ServerPlayerMixin"

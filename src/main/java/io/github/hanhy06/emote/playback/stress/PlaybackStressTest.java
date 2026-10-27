@@ -96,7 +96,6 @@ public final class PlaybackStressTest {
 
         stop();
         StressTestTiming timing = new StressTestTiming();
-        StressTestTiming.INSTANCE = timing;
         timing.begin(SETUP);
         int startedServerTick = EmoteMod.SERVER.getTickCount();
         long baselineTickNanos = EmoteMod.SERVER.getAverageTickTimeNanos();
@@ -489,7 +488,6 @@ public final class PlaybackStressTest {
                 percentile95Mspt,
                 maximumMspt,
                 durations[EMOTE.ordinal()] / 1_000_000_000.0D,
-                durations[NETWORK.ordinal()] / 1_000_000_000.0D,
                 averageMainProcessingMillis,
                 nanosToMillis(this.maximumMainProcessingNanos),
                 averageWorkerProcessingMillis,
