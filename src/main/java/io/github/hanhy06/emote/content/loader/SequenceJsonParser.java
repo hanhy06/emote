@@ -75,12 +75,6 @@ public final class SequenceJsonParser {
                 if (stepObject.has("repeat")) {
                     throw document.error(path + ".repeat", "is not supported on a wait step");
                 }
-                if (index == 0 || index == stepsArray.size() - 1) {
-                    throw document.error(path + ".wait", "must be between emote steps");
-                }
-                if (!steps.isEmpty() && steps.getLast() instanceof EmoteSequence.WaitStep) {
-                    throw document.error(path + ".wait", "must not follow another wait step");
-                }
                 steps.add(new EmoteSequence.WaitStep(document.requireTicks(stepObject, "wait", path, 1)));
                 continue;
             }

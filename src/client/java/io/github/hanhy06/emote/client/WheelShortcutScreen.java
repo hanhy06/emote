@@ -51,7 +51,7 @@ public class WheelShortcutScreen extends Screen {
             this.searchBox,
             Component.translatable("screen.emote.shortcuts.search")
         ));
-        this.searchBox.setMaxLength(64);
+        this.searchBox.setMaxLength(Integer.MAX_VALUE);
         this.searchBox.setHint(Component.translatable("screen.emote.shortcuts.search").setStyle(EditBox.SEARCH_HINT_STYLE));
 
         this.selectedList = this.addRenderableWidget(new EmoteShortcutList(

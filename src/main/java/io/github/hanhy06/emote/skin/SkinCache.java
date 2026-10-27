@@ -85,7 +85,10 @@ public final class SkinCache {
         if (expectedEpoch != epoch()) return Map.of();
         PlayerSkinSource.Key cacheKey = new PlayerSkinSource.Key(Objects.requireNonNull(textureHash, "textureHash").toLowerCase(Locale.ROOT), slimModel);
         Path filePath = resolveFilePath(textureHash, slimModel);
-        Map<PlayerSkinRegion, String> cached = peek(textureHash, slimModel);
+        Map<PlayerSkinRegion, String> cached;
+        synchronized (this.memoryLock) {
+            cached = this.skinTextures.get(cacheKey);
+        }
         if (cached != null) {
             refreshLastUsed(filePath, expectedEpoch);
             return cached;

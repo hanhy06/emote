@@ -4,10 +4,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.hanhy06.emote.skin.account.MinecraftAccountClient.MinecraftSession;
+import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
 
-import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -59,17 +58,14 @@ public class MinecraftSkinClient {
     }
 
     public BufferedImage downloadSkin(String textureUrl) throws IOException, InterruptedException {
-        HttpResponse<InputStream> response = this.http.send(HttpRequest.newBuilder(URI.create(textureUrl))
+        HttpResponse<InputStream> response = this.http.send(HttpRequest.newBuilder(textureUri(textureUrl))
             .timeout(Duration.ofSeconds(10)).GET().build(), HttpResponse.BodyHandlers.ofInputStream());
         byte[] bytes;
         try (InputStream input = response.body()) {
             if (response.statusCode() / 100 != 2) throw new IOException("Cannot download source skin (HTTP " + response.statusCode() + ")");
-            bytes = input.readNBytes(1_048_577);
-            if (bytes.length > 1_048_576) throw new IOException("Source skin exceeds maximum size");
+            bytes = input.readNBytes(PlayerSkinSource.MAX_PNG_BYTES + 1);
         }
-        BufferedImage image = ImageIO.read(new ByteArrayInputStream(bytes));
-        if (image == null) throw new IOException("Invalid source skin PNG");
-        return image;
+        return PlayerSkinSource.readPng(bytes, true);
     }
 
     private JsonObject send(HttpRequest request) throws IOException, InterruptedException {
@@ -92,19 +88,27 @@ public class MinecraftSkinClient {
             for (JsonElement element : profile.getAsJsonArray("skins")) {
                 JsonObject skin = element.getAsJsonObject();
                 if (!"ACTIVE".equals(skin.get("state").getAsString())) continue;
-                URI uri = URI.create(skin.get("url").getAsString());
-                if (("https".equals(uri.getScheme()) || "http".equals(uri.getScheme()))
-                    && "textures.minecraft.net".equals(uri.getHost()) && uri.getRawUserInfo() == null
-                    && uri.getPort() == -1 && uri.getQuery() == null && uri.getFragment() == null
-                    && uri.getPath().matches("/texture/[0-9a-fA-F]+")) {
-                    return "https://textures.minecraft.net" + uri.getPath();
-                }
-                throw new IOException("Minecraft returned an invalid texture URL");
+                return textureUri(skin.get("url").getAsString()).toString();
             }
         } catch (RuntimeException exception) {
             throw new IOException("Minecraft returned an invalid skin profile");
         }
         throw new IOException("Minecraft profile has no active skin");
+    }
+
+    private static URI textureUri(String url) throws IOException {
+        try {
+            URI uri = URI.create(url);
+            if (("https".equals(uri.getScheme()) || "http".equals(uri.getScheme()))
+                && "textures.minecraft.net".equals(uri.getHost()) && uri.getRawUserInfo() == null
+                && uri.getPort() == -1 && uri.getQuery() == null && uri.getFragment() == null
+                && uri.getPath().matches("/texture/[0-9a-fA-F]+")) {
+                return URI.create("https://textures.minecraft.net" + uri.getPath());
+            }
+        } catch (IllegalArgumentException exception) {
+            throw new IOException("Invalid skin texture URL", exception);
+        }
+        throw new IOException("Invalid skin texture URL");
     }
 
     static long retryDelay(String header) {

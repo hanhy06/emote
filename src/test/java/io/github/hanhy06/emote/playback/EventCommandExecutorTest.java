@@ -72,8 +72,11 @@ class EventCommandExecutorTest {
         for (var occurrence : events) {
             var origin = occurrence.event().origin();
             assertTrue(origin.useOriginRotation());
-            var point = EventCommandExecutor.resolveOrigin(origin, occurrence.pose());
-            var rotation = EventCommandExecutor.resolveRotation(origin, occurrence.pose());
+            var matrix = EventCommandExecutor.resolveOriginMatrix(origin, occurrence.pose());
+            var originalMatrix = new Matrix4f(matrix);
+            var point = EventCommandExecutor.resolveOrigin(origin, occurrence.pose(), matrix);
+            var rotation = EventCommandExecutor.resolveRotation(matrix);
+            assertEquals(originalMatrix, matrix);
             if (origin.type() == EmoteAnimation.OriginType.ROOT) {
                 assertEquals(EmoteAnimation.SourceType.NODE, occurrence.event().source().type());
                 assertTrue(prepared.model().nodes().get(occurrence.event().source().node()).attachments().get("display") instanceof EmoteAnimation.SkinAttachment);
@@ -101,7 +104,7 @@ class EventCommandExecutorTest {
             Vector3f offset = new Matrix4f().rotateY((float) facing).scale(0.9375F).translate(1, 2, 3).rotateY((float) parent).scale(2)
                 .translate(0.5f, 0.25f, -0.5f).rotateZYX((float) z, (float) y, (float) x)
                 .transformPosition(new Vector3f(0.25f, 0.5f, -0.125f));
-            assertTrue(target.root.position().add(offset.x, offset.y, offset.z).distanceTo(EventCommandExecutor.resolveOrigin(offsetOrigin, occurrence.pose())) < 1e-5);
+            assertTrue(target.root.position().add(offset.x, offset.y, offset.z).distanceTo(EventCommandExecutor.resolveOrigin(offsetOrigin, occurrence.pose(), matrix)) < 1e-5);
         }
         assertEquals(3, events.stream().filter(event -> event.event().origin().type() == EmoteAnimation.OriginType.NODE).count());
         assertEquals(0, events.getFirst().animationTick());

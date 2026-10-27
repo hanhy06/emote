@@ -17,11 +17,8 @@ public class EmoteCatalog {
     private boolean dispatchingNotifications;
 
     public int replace(Collection<? extends PreparedEmote> emotes) {
-        List<PreparedEmote> sorted = new ArrayList<>(emotes);
-        sorted.sort(Comparator.comparing(PreparedEmote::id));
-
         LinkedHashMap<String, PreparedEmote> byId = new LinkedHashMap<>();
-        for (PreparedEmote definition : sorted) {
+        for (PreparedEmote definition : emotes) {
             if (byId.putIfAbsent(definition.id(), definition) != null) {
                 throw new IllegalArgumentException("Duplicate emote id: " + definition.id());
             }
@@ -31,7 +28,7 @@ public class EmoteCatalog {
         boolean shouldDispatch;
         synchronized (this) {
             this.fileEmotes = Map.copyOf(byId);
-            rebuildState();
+            rebuildState(true);
             ignoredCount = this.fileEmotes.size() - this.state.fileEmotes().size();
             shouldDispatch = enqueueNotification(this.listeners);
         }
@@ -54,7 +51,7 @@ public class EmoteCatalog {
 
             registrationId = UUID.randomUUID();
             this.apiEmotes.put(emote.id(), new ApiEntry(registrationId, emote));
-            rebuildState();
+            rebuildState(emote instanceof PreparedAnimation);
             shouldDispatch = enqueueNotification(this.listeners);
         }
         dispatchNotifications(shouldDispatch);
@@ -72,7 +69,7 @@ public class EmoteCatalog {
                 return false;
             }
             this.apiEmotes.remove(id);
-            rebuildState();
+            rebuildState(entry.emote() instanceof PreparedAnimation);
             shouldDispatch = enqueueNotification(this.listeners);
         }
         dispatchNotifications(shouldDispatch);
@@ -92,7 +89,7 @@ public class EmoteCatalog {
 
             if (removedCount > 0) {
                 this.apiEmotes.clear();
-                rebuildState();
+                rebuildState(false);
                 shouldDispatch = enqueueNotification(this.listeners);
             }
         }
@@ -135,7 +132,7 @@ public class EmoteCatalog {
         dispatchNotifications(shouldDispatch);
     }
 
-    private void rebuildState() {
+    private void rebuildState(boolean animationsChanged) {
         List<PreparedEmote> apiList = this.apiEmotes.values().stream()
             .map(ApiEntry::emote)
             .sorted(Comparator.comparing(PreparedEmote::id))
@@ -150,30 +147,32 @@ public class EmoteCatalog {
         combined.addAll(fileList);
         combined.sort(Comparator.comparing(PreparedEmote::id));
 
-        Map<String, PreparedAnimation> animations = new HashMap<>();
-        for (PreparedEmote definition : this.fileEmotes.values()) {
-            if (definition instanceof PreparedAnimation animation) animations.put(animation.id(), animation);
-        }
-        for (ApiEntry entry : this.apiEmotes.values()) {
-            if (entry.emote() instanceof PreparedAnimation animation) animations.put(animation.id(), animation);
-        }
-        boolean removedSequence = false;
-        for (int index = 0; index < combined.size(); index++) {
-            PreparedEmote definition = combined.get(index);
-            ApiEntry entry = this.apiEmotes.get(definition.id());
-            if (entry == null || !(definition instanceof PreparedSequence sequence)) continue;
-            try {
-                PreparedSequence resolved = PreparedSequence.prepare(new LoadedSequence(sequence.sourcePath(), sequence.model()), animations);
-                this.apiEmotes.put(definition.id(), new ApiEntry(entry.registrationId(), resolved));
-                combined.set(index, resolved);
-            } catch (io.github.hanhy06.emote.api.EmoteLoadException exception) {
-                this.apiEmotes.remove(definition.id());
-                removedSequence = true;
+        if (animationsChanged) {
+            Map<String, PreparedAnimation> animations = new HashMap<>();
+            for (PreparedEmote definition : this.fileEmotes.values()) {
+                if (definition instanceof PreparedAnimation animation) animations.put(animation.id(), animation);
             }
-        }
-        if (removedSequence) {
-            rebuildState();
-            return;
+            for (ApiEntry entry : this.apiEmotes.values()) {
+                if (entry.emote() instanceof PreparedAnimation animation) animations.put(animation.id(), animation);
+            }
+            boolean removedSequence = false;
+            for (int index = 0; index < combined.size(); index++) {
+                PreparedEmote definition = combined.get(index);
+                ApiEntry entry = this.apiEmotes.get(definition.id());
+                if (entry == null || !(definition instanceof PreparedSequence sequence)) continue;
+                try {
+                    PreparedSequence resolved = PreparedSequence.prepare(new LoadedSequence(sequence.sourcePath(), sequence.model()), animations);
+                    this.apiEmotes.put(definition.id(), new ApiEntry(entry.registrationId(), resolved));
+                    combined.set(index, resolved);
+                } catch (io.github.hanhy06.emote.api.EmoteLoadException exception) {
+                    this.apiEmotes.remove(definition.id());
+                    removedSequence = true;
+                }
+            }
+            if (removedSequence) {
+                rebuildState(false);
+                return;
+            }
         }
 
         LinkedHashMap<String, PreparedEmote> emotesById = new LinkedHashMap<>();

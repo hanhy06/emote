@@ -162,13 +162,7 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
                 return super.mouseClicked(event, doubleClick);
             }
 
-            AbstractWidget.playButtonClickSound(minecraft.getSoundManager());
-            if (!selectedList) {
-                controller.shortcuts().add(this.emote.id());
-            } else {
-                controller.shortcuts().remove(this.emote.id());
-            }
-            screen.refreshLists();
+            toggleShortcut();
             return true;
         }
 
@@ -189,16 +183,20 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
         @Override
         public boolean keyPressed(KeyEvent event) {
             if (event.isConfirmation()) {
-                AbstractWidget.playButtonClickSound(minecraft.getSoundManager());
-                if (selectedList) {
-                    controller.shortcuts().remove(this.emote.id());
-                } else {
-                    controller.shortcuts().add(this.emote.id());
-                }
-                screen.refreshLists();
+                toggleShortcut();
                 return true;
             }
             return super.keyPressed(event);
+        }
+
+        private void toggleShortcut() {
+            AbstractWidget.playButtonClickSound(minecraft.getSoundManager());
+            if (selectedList) {
+                controller.shortcuts().remove(this.emote.id());
+            } else {
+                controller.shortcuts().add(this.emote.id());
+            }
+            screen.refreshLists();
         }
 
         private Component fitText(String text, int maxWidth) {
