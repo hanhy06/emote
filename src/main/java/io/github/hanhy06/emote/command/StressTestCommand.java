@@ -218,12 +218,10 @@ final class StressTestCommand {
             .append(Component.literal(String.format(Locale.ROOT, "%.1f s", tenths[0] / 10.0D)).withStyle(ChatFormatting.WHITE))
             .append(Component.literal(" + Emote ").withStyle(ChatFormatting.GREEN))
             .append(Component.literal(String.format(Locale.ROOT, "%.1f s", tenths[1] / 10.0D)).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal(" + Network ").withStyle(ChatFormatting.AQUA))
-            .append(Component.literal(String.format(Locale.ROOT, "%.1f s", tenths[2] / 10.0D)).withStyle(ChatFormatting.WHITE))
             .append(Component.literal("\n  + Server/idle ").withStyle(ChatFormatting.GRAY))
-            .append(Component.literal(String.format(Locale.ROOT, "%.1f s", tenths[3] / 10.0D)).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal(String.format(Locale.ROOT, "%.1f s", tenths[2] / 10.0D)).withStyle(ChatFormatting.WHITE))
             .append(Component.literal(" + Cleanup ").withStyle(ChatFormatting.GOLD))
-            .append(Component.literal(String.format(Locale.ROOT, "%.1f s", tenths[4] / 10.0D)).withStyle(ChatFormatting.WHITE));
+            .append(Component.literal(String.format(Locale.ROOT, "%.1f s", tenths[3] / 10.0D)).withStyle(ChatFormatting.WHITE));
     }
 
     static MutableComponent createStressStatistic(

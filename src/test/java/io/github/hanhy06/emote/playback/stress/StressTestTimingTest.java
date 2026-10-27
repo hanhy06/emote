@@ -1,72 +1,44 @@
 package io.github.hanhy06.emote.playback.stress;
 
-import io.netty.buffer.Unpooled;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelOutboundHandlerAdapter;
-import io.netty.channel.ChannelPromise;
-import io.netty.channel.embedded.EmbeddedChannel;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static io.github.hanhy06.emote.playback.stress.StressTestTiming.Phase.*;
+import static io.github.hanhy06.emote.playback.stress.StressTestTiming.ThreadRole.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class StressTestTimingTest {
     @Test
-    void measuresOutboundWriteAndFlushAndPreservesThePayload() {
+    void reportsOverlappingThreadWorkWithoutDuplicatingWallTime() {
         AtomicLong clock = new AtomicLong();
         StressTestTiming timing = new StressTestTiming(clock::get);
-        EmbeddedChannel channel = new EmbeddedChannel(new ChannelOutboundHandlerAdapter() {
-            @Override
-            public void write(ChannelHandlerContext context, Object message, ChannelPromise promise) {
-                clock.addAndGet(3);
-                context.write(message, promise);
-            }
+        timing.begin(SETUP);
+        clock.set(1_000_000_000L);
+        timing.end(SETUP);
+        clock.set(2_000_000_000L);
+        timing.begin(MAIN);
+        clock.set(3_000_000_000L);
+        timing.begin(WORKER);
+        clock.set(4_000_000_000L);
+        timing.end(MAIN);
+        clock.set(5_000_000_000L);
+        timing.end(WORKER);
+        clock.set(7_000_000_000L);
+        timing.begin(CLEANUP);
+        clock.set(8_000_000_000L);
+        timing.end(CLEANUP);
+        clock.set(9_000_000_000L);
+        long[] durations = timing.finish();
+        var report = new PlaybackStressTestReport(
+            1, 1, 1, 0, 140, Arrays.stream(durations).sum() / 1_000_000_000.0D,
+            durations[SETUP.ordinal()] / 1_000_000.0D, durations[CLEANUP.ordinal()] / 1_000_000.0D,
+            0, 0, 0, 0, durations[EMOTE.ordinal()] / 1_000_000_000.0D, 0, 0, 0, 0
+        );
 
-            @Override
-            public void flush(ChannelHandlerContext context) {
-                clock.addAndGet(2);
-                context.flush();
-            }
-        }, new StressTestTiming.NetworkHandler());
-        StressTestTiming.INSTANCE = timing;
-        try {
-            var payload = Unpooled.buffer().writeInt(123);
-            assertTrue(channel.writeOutbound(payload));
-            assertSame(payload, channel.readOutbound());
-            payload.release();
-            clock.addAndGet(10);
-            assertArrayEquals(new long[]{0, 0, 0, 5, 10}, timing.finish());
-            assertNull(StressTestTiming.INSTANCE);
-            assertTrue(channel.writeOutbound("after stop"));
-            assertEquals("after stop", channel.readOutbound());
-            assertArrayEquals(new long[]{0, 0, 0, 5, 10}, timing.finish());
-        } finally {
-            timing.finish();
-            channel.finishAndReleaseAll();
-        }
+        assertEquals(2_000_000_000L, timing.nanos(MAIN));
+        assertEquals(2_000_000_000L, timing.nanos(WORKER));
+        assertArrayEquals(new long[]{10, 30, 40, 10}, report.durationTenths());
     }
-
-    @Test
-    void failedWriteDoesNotLeaveNetworkTimingActive() {
-        AtomicLong clock = new AtomicLong();
-        StressTestTiming timing = new StressTestTiming(clock::get);
-        EmbeddedChannel channel = new EmbeddedChannel(new ChannelOutboundHandlerAdapter() {
-            @Override
-            public void write(ChannelHandlerContext context, Object message, ChannelPromise promise) {
-                clock.set(7);
-                promise.setFailure(new IllegalStateException("write failed"));
-            }
-        }, new StressTestTiming.NetworkHandler());
-        StressTestTiming.INSTANCE = timing;
-        try {
-            assertThrows(IllegalStateException.class, () -> channel.writeOutbound("packet"));
-            clock.set(20);
-            assertArrayEquals(new long[]{0, 0, 0, 7, 13}, timing.finish());
-        } finally {
-            timing.finish();
-            channel.finishAndReleaseAll();
-        }
-    }
-
 }
