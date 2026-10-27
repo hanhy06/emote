@@ -1,18 +1,11 @@
 package io.github.hanhy06.emote.playback.stress;
 
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelOutboundHandlerAdapter;
-import io.netty.channel.ChannelPromise;
-import org.jspecify.annotations.Nullable;
-
 import java.util.function.LongSupplier;
 
-public final class StressTestTiming {
-    public static volatile @Nullable StressTestTiming INSTANCE;
-
+final class StressTestTiming {
     // Earlier phases own overlapping wall time; parallel work is never added twice.
-    public enum Phase { SETUP, CLEANUP, EMOTE, NETWORK, SERVER_IDLE }
-    public enum ThreadRole { MAIN, WORKER }
+    enum Phase { SETUP, CLEANUP, EMOTE, SERVER_IDLE }
+    enum ThreadRole { MAIN, WORKER }
 
     private final LongSupplier clock;
     private final int[] active = new int[Phase.values().length];
@@ -22,49 +15,48 @@ public final class StressTestTiming {
     private long lastNanos;
     private boolean finished;
 
-    public StressTestTiming() { this(System::nanoTime); }
+    StressTestTiming() { this(System::nanoTime); }
 
     StressTestTiming(LongSupplier clock) {
         this.clock = clock;
         this.lastNanos = clock.getAsLong();
     }
 
-    public synchronized void begin(Phase phase) {
+    synchronized void begin(Phase phase) {
         if (this.finished) return;
         update(this.clock.getAsLong());
         this.active[phase.ordinal()]++;
     }
 
-    public synchronized void end(Phase phase) {
+    synchronized void end(Phase phase) {
         if (this.finished) return;
         update(this.clock.getAsLong());
         this.active[phase.ordinal()]--;
     }
 
-    public synchronized void begin(ThreadRole thread) {
+    synchronized void begin(ThreadRole thread) {
         if (this.finished) return;
         update(this.clock.getAsLong());
         this.active[Phase.EMOTE.ordinal()]++;
         this.activeThreads[thread.ordinal()]++;
     }
 
-    public synchronized void end(ThreadRole thread) {
+    synchronized void end(ThreadRole thread) {
         if (this.finished) return;
         update(this.clock.getAsLong());
         this.active[Phase.EMOTE.ordinal()]--;
         this.activeThreads[thread.ordinal()]--;
     }
 
-    public synchronized long nanos(ThreadRole thread) {
+    synchronized long nanos(ThreadRole thread) {
         if (!this.finished) update(this.clock.getAsLong());
         return this.threadNanos[thread.ordinal()];
     }
 
-    public synchronized long[] finish() {
+    synchronized long[] finish() {
         if (!this.finished) {
             update(this.clock.getAsLong());
             this.finished = true;
-            if (INSTANCE == this) INSTANCE = null;
         }
         return this.durations.clone();
     }
@@ -82,23 +74,5 @@ public final class StressTestTiming {
             if (this.activeThreads[index] > 0) this.threadNanos[index] += now - this.lastNanos;
         }
         this.lastNanos = now;
-    }
-
-    public static final class NetworkHandler extends ChannelOutboundHandlerAdapter {
-        @Override
-        public void write(ChannelHandlerContext context, Object message, ChannelPromise promise) throws Exception {
-            StressTestTiming timing = INSTANCE;
-            if (timing != null) timing.begin(Phase.NETWORK);
-            try { context.write(message, promise); }
-            finally { if (timing != null) timing.end(Phase.NETWORK); }
-        }
-
-        @Override
-        public void flush(ChannelHandlerContext context) throws Exception {
-            StressTestTiming timing = INSTANCE;
-            if (timing != null) timing.begin(Phase.NETWORK);
-            try { context.flush(); }
-            finally { if (timing != null) timing.end(Phase.NETWORK); }
-        }
     }
 }
