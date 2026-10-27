@@ -325,9 +325,6 @@ public class WheelScreen extends Screen {
         private double remainder;
 
         int add(double amount) {
-            if (amount == 0.0D || !Double.isFinite(amount)) {
-                return 0;
-            }
             if (this.remainder * amount < 0.0D) {
                 this.remainder = 0.0D;
             }

@@ -192,42 +192,38 @@ final class StressTestCommand {
             .append(createStressStatistic("\n  ", "p95", "%.2f ms", ChatFormatting.GOLD, report.percentile95Mspt()))
             .append(createStressStatistic("  ", "max", "%.2f ms", ChatFormatting.RED, report.maximumMspt()))
             .append(Component.literal("\n\nEmote processing").withStyle(ChatFormatting.GRAY))
-            .append(Component.literal("\n• Tick: ").withStyle(ChatFormatting.GREEN))
+            .append(Component.literal("\n• Main: ").withStyle(ChatFormatting.GREEN))
             .append(Component.literal(String.format(
                 Locale.ROOT,
-                "avg %.3f ms / max %.3f ms",
-                report.averageEmoteProcessingMillis(),
-                report.maximumEmoteProcessingMillis()
+                "avg %.2f ms / max %.2f ms",
+                report.averageMainProcessingMillis(),
+                report.maximumMainProcessingMillis()
+            )).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("\n• Worker: ").withStyle(ChatFormatting.AQUA))
+            .append(Component.literal(String.format(
+                Locale.ROOT,
+                "avg %.2f ms / max %.2f ms",
+                report.averageWorkerProcessingMillis(),
+                report.maximumWorkerProcessingMillis()
             )).withStyle(ChatFormatting.WHITE));
         source.sendSuccess(() -> message, true);
     }
 
     static Component createStressDurationSummary(PlaybackStressTestReport report) {
-        double elapsedSeconds = roundTenths(report.elapsedSeconds());
-        double setupSeconds = roundTenths(report.creationMillis() / 1_000.0D);
-        double emoteSeconds = roundTenths(report.emoteProcessingSeconds());
-        double cleanupSeconds = roundTenths(report.cleanupMillis() / 1_000.0D);
-        double serverAndIdleSeconds = Math.max(
-            0.0D,
-            elapsedSeconds
-                - setupSeconds
-                - emoteSeconds
-                - cleanupSeconds
-        );
+        long[] tenths = report.durationTenths();
         return Component.literal("\n• Duration: ").withStyle(ChatFormatting.GOLD)
-            .append(Component.literal(String.format(Locale.ROOT, "%.1f s", elapsedSeconds)).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal(String.format(Locale.ROOT, "%.1f s", Math.round(report.elapsedSeconds() * 10.0D) / 10.0D)).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal(" (wall time)").withStyle(ChatFormatting.GRAY))
             .append(Component.literal("\n  Setup ").withStyle(ChatFormatting.YELLOW))
-            .append(Component.literal(String.format(Locale.ROOT, "%.1f s", setupSeconds)).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal(String.format(Locale.ROOT, "%.1f s", tenths[0] / 10.0D)).withStyle(ChatFormatting.WHITE))
             .append(Component.literal(" + Emote ").withStyle(ChatFormatting.GREEN))
-            .append(Component.literal(String.format(Locale.ROOT, "%.1f s", emoteSeconds)).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal(String.format(Locale.ROOT, "%.1f s", tenths[1] / 10.0D)).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal(" + Network ").withStyle(ChatFormatting.AQUA))
+            .append(Component.literal(String.format(Locale.ROOT, "%.1f s", tenths[2] / 10.0D)).withStyle(ChatFormatting.WHITE))
             .append(Component.literal("\n  + Server/idle ").withStyle(ChatFormatting.GRAY))
-            .append(Component.literal(String.format(Locale.ROOT, "%.1f s", serverAndIdleSeconds)).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal(String.format(Locale.ROOT, "%.1f s", tenths[3] / 10.0D)).withStyle(ChatFormatting.WHITE))
             .append(Component.literal(" + Cleanup ").withStyle(ChatFormatting.GOLD))
-            .append(Component.literal(String.format(Locale.ROOT, "%.1f s", cleanupSeconds)).withStyle(ChatFormatting.WHITE));
-    }
-
-    private static double roundTenths(double value) {
-        return Math.round(value * 10.0D) / 10.0D;
+            .append(Component.literal(String.format(Locale.ROOT, "%.1f s", tenths[4] / 10.0D)).withStyle(ChatFormatting.WHITE));
     }
 
     static MutableComponent createStressStatistic(

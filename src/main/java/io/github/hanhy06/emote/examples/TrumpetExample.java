@@ -185,6 +185,10 @@ public final class TrumpetExample implements EmoteCallbacks {
         );
         List<HornListener> listeners = new ArrayList<>();
 
+        // Convert a MIDI note to a pitch multiplier for the chosen sound sample.
+        double frequency = 440.0 * Math.pow(2.0, (note.midi() + PITCH_OFFSET - 12.0 - 69.0) / 12.0);
+        float pitch = Math.clamp((float) (frequency / BASE_FREQUENCY), 0.5F, 2.0F);
+
         for (HornListener listener : melody.listeners) {
             // A stop-sound packet targets the sound ID, so avoid competing notes per listener.
             boolean soundOccupied = this.activeMelodies.stream()
@@ -197,7 +201,10 @@ public final class TrumpetExample implements EmoteCallbacks {
                 continue;
             }
 
-            playNote(melody.origin, note.midi(), note.volume(), serverTick, listener.send());
+            listener.send().accept(new ClientboundSoundPacket(
+                Holder.direct(SoundEvent.createFixedRangeEvent(SOUND, RANGE)), SoundSource.RECORDS,
+                origin.x, origin.y, origin.z, note.volume(), pitch, serverTick
+            ));
             listener.send().accept(particle);
             listeners.add(listener);
         }
@@ -209,6 +216,15 @@ public final class TrumpetExample implements EmoteCallbacks {
 
     /** The offset is measured from playback start, rather than from the previous note. */
     record HornNote(int offsetTicks, double midi, int durationTicks, float volume) {
+        HornNote {
+            if (!Double.isFinite(midi) || midi < 0 || midi > 127) {
+                throw new IllegalArgumentException("MIDI note must be between 0 and 127");
+            }
+
+            if (!Float.isFinite(volume) || volume <= 0 || volume > 1) {
+                throw new IllegalArgumentException("Horn volume must be greater than 0 and at most 1");
+            }
+        }
     }
 
     static final class TrumpetCanCan {
@@ -251,24 +267,6 @@ public final class TrumpetExample implements EmoteCallbacks {
     }
 
     private record ActiveHornNote(long endTick, List<HornListener> listeners) {
-    }
-
-    private static void playNote(Vec3 origin, double midi, float volume, long seed, Consumer<Packet<?>> send) {
-        if (!Double.isFinite(midi) || midi < 0 || midi > 127) {
-            throw new IllegalArgumentException("MIDI note must be between 0 and 127");
-        }
-
-        if (!Float.isFinite(volume) || volume <= 0 || volume > 1) {
-            throw new IllegalArgumentException("Horn volume must be greater than 0 and at most 1");
-        }
-
-        // Convert a MIDI note to a pitch multiplier for the chosen sound sample.
-        double frequency = 440.0 * Math.pow(2.0, (midi + PITCH_OFFSET - 12.0 - 69.0) / 12.0);
-        float pitch = Math.clamp((float) (frequency / BASE_FREQUENCY), 0.5F, 2.0F);
-        send.accept(new ClientboundSoundPacket(
-            Holder.direct(SoundEvent.createFixedRangeEvent(SOUND, RANGE)), SoundSource.RECORDS,
-            origin.x, origin.y, origin.z, volume, pitch, seed
-        ));
     }
 
     private static void stopSound(Consumer<Packet<?>> send) {

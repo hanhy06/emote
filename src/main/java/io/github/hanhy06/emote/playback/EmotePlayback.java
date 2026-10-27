@@ -154,9 +154,9 @@ public final class EmotePlayback {
         this.pendingFrame = frame;
         try {
             frame.result = preparation.get();
-            frame.finalPose = frame.view();
-            frame.skinAnimationId = this.child != null ? this.child.emote.id() : this.emote instanceof PreparedAnimation ? this.emote.id() : null;
             frame.timeline = timeline();
+            frame.finalPose = frame.view(frame.timeline);
+            frame.skinAnimationId = this.child != null ? this.child.emote.id() : this.emote instanceof PreparedAnimation ? this.emote.id() : null;
             return frame;
         } catch (RuntimeException | Error exception) {
             frame.discard();
@@ -835,9 +835,13 @@ public final class EmotePlayback {
     }
 
     public PlaybackPosition position() {
+        return position(null);
+    }
+
+    private PlaybackPosition position(@Nullable PlaybackTimeline timeline) {
         if (this.notificationView != null) return this.notificationView.position;
         if (this.stoppedPosition != null) return this.stoppedPosition;
-        var segments = timeline().segments();
+        var segments = (timeline == null ? timeline() : timeline).segments();
         if ((this.emote instanceof PreparedSequence)) {
             var selected = segments.get(Math.min(this.sequenceSegment, segments.size() - 1));
             return new PlaybackPosition(selected.segmentIndex(), selected.stepIndex(), selected.repeatIndex(), selected.phase(), this.phaseTick,
@@ -969,7 +973,8 @@ public final class EmotePlayback {
             }
         }
 
-        private PoseView view() { return this.fixedView == null ? new PoseView(owner.currentTick, owner.position(), root, placement, orientationYaw, nodeMatrices) : this.fixedView; }
+        private PoseView view() { return view(null); }
+        private PoseView view(@Nullable PlaybackTimeline timeline) { return this.fixedView == null ? new PoseView(owner.currentTick, owner.position(timeline), root, placement, orientationYaw, nodeMatrices) : this.fixedView; }
         public AdvanceResult result() { return this.result; }
         public PoseView pose() { return this.finalPose; }
         public PlaybackTimeline timeline() { return this.timeline; }

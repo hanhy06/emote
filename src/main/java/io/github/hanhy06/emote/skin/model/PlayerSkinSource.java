@@ -9,8 +9,11 @@ import org.jspecify.annotations.Nullable;
 import io.github.hanhy06.emote.util.Sha256;
 
 import javax.imageio.ImageIO;
+import javax.imageio.stream.MemoryCacheImageInputStream;
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HexFormat;
 
 import java.util.Objects;
@@ -25,6 +28,8 @@ public record PlayerSkinSource(
     @Nullable byte[] png,
     @Nullable SkinOverride override
 ) {
+    public static final int MAX_PNG_BYTES = 1_048_576;
+
     public PlayerSkinSource(UUID playerUuid, String playerName, String textureHash, String textureUrl, boolean slimModel) {
         this(playerUuid, playerName, textureHash, textureUrl, slimModel, null, null);
     }
@@ -38,8 +43,7 @@ public record PlayerSkinSource(
 
     public record Key(String textureHash, boolean slimModel) {}
 
-    public static PlayerSkinSource fromPng(byte[] png) throws IOException {
-        readPng(png);
+    public static PlayerSkinSource fromPng(byte[] png) {
         String hash = HexFormat.of().formatHex(Sha256.newDigest().digest(png));
         return new PlayerSkinSource(UUID.nameUUIDFromBytes(png), "embedded", hash, "", false, png, null);
     }
@@ -54,13 +58,25 @@ public record PlayerSkinSource(
         return new PlayerSkinSource(this.playerUuid, this.playerName, hash, this.textureUrl, this.slimModel, this.png, override);
     }
 
-    public static java.awt.image.BufferedImage readPng(byte[] png) throws IOException {
-        if (png.length > 1_048_576 || png.length < 8 || png[0] != (byte) 0x89 || png[1] != 0x50 || png[2] != 0x4e || png[3] != 0x47) {
+    public static BufferedImage readPng(byte[] png) throws IOException {
+        return readPng(png, false);
+    }
+
+    public static BufferedImage readPng(byte[] png, boolean allowLegacy) throws IOException {
+        if (png.length > MAX_PNG_BYTES || png.length < 8 || !Arrays.equals(png, 0, 8, new byte[]{(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a}, 0, 8)) {
             throw new IOException("skin image must be a PNG no larger than 1 MiB");
         }
-        var image = ImageIO.read(new ByteArrayInputStream(png));
-        if (image == null || image.getWidth() != 64 || image.getHeight() != 64) throw new IOException("skin image must be 64x64 with wide UVs");
-        return image;
+        var reader = ImageIO.getImageReadersByFormatName("png").next();
+        try (var input = new MemoryCacheImageInputStream(new ByteArrayInputStream(png))) {
+            reader.setInput(input, true, true);
+            int width = reader.getWidth(0), height = reader.getHeight(0);
+            if (width != 64 || (height != 64 && !(allowLegacy && height == 32))) {
+                throw new IOException(allowLegacy ? "skin image must be 64x32 or 64x64" : "skin image must be 64x64 with wide UVs");
+            }
+            return reader.read(0);
+        } finally {
+            reader.dispose();
+        }
     }
 
     public static @Nullable PlayerSkinSource fromProfile(GameProfile profile, MinecraftSessionService sessionService) {

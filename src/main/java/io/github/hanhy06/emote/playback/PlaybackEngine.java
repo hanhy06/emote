@@ -245,7 +245,6 @@ public final class PlaybackEngine implements ConfigListener {
             for (ActivePlayback playback : this.framePlaybacks) playback.frameError = exception;
             this.stressTest.failFrames(exception);
         }
-        long waitNanos = System.nanoTime() - endTickStartedNanos;
         for (ActivePlayback playback : this.framePlaybacks) {
             if (!contains(playback.session) || playback.frameError != null) {
                 playback.frame.discard();
@@ -295,7 +294,7 @@ public final class PlaybackEngine implements ConfigListener {
         }
         this.framePlaybacks = List.of();
         finishClosings();
-        this.stressTest.tick(endTickStartedNanos, waitNanos);
+        this.stressTest.tick(endTickStartedNanos);
     }
 
     public @Nullable PlaybackSession stop(PlaybackSession session, PlaybackStopReason reason) {

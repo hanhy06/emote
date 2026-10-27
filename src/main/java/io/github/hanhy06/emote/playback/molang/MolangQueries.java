@@ -1,22 +1,34 @@
 package io.github.hanhy06.emote.playback.molang;
 
 import io.github.hanhy06.emote.molang.MolangEngine;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 import java.util.Set;
 import java.util.function.ToDoubleFunction;
 
 public final class MolangQueries {
-    static void applyEmpty(MolangEngine.Session session, Set<String> queries) {
-        setSpatialQueries(session, Vec3.ZERO, Vec3.ZERO, queries);
+    public static MolangQuerySource forEntity(Entity entity) {
+        return (session, queries) -> applyEntity(entity, session, queries);
+    }
+
+    static void applyEntity(@Nullable Entity entity, MolangEngine.Session session, Set<String> queries) {
+        setSpatialQueries(session, entity != null && queries.contains("position") ? entity.position() : Vec3.ZERO,
+            entity != null && (queries.contains("position_delta") || queries.contains("movement_direction")) ? entity.getDeltaMovement() : Vec3.ZERO, queries);
+        float yaw = entity != null && (queries.contains("body_y_rotation") || queries.contains("head_y_rotation") || queries.contains("eye_target_y_rotation")) ? entity.getYRot() : 0;
         for (String query : queries) {
             switch (query) {
-                case "target_x_rotation", "target_y_rotation", "body_x_rotation", "body_y_rotation",
-                     "head_x_rotation", "head_y_rotation", "eye_target_x_rotation", "eye_target_y_rotation",
+                case "is_emoting" -> session.setQuery(query, entity != null ? 1 : 0);
+                case "is_alive" -> session.setQuery(query, entity != null && entity.isAlive() ? 1 : 0);
+                case "is_on_ground" -> session.setQuery(query, entity != null && entity.onGround() ? 1 : 0);
+                case "is_in_water" -> session.setQuery(query, entity != null && entity.isInWater() ? 1 : 0);
+                case "body_y_rotation", "head_y_rotation", "eye_target_y_rotation" -> session.setQuery(query, yaw);
+                case "target_x_rotation", "target_y_rotation", "body_x_rotation", "head_x_rotation", "eye_target_x_rotation",
                      "ground_speed", "vertical_speed", "modified_distance_moved", "walk_distance",
-                     "is_moving", "is_on_ground", "is_sneaking", "is_sprinting", "is_swimming", "is_gliding",
-                     "is_riding", "is_using_item", "is_sleeping", "is_emoting", "sleep_rotation", "is_on_fire",
-                     "is_in_water", "health", "max_health", "is_alive", "is_spectator", "head_is_in_water",
+                     "is_moving", "is_sneaking", "is_sprinting", "is_swimming", "is_gliding",
+                     "is_riding", "is_using_item", "is_sleeping", "sleep_rotation", "is_on_fire",
+                     "health", "max_health", "is_spectator", "head_is_in_water",
                      "is_in_lava", "is_in_water_or_rain", "hurt_time", "death_ticks", "invulnerable_ticks",
                      "player_level", "item_in_use_duration", "item_remaining_use_duration", "item_max_use_duration",
                      "blocking", "is_eating", "is_jumping", "is_crawling", "is_invisible", "is_levitating",
