@@ -156,9 +156,9 @@ export function App() {
   }, []);
 
   const filePicker = (
-    <label className={`file-input${busy || !eventJsonValid || !settingsValid ? " disabled" : ""}`}>
+    <label className={`file-input${busy ? " disabled" : ""}`}>
       <span>{session ? "Open other files" : "Choose animation files"}</span>
-      <input type="file" accept={ACCEPTED_EXTENSIONS} multiple onChange={handleFileChange} disabled={busy || !eventJsonValid || !settingsValid} />
+      <input type="file" accept={ACCEPTED_EXTENSIONS} multiple onChange={handleFileChange} disabled={busy} />
     </label>
   );
 

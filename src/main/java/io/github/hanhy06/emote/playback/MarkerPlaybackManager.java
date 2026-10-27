@@ -5,7 +5,7 @@ import io.github.hanhy06.emote.api.PlaybackPlacement;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.PreparedEmote;
-import io.github.hanhy06.emote.playback.molang.EntityMolangQueries;
+import io.github.hanhy06.emote.playback.molang.MolangQueries;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -124,7 +124,7 @@ public final class MarkerPlaybackManager {
         Marker marker = entry.marker;
         ServerLevel level = (ServerLevel) marker.level();
         var result = this.engine.start(new PlaybackEngine.Request(level, RootTransform.create(marker.position(), marker.getYRot()),
-            emote, Map.of("actor", marker), EntityMolangQueries.forEntity(marker),
+            emote, Map.of("actor", marker), MolangQueries.forEntity(marker),
             EmoteMod.SERVER.createCommandSourceStack().withEntity(marker).withLevel(level)
                 .withPosition(marker.position()).withRotation(marker.getRotationVector()),
             preparation.textures(), lifecycle, PlaybackPlacement.Mode.ACTOR), entry.session);
