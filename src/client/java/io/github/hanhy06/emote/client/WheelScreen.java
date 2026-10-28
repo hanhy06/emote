@@ -15,7 +15,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
-import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.client.renderer.texture.TextureResources;
 import net.minecraft.network.chat.Component;
 import org.jspecify.annotations.NonNull;
 
@@ -49,7 +49,8 @@ public class WheelScreen extends Screen {
     private List<SlotGeometry> slotGeometries = List.of();
     private int pageIndex;
     private int hoveredSlotIndex = -1;
-    private DynamicTexture wheelTexture;
+    private TextureResources wheelTexture;
+    private NativeImage wheelPixels;
     private int[] textureSlotColors = new int[0];
 
     public WheelScreen(WheelController controller, List<EmoteSummary> emotes, int pageIndex, KeyMapping keyMapping) {
@@ -66,6 +67,8 @@ public class WheelScreen extends Screen {
         if (this.wheelTexture != null) {
             this.wheelTexture.close();
             this.wheelTexture = null;
+            this.wheelPixels.close();
+            this.wheelPixels = null;
         }
         this.textureSlotColors = new int[0];
         this.metrics = WheelGeometry.createMetrics(this.width, this.height);
@@ -91,6 +94,8 @@ public class WheelScreen extends Screen {
         if (this.wheelTexture != null) {
             this.wheelTexture.close();
             this.wheelTexture = null;
+            this.wheelPixels.close();
+            this.wheelPixels = null;
         }
         super.removed();
     }
@@ -101,14 +106,14 @@ public class WheelScreen extends Screen {
     }
 
     @Override
-    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
+    public void extractBackground(GuiGraphicsExtractor graphics) {
         graphics.fillGradient(0, 0, this.width, this.height, BACKGROUND_TOP_COLOR, BACKGROUND_BOTTOM_COLOR);
     }
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
-        super.extractRenderState(graphics, mouseX, mouseY, a);
-        updateHoveredSlot(mouseX, mouseY);
+    public void extractRenderState(GuiGraphicsExtractor graphics) {
+        super.extractRenderState(graphics);
+        updateHoveredSlot(graphics.mouseX(), graphics.mouseY());
 
         WheelMetrics metrics = this.metrics;
         List<EmoteSummary> pageEmotes = getCurrentPageEntries();
@@ -355,24 +360,26 @@ public class WheelScreen extends Screen {
         }
         if (this.wheelTexture == null || !Arrays.equals(colors, this.textureSlotColors)) {
             BufferedImage image = WheelGeometry.createWheelImage(this.metrics, Math.max(1, this.minecraft.getWindow().getGuiScale()), colors, CENTER_FILL_COLOR);
-            NativeImage pixels = this.wheelTexture == null
-                ? new NativeImage(image.getWidth(), image.getHeight(), false)
-                : this.wheelTexture.getPixels();
+            if (this.wheelPixels == null) {
+                this.wheelPixels = new NativeImage(image.getWidth(), image.getHeight(), false);
+            }
             for (int y = 0; y < image.getHeight(); y++) {
                 for (int x = 0; x < image.getWidth(); x++) {
-                    pixels.setPixel(x, y, image.getRGB(x, y));
+                    this.wheelPixels.setPixel(x, y, image.getRGB(x, y));
                 }
             }
             if (this.wheelTexture == null) {
-                this.wheelTexture = new DynamicTexture(() -> "Emote wheel", pixels);
+                this.wheelTexture = TextureResources.from2dImage(
+                    () -> "Emote wheel", this.wheelPixels, RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR)
+                );
             } else {
-                this.wheelTexture.upload();
+                this.wheelPixels.writeToGpuTexture(RenderSystem.getDevice().createCommandEncoder(), this.wheelTexture.texture());
             }
             this.textureSlotColors = colors;
         }
         int radius = this.metrics.outerRadius() + 1;
         graphics.blit(
-            this.wheelTexture.getTextureView(), RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR),
+            this.wheelTexture.textureView(), this.wheelTexture.sampler(),
             this.metrics.centerX() - radius, this.metrics.centerY() - radius,
             this.metrics.centerX() + radius, this.metrics.centerY() + radius,
             0.0F, 1.0F, 0.0F, 1.0F

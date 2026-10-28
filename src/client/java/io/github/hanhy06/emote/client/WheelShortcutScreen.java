@@ -109,8 +109,8 @@ public class WheelShortcutScreen extends Screen {
     }
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
-        super.extractRenderState(graphics, mouseX, mouseY, a);
+    public void extractRenderState(GuiGraphicsExtractor graphics) {
+        super.extractRenderState(graphics);
         int centerX = this.width / 2;
         int selectedCenterX = this.selectedList.getX() + this.selectedList.getWidth() / 2;
         int availableCenterX = this.availableList.getX() + this.availableList.getWidth() / 2;

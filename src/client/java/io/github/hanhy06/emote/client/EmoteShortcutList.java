@@ -6,12 +6,12 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiPipeline;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.ObjectSelectionList;
 import net.minecraft.client.gui.components.SelectableEntry;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
-import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
@@ -134,7 +134,7 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
         }
 
         @Override
-        public void extractContent(GuiGraphicsExtractor graphics, int mouseX, int mouseY, boolean hovered, float a) {
+        public void extractContent(GuiGraphicsExtractor graphics, boolean hovered) {
             int controlX = getContentX();
             int controlY = getContentY() + CONTROL_Y_OFFSET;
             boolean showControls = hovered || EmoteShortcutList.this.getSelected() == this && EmoteShortcutList.this.isFocused();
@@ -142,7 +142,7 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
             Identifier sprite = selectedList
                 ? showControls ? SELECT_HIGHLIGHTED_SPRITE : SELECT_SPRITE
                 : showControls ? UNSELECT_HIGHLIGHTED_SPRITE : UNSELECT_SPRITE;
-            graphics.blitSprite(RenderPipelines.GUI_TEXTURED, sprite, controlX, controlY, CONTROL_SIZE, CONTROL_SIZE);
+            graphics.blitSprite(GuiPipeline.TEXTURED, sprite, controlX, controlY, CONTROL_SIZE, CONTROL_SIZE);
 
             int textX = controlX + CONTROL_SIZE + TEXT_GAP;
             int textWidth = Math.max(0, getContentRight() - textX - TEXT_GAP);
