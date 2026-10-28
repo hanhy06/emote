@@ -48,7 +48,7 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
   if (project.animations.length === 0 && project.animationDiagnostics?.length) {
     throw new ConversionError("no_importable_animations", `No Animated Java animations could be imported. ${project.animationDiagnostics.map((issue) => issue.message).join(" ")}`);
   }
-  const sourceAnimations = project.animations.length > 0 ? project.animations : [staticProjectAnimation()];
+  const sourceAnimations: AjProjectAnimation[] = project.animations.length > 0 ? project.animations : [{ name: "idle", length: 0.05, loop: "once", animators: {} }];
   const transformGraph = buildProjectTransformGraph(project);
   const cubeContent = importAnimatedJavaCubes(project, sourceStem, transformGraph);
   const displayElements = project.elements.filter((element): element is AjProjectDisplayElement => isDirectDisplay(element.type));
@@ -111,10 +111,6 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
     resources: cubeContent?.resources ?? new Map(),
     ...(cubeContent?.namespace ? { suggestedNamespace: cubeContent.namespace } : {}),
   };
-}
-
-function staticProjectAnimation(): AjProjectAnimation {
-  return { name: "idle", length: 0.05, loop: "once", animators: {} };
 }
 
 function buildProjectTransformGraph(project: AjProject): ProjectTransformGraph {

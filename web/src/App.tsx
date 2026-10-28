@@ -70,15 +70,7 @@ export function App() {
     const selectedAnimation = session.document.animations[session.animationIndex];
     return createPreviewModel(session.document, selectedAnimation, session.selectedFrame);
   }, [session]);
-  const candidateParts = useMemo(() => {
-    if (!project || !selectedAnimation) return [];
-    const nodeIds = new Set(selectedAnimation.nodeIds);
-    const groups = new Map<string, number>();
-    return Object.entries(project.skinCandidates).filter(([, candidate]) => nodeIds.has(candidate.nodeId)).map(([candidateId, candidate]) => {
-      if (!groups.has(candidate.groupId)) groups.set(candidate.groupId, groups.size);
-      return { candidateId, partIndex: groups.get(candidate.groupId)! };
-    });
-  }, [project, selectedAnimation]);
+  const candidateParts = preview?.candidateParts ?? [];
   const assignments = useMemo(() => project ? skinPartAssignments(project) : {}, [project]);
   const orders = useMemo(() => project ? skinPartOrders(project) : {}, [project]);
   const selectedCandidateIds = session?.selectedCandidateIds ?? EMPTY_SELECTION;

@@ -137,7 +137,7 @@ public final class MolangEngine {
 
         public double evaluate(CompiledExpression expression) {
             Objects.requireNonNull(expression, "expression");
-            return MolangRuntime.evaluate(this.evaluator.scope(), expression.expressions);
+            return MolangRuntime.evaluateValue(this.evaluator.scope(), expression.expressions).getAsNumber();
         }
 
         public String evaluateString(CompiledExpression expression) {

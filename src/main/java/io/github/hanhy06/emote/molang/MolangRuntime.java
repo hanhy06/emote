@@ -22,10 +22,6 @@ final class MolangRuntime implements ExpressionVisitor<Value>, ExecutionContext<
         this.scope = scope;
     }
 
-    static double evaluate(Scope rootScope, List<Expression> expressions) {
-        return evaluateValue(rootScope, expressions).getAsNumber();
-    }
-
     static Value evaluateValue(Scope rootScope, List<Expression> expressions) {
         Scope localScope = rootScope.copy();
         MutableObjectBinding temp = new MutableObjectBinding();
