@@ -38,7 +38,7 @@ This example plays sit down → idle action three times → stand up. Each refer
 }
 ```
 
-See the [Sequence example JSON](https://github.com/hanhy06/emote/blob/main/docs/reference/sequence.json) for the complete format. Sequence files use schema version `5` and are limited to 8 MiB.
+See the [Sequence example JSON](https://github.com/hanhy06/emote/blob/26.3/docs/reference/sequence.json) for the complete format. Sequence files use schema version `5` and are limited to 8 MiB.
 
 !!! tip "Time units"
     Time settings use Minecraft time format. `1s` equals `20t`.

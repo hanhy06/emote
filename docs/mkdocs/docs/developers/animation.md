@@ -2,7 +2,7 @@
 
 An Animation file contains the model, movement, playback settings, and command events for one action. Animation files use schema version `5`.
 
-For file creation and installation, see [Adding Custom Emotes](../server/custom-emote.md). For direct JSON editing, see the [Animation example](https://github.com/hanhy06/emote/blob/main/docs/reference/animation.json).
+For file creation and installation, see [Adding Custom Emotes](../server/custom-emote.md). For direct JSON editing, see the [Animation example](https://github.com/hanhy06/emote/blob/26.3/docs/reference/animation.json).
 
 The root `nodes` object defines the model. The `animation` object contains its duration, playback mode, Molang, tracks, and events. Root `settings` controls direct selection, cooldown, rotation tracking, and player behavior; root `callbacks` selects registered lifecycle callbacks.
 
@@ -166,7 +166,7 @@ Each image is a Base64-encoded 64×64 PNG with classic (wide) arm UVs. When usin
 
 A white mask also replaces transparent texture pixels, allowing the override to erase the skin's outer layer. The inner layer remains opaque.
 
-For an Animated Java project with a skin override, see [cheer.ajblueprint](https://github.com/hanhy06/emote/blob/main/docs/reference/aj/cheer.ajblueprint).
+For an Animated Java project with a skin override, see [cheer.ajblueprint](https://github.com/hanhy06/emote/blob/26.3/docs/reference/aj/cheer.ajblueprint).
 
 ## Callbacks {#callbacks}
 
