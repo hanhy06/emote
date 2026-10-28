@@ -248,6 +248,20 @@ it("omits skin NBT only in output and restores original display data when unassi
   const restored = assignSkinPart(document, new Set([attachmentTargetId("arm", "prop")]), null);
   const [output] = await exportAnimation(restored, 0);
   expect(JSON.parse(await output.blob.text())).toEqual(authored);
+
+  const candidates = [{ candidateId: attachmentTargetId("arm", "prop"), partIndex: 0 }];
+  const visible = createPreviewModel(document, document.animations[0], { type: "create" });
+  expect(visible.candidateParts).toEqual(candidates);
+  expect(visible.parts.map(({ candidateId, partIndex }) => ({ candidateId, partIndex }))).toEqual(candidates);
+  const hidden = createPreviewModel(document, document.animations[0], { type: "timeline", tick: 20 });
+  expect(hidden.candidateParts).toEqual(candidates);
+  expect(hidden.parts).toEqual([]);
+  const unavailableDocument = structuredClone(document);
+  unavailableDocument.nodes.arm.parent = "missing";
+  const unavailable = createPreviewModel(unavailableDocument, unavailableDocument.animations[0], { type: "create" });
+  expect(unavailable.availability?.status).toBe("unavailable");
+  expect(unavailable.candidateParts).toEqual(candidates);
+  expect(unavailable.parts).toEqual([]);
 });
 
 it("fits attachments independently without duplicating node expressions and restores their authored tracks and data", async () => {
