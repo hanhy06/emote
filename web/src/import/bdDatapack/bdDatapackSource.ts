@@ -97,7 +97,7 @@ function readArchive(input: ImportInput): BdDatapackArchive {
   try {
     entries = unzipSync(input.bytes, {
       filter: (entry) => entry.originalSize <= MAX_ARCHIVE_ENTRY_BYTES
-        && (entry.name === "pack.mcmeta" || CREATE_PATH.test(entry.name) || KEYFRAME_PATH.test(entry.name)),
+        && (CREATE_PATH.test(entry.name) || KEYFRAME_PATH.test(entry.name)),
     });
   } catch (error) {
     throw new Error("BD Engine datapack ZIP could not be read.", { cause: error });
