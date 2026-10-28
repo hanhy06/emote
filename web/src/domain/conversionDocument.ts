@@ -116,7 +116,7 @@ export function createConversionDocument(project: ImportedProject, formatLabel: 
     }
     const { nodes: _nodes, animation: sourceClip, target_minecraft_version: _version, ...fields } = ir;
     const clip = remapClip(sourceClip, (id) => ids.get(id) ?? id);
-    return { ...fields, clip, nodeIds: [...ids.values()], sourceName: animation.name, sourcePlayback: structuredClone(sourceClip.playback), playbackMode: "source",
+    return { ...fields, clip, nodeIds: [...ids.values()], sourceName: animation.name, sourcePlayback: sourceClip.playback, playbackMode: "source",
       sourceReferenceId: animation.sourceReferenceId };
   });
   let document: ConversionDocument = {

@@ -1,6 +1,6 @@
 import MolangParser from "molangjs/dist/molang.esm.js";
 import { TICKS_PER_SECOND } from "../format/time";
-import { ConversionError, PreviewUnavailableError } from "../foundation/diagnostics";
+import { ConversionError } from "../foundation/diagnostics";
 import type { SharedValueResolverIR } from "../domain/animationIRCurves";
 import { PREVIEW_RUNTIME_QUERY_VALUES, previewRuntimeQueryFunction, usesRuntimeMolangState } from "../format/molang/runtimeAnalysis";
 
@@ -62,7 +62,7 @@ export class PreviewMolangEvaluator {
     throw this.error(expression, new Error("result is not finite"));
   }
 
-  private error(expression: string | number, cause?: unknown): PreviewUnavailableError {
-    return new PreviewUnavailableError("animation_preview", `Expression uses its base component: ${expression}`, "preview", cause === undefined ? undefined : { cause });
+  private error(expression: string | number, cause?: unknown): ConversionError {
+    return new ConversionError("animation_preview", `Expression uses its base component: ${expression}`, "preview", cause === undefined ? undefined : { cause });
   }
 }

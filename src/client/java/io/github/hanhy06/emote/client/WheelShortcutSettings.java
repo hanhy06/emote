@@ -102,10 +102,6 @@ public class WheelShortcutSettings {
         return this.selectedIds;
     }
 
-    void replaceSelectedIds(List<String> ids) {
-        updateSelectedIds(new ArrayList<>(new LinkedHashSet<>(ids)));
-    }
-
     public void add(String id) {
         if (!this.availableById.containsKey(id) || this.selectedIds.contains(id)) {
             return;
@@ -152,7 +148,7 @@ public class WheelShortcutSettings {
         updateSelectedIds(nextIds);
     }
 
-    private void updateSelectedIds(List<String> nextIds) {
+    void updateSelectedIds(List<String> nextIds) {
         this.selectedIds = List.copyOf(nextIds);
         if (this.serverKey.isEmpty()) {
             return;
