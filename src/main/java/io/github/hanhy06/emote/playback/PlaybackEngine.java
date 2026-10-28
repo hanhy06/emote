@@ -117,9 +117,8 @@ public final class PlaybackEngine implements ConfigListener {
         if (replacedSession != null && !contains(replacedSession)) {
             return new StartResult.Failure(FailureReason.START_REJECTED, "The playback being replaced is no longer active.");
         }
-        int projected = projectedDisplayEntityCount(activeDisplayEntityCount(),
-            replacedSession == null ? 0 : replacedSession.scene().displayEntityCount(), emote.displayEntityCount());
-        if (exceedsDisplayEntityLimit(projected, this.maxActiveDisplayEntities)) {
+        int projected = activeDisplayEntityCount() - (replacedSession == null ? 0 : replacedSession.scene().displayEntityCount()) + emote.displayEntityCount();
+        if (this.maxActiveDisplayEntities > 0 && projected > this.maxActiveDisplayEntities) {
             return new StartResult.Failure(FailureReason.DISPLAY_LIMIT, "Too many emotes are active right now. Try again shortly.");
         }
         PlaybackScene scene = null;
@@ -355,9 +354,4 @@ public final class PlaybackEngine implements ConfigListener {
     public int activeDisplayEntityCount() { return this.stressTest.displayEntityCount() + this.activeDisplayEntities; }
     public int activeSessionCount() { return this.activePlaybacks.size(); }
     public PlaybackStressTest stressTest() { return this.stressTest; }
-
-    static boolean exceedsDisplayEntityLimit(int projectedDisplayEntities, int limit) { return limit > 0 && projectedDisplayEntities > limit; }
-    static int projectedDisplayEntityCount(int activeDisplayEntities, int replacedDisplayEntities, int requestedDisplayEntities) {
-        return activeDisplayEntities - replacedDisplayEntities + requestedDisplayEntities;
-    }
 }
