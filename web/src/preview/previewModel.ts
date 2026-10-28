@@ -19,12 +19,18 @@ export type PreviewAvailability =
 
 export interface PreviewModel {
   availability: PreviewAvailability | null;
+  candidateParts: Pick<PreviewPart, "candidateId" | "partIndex">[];
   parts: PreviewPart[];
 }
 
 export function createPreviewModel(document: ConversionDocument, animation: ConversionAnimation | undefined, frame: SelectedFrame): PreviewModel {
   const nodeIds = new Set(animation?.nodeIds ?? []);
   const candidates = Object.entries(document.skinCandidates).filter(([, candidate]) => nodeIds.has(candidate.nodeId));
+  const groups = new Map<string, number>();
+  const candidateParts = candidates.map(([candidateId, candidate]) => {
+    if (!groups.has(candidate.groupId)) groups.set(candidate.groupId, groups.size);
+    return { candidateId, partIndex: groups.get(candidate.groupId)! };
+  });
   const reasons = new Set<string>();
   const approximate = (reason: string) => { reasons.add(reason); };
   const evaluator = new PreviewMolangEvaluator();
@@ -45,12 +51,11 @@ export function createPreviewModel(document: ConversionDocument, animation: Conv
     try {
       const poses = evaluatePose({ ...animation, nodes: Object.fromEntries(animation.nodeIds.map((id) => [id, document.nodes[id]])),
         animation: frame.type === "create" ? { ...animation.clip, tracks: [] } : animation.clip }, time, evaluate, approximate);
-      const groups = new Map<string, number>();
-      for (const [id, candidate] of candidates) {
-        if (!groups.has(candidate.groupId)) groups.set(candidate.groupId, groups.size);
+      for (const { candidateId, partIndex } of candidateParts) {
+        const candidate = document.skinCandidates[candidateId];
         const pose = poses[candidate.nodeId];
         if (!pose?.attachments[candidate.attachmentId]) continue;
-        parts.push({ candidateId: id, partIndex: groups.get(candidate.groupId)!, matrix: matrix4ToRowMajor(pose.matrix, id),
+        parts.push({ candidateId, partIndex, matrix: matrix4ToRowMajor(pose.matrix, candidateId),
           ...(candidate.fittingOperation ? { conversionMatrix: candidate.fittingOperation.value } : {}) });
       }
       if (reasons.size) availability = { status: "approximate", reason: [...reasons].join(" ") };
@@ -58,5 +63,5 @@ export function createPreviewModel(document: ConversionDocument, animation: Conv
       availability = { status: "unavailable", reason: reason instanceof Error ? reason.message : String(reason) };
     }
   }
-  return { availability, parts };
+  return { availability, candidateParts, parts };
 }
