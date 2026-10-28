@@ -93,7 +93,7 @@ public class WheelShortcutScreen extends Screen {
     @Override
     public void onClose() {
         if (!this.accepted) {
-            this.controller.shortcuts().replaceSelectedIds(this.initialShortcutIds);
+            this.controller.shortcuts().updateSelectedIds(this.initialShortcutIds);
         }
         super.onClose();
     }
