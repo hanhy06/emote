@@ -8,7 +8,7 @@ const classic: MinecraftVersionProfile = {
   blockState: { idKey: "Name", propertiesKey: "Properties" },
   itemStack: { idKey: "id", countKey: "count", componentsKey: "components" },
   // Generated resources use cuboid elements and a plain item model reference.
-  // These fields are shared by 26.1–26.3; no removed special models or shade fields are emitted.
+  // These fields are shared by 26.1–26.4; no removed special models or shade fields are emitted.
   resources: { itemModelType: "minecraft:model" },
 };
 
@@ -17,6 +17,7 @@ export const MINECRAFT_VERSION_PROFILES: Readonly<Record<string, MinecraftVersio
   "26.2": classic,
   // Block state fields changed in 26.3 Snapshot 7.
   "26.3": { ...classic, blockState: { idKey: "id", propertiesKey: "properties" } },
+  "26.4": { ...classic, blockState: { idKey: "id", propertiesKey: "properties" } },
 };
 
 export function minecraftVersionProfile(version: string): MinecraftVersionProfile {
