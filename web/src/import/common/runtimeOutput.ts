@@ -2,8 +2,6 @@ import type { ImportedNode } from "../../domain/conversionSeed";
 import type { DisplayNbtPatch } from "../../domain/minecraftData";
 import { readDisplayNbt } from "../../format/minecraftData";
 
-export const ZERO_VECTOR = [0, 0, 0] as const;
-
 const DISPLAY_NBT_DEFAULTS: Readonly<Record<string, string>> = {
   billboard: '"fixed"', view_range: "1f", shadow_radius: "0f", shadow_strength: "1f", width: "0f", height: "0f", glow_color_override: "-1",
   Glowing: "0b", Silent: "0b", NoGravity: "0b", Invulnerable: "0b",

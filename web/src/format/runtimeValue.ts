@@ -26,11 +26,6 @@ export function requireNumber(value: unknown, path: string): number {
   return value;
 }
 
-export function requireBoolean(value: unknown, path: string): boolean {
-  if (typeof value !== "boolean") throw invalidInput(path, "must be a boolean");
-  return value;
-}
-
 export function requireNumberArray(value: unknown, path: string): number[] {
   return requireArray(value, path).map((entry, index) => requireNumber(entry, `${path}[${index}]`));
 }
