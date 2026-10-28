@@ -104,15 +104,16 @@ public final class SkinCache {
                 return cacheSkinTextures(cacheKey, Map.of(), expectedEpoch);
             }
 
-            JsonArray textures = readTextures(skinJson);
-            if (textures == null) {
+            JsonElement textures = skinJson.get("textures");
+            if (textures == null || !textures.isJsonArray()) {
                 return cacheSkinTextures(cacheKey, Map.of(), expectedEpoch);
             }
 
             Map<PlayerSkinRegion, String> textureUrlMap = new HashMap<>();
-            for (JsonElement textureElement : textures) {
+            for (JsonElement textureElement : textures.getAsJsonArray()) {
+                if (!textureElement.isJsonObject()) continue;
                 PlayerSkinRegion region = readTextureRegion(textureElement);
-                String textureUrl = readTextureUrl(textureElement);
+                String textureUrl = readString(textureElement.getAsJsonObject(), "texture_url");
                 if (region == null || textureUrl == null) {
                     continue;
                 }
@@ -540,11 +541,6 @@ public final class SkinCache {
         return skinJson;
     }
 
-    private JsonArray readTextures(JsonObject skinJson) {
-        JsonElement textures = skinJson.get("textures");
-        return textures != null && textures.isJsonArray() ? textures.getAsJsonArray() : null;
-    }
-
     private PlayerSkinRegion readTextureRegion(JsonElement textureElement) {
         if (textureElement == null || !textureElement.isJsonObject()) {
             return null;
@@ -563,14 +559,6 @@ public final class SkinCache {
         } catch (IllegalArgumentException ignored) {
             return null;
         }
-    }
-
-    private String readTextureUrl(JsonElement textureElement) {
-        if (textureElement == null || !textureElement.isJsonObject()) {
-            return null;
-        }
-
-        return readString(textureElement.getAsJsonObject(), "texture_url");
     }
 
     private String readString(JsonObject object, String key) {
