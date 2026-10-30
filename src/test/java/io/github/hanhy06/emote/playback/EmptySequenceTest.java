@@ -251,6 +251,70 @@ class EmptySequenceTest {
         assertEquals(28, frame.timeline().segments().getLast().endTick());
     }
 
+    @Test
+    void sharesMolangVariablesAcrossSequenceExecutionsAndSeek(@TempDir Path directory) throws Exception {
+        JsonObject json = JsonParser.parseString("""
+            {"type":"animation","schema_version":5,"id":"test:variable_writer","metadata":{"name":"Variables","description":""},
+             "nodes":{"n":{"transform":[{"id":"position","op":"translate","value":[0,0,0]}],
+                             "attachments":{"text":{"type":"text_display","text":"probe"}}}},
+             "animation":{"duration":"2t","molang":{"tick":"v.power = v.power + 1;"},
+                          "values":{"local":{"type":"expression","base":[1],"value":[1]}},
+                          "tracks":[{"target":{"node":"n","operation":"position"},"channel":"value",
+                                      "driver":{"type":"expression","value":[{"molang":"v.power"},
+                                          {"molang":"q.value('local', 0)"},{"molang":"q.anim_time_ticks"}]}}]}}
+            """).getAsJsonObject();
+        var writer = PreparedAnimation.prepare(new AnimationJsonParser().parse(directory.resolve("writer.json"),
+            json.toString().getBytes(StandardCharsets.UTF_8)), registries);
+        json.addProperty("id", "test:variable_reader");
+        json.getAsJsonObject("animation").add("molang", JsonParser.parseString("{\"initialize\":\"variable.power = v.power + 10;\"}"));
+        json.getAsJsonObject("animation").add("values", JsonParser.parseString("{\"local\":{\"type\":\"expression\",\"base\":[9],\"value\":[9]}}"));
+        var reader = PreparedAnimation.prepare(new AnimationJsonParser().parse(directory.resolve("reader.json"),
+            json.toString().getBytes(StandardCharsets.UTF_8)), registries);
+        var sequence = PreparedSequence.prepare(new EmoteSequence(Identifier.parse("test:shared_variables"), writer.metadata(),
+            new EmoteSequence.Settings(0, writer.playerBehavior()), List.of(
+                new EmoteSequence.AnimationStep(writer.model().id(), 2), new EmoteSequence.WaitStep(1),
+                new EmoteSequence.AnimationStep(reader.model().id(), 1, 1),
+                new EmoteSequence.AnimationStep(EmoteSequence.Control.EMPTY.id(), 1),
+                new EmoteSequence.AnimationStep(writer.model().id(), 1))), Map.of(writer.id(), writer, reader.id(), reader));
+        var playback = new EmotePlayback(sequence);
+        var target = new PoseTarget();
+        apply(playback.prepareStart(target));
+        for (int tick = 0; tick < 2; tick++) apply(playback.prepareAdvance());
+        assertEquals(2, target.matrix.m30());
+        assertEquals(0, target.matrix.m32());
+        for (int tick = 0; tick < 2; tick++) apply(playback.prepareAdvance());
+        assertEquals(4, target.matrix.m30());
+        assertEquals(PlaybackTimeline.Phase.WAIT, playback.position().phase());
+        apply(playback.prepareAdvance());
+        assertEquals(PlaybackTimeline.Phase.TRANSITION, playback.position().phase());
+        apply(playback.prepareAdvance());
+        assertEquals(14, target.matrix.m30());
+        assertEquals(9, target.matrix.m31());
+        assertEquals(0, target.matrix.m32());
+        apply(playback.prepareAdvance());
+        apply(playback.prepareAnimationTick(0));
+        assertEquals(14, target.matrix.m30());
+        apply(playback.prepareAdvance(2));
+        assertEquals(PlaybackTimeline.Phase.EMPTY, playback.position().phase());
+        apply(playback.prepareStep(4, 0, 0));
+        assertEquals(14, target.matrix.m30());
+        assertEquals(1, target.matrix.m31());
+        apply(playback.prepareAdvance());
+        assertEquals(15, target.matrix.m30());
+        apply(playback.prepareStep(0, 0, 0));
+        assertEquals(15, target.matrix.m30());
+        apply(playback.prepareAdvance());
+        assertEquals(16, target.matrix.m30());
+        apply(playback.prepareStep(2, 0, 0));
+        assertEquals(26, target.matrix.m30());
+        assertEquals(9, target.matrix.m31());
+        var freshTarget = new PoseTarget();
+        apply(new EmotePlayback(sequence).prepareStart(freshTarget));
+        assertEquals(0, freshTarget.matrix.m30());
+        apply(new EmotePlayback(writer).prepareStart(freshTarget));
+        assertEquals(0, freshTarget.matrix.m30());
+    }
+
     private static EmotePlayback.Frame apply(EmotePlayback.Frame frame) {
         frame.calculate();
         frame.apply();

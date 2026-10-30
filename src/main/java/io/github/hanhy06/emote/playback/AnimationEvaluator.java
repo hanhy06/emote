@@ -10,6 +10,7 @@ import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 import org.joml.Quaterniond;
 import org.joml.Quaternionf;
+import team.unnamed.mocha.runtime.value.MutableObjectBinding;
 
 import java.util.*;
 
@@ -69,8 +70,12 @@ final class AnimationEvaluator {
     }
 
     void initialize(int loopCount, long lifetimeTicks) {
+        initialize(loopCount, lifetimeTicks, new MutableObjectBinding());
+    }
+
+    void initialize(int loopCount, long lifetimeTicks, MutableObjectBinding variables) {
         if (this.session != null) return;
-        this.session = MolangEngine.INSTANCE.createSession();
+        this.session = MolangEngine.INSTANCE.createSession(variables);
         this.session.setQueryFunction("value", arguments -> {
             if (!arguments.isString(0) || !arguments.isNumber(1)) throw new IllegalStateException("q.value requires a value id and component index");
             return MolangEngine.QueryValue.number(sharedValue(arguments.string(0), arguments.number(1)));

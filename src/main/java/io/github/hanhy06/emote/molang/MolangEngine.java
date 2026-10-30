@@ -32,7 +32,11 @@ public final class MolangEngine {
     }
 
     public Session createSession() {
-        return new Session();
+        return createSession(new MutableObjectBinding());
+    }
+
+    public Session createSession(MutableObjectBinding variables) {
+        return new Session(variables);
     }
 
     public static final class CompiledExpression {
@@ -83,8 +87,10 @@ public final class MolangEngine {
         private final MutableObjectBinding query = new MutableObjectBinding();
         private final MochaEngine<Void> evaluator;
 
-        private Session() {
-            this.evaluator = MochaEngine.createStandard(null);
+        private Session(MutableObjectBinding variables) {
+            this.evaluator = MochaEngine.create(null);
+            this.evaluator.scope().set("variable", variables);
+            this.evaluator.scope().set("v", variables);
             this.evaluator.scope().set("math", MolangMath.INSTANCE);
             this.evaluator.scope().set("query", this.query);
             this.evaluator.scope().set("q", this.query);
