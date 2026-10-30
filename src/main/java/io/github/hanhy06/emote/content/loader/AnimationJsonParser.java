@@ -226,7 +226,7 @@ public final class AnimationJsonParser {
         List<Keyframe> keys = new ArrayList<>();
         List<Segment> segments = new ArrayList<>();
         if (driverType == DriverType.EXPRESSION) {
-            if (channel == Channel.NBT || componentCount == 16) throw document.error(p, "requires a state or step curve");
+            if (channel == Channel.NBT) throw document.error(p, "requires a state curve");
             expression = value(document.requireElement(driver, "value", p), channel, componentCount, p + ".value", document);
         } else {
             if (driverType == DriverType.CURVE && channel != Channel.VALUE || driverType == DriverType.STATE && channel == Channel.VALUE) throw document.error(p + ".type", "driver does not match channel");
@@ -317,7 +317,7 @@ public final class AnimationJsonParser {
     }
 
     private Value value(JsonElement raw, Channel channel, int componentCount, String path, EmoteJsonDocument document) throws EmoteLoadException {
-        if (channel == Channel.VALUE) return vector(raw, componentCount, componentCount == 4 || componentCount == 16, path, document);
+        if (channel == Channel.VALUE) return vector(raw, componentCount, false, path, document);
         if (channel == Channel.VISIBLE) {
             if (raw.isJsonPrimitive() && raw.getAsJsonPrimitive().isBoolean()) return new ConstantVisibility(raw.getAsBoolean());
             ScalarValue expression = scalar(raw, path, document);
@@ -338,7 +338,6 @@ public final class AnimationJsonParser {
         if (!raw.isJsonArray() || raw.getAsJsonArray().size() != componentCount) throw document.error(path, "must contain " + componentCount + " values");
         List<ScalarValue> values = new ArrayList<>();
         for (int i = 0; i < componentCount; i++) values.add(literal ? new ConstantValue(document.requireFiniteDouble(raw.getAsJsonArray().get(i), path + "[" + i + "]")) : scalar(raw.getAsJsonArray().get(i), path + "[" + i + "]", document));
-        if (componentCount == 4 && values.stream().allMatch(v -> ((ConstantValue) v).value() == 0)) throw document.error(path, "quaternion must not be zero");
         return new VectorValue(values);
     }
 
@@ -421,7 +420,7 @@ public final class AnimationJsonParser {
         }
         return result;
     }
-    private VectorValue optionalVector(JsonObject raw, String key, int componentCount, String path, EmoteJsonDocument document) throws EmoteLoadException { return raw.has(key) ? vector(raw.get(key), componentCount, componentCount != 1 && componentCount != 3, path + "." + key, document) : null; }
+    private VectorValue optionalVector(JsonObject raw, String key, int componentCount, String path, EmoteJsonDocument document) throws EmoteLoadException { return raw.has(key) ? vector(raw.get(key), componentCount, false, path + "." + key, document) : null; }
     private JsonObject object(JsonObject raw, String key, String path, EmoteJsonDocument document) throws EmoteLoadException { JsonObject o = document.optionalObject(raw, key, path); return o == null ? new JsonObject() : o; }
     private String text(JsonObject raw, String key, String fallback, String path, EmoteJsonDocument document) throws EmoteLoadException { return raw.has(key) ? document.requireString(raw, key, path) : fallback; }
     private String nonempty(JsonObject raw, String key, String path, EmoteJsonDocument document) throws EmoteLoadException { String s = document.requireString(raw, key, path); if (s.isBlank()) throw document.error(path + "." + key, "must not be blank"); return s; }

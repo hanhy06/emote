@@ -686,6 +686,44 @@ class SamplePoseTest {
         }
     }
 
+    @Test
+    void evaluatesMolangQuaternionAndMatrixTracksIntoHierarchicalPoses() throws Exception {
+        JsonObject json = JsonParser.parseString("""
+            {"type":"animation","schema_version":5,"id":"test:dynamic_transforms","metadata":{"name":"Transforms","description":""},
+             "nodes":{"rotation":{"transform":[{"id":"r","op":"rotate_quaternion","value":[0,0,0,1]}]},
+                      "translation":{"parent":"rotation","transform":[{"id":"m","op":"matrix","value":[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]}]},
+                      "slerp":{"transform":[{"id":"r","op":"rotate_quaternion","value":[0,0,0,1]}]},
+                      "step":{"transform":[{"id":"m","op":"matrix","value":[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]}]}},
+             "animation":{"duration":"3t","molang":{"initialize":"v.magnitude = 2;"},
+                          "values":{"offset":{"base":[2],"type":"expression","value":[{"molang":"2 + q.anim_time_ticks"}]}},
+                          "tracks":[
+                 {"target":{"node":"rotation","operation":"r"},"channel":"value","driver":{"type":"expression",
+                  "value":[0,{"molang":"v.magnitude * math.sin(q.anim_time_ticks * 45)"},0,{"molang":"v.magnitude * math.cos(q.anim_time_ticks * 45)"}]}},
+                 {"target":{"node":"translation","operation":"m"},"channel":"value","driver":{"type":"expression",
+                  "value":[1,0,0,{"molang":"q.value('offset', 0)"},0,1,0,0,0,0,1,0,0,0,0,1]}},
+                 {"target":{"node":"slerp","operation":"r"},"channel":"value","driver":{"type":"curve","keys":[
+                     {"time":"0t","value":[0,0,0,{"molang":"v.magnitude"}]},
+                     {"time":"2t","pre":[0,{"molang":"v.magnitude"},0,0],"post":[0,0,0,1]}],"segments":[{"interpolation":"slerp"}]}},
+                 {"target":{"node":"step","operation":"m"},"channel":"value","driver":{"type":"curve","keys":[
+                     {"time":"0t","value":[1,0,0,{"molang":"7 + q.anim_time_ticks"},0,1,0,0,0,0,1,0,0,0,0,1]},
+                     {"time":"2t","value":[1,0,0,{"molang":"9 + q.anim_time_ticks"},0,1,0,0,0,0,1,0,0,0,0,1]}],"segments":[{"interpolation":"step"}]}}]}}
+            """).getAsJsonObject();
+        var animation = PreparedAnimation.prepare(new AnimationJsonParser().parse(Path.of("transforms.json"), json.toString().getBytes(StandardCharsets.UTF_8)), registries);
+        var playback = new EmotePlayback(animation);
+        var target = new PoseTarget();
+        for (int tick = 0; tick < 3; tick++) {
+            var frame = tick == 0 ? playback.prepareStart(target) : playback.prepareAdvance();
+            frame.calculate();
+            frame.apply();
+            frame.dispatchEvents();
+            Matrix4f rotation = new Matrix4f().rotateY((float) Math.toRadians(tick * 90));
+            assertTrue(rotation.equals(target.matrices.get("rotation"), 1e-5F));
+            assertTrue(new Matrix4f(rotation).translate(2 + tick, 0, 0).equals(target.matrices.get("translation"), 1e-5F));
+            assertTrue(new Matrix4f().rotateY(tick == 1 ? (float) (Math.PI / 2) : 0).equals(target.matrices.get("slerp"), 1e-5F));
+            assertEquals(tick < 2 ? 7 + tick : 9 + tick, target.matrices.get("step").m30());
+        }
+    }
+
     private static final class PoseTarget implements EmotePlayback.PoseTarget {
         final Map<String, Matrix4f> matrices = new HashMap<>();
         final Map<String, CompoundTag> nbt = new HashMap<>();
