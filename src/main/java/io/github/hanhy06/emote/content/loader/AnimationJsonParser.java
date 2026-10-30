@@ -158,18 +158,6 @@ public final class AnimationJsonParser {
                 n.has("parent") ? nonempty(n, "parent", path, document) : null, inheritance, bool(n, "visible", true, path, document),
                 operations, attachments, object(n, "source", path, document)));
         }
-        Set<String> pending = new TreeSet<>(nodes.keySet());
-        Set<String> ready = new HashSet<>();
-        while (!pending.isEmpty()) {
-            List<String> batch = new ArrayList<>();
-            for (String id : pending) {
-                String parent = nodes.get(id).parentId();
-                if (parent != null && !nodes.containsKey(parent)) throw document.error("$.nodes." + id + ".parent", "unknown parent");
-                if (parent == null || ready.contains(parent)) batch.add(id);
-            }
-            if (batch.isEmpty()) throw document.error("$.nodes." + pending.iterator().next() + ".parent", "parent cycle");
-            pending.removeAll(batch); ready.addAll(batch);
-        }
         return nodes;
     }
 
