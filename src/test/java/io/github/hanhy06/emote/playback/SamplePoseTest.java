@@ -4,12 +4,12 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.math.Transformation;
+import io.github.hanhy06.emote.api.EmoteLoadException;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.api.sequence.EmoteSequence;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.content.loader.AnimationJsonParser;
-import io.github.hanhy06.emote.molang.MolangEngine;
 import io.github.hanhy06.emote.playback.molang.MolangQuerySource;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.HolderLookup;
@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import team.unnamed.mocha.runtime.value.NumberValue;
 
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -112,7 +113,7 @@ class SamplePoseTest {
                 String id = arguments.string(0);
                 int count = calls.merge(id, 1, Integer::sum);
                 if (id.equals("unused")) throw new IllegalStateException("Unused curve data was evaluated");
-                return MolangEngine.QueryValue.number(switch (id) {
+                return NumberValue.of(switch (id) {
                     case "weight" -> 0.5;
                     case "power" -> 2;
                     case "out_time" -> 1.0 / 3;
@@ -205,7 +206,7 @@ class SamplePoseTest {
             session.setQueryFunction("scoreboard", arguments -> {
                 String id = arguments.string(0);
                 calls.add(id);
-                return MolangEngine.QueryValue.number(switch (id) {
+                return NumberValue.of(switch (id) {
                     case "start", "start_y" -> 4;
                     case "end", "end_y" -> 8;
                     case "out" -> 2;
@@ -249,7 +250,7 @@ class SamplePoseTest {
                             yield (id.startsWith("cat_start") ? 0 : id.startsWith("post") ? 64 : id.startsWith("end") ? 32 : 16) * axis;
                         }
                     };
-                    return MolangEngine.QueryValue.number(value);
+                    return NumberValue.of(value);
                 });
             });
             evaluator.initialize(0, 0);
@@ -302,7 +303,7 @@ class SamplePoseTest {
                 session.setQueryFunction("scoreboard", arguments -> {
                     String id = arguments.string(0);
                     calls.add(id);
-                    return MolangEngine.QueryValue.number(Double.parseDouble(id.substring(id.lastIndexOf(':') + 1)));
+                    return NumberValue.of(Double.parseDouble(id.substring(id.lastIndexOf(':') + 1)));
                 });
             });
             evaluator.initialize(0, 0);
@@ -645,6 +646,44 @@ class SamplePoseTest {
         }
         assertEquals(0.0F, starts.get("hug_player1").get(player1).m30(), 1e-6);
         assertEquals(0.0F, starts.get("hug_player1").get(player1).m32(), 1e-6);
+    }
+
+    @Test
+    void compilesMolangControlFlowAndQueriesIntoPlaybackPoses() throws Exception {
+        JsonObject json = JsonParser.parseString("""
+            {"type":"animation","schema_version":5,"id":"test:molang_compiler","metadata":{"name":"Molang","description":""},
+             "nodes":{"n":{"transform":[{"id":"position","op":"translate","value":[0,0,0]}],
+                             "attachments":{"text":{"type":"text_display","text":"probe"}}}},
+             "animation":{"duration":"4t",
+                          "molang":{"initialize":"v.phase = q.anim_length > 0 ? 2 : q.life_time > 0 ? 3 : 4; q.is_on_ground ? { v.phase = v.phase + 5; } : { v.phase = v.phase + 7; }; loop(4, { v.phase = v.phase + 1; v.phase > 11 ? { return v.phase; }; }); v.after = 99;",
+                                    "tick":"v.phase = q.anim_time_ticks < 2 ? v.phase + 1 : q.anim_time_ticks < 3 ? v.phase + 2 : v.phase + 3;"},
+                          "values":{"offset":{"type":"expression","base":[3],"value":[3]}},
+                          "tracks":[{"target":{"node":"n","operation":"position"},"channel":"value",
+                                      "driver":{"type":"expression","value":[{"molang":"-math.abs(q.value('offset', 0)) + v.phase"},
+                                          {"molang":"q.any('hand', 'hand', 'other') ? { return 2; } : { return 8; };"},{"molang":"v.after"}]}}]}}
+            """).getAsJsonObject();
+        var animation = PreparedAnimation.prepare(new AnimationJsonParser().parse(Path.of("molang.json"),
+            json.toString().getBytes(StandardCharsets.UTF_8)), registries);
+        var playback = new EmotePlayback(animation);
+        var target = new PoseTarget();
+        float[] positions = {9, 10, 12, 15};
+        for (int tick = 0; tick < positions.length; tick++) {
+            var frame = tick == 0 ? playback.prepareStart(target) : playback.prepareAdvance();
+            frame.calculate();
+            frame.apply();
+            frame.dispatchEvents();
+            assertEquals(positions[tick], target.matrices.get("n").m30());
+            assertEquals(2, target.matrices.get("n").m31());
+            assertEquals(0, target.matrices.get("n").m32());
+        }
+        JsonObject component = json.getAsJsonObject("animation").getAsJsonArray("tracks").get(0).getAsJsonObject()
+            .getAsJsonObject("driver").getAsJsonArray("value").get(0).getAsJsonObject();
+        for (String expression : List.of("v.phase = q.anim_time > 0 ? 1 : 2;", "q.anim_time > 0 ? { v.phase = 1; } : 0;",
+                "q.anim_time = 0;", "q.no_such_query", "q.value('offset')")) {
+            component.addProperty("molang", expression);
+            assertThrows(EmoteLoadException.class, () -> PreparedAnimation.prepare(new AnimationJsonParser().parse(Path.of("molang.json"),
+                json.toString().getBytes(StandardCharsets.UTF_8)), registries), expression);
+        }
     }
 
     private static final class PoseTarget implements EmotePlayback.PoseTarget {

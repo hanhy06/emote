@@ -11,6 +11,7 @@ import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.content.PreparedSequence.*;
+import io.github.hanhy06.emote.molang.MolangEngine;
 import io.github.hanhy06.emote.playback.molang.MolangQuerySource;
 import io.github.hanhy06.emote.util.WeightedChoiceSelector;
 import net.minecraft.nbt.CompoundTag;
@@ -19,7 +20,6 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 import org.jspecify.annotations.Nullable;
-import team.unnamed.mocha.runtime.value.MutableObjectBinding;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -33,7 +33,7 @@ public final class EmotePlayback {
     private final List<PlaybackTimeline.Segment> sequencePhases;
     private PoseTarget target;
     private final MolangQuerySource querySource;
-    private final MutableObjectBinding molangVariables;
+    private final MolangEngine.Session molangSession;
     private final AnimationEvaluator evaluator;
     private @Nullable Frame preparingFrame, pendingFrame;
     private @Nullable PoseView notificationView;
@@ -85,13 +85,13 @@ public final class EmotePlayback {
     }
 
     public EmotePlayback(PreparedEmote emote, MolangQuerySource querySource, RandomGenerator random) {
-        this(emote, querySource, random, new MutableObjectBinding());
+        this(emote, querySource, random, MolangEngine.INSTANCE.createSession());
     }
 
-    private EmotePlayback(PreparedEmote emote, MolangQuerySource querySource, RandomGenerator random, MutableObjectBinding molangVariables) {
+    private EmotePlayback(PreparedEmote emote, MolangQuerySource querySource, RandomGenerator random, MolangEngine.Session molangSession) {
         this.emote = Objects.requireNonNull(emote, "emote");
         this.querySource = Objects.requireNonNull(querySource, "querySource");
-        this.molangVariables = molangVariables;
+        this.molangSession = molangSession;
         this.model = emote instanceof PreparedAnimation animation ? animation.model() : null;
         this.evaluator = emote instanceof PreparedAnimation animation ? new AnimationEvaluator(animation, querySource) : null;
         this.selectedSteps = emote instanceof PreparedSequence sequence ? List.copyOf(selectSteps(sequence.steps(), random)) : List.of();
@@ -189,7 +189,7 @@ public final class EmotePlayback {
 
     private void initializeAnimation() {
         clearState();
-        this.evaluator.initialize(0, 0, this.molangVariables);
+        this.evaluator.initialize(0, 0, this.molangSession);
         this.startDelay = this.evaluator.delay(this.model.settings().playback().startDelay(), 0, 0, 0, 0);
     }
 
@@ -446,7 +446,7 @@ public final class EmotePlayback {
     private void prepareChild(SelectedAnimationStep selected) {
         if (this.child != null && this.childSelection == selected) return;
         this.childSelection = selected;
-        this.child = new EmotePlayback(selected.animation(), this.querySource, RandomGenerator.getDefault(), this.molangVariables);
+        this.child = new EmotePlayback(selected.animation(), this.querySource, RandomGenerator.getDefault(), this.molangSession);
         this.child.target = this.target;
         this.child.preparingFrame = this.preparingFrame;
         this.preparingFrame.playbacks.add(this.child);

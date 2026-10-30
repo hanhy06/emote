@@ -266,7 +266,7 @@ class EmptySequenceTest {
         var writer = PreparedAnimation.prepare(new AnimationJsonParser().parse(directory.resolve("writer.json"),
             json.toString().getBytes(StandardCharsets.UTF_8)), registries);
         json.addProperty("id", "test:variable_reader");
-        json.getAsJsonObject("animation").add("molang", JsonParser.parseString("{\"initialize\":\"variable.power = v.power + 10;\"}"));
+        json.getAsJsonObject("animation").add("molang", JsonParser.parseString("{\"initialize\":\"variable.power = v.power + q.value('local', 0) + 1 + q.anim_time_ticks;\"}"));
         json.getAsJsonObject("animation").add("values", JsonParser.parseString("{\"local\":{\"type\":\"expression\",\"base\":[9],\"value\":[9]}}"));
         var reader = PreparedAnimation.prepare(new AnimationJsonParser().parse(directory.resolve("reader.json"),
             json.toString().getBytes(StandardCharsets.UTF_8)), registries);
