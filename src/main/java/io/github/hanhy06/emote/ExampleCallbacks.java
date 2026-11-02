@@ -2,6 +2,7 @@ package io.github.hanhy06.emote;
 
 import io.github.hanhy06.emote.api.EmoteApi;
 import io.github.hanhy06.emote.api.Registration;
+import io.github.hanhy06.emote.examples.ChristmasExample;
 import io.github.hanhy06.emote.examples.EntityFollowExample;
 import io.github.hanhy06.emote.examples.HugExample;
 import io.github.hanhy06.emote.examples.TrumpetExample;
@@ -20,6 +21,7 @@ public final class ExampleCallbacks {
     public static final Identifier BAT_CALLBACK_ID = Identifier.parse("emote:idle_bat_callback");
     public static final Identifier TRUMPET_CAN_CAN_CALLBACK_ID = Identifier.parse("emote:trumpet_can_can_callback");
     public static final Identifier HUG_CALLBACK_ID = Identifier.parse("emote:hug_callback");
+    public static final Identifier CHRISTMAS_CALLBACK_ID = Identifier.parse("emote:christmas_callback");
 
     private final List<Registration> registrations;
     private final HugExample hug;
@@ -33,7 +35,8 @@ public final class ExampleCallbacks {
             api.registerCallbacks(IDLE_BUTTERFLY_CALLBACK_ID, entities.butterflyCallbacks),
             api.registerCallbacks(BAT_CALLBACK_ID, entities.batCallbacks),
             api.registerCallbacks(TRUMPET_CAN_CAN_CALLBACK_ID, new TrumpetExample()),
-            api.registerCallbacks(HUG_CALLBACK_ID, this.hug)
+            api.registerCallbacks(HUG_CALLBACK_ID, this.hug),
+            api.registerCallbacks(CHRISTMAS_CALLBACK_ID, new ChristmasExample())
         );
 
         // Monitor both sessions, including cancellations before their first frame callbacks.
