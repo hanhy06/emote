@@ -101,7 +101,7 @@ export function createConversionDocument(project: ImportedProject, formatLabel: 
           while (node.transform?.some((operation) => operation.id === operationId)) operationId = `skin_conversion_${operationSuffix++}`;
           const candidateId = attachmentTargetId(id, attachmentId);
           skinCandidates[candidateId] = {
-            nodeId: id, groupId: candidate.groupId, sceneId: "input", attachmentId,
+            nodeId: id, groupId: candidate.groupId, sceneId: candidate.sceneId ?? "input", attachmentId,
             originalAttachment: structuredClone(node.attachments[attachmentId]),
             ...(candidate.fittingMatrix ? { fittingOperation: { id: operationId, op: "matrix", value: candidate.fittingMatrix } } : {}),
           };
@@ -128,10 +128,10 @@ export function createConversionDocument(project: ImportedProject, formatLabel: 
       additionalMetadata, cooldown: project.suggestedCooldown ?? "0t", player: project.suggestedPlayer },
     diagnostics: project.diagnostics, resources: project.resources,
   };
-  for (const part of [...new Set(Object.values(suggestions).map((suggestion) => suggestion.part))]) {
-    const groups = new Map(Object.entries(suggestions).filter(([, suggestion]) => suggestion.part === part)
+  for (const scene of new Set(Object.values(skinCandidates).map((candidate) => candidate.sceneId))) for (const part of [...new Set(Object.values(suggestions).map((suggestion) => suggestion.part))]) {
+    const groups = new Map(Object.entries(suggestions).filter(([id, suggestion]) => suggestion.part === part && skinCandidates[id].sceneId === scene)
       .map(([id, suggestion]) => [skinCandidates[id].groupId, suggestion.order]));
-    document = applySkinGroups(document, part, groups, "input");
+    document = applySkinGroups(document, part, groups, scene);
   }
   return document;
 }

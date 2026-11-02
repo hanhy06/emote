@@ -46,7 +46,7 @@ export function importGeckoLibProject(project: GeckoLibBbmodelProject, sourceNam
   const projectPath = sanitizeResourcePath(project.name?.trim() || sourceStem, "model");
   const resources = new Map<string, GeneratedResource>();
   const bones = buildBoneEntries(project);
-  const { playableCubesByBone, skinAssignments, sourceIds, diagnostics: modelDiagnostics } = prepareCubeModels(bones);
+  const { playableCubesByBone, skinAssignments, sourceIds, skinSceneIds, diagnostics: modelDiagnostics } = prepareCubeModels(bones);
   const diagnostics: ConversionIssue[] = [...(project.animationDiagnostics ?? []), ...modelDiagnostics];
   const nodes: Record<string, ImportedNode> = {};
   const nodeIds = new Set(["scene", ...bones.flatMap((bone) => [bone.id, `group:${bone.uuid}`])]);
@@ -76,8 +76,8 @@ export function importGeckoLibProject(project: GeckoLibBbmodelProject, sourceNam
       if (modelGeometry && conversionMatrix) conversionMatrix = matrix4ToRowMajor(modelGeometry.clone().invert().multiply(new Matrix4().fromArray(conversionMatrix).transpose()), `Cube ${cube.uuid} skin fitting`);
       nodes[nodeId] = {
         binding: {
-          sourceNodeId: sourceIds.get(cube)!,
-          ...(skin ? { skinGroupId: `${skin.part}_${skin.order}` } : {}),
+          sourceNodeId: sourceIds.get(cube)!, skinSceneId: skinSceneIds.get(bone.uuid)!,
+          ...(skin ? { skinGroupId: `${skinSceneIds.get(bone.uuid)}:${skin.part}_${skin.order}` } : {}),
         },
         type: "item_display",
         visible: true,

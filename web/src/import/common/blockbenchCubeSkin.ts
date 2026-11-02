@@ -33,6 +33,7 @@ export interface PreparedCubeModels {
   playableCubesByBone: ReadonlyMap<string, BbCube[]>;
   skinAssignments: ReadonlyMap<BbCube, ImportedSkinPart>;
   sourceIds: ReadonlyMap<BbCube, string>;
+  skinSceneIds: ReadonlyMap<string, string>;
   diagnostics: ConversionIssue[];
 }
 
@@ -40,7 +41,12 @@ export function prepareCubeModels(bones: BoneEntry[]): PreparedCubeModels {
   const sourceIds = new Map(bones.flatMap((bone) => bone.cubes.map((cube) => [cube, cube.uuid] as const)));
   const diagnostics: ConversionIssue[] = [];
   const playableCubesByBone = splitPlayerSkinCubesByPoseBone(bones, sourceIds, diagnostics);
-  return { playableCubesByBone, skinAssignments: inferSkinAssignments(bones, playableCubesByBone, sourceIds), sourceIds, diagnostics };
+  const skinSceneIds = new Map(bones.map((bone) => {
+    let root = bone;
+    while (root.parent) root = root.parent;
+    return [bone.uuid, root.uuid];
+  }));
+  return { playableCubesByBone, skinAssignments: inferSkinAssignments(bones, playableCubesByBone, sourceIds, skinSceneIds), sourceIds, skinSceneIds, diagnostics };
 }
 
 export function normalizeBlockbenchName(name: string | undefined): string | undefined {
@@ -279,8 +285,9 @@ function inferSkinAssignments(
   bones: BoneEntry[],
   playableCubesByBone: ReadonlyMap<string, BbCube[]>,
   sourceIds: ReadonlyMap<BbCube, string>,
+  skinSceneIds: ReadonlyMap<string, string>,
 ): Map<BbCube, ImportedSkinPart> {
-  const candidates: { cube: BbCube; part: ImportedSkinPart["part"]; centerY: number; sourceOrder: number; explicitOrder?: number }[] = [];
+  const candidates: { cube: BbCube; part: ImportedSkinPart["part"]; sceneId: string; centerY: number; sourceOrder: number; explicitOrder?: number }[] = [];
   let sourceOrder = 0;
   for (const bone of bones) {
     const part = inferSkinPart(bone);
@@ -290,6 +297,7 @@ function inferSkinAssignments(
       candidates.push({
         cube,
         part,
+        sceneId: skinSceneIds.get(bone.uuid)!,
         centerY: (cube.from[1] + cube.to[1]) / 2,
         sourceOrder: sourceOrder++,
         explicitOrder: split?.order,
@@ -298,9 +306,9 @@ function inferSkinAssignments(
   }
 
   const result = new Map<BbCube, ImportedSkinPart>();
-  for (const part of ["head", "body", "left_arm", "right_arm", "left_leg", "right_leg"] as const) {
+  for (const scene of new Set(skinSceneIds.values())) for (const part of ["head", "body", "left_arm", "right_arm", "left_leg", "right_leg"] as const) {
     candidates
-      .filter((candidate) => candidate.part === part)
+      .filter((candidate) => candidate.part === part && candidate.sceneId === scene)
       .sort((first, second) => second.centerY - first.centerY || first.sourceOrder - second.sourceOrder)
       .forEach((candidate, order) => result.set(candidate.cube, { part, order: candidate.explicitOrder ?? order }));
   }

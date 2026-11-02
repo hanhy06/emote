@@ -55,7 +55,7 @@ export function importAnimatedJavaCubes(project: AjProject, sourceStem: string, 
     frame_order_type: ["loop", "backwards", "back_and_forth", "custom"].includes(texture.frame_order_type ?? "") ? texture.frame_order_type as BbTexture["frame_order_type"] : undefined,
   }));
   const resources = new Map<string, GeneratedResource>();
-  const { playableCubesByBone, skinAssignments, sourceIds, diagnostics } = prepareCubeModels(bones);
+  const { playableCubesByBone, skinAssignments, sourceIds, skinSceneIds, diagnostics } = prepareCubeModels(bones);
   const nodes: Record<string, ImportedNode> = {};
   const nodeIdsBySourceUuid = new Map<string, string[]>();
   const bindNode = (source: string, id: string) => nodeIdsBySourceUuid.set(source, [...(nodeIdsBySourceUuid.get(source) ?? []), id]);
@@ -83,7 +83,7 @@ export function importAnimatedJavaCubes(project: AjProject, sourceStem: string, 
       if (modelGeometry && conversion) conversion = matrix4ToRowMajor(modelGeometry.clone().invert().multiply(new Matrix4().fromArray(conversion).transpose()), `Cube ${cube.uuid} skin fitting`);
       const skin = hiddenAccessory ? undefined : skinAssignments.get(cube);
       nodes[id] = {
-        binding: { sourceNodeId: sourceIds.get(cube)!, ...(skin ? { skinGroupId: `${skin.part}_${skin.order}` } : {}) },
+        binding: { sourceNodeId: sourceIds.get(cube)!, skinSceneId: skinSceneIds.get(bone.uuid)!, ...(skin ? { skinGroupId: `${skinSceneIds.get(bone.uuid)}:${skin.part}_${skin.order}` } : {}) },
         type: "item_display",
         visible: true, itemDisplay: "none",
         itemStack: { id: "minecraft:paper", count: 1, components: [{ name: "minecraft:item_model", value: serializeSnbtString(`${namespace}:${modelPath}`) }] },
