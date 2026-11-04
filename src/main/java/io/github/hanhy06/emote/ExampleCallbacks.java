@@ -2,10 +2,12 @@ package io.github.hanhy06.emote;
 
 import io.github.hanhy06.emote.api.EmoteApi;
 import io.github.hanhy06.emote.api.Registration;
+import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.examples.ChristmasExample;
 import io.github.hanhy06.emote.examples.EntityFollowExample;
 import io.github.hanhy06.emote.examples.HugExample;
 import io.github.hanhy06.emote.examples.TrumpetExample;
+import io.github.hanhy06.emote.playback.PlaybackEngine;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.resources.Identifier;
 
@@ -26,7 +28,7 @@ public final class ExampleCallbacks {
     private final List<Registration> registrations;
     private final HugExample hug;
 
-    private ExampleCallbacks(EmoteApi api) {
+    private ExampleCallbacks(EmoteApi api, EmoteCatalog catalog, PlaybackEngine engine) {
         EntityFollowExample entities = new EntityFollowExample();
         this.hug = new HugExample(api);
 
@@ -36,7 +38,7 @@ public final class ExampleCallbacks {
             api.registerCallbacks(BAT_CALLBACK_ID, entities.batCallbacks),
             api.registerCallbacks(TRUMPET_CAN_CAN_CALLBACK_ID, new TrumpetExample()),
             api.registerCallbacks(HUG_CALLBACK_ID, this.hug),
-            api.registerCallbacks(CHRISTMAS_CALLBACK_ID, new ChristmasExample())
+            api.registerCallbacks(CHRISTMAS_CALLBACK_ID, new ChristmasExample(catalog, engine))
         );
 
         // Monitor both sessions, including cancellations before their first frame callbacks.
@@ -44,8 +46,8 @@ public final class ExampleCallbacks {
     }
 
     /** Call once after the Emote API is available; retain the result for cleanup. */
-    public static ExampleCallbacks registerAll(EmoteApi api) {
-        return new ExampleCallbacks(Objects.requireNonNull(api, "api"));
+    public static ExampleCallbacks registerAll(EmoteApi api, EmoteCatalog catalog, PlaybackEngine engine) {
+        return new ExampleCallbacks(Objects.requireNonNull(api, "api"), catalog, engine);
     }
 
     public boolean unregister() {

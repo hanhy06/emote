@@ -74569,6 +74569,3770 @@
 					]
 				}
 			}
+		},
+		{
+			"uuid": "c72e3982-1af9-4b96-8fb7-bcb5db48e2f3",
+			"name": "chorus_deck_the_halls",
+			"loop": "loop",
+			"override": false,
+			"length": 33,
+			"snapping": 20,
+			"selected": false,
+			"saved": true,
+			"path": "",
+			"scope": 0,
+			"anim_time_update": "",
+			"blend_weight": "",
+			"start_delay": "",
+			"loop_delay": "0",
+			"excluded_nodes": [],
+			"preview_variants": [],
+			"preview_texture_slots": {},
+			"animators": {
+				"86bbce1f-2f51-4572-b116-609710fdd4ab": {
+					"name": "player_no_joints",
+					"type": "bone",
+					"rotation_global": false,
+					"quaternion_interpolation": false,
+					"keyframes": [
+						{
+							"channel": "scale",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "0"
+								}
+							],
+							"uuid": "94d753cd-9fd0-4768-b16f-8c966935502b",
+							"time": 0,
+							"color": -1,
+							"uniform": true,
+							"interpolation": "step",
+							"easing": "linear",
+							"easingArgs": []
+						}
+					]
+				},
+				"27735ace-8fd4-80f2-ce41-30ea848a4359": {
+					"name": "player_handbell_no_joints",
+					"type": "bone",
+					"rotation_global": false,
+					"quaternion_interpolation": false,
+					"keyframes": [
+						{
+							"channel": "scale",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "0"
+								}
+							],
+							"uuid": "bf1da39e-4fef-4a24-ae92-516b4b745331",
+							"time": 0,
+							"color": -1,
+							"uniform": true,
+							"interpolation": "step",
+							"easing": "linear",
+							"easingArgs": []
+						}
+					]
+				},
+				"7043397b-bf23-4bd7-9d78-ab25393faf9a": {
+					"name": "player_drums_jointed",
+					"type": "bone",
+					"rotation_global": false,
+					"quaternion_interpolation": false,
+					"keyframes": [
+						{
+							"channel": "scale",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "0"
+								}
+							],
+							"uuid": "6df3981b-bc18-4018-8cfd-285ca87fb55b",
+							"time": 0,
+							"color": -1,
+							"uniform": true,
+							"interpolation": "step",
+							"easing": "linear",
+							"easingArgs": []
+						}
+					]
+				},
+				"3ff66d05-a0e7-48a6-97f9-dadc2b51f9c5": {
+					"name": "player_recorder_jointed",
+					"type": "bone",
+					"rotation_global": false,
+					"quaternion_interpolation": false,
+					"keyframes": [
+						{
+							"channel": "scale",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "0"
+								}
+							],
+							"uuid": "ca6aacd7-98eb-42ff-b500-4e684003f211",
+							"time": 0,
+							"color": -1,
+							"uniform": true,
+							"interpolation": "step",
+							"easing": "linear",
+							"easingArgs": []
+						}
+					]
+				},
+				"b9072026-0907-4000-b000-000000000001": {
+					"name": "electric_piano",
+					"type": "bone",
+					"rotation_global": false,
+					"quaternion_interpolation": false,
+					"keyframes": [
+						{
+							"channel": "scale",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "0"
+								}
+							],
+							"uuid": "ac1861f8-21ff-4a70-a064-b6cba746237f",
+							"time": 0,
+							"color": -1,
+							"uniform": true,
+							"interpolation": "step",
+							"easing": "linear",
+							"easingArgs": []
+						}
+					]
+				},
+				"03a5e307-4145-4d40-b54a-06451a1be199": {
+					"name": "drum_kit",
+					"type": "bone",
+					"rotation_global": false,
+					"quaternion_interpolation": false,
+					"keyframes": [
+						{
+							"channel": "scale",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "0"
+								}
+							],
+							"uuid": "8ef747c4-f2a4-436c-a9de-a77f0a47b9b0",
+							"time": 0,
+							"color": -1,
+							"uniform": true,
+							"interpolation": "step",
+							"easing": "linear",
+							"easingArgs": []
+						}
+					]
+				},
+				"effects": {
+					"name": "효과",
+					"type": "effect",
+					"keyframes": [
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.174 0.529732 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.408 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "93303ebb-273c-4217-bb20-d99c6e0128ea",
+							"time": 0.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.149 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "c4177597-4c7f-426c-9483-7ad6f782db37",
+							"time": 0.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.123 0.890899 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "1136b6e4-a9be-4ed1-afaf-3bfb51807e0c",
+							"time": 0.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.098 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "0cd6d977-cb64-4b80-b40f-d73a3220f378",
+							"time": 0.65,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.162 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "24f2905e-62c6-41e0-92b1-2a7e064d7358",
+							"time": 0.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.128 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "84b9fa64-f0e3-49dd-b04a-b1508ef31b9f",
+							"time": 1.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.098 0.529732 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.34 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "7cd50faf-f8bc-46f0-971b-a8b1e94d56aa",
+							"time": 1.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.098 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "abe2a289-780c-45bd-a54d-97c6cee40ddf",
+							"time": 1.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.098 0.890899 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "c798d31b-6fe1-485d-9f4f-bf88a0f2629d",
+							"time": 1.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.162 0.890899 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "2606413e-f9a0-470d-a7ef-0cc6dc68c30a",
+							"time": 1.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.128 1.414214 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "7203c1e3-fb64-4f08-939f-b713ce3bb513",
+							"time": 2.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.174 0.529732 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.408 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "cea483de-0402-4e72-9088-09c7dc84fdf8",
+							"time": 2.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.149 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "9e4c9eb6-c1a0-4a9a-bb1f-b60091163742",
+							"time": 2.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.123 0.890899 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "c666ae4d-cbff-4ea4-b286-3a956f0fba43",
+							"time": 2.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.098 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "bc19da48-4251-435b-8854-34679b3a8e5f",
+							"time": 2.65,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.162 0.890899 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "28987620-fe93-4678-896c-a124d22fa964",
+							"time": 2.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.128 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "00c35cb4-5551-4c9e-b3f1-cea778984e72",
+							"time": 3.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.098 0.529732 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.34 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "256bc0c9-34cc-4487-9727-fc3e7b698e78",
+							"time": 3.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.098 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "1fa0f0b7-7c51-4986-980b-1f777a51d555",
+							"time": 3.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.098 0.890899 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "ff3f68b6-d0f7-4d91-9740-881845114d73",
+							"time": 3.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.162 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "5ebbae12-5046-413a-aba3-3d52bc11a7df",
+							"time": 3.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.128 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "e02e7eb2-656c-439f-b849-46abdca51cb7",
+							"time": 4.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.174 0.529732 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.408 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "c08f6909-1116-47c1-a383-38d56509fa82",
+							"time": 4.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.149 0.667420 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "a8fb5b1d-9bd5-459a-bb9c-9668440b5d60",
+							"time": 4.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.123 0.793701 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "e2e9eede-c728-4029-b792-106e1d7fdbc4",
+							"time": 4.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.098 0.943874 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "4a92767c-f5cc-4a24-aa65-8b500baf233c",
+							"time": 4.65,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.162 0.793701 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "d59a0d12-12e2-47af-acfd-5c27944ee2e4",
+							"time": 4.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.128 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "8374f359-d67b-433c-9854-0ec7c5f93af2",
+							"time": 5.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.174 0.529732 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.34 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "494b0923-bf3d-4676-817b-ce4ec6a3c2bf",
+							"time": 5.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.149 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "cfab62f9-9075-4f3f-b349-04c0fc1fbdbe",
+							"time": 5.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.123 0.890899 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "79f53b99-95fe-49e1-8d59-ba58aa711cc0",
+							"time": 5.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.098 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "8b3d08e6-2d0a-4760-bc02-807345d5b8f9",
+							"time": 5.65,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.162 0.890899 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "f26dae43-c0fd-4315-9c96-49ef281f1ea5",
+							"time": 5.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.128 1.414214 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "af3ec7cf-7127-44c5-b6cc-38e28d0a10cc",
+							"time": 6.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.174 0.529732 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.408 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "6bfadc08-e5e3-4e0b-8a79-36ee3cfeed3a",
+							"time": 6.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.149 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "f668fdbd-5c06-4138-8e8a-8a52a0c489bd",
+							"time": 6.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.123 0.793701 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "6e30f81a-b4e9-491c-b43d-b3183ccf998d",
+							"time": 6.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.098 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "397a487a-bdbf-42a7-807b-8901f0ece16e",
+							"time": 6.65,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.162 1.414214 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "aacd7b87-1fc4-47ad-97aa-44dd5e51b4f0",
+							"time": 6.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.174 0.529732 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "79cef63b-8e06-4acd-8912-61d76a33f723",
+							"time": 7,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.149 0.667420 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "fe26a274-6388-4dbb-95f5-d31b6b6ace64",
+							"time": 7.05,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.123 0.793701 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "283ccdb9-67ac-4187-9ab7-1d8e8715f626",
+							"time": 7.1,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.098 0.943874 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "1a5a190c-1881-4797-bae9-08762511cae5",
+							"time": 7.15,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.128 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "f45b3772-e021-4e88-8a27-f95a33613daf",
+							"time": 7.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.174 0.529732 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.34 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "5471d5e0-8e85-4c46-9f6b-89d2e0e04d55",
+							"time": 7.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.149 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "04fcafb6-3839-426d-a0e4-e204a55b450a",
+							"time": 7.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.123 0.890899 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "6172e9d2-b756-4517-a2ae-6f0062bc72d9",
+							"time": 7.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.098 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "40280429-1312-4460-8d57-8158a3d696d2",
+							"time": 7.65,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.162 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "06e665c3-9861-47a5-ab70-4b2471f7209a",
+							"time": 7.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.128 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "0624c51d-80fe-4170-8573-3d6ae792c985",
+							"time": 8.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.195 0.529732 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.456 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "1bd55fff-76b4-4444-a646-0cd0ae55e659",
+							"time": 8.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.166 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "9b652b47-694f-444c-b47e-06db5b0af0ec",
+							"time": 8.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.138 0.890899 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "0450b236-c984-4b01-a39c-2cba0b352821",
+							"time": 8.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.109 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "aa6b37e8-0322-44c7-9819-e56737a8ba55",
+							"time": 8.65,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.18 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "f3c1190c-8ea5-41b9-a44b-15bd0b771177",
+							"time": 8.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.142 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "dca0b6ce-6494-414f-a141-4bb335a0ed06",
+							"time": 9.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.109 0.529732 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.38 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "ff9cf5a6-c04c-4098-9705-9850d3babb3d",
+							"time": 9.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.109 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "788b7c8d-cc7b-4947-a5a1-8297f79d54db",
+							"time": 9.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.109 0.890899 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "0c7b0dcd-1283-4dff-b049-c1ddb5d6ad36",
+							"time": 9.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.18 0.890899 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "39007818-2b1a-4ea1-81bb-184c7757ab7e",
+							"time": 9.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.142 1.414214 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.237 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "e647ba0e-e991-4c8f-9773-6e104f2ada0a",
+							"time": 10.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.195 0.529732 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.456 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "64a568eb-b1c5-4c55-ae07-645c5cf31571",
+							"time": 10.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.166 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "ce594b40-0d1a-4be1-ab51-b6123daf9b6c",
+							"time": 10.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.138 0.890899 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "322edc9a-72a2-40ff-ab5a-e2e2ca035a40",
+							"time": 10.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.109 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "b89743fc-8579-41d3-a089-c83394d49b0f",
+							"time": 10.65,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.18 0.890899 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "3849bce2-ae72-41e6-a8a4-abab4a7d0931",
+							"time": 10.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.142 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "44dcf58d-ce65-4869-804c-503bc9e39d34",
+							"time": 11.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.109 0.529732 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.38 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "447952d4-dd09-4df6-bc11-ccedd9c458f6",
+							"time": 11.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.109 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "9b25041f-2dec-43cc-958a-d80bc1d188f2",
+							"time": 11.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.109 0.890899 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "77815b73-eab4-4fd8-9786-3b0f3981ff0d",
+							"time": 11.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.18 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "98ee14c8-2bf2-4eff-a5e4-7c486cf1139f",
+							"time": 11.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.142 1.059463 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.237 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "9de7655c-de05-4018-a1aa-7cb8073b291c",
+							"time": 12.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.195 0.529732 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.456 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "2997f1d0-40ed-4546-9ec1-0f4c1670de5d",
+							"time": 12.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.166 0.667420 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "281987f4-e7d0-4ab3-ab82-ff00aac148bb",
+							"time": 12.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.138 0.793701 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "86004b4f-3622-431c-b5ec-f9821a889c53",
+							"time": 12.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.109 0.943874 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "086c8913-0000-41a9-bd4c-3834ef66ca6d",
+							"time": 12.65,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.18 0.793701 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "bad14d06-8b93-4530-8ce0-a48ddc71196d",
+							"time": 12.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.142 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "51bceebc-a35c-43d7-980a-f58a560ee4c9",
+							"time": 13.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.195 0.529732 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.38 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "fbce457b-b7b5-4499-903a-0218a3e120c5",
+							"time": 13.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.166 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "7406d0ec-ea91-49dd-a025-98d46d2377fc",
+							"time": 13.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.138 0.890899 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "07cd290d-0f33-4cf5-b416-7742ef3b8c68",
+							"time": 13.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.109 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "44785a50-fea9-4add-9fe4-6545aed6023a",
+							"time": 13.65,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.18 0.890899 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "321569c6-46e7-4b45-b609-16a0bd35f857",
+							"time": 13.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.142 1.414214 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.237 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "a88c3546-6fc4-47be-9dd4-1f6e301ce88e",
+							"time": 14.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.195 0.529732 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.456 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "149b64b9-3731-4a88-9b3b-67c1a666e66c",
+							"time": 14.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.166 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "96c300b2-81f9-422a-bcf1-ca04f963d625",
+							"time": 14.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.138 0.793701 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "cab5b19d-c6ed-49bb-ad49-61c65f9814dd",
+							"time": 14.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.109 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "0cda45dd-89ad-41df-abc5-626c630ee104",
+							"time": 14.65,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.18 1.414214 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "570967b3-3ac1-42ca-8b9d-5967d8312aec",
+							"time": 14.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.195 0.529732 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "2ea31088-38a9-43e9-9c31-c47d9e110b61",
+							"time": 15,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.166 0.667420 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "14fb3dd9-e5d5-445c-8d21-d2219f771bd4",
+							"time": 15.05,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.138 0.793701 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "46714c1c-05fa-478a-875e-fe1512de5bb7",
+							"time": 15.1,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.109 0.943874 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "8c61bc16-8d97-4ef3-9d63-f5e1e5c1124d",
+							"time": 15.15,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.142 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "d67ff0ba-639a-4dff-9d91-e67d032dfc96",
+							"time": 15.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.195 0.529732 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.38 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "69297310-0972-4bf1-808e-6e6a3809225b",
+							"time": 15.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.166 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "00de1bea-fa6f-4672-81bf-d4c47882b2f8",
+							"time": 15.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.138 0.890899 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "75d22fa0-2d40-475b-ba02-b8e5c71c4955",
+							"time": 15.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.109 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "8f8ceb3f-d8aa-433a-8865-371a90c62ed9",
+							"time": 15.65,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.18 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "cf4ffe57-62e2-4446-b153-09b46bd253b2",
+							"time": 15.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.142 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "e646bf4c-3fba-4e42-8ee6-ca39c17b1036",
+							"time": 16.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.205 0.529732 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.48 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "e6cf83e4-a7b0-45d5-9aa6-18979637c847",
+							"time": 16.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.175 0.667420 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "0ab5b9e3-ac8b-45a4-a9c1-baf453e65757",
+							"time": 16.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.145 0.793701 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "c6244286-7480-46b1-8916-f2dd8bf776f3",
+							"time": 16.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.115 0.943874 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "06a53deb-d746-42cf-98df-191d5eb7c8f0",
+							"time": 16.65,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.19 0.793701 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "a4b7ae06-73e2-49b4-af93-bb0bab5f9748",
+							"time": 16.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.15 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "397eb492-793b-4d16-a08a-c8c1f978c693",
+							"time": 17,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.19 0.943874 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "40e2938a-64af-40ce-a4b1-93b580612d88",
+							"time": 17.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.115 0.529732 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.4 0.793701 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "598e4ccf-fe0a-49e3-b18f-263ca8aee25a",
+							"time": 17.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.115 0.667420 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "c8fbaa37-b226-4359-ad70-f10ed68fb04b",
+							"time": 17.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.115 0.793701 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "2fda2c31-ea94-45ff-85e6-04e2b43eba9f",
+							"time": 17.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.15 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "d4774c56-e651-405b-a4b8-55b80167e8b8",
+							"time": 17.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.19 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "f00d098b-f250-4e73-be08-52b9a088b502",
+							"time": 18,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.15 0.943874 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.25 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "0d4bd2fc-a10c-45ae-af53-0919b72b582f",
+							"time": 18.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.205 0.529732 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.48 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "ba2620e9-e74b-44a2-a44e-c38b9cc243d2",
+							"time": 18.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.175 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "48f1dce7-abde-46e3-87c4-a0787c94ccba",
+							"time": 18.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.145 0.890899 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "5cb987a5-9944-454e-862d-a545ce64bcc5",
+							"time": 18.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.115 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "a6bd6022-09b5-4097-8969-12ed87df5398",
+							"time": 18.65,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.19 0.890899 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "bc2f7237-7783-405a-bac9-81b901ce240b",
+							"time": 18.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.15 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "fd0b3f32-09ce-4ca9-8985-154b5f510935",
+							"time": 19,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.19 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "3ca4258d-e937-4e90-b1eb-5022cb32e013",
+							"time": 19.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.115 0.529732 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.4 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "9a8d129b-96cc-458a-9973-59d4d319fec3",
+							"time": 19.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.115 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "9d8da771-ea68-4c97-acaa-94eaa094441d",
+							"time": 19.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.115 0.890899 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "9a0b13f6-42c9-42d3-93de-6bed88aa9849",
+							"time": 19.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.15 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "7b503eea-a5cb-4cf5-939b-4192f513f301",
+							"time": 19.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.19 1.414214 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "b33430a6-2ec6-453f-9b55-de22d70f20ff",
+							"time": 20,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.15 0.890899 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.25 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "46b2701c-31ef-4864-86d1-da885f14cf34",
+							"time": 20.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.205 0.529732 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.48 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "bceae0fe-df30-4046-92d0-fab64a0065a7",
+							"time": 20.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.175 0.594604 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "259a632f-b769-4c7a-8d8c-9ee96933abf8",
+							"time": 20.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.145 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "3c5df05e-0a3a-430f-b5c9-1eca6f0ff55b",
+							"time": 20.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.115 0.890899 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "0f3c7010-009e-4311-80aa-8f51c48eccb5",
+							"time": 20.65,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.19 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "689bc682-ff7d-408b-b7ed-8622593e5245",
+							"time": 20.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.15 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "547f3537-7fb8-4a4e-aa9e-cc5ff4f28c43",
+							"time": 21,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.19 1.189207 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "be6759ed-c91c-4b82-8089-e70ef4d3c705",
+							"time": 21.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.205 0.500000 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.4 0.793701 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "09a33dd3-c355-4910-9797-bf2945e4f3a1",
+							"time": 21.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.175 0.594604 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "d73f9f59-bc2d-443f-af9d-eb71a4f75968",
+							"time": 21.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.145 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "1be6a105-a166-42c5-9ec4-fc4009504bd8",
+							"time": 21.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.115 0.793701 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "3b968fad-736d-4ec4-a1ce-0eec00ce82f6",
+							"time": 21.65,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.15 1.414214 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "ebcd5197-bae3-47b4-b238-1d3bbd469e73",
+							"time": 21.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.19 1.189207 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "5cc511e5-5857-484a-a43c-bdf0946595e0",
+							"time": 22,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.15 1.000000 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.25 0.793701 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "57e68fa1-fdb3-4be7-8445-c25336ea5e66",
+							"time": 22.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.205 0.529732 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.48 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "cdfe2efc-1b1a-4e1c-92e3-35128f192d1b",
+							"time": 22.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.175 0.667420 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "05e8fbb7-30ba-445d-9604-35c40b8a24dc",
+							"time": 22.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.145 0.793701 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "8a04c4e0-df0b-4e0a-9446-9d94212f5f02",
+							"time": 22.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.115 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "9d48a24d-51d0-496c-92b8-317c4d3f42eb",
+							"time": 22.65,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.19 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "058f50ed-eb2b-45ce-af0d-eaa2b4fcb351",
+							"time": 22.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.205 0.500000 0\nplaysound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.15 1.189207 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "9bbc2ec4-00e4-45e0-ba19-d0a08166b46f",
+							"time": 23,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.175 0.594604 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "39b8aec6-4a9d-4ee8-a270-6bbf0a3eae2f",
+							"time": 23.05,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.145 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "edc72c9d-3131-416e-8b68-5b5577ad500d",
+							"time": 23.1,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.115 0.793701 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "b7c7fe07-a97b-4606-be1a-bb0f1fc5e4f5",
+							"time": 23.15,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.19 0.793701 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "6e2aa2f7-76f2-4b57-aa80-b0537ab8a285",
+							"time": 23.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.205 0.529732 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.4 0.793701 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "17315107-0b5d-41ce-ad7f-40c9fb2327b6",
+							"time": 23.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.175 0.667420 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "378d6e65-237e-49ac-924b-6b28d574ad3d",
+							"time": 23.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.145 0.793701 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "e2f76ee0-e433-4c82-8985-93b78e9da31a",
+							"time": 23.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.115 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "e95ef143-d40f-4b96-abff-e8125f4bdd82",
+							"time": 23.65,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.15 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "840d58b3-a2d9-4885-b5a2-f248f7b131ca",
+							"time": 23.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.19 1.587401 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "0c5183de-cb63-47e9-9ffb-42eb6ae8536b",
+							"time": 24,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.15 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "ffd013f7-33c9-4bcb-be4e-3f3ce4ef1c50",
+							"time": 24.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.221 0.529732 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.518 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "8b35d2b9-bc33-4415-b4fc-f4acd34fe9e7",
+							"time": 24.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.189 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "3da3b5bf-eeba-408b-a587-423f4581c2f4",
+							"time": 24.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.157 0.890899 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "352d46f5-8496-4cbb-a946-083513894685",
+							"time": 24.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.124 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "1b78ce38-92a4-4628-9975-ea1804f05656",
+							"time": 24.65,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.205 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "e9dbfdc5-9595-46b6-819d-e21a7658c6b0",
+							"time": 24.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.162 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "6710ffb8-d481-4e56-a724-d208552bf7ea",
+							"time": 25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.205 0.890899 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "bb66350f-7d22-4779-aca2-efa5e571b89c",
+							"time": 25.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.124 0.529732 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.432 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "92e5dace-f03c-47af-8630-49bf8d0bf133",
+							"time": 25.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.124 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "15acf4f0-dfdd-4153-9fb3-3f655a35359c",
+							"time": 25.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.124 0.890899 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "4e48b23c-f0cb-4364-abf4-79e2a93732d8",
+							"time": 25.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.162 1.414214 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "dde43940-0b5b-4740-b11d-697b4f9569b6",
+							"time": 25.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.205 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "138e7a1a-f187-4536-ade2-259f5e07090a",
+							"time": 26,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.162 0.890899 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.27 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "8e62f439-9376-4256-b2ba-32f5297cd190",
+							"time": 26.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.221 0.529732 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.518 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "feb3ebd3-0246-488d-85d7-a45d5355b451",
+							"time": 26.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.189 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "b2e62c73-6edb-42fb-b19d-de1977d115e3",
+							"time": 26.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.157 0.890899 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "4c9add12-a778-4220-8106-6b6dbe5bb3ee",
+							"time": 26.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.124 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "da96b415-81bf-431a-bb80-18b66c26ca45",
+							"time": 26.65,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.205 0.890899 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "7fdedc4b-cff2-46e9-af2f-df443c8cd05b",
+							"time": 26.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.162 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "0ab74d5b-3f3e-4988-bdea-9dd3f25445ab",
+							"time": 27,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.205 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "aae1e401-ad81-40bc-814d-cb1994669828",
+							"time": 27.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.124 0.529732 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.432 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "4519be50-73db-4f28-876c-9605c153d885",
+							"time": 27.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.124 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "50bf6814-8ac4-4092-9486-09a1efd90d93",
+							"time": 27.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.124 0.890899 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "a80e3c90-e025-45f5-8e6b-a3b2f622e117",
+							"time": 27.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.162 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "521017a4-ea2d-40ae-acae-3a91193cfa58",
+							"time": 27.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.205 1.414214 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "5ab2cd81-4af2-47e0-ad7a-0f5a1e70cb40",
+							"time": 28,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.162 0.890899 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.27 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "ffe5edd5-25f0-43fb-87e0-84b79bb38a0d",
+							"time": 28.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.221 0.529732 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.518 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "fc1a6e96-f126-4988-9bc6-73ef6b5a60dd",
+							"time": 28.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.189 0.667420 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "fcb2473f-dc09-449f-8a83-d56cac9176e8",
+							"time": 28.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.157 0.793701 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "7c1ed26f-1fdf-454e-9b42-83be99fc83b7",
+							"time": 28.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.124 0.943874 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "b91832dd-2409-4dcb-8bd5-af39443175ee",
+							"time": 28.65,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.205 0.793701 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "83f64212-0db7-473b-8da6-c1b529a8e0b1",
+							"time": 28.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.162 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "72597caf-b6b0-476a-8af8-c2057383a241",
+							"time": 29,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.205 0.943874 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "6e843043-793c-4a82-885b-508b463df5a7",
+							"time": 29.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.221 0.529732 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.432 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "4aac8839-d946-4efd-a318-21c739e31067",
+							"time": 29.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.189 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "4647741d-b3cf-497e-8263-3cb018699b1a",
+							"time": 29.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.157 0.890899 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "096e45a4-f51f-4d08-8ada-64f719ece25a",
+							"time": 29.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.124 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "899dc523-901c-4487-89b6-175d38faf914",
+							"time": 29.65,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.162 1.414214 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "4d5fb465-0050-4743-9a9c-972da1de6bb5",
+							"time": 29.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.205 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "eaac30f8-311c-4ed5-a4df-aa3436e23efc",
+							"time": 30,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.162 0.890899 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.27 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "32da9ab1-6e79-449a-956b-8f7cc7d32fd5",
+							"time": 30.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.221 0.529732 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.518 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "3551f7d6-a9ef-4525-a790-d9baa2678f6f",
+							"time": 30.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.189 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "2a1984a1-5de8-432c-aa3b-c179f9154b8b",
+							"time": 30.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.157 0.793701 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "9f5476e9-4824-479e-9ef1-ae6fe45d0e81",
+							"time": 30.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.124 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "23fe848c-6581-4a36-858f-cb5c452d8e4d",
+							"time": 30.65,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.205 1.414214 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "381ba32a-79aa-486e-a0d7-45ce8bec521b",
+							"time": 30.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.221 0.529732 0\nplaysound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.162 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "f6521c73-8ad7-4f31-ab58-d20080d4c934",
+							"time": 31,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.189 0.667420 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "28353d64-6542-4e64-a5a2-65b948cd54a8",
+							"time": 31.05,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.157 0.793701 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "265499e9-5a24-47f0-8841-fe719572dd14",
+							"time": 31.1,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.124 0.943874 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "c5d6ca79-e757-4b33-98a8-dd635eec5cf6",
+							"time": 31.15,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.guitar voice @a[distance=..24] ~ ~1 ~ 0.205 0.793701 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "c57ef70f-5340-48f9-9a17-abb243b71bb7",
+							"time": 31.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.221 0.529732 0\nplaysound minecraft:block.note_block.bass voice @a[distance=..24] ~ ~1 ~ 0.432 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "bb35f6e2-4e12-40c2-919f-0f62f9ccb43a",
+							"time": 31.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.189 0.707107 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "c07b0260-a482-4788-a85a-77107dbf6eaf",
+							"time": 31.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.157 0.890899 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "5427cfab-1839-40a9-baba-9b2e46c629bb",
+							"time": 31.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.harp voice @a[distance=..24] ~ ~1 ~ 0.124 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "d693d006-7e91-44db-9a53-64e45772eb0d",
+							"time": 31.65,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						}
+					]
+				}
+			}
 		}
 	]
 }
