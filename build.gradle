@@ -1,3 +1,5 @@
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
 import net.fabricmc.loom.task.prod.ClientProductionRunTask
 import net.fabricmc.loom.task.prod.ServerProductionRunTask
 
@@ -51,9 +53,10 @@ dependencies {
     include(implementation("team.unnamed:mocha:3.0.1"))
     include(implementation("org.javassist:javassist:3.30.2-GA"))
 
-    implementation "eu.pb4:polymer-common:${polymer_version}"
-    implementation "eu.pb4:polymer-resource-pack:${polymer_version}"
-    implementation "eu.pb4:polymer-autohost:${polymer_version}"
+    //TODO 임시 나중에 임플리먼테이션으로 바꿔야함
+    compileOnly "eu.pb4:polymer-common:${polymer_version}"
+    compileOnly "eu.pb4:polymer-resource-pack:${polymer_version}"
+    compileOnly "eu.pb4:polymer-autohost:${polymer_version}"
 
     testImplementation platform("org.junit:junit-bom:5.12.2")
     testImplementation "org.junit.jupiter:junit-jupiter"
@@ -74,6 +77,21 @@ processResources {
 
     from("shared/molang-queries.json") {
         into "emote"
+    }
+
+    doLast {
+        fileTree(new File(destinationDir, "default-emotes")) {
+            include "**/*.json"
+        }.each { sample ->
+            def emote = new JsonSlurper().parse(sample, "UTF-8")
+            if (emote.skin instanceof Map && emote.skin.containsKey("default")) {
+                emote.skin.remove("default")
+                if (emote.skin.isEmpty()) {
+                    emote.remove("skin")
+                }
+                sample.setText(JsonOutput.toJson(emote) + "\n", "UTF-8")
+            }
+        }
     }
 }
 
