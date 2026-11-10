@@ -40,7 +40,6 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
     private EmotePlayback.@Nullable Frame preparedFrame;
     private PlaybackPlacement.Mode appliedPlacementMode;
     private final ResourceKey<Level> levelKey;
-    private final String emoteId;
     private final PlaybackScene scene;
     private final EmotePlayback playback;
     private final Map<String, Entity> actors;
@@ -50,7 +49,6 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
         PlaybackEngine engine,
         UUID sessionId,
         ResourceKey<Level> levelKey,
-        String emoteId,
         PlaybackScene scene,
         EmotePlayback playback,
         Map<String, Entity> actors,
@@ -59,7 +57,6 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
         this.engine = Objects.requireNonNull(engine, "engine");
         this.sessionId = Objects.requireNonNull(sessionId, "sessionId");
         this.levelKey = Objects.requireNonNull(levelKey, "levelKey");
-        this.emoteId = Objects.requireNonNull(emoteId, "emoteId");
         this.scene = Objects.requireNonNull(scene, "scene");
         this.playback = Objects.requireNonNull(playback, "playback");
         this.emoteInfo = playback.emote().info();
@@ -80,10 +77,6 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
 
     public Playback view() { return this.view; }
 
-    public PlaybackPlacement placement() {
-        return placement(this.appliedPose);
-    }
-
     private PlaybackPlacement placement(EmotePlayback.@Nullable PoseView pose) {
         return new PlaybackPlacement(this.appliedPlacementMode, pose == null ? this.scene.root().position() : pose.root().position(),
             pose == null ? this.scene.orientationYaw() : pose.orientationYaw());
@@ -97,12 +90,6 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
         this.pendingPlacement = null;
         if (placement != null) this.placementMode = placement.mode();
         return placement;
-    }
-
-    private Optional<Vec3> nodeWorldPosition(String nodeId, EmotePlayback.@Nullable PoseView pose) {
-        if (pose == null || !this.scene.nodes().containsKey(nodeId)) return Optional.empty();
-        Vector3f point = pose.root().worldMatrix(pose.orientationYaw(), pose.nodeMatrix(nodeId)).transformPosition(new Vector3f());
-        return Optional.of(pose.root().position().add(point.x, point.y, point.z));
     }
 
     public void bindCallbacks(
@@ -125,7 +112,7 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
         }
     }
 
-    public boolean setTick(int tick) {
+    private boolean setTick(int tick) {
         if (this.state != PlaybackState.RUNNING) return false;
         if (tick < 0) throw new IllegalArgumentException("Tick must be non-negative");
         if (!this.playback.canSetTick(tick)) return false;
@@ -141,7 +128,7 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
         return true;
     }
 
-    public boolean setStep(int stepIndex, int repeatIndex, int animationTick) {
+    private boolean setStep(int stepIndex, int repeatIndex, int animationTick) {
         if (this.state != PlaybackState.RUNNING) return false;
         this.playback.stepSegment(stepIndex, repeatIndex, animationTick);
         if (!this.playback.canSeek()) return false;
@@ -184,19 +171,16 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
         frame.dispatchEvents();
     }
 
-    private void startAnimationCallbacks() {
+    @Override
+    public void onStart(PreparedAnimation animation) {
+        this.animationCallbackContexts = this.animationBindings.getOrDefault(animation, List.of()).stream()
+            .map(binding -> new Context(binding, animation.model().id())).toList();
+        if (!this.callbacksStarted) return;
         for (Context context : this.animationCallbackContexts) {
             if (this.state != PlaybackState.RUNNING) break;
             context.started = true;
             context.dispatch(context.binding.callbacks()::onStart);
         }
-    }
-
-    @Override
-    public void onStart(PreparedAnimation animation) {
-        this.animationCallbackContexts = this.animationBindings.getOrDefault(animation, List.of()).stream()
-            .map(binding -> new Context(binding, animation.model().id())).toList();
-        if (this.callbacksStarted) startAnimationCallbacks();
     }
 
     @Override
@@ -209,7 +193,11 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
 
     @Override
     public void onLoop() {
-        loopCallbacks();
+        if (!this.callbacksStarted || this.state != PlaybackState.RUNNING) return;
+        for (Context context : this.callbackContexts) {
+            context.dispatch(context.binding.callbacks()::onLoop);
+            if (this.state != PlaybackState.RUNNING) break;
+        }
     }
 
     @Override
@@ -226,14 +214,6 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
         if (!this.callbacksStarted || this.state != PlaybackState.RUNNING) return;
         for (Context context : this.callbackContexts) {
             context.dispatch(context.binding.callbacks()::onTick);
-            if (this.state != PlaybackState.RUNNING) break;
-        }
-    }
-
-    private void loopCallbacks() {
-        if (!this.callbacksStarted || this.state != PlaybackState.RUNNING) return;
-        for (Context context : this.callbackContexts) {
-            context.dispatch(context.binding.callbacks()::onLoop);
             if (this.state != PlaybackState.RUNNING) break;
         }
     }
@@ -264,7 +244,7 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
         try {
             context.dispatch(context.binding.callbacks()::onClose);
         } catch (RuntimeException exception) {
-            EmoteMod.LOGGER.warn("Emote close callback failed for {}", this.emoteId, exception);
+            EmoteMod.LOGGER.warn("Emote close callback failed for {}", this.emoteInfo.id(), exception);
         } finally { context.userState = null; }
     }
 
@@ -318,7 +298,10 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
         public Optional<Vec3> getNodeWorldPosition(String nodeId) {
             requireServerThread();
             Objects.requireNonNull(nodeId, "nodeId");
-            return PlaybackSession.this.nodeWorldPosition(nodeId, pose());
+            var pose = pose();
+            if (pose == null || !PlaybackSession.this.scene.nodes().containsKey(nodeId)) return Optional.empty();
+            Vector3f point = pose.root().worldMatrix(pose.orientationYaw(), pose.nodeMatrix(nodeId)).transformPosition(new Vector3f());
+            return Optional.of(pose.root().position().add(point.x, point.y, point.z));
         }
 
         public boolean stop() { return stop(PlaybackStopReason.MANUAL); }
@@ -384,7 +367,7 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
     }
 
     public String emoteId() {
-        return this.emoteId;
+        return this.emoteInfo.id().toString();
     }
 
     public PlaybackScene scene() {

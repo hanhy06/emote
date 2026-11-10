@@ -131,7 +131,7 @@ public final class PlaybackEngine implements ConfigListener {
             scene = PlaybackScene.create(request.level(), request.root(), emote);
             playback.bindEvents(new EventCommandExecutor(request.level(), request.commandSource(), scene));
             if (request.skin() != null) scene.setSkins(request.skin());
-            session = new PlaybackSession(this, UUID.randomUUID(), request.level().dimension(), emote.id(), scene, playback, request.actors(), request.placementMode());
+            session = new PlaybackSession(this, UUID.randomUUID(), request.level().dimension(), scene, playback, request.actors(), request.placementMode());
             session.bindCallbacks(bindings, animationBindings);
             if (replacedSession != null) stop(replacedSession, PlaybackStopReason.REPLACED);
             register(session, request.lifecycle());

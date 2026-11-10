@@ -691,7 +691,6 @@ public final class EmotePlayback {
         clearAppliedPose();
         copyChildPose();
         hideUnusedNodes();
-        notifyLifecycle(listener -> listener.onPositionChanged(animationTick), false);
     }
 
     public int animationDuration(PlaybackPosition position) {
@@ -812,7 +811,6 @@ public final class EmotePlayback {
             clearAppliedPose();
             copyChildPose();
             hideUnusedNodes();
-            notifyLifecycle(listener -> listener.onPositionChanged(local), false);
             startChildEvents(false);
         } else {
             enterSequencePhase(false);
@@ -1199,7 +1197,6 @@ public final class EmotePlayback {
         default void onTick(int animationTick) {}
         default void onLoop() {}
         default void onClose(PlaybackStopReason reason) {}
-        default void onPositionChanged(int animationTick) {}
     }
 
     public interface PoseTarget {

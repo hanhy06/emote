@@ -84,7 +84,7 @@ public class EmoteMod implements ModInitializer {
             wheelSync::syncAll
         );
         engine.setStateListener(apiEvents);
-        ExampleCallbacks.registerAll(api, catalog, engine);
+        ExampleCallbacks.registerAll(api);
 
         IdlePlaybackService idlePlayback = new IdlePlaybackService(play, playback, catalog);
         configManager.addAccessConfigListener(play);
