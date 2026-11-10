@@ -6,6 +6,7 @@ import io.github.hanhy06.emote.application.PlaybackCooldownService;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.network.WheelSyncService;
 import io.github.hanhy06.emote.playback.MarkerPlaybackManager;
+import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.PlaybackHooks;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.resource.ResourcePackService;
@@ -28,6 +29,7 @@ public class ServerLifecycle {
     private final PlaybackCooldownService cooldowns;
     private final EmoteCatalog emoteCatalog;
     private final PlayerPlaybackManager playerPlaybackManager;
+    private final PlaybackEngine playbackEngine;
     private final MarkerPlaybackManager markerPlayback;
     private final ReloadService reloadService;
     private final WheelSyncService wheelSyncService;
@@ -40,6 +42,7 @@ public class ServerLifecycle {
         PlaybackCooldownService cooldowns,
         EmoteCatalog emoteCatalog,
         PlayerPlaybackManager playerPlaybackManager,
+        PlaybackEngine playbackEngine,
         MarkerPlaybackManager markerPlayback,
         ReloadService reloadService,
         WheelSyncService wheelSyncService,
@@ -51,6 +54,7 @@ public class ServerLifecycle {
         this.cooldowns = cooldowns;
         this.emoteCatalog = emoteCatalog;
         this.playerPlaybackManager = playerPlaybackManager;
+        this.playbackEngine = playbackEngine;
         this.markerPlayback = markerPlayback;
         this.reloadService = reloadService;
         this.wheelSyncService = wheelSyncService;
@@ -66,9 +70,9 @@ public class ServerLifecycle {
         ServerTickEvents.START_SERVER_TICK.register(ignoredServer -> {
             this.markerPlayback.tick();
             this.idlePlaybackService.tick();
-            this.playerPlaybackManager.engine().beginTick();
+            this.playbackEngine.beginTick();
         });
-        ServerTickEvents.END_SERVER_TICK.register(ignoredServer -> this.playerPlaybackManager.engine().tick());
+        ServerTickEvents.END_SERVER_TICK.register(ignoredServer -> this.playbackEngine.tick());
         PlaybackHooks.INTERRUPTION.register(this.playerPlaybackManager::interrupt);
         ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, ignoredSource, ignoredBaseDamage, damageTaken, ignoredBlocked) -> {
             if (damageTaken > 0.0F && entity instanceof ServerPlayer player) {
@@ -105,13 +109,13 @@ public class ServerLifecycle {
 
     private void handleServerStarted(MinecraftServer server) {
         EmoteMod.SERVER = server;
-        this.playerPlaybackManager.engine().startWorker();
+        this.playbackEngine.startWorker();
         this.reloadService.reload();
     }
 
     private void handleServerStopping(MinecraftServer ignoredServer) {
-        this.playerPlaybackManager.engine().stopAll(PlaybackStopReason.SERVER_STOPPING);
-        this.playerPlaybackManager.engine().stopWorker();
+        this.playbackEngine.stopAll(PlaybackStopReason.SERVER_STOPPING);
+        this.playbackEngine.stopWorker();
         this.cooldowns.clear();
         this.emoteCatalog.clearApiRegistrations();
         this.idlePlaybackService.clear();

@@ -102,7 +102,7 @@ public class EmoteMod implements ModInitializer {
         );
 
         UserCommand userCommand = new UserCommand(playback, new EmoteMenu(configManager, catalog, queries, playback), queries, play);
-        AdminCommand adminCommand = new AdminCommand(catalog, playback, reload, configManager, skins);
+        AdminCommand adminCommand = new AdminCommand(catalog, playback, engine, reload, configManager, skins);
         AccountCommand accountCommand = new AccountCommand(accounts);
         CommandRegistrationCallback.EVENT.register((dispatcher, ignoredRegistryAccess, ignoredEnvironment) -> {
             var root = userCommand.createRoot();
@@ -112,7 +112,7 @@ public class EmoteMod implements ModInitializer {
         });
 
         ServerLifecycle lifecycle = new ServerLifecycle(
-            skins, cooldowns, catalog, playback, markerPlayback, reload, wheelSync, idlePlayback, resources,
+            skins, cooldowns, catalog, playback, engine, markerPlayback, reload, wheelSync, idlePlayback, resources,
             () -> !accounts.hasAccounts() && !mineSkin.available()
         );
         playback.register();

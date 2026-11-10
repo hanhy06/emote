@@ -10,9 +10,10 @@ import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.permission.PermissionService;
-import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
+import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.stress.PlaybackStressTest;
 import io.github.hanhy06.emote.playback.stress.PlaybackStressTestReport;
+import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
@@ -35,11 +36,13 @@ final class StressTestCommand {
         "Invalid stress-test load '" + value + "'. Use a positive number followed by i or d."
     ));
     private final EmoteCatalog emoteCatalog;
-    private final PlayerPlaybackManager playerPlaybackManager;
+    private final PlaybackEngine playbackEngine;
+    private final PlayerSkinManager playerSkinManager;
 
-    StressTestCommand(EmoteCatalog emoteCatalog, PlayerPlaybackManager playerPlaybackManager) {
+    StressTestCommand(EmoteCatalog emoteCatalog, PlaybackEngine playbackEngine, PlayerSkinManager playerSkinManager) {
         this.emoteCatalog = emoteCatalog;
-        this.playerPlaybackManager = playerPlaybackManager;
+        this.playbackEngine = playbackEngine;
+        this.playerSkinManager = playerSkinManager;
     }
 
     LiteralArgumentBuilder<CommandSourceStack> createCommand() {
@@ -74,7 +77,7 @@ final class StressTestCommand {
 
         Map<String, Map<PlayerSkinRegion, String>> preparedSkin = null;
         if (source.getEntity() instanceof ServerPlayer player) {
-            var skinPreparation = this.playerPlaybackManager.prepareStressTestSkin(player, animations);
+            var skinPreparation = this.playerSkinManager.preparePlayerSkins(player, animations);
             if (!skinPreparation.ready()) {
                 source.sendFailure(Component.literal(
                     skinPreparation.preparing() ? "Preparing your skin… " + skinPreparation.progressPercent() + "% Run the stress test again when it is ready."
@@ -88,7 +91,7 @@ final class StressTestCommand {
         PlaybackStressTest.StartResult startResult;
         try {
             startResult = load.unit() == LoadUnit.INSTANCES
-                ? this.playerPlaybackManager.engine().stressTest().start(
+                ? this.playbackEngine.stressTest().start(
                     source.getLevel(),
                     source.getPosition(),
                     source.getRotation().y,
@@ -98,7 +101,7 @@ final class StressTestCommand {
                     preparedSkin,
                     report -> sendStressTestReport(source, report)
                 )
-                : this.playerPlaybackManager.engine().stressTest().startByDisplayCount(
+                : this.playbackEngine.stressTest().startByDisplayCount(
                     source.getLevel(),
                     source.getPosition(),
                     source.getRotation().y,
@@ -157,7 +160,7 @@ final class StressTestCommand {
     }
 
     private int stopStressTest(CommandSourceStack source) {
-        PlaybackStressTestReport report = this.playerPlaybackManager.engine().stressTest().stop();
+        PlaybackStressTestReport report = this.playbackEngine.stressTest().stop();
         if (report == null) {
             source.sendFailure(Component.literal("No emote stress test is running."));
             return 0;

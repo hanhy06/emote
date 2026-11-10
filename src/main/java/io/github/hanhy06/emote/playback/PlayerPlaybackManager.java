@@ -6,7 +6,6 @@ import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaybackPlacement;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
-import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.mixin.accessor.EntitySharedFlagsAccessor;
 import io.github.hanhy06.emote.playback.molang.PlayerMolangQueries;
@@ -43,7 +42,6 @@ public final class PlayerPlaybackManager {
         this.skins = skins;
         skins.addReadyListener(this::refreshPlayerSkin);
     }
-    public PlaybackEngine engine() { return this.engine; }
     public void register() {
         EntityTrackingEvents.START_TRACKING.register(this::handleStartTracking);
         PlaybackHooks.EQUIPMENT_SYNC.register(this::handleEquipmentSync);
@@ -221,10 +219,6 @@ public final class PlayerPlaybackManager {
             case GAME_MODE_CHANGED -> conditions.gameModeChange();
             default -> false;
         };
-    }
-
-    public PlayerSkinManager.Preparation prepareStressTestSkin(ServerPlayer player, List<PreparedAnimation> emotes) {
-        return this.skins.preparePlayerSkins(player, emotes);
     }
 
     private record PlayerPlayback(PlaybackSession session, PlayerPlaybackState playerState) {}
