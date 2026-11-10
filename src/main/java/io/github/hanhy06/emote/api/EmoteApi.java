@@ -3,7 +3,9 @@ package io.github.hanhy06.emote.api;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.sequence.EmoteSequence;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
 import java.util.Optional;
@@ -32,6 +34,8 @@ public abstract class EmoteApi {
     public abstract PlayResult play(ServerPlayer player, Identifier emoteId);
 
     public abstract PlayResult play(ServerPlayer player, Identifier emoteId, PlaybackPlacement placement);
+
+    public abstract PlayResult play(ServerLevel world, Identifier emoteId, Vec3 position, float yaw);
 
     public abstract boolean stop(ServerPlayer player);
 

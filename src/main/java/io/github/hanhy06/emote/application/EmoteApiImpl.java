@@ -8,11 +8,17 @@ import io.github.hanhy06.emote.content.*;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.PlaybackSession;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
+import io.github.hanhy06.emote.playback.RootTransform;
+import io.github.hanhy06.emote.playback.molang.MolangQuerySource;
+import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.phys.Vec3;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -24,6 +30,7 @@ public final class EmoteApiImpl extends EmoteApi {
     private final EmotePlayService playService;
     private final PlayerPlaybackManager playerPlaybackManager;
     private final PlaybackEngine engine;
+    private final PlayerSkinManager skins;
     private final ApiEventDispatcher events;
     private final Runnable changeNotifier;
 
@@ -32,6 +39,7 @@ public final class EmoteApiImpl extends EmoteApi {
         EmotePlayService playService,
         PlayerPlaybackManager playerPlaybackManager,
         PlaybackEngine engine,
+        PlayerSkinManager skins,
         ApiEventDispatcher events,
         Runnable changeNotifier
     ) {
@@ -39,6 +47,7 @@ public final class EmoteApiImpl extends EmoteApi {
         this.playService = Objects.requireNonNull(playService, "playService");
         this.playerPlaybackManager = Objects.requireNonNull(playerPlaybackManager, "playerPlaybackManager");
         this.engine = Objects.requireNonNull(engine, "engine");
+        this.skins = Objects.requireNonNull(skins, "skins");
         this.events = Objects.requireNonNull(events, "events");
         this.changeNotifier = Objects.requireNonNull(changeNotifier, "changeNotifier");
     }
@@ -55,6 +64,25 @@ public final class EmoteApiImpl extends EmoteApi {
         Objects.requireNonNull(placement, "placement");
         requireServerThread();
         return this.playService.play(player, emoteId.toString(), PlaySource.API, placement);
+    }
+
+    @Override
+    public PlayResult play(ServerLevel world, Identifier emoteId, Vec3 position, float yaw) {
+        Objects.requireNonNull(world, "world");
+        Objects.requireNonNull(emoteId, "emoteId");
+        requireServerThread();
+        PlaybackPlacement placement = PlaybackPlacement.external(position, yaw);
+        PreparedEmote emote = this.emoteCatalog.find(emoteId.toString());
+        if (emote == null) return PlayResult.failure("That emote does not exist.");
+        var preparation = this.skins.prepareNamedSkin("", emote);
+        if (!preparation.ready()) return PlayResult.failure(preparation.preparing()
+            ? "Preparing the default skin… " + preparation.progressPercent() + "%" : "No complete default skin is available.");
+        var result = this.engine.start(new PlaybackEngine.Request(world, RootTransform.create(placement.position(), placement.yaw()),
+            emote, Map.of(), MolangQuerySource.EMPTY, null, preparation.textures(), PlaybackEngine.Lifecycle.NONE, placement.mode()), null);
+        return switch (result) {
+            case PlaybackEngine.StartResult.Success success -> new PlayResult.Success(success.session().view());
+            case PlaybackEngine.StartResult.Failure failure -> PlayResult.failure(failure.message());
+        };
     }
 
     @Override

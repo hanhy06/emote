@@ -79,6 +79,7 @@ public class EmoteMod implements ModInitializer {
             play,
             playback,
             engine,
+            skins,
             apiEvents,
             wheelSync::syncAll
         );
