@@ -156,7 +156,7 @@ public final class TrumpetExample implements EmoteCallbacks {
             melody.stopNote();
         }
 
-        melody.advance(context.getElapsedTicks(), note -> playHorn(melody, note, serverTick));
+        melody.advance(context.getScopeElapsedTicks(), note -> playHorn(melody, note, serverTick));
     }
 
     @Override

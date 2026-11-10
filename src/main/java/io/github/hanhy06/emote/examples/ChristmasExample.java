@@ -51,7 +51,7 @@ public final class ChristmasExample implements EmoteCallbacks {
     }
 
     private void tryStartChorus(PlaybackContext context) {
-        PlaybackSession instrument = this.engine.findSession(context.getSessionId());
+        PlaybackSession instrument = this.engine.findSession(context.getId());
         if (instrument == null || !INSTRUMENTS.contains(instrument.emoteId())) {
             return;
         }
@@ -92,12 +92,12 @@ public final class ChristmasExample implements EmoteCallbacks {
 
     @Override
     public void onClose(PlaybackContext context) {
-        UUID instrumentId = context.getSessionId();
+        UUID instrumentId = context.getId();
         this.instruments.removeIf(instrument -> instrument.sessionId().equals(instrumentId));
         PlaybackSession chorus = this.chorusByInstrument.get(instrumentId);
         if (chorus != null) {
             this.chorusByInstrument.values().removeIf(chorus::equals);
-            this.engine.stop(chorus, context.getStopReason().orElse(PlaybackStopReason.MANUAL));
+            this.engine.stop(chorus, context.getCloseReason().orElse(PlaybackStopReason.MANUAL));
         }
     }
 }

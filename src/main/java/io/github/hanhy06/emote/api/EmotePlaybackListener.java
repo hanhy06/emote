@@ -1,9 +1,9 @@
 package io.github.hanhy06.emote.api;
 
 public interface EmotePlaybackListener {
-    default void onStarted(PlaybackInfo playback) {
+    default void onStarted(Playback playback) {
     }
 
-    default void onStopped(PlaybackInfo playback, PlaybackStopReason reason) {
+    default void onStopped(Playback playback, PlaybackStopReason reason) {
     }
 }

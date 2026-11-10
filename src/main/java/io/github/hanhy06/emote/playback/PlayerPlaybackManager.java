@@ -128,7 +128,7 @@ public final class PlayerPlaybackManager {
             Map.of("actor", player), PlayerMolangQueries.forPlayer(player), player.createCommandSourceStack(),
             preparation.textures(), lifecycle, placement.mode()), findActive(player.getUUID()));
         return switch (result) {
-            case PlaybackEngine.StartResult.Success success -> new PlayResult.Success(success.session().info());
+            case PlaybackEngine.StartResult.Success success -> new PlayResult.Success(success.session().view());
             case PlaybackEngine.StartResult.Failure failure -> PlayResult.failure(failure.message());
         };
     }

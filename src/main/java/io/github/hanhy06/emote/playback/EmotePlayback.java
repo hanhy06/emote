@@ -981,7 +981,11 @@ public final class EmotePlayback {
         }
 
         private PoseView view() { return view(null); }
-        private PoseView view(@Nullable PlaybackTimeline timeline) { return this.fixedView == null ? new PoseView(owner.currentTick, owner.position(timeline), root, placement, orientationYaw, nodeMatrices) : this.fixedView; }
+        private PoseView view(@Nullable PlaybackTimeline timeline) {
+            if (this.fixedView != null) return this.fixedView;
+            PlaybackTimeline resolved = timeline == null ? owner.timeline() : timeline;
+            return new PoseView(owner.currentTick, owner.position(resolved), resolved, root, placement, orientationYaw, nodeMatrices);
+        }
         public AdvanceResult result() { return this.result; }
         public PoseView pose() { return this.finalPose; }
         public PlaybackTimeline timeline() { return this.timeline; }
@@ -1048,15 +1052,17 @@ public final class EmotePlayback {
     public static final class PoseView {
         private final int tick;
         private final PlaybackPosition position;
+        private final PlaybackTimeline timeline;
         private final Matrix4fc root;
         private final RootTransform placement;
         private final float orientationYaw;
         private final Map<String, Supplier<Matrix4fc>> nodeMatrices;
 
-        private PoseView(int tick, PlaybackPosition position, Matrix4fc root, RootTransform placement, float orientationYaw,
+        private PoseView(int tick, PlaybackPosition position, PlaybackTimeline timeline, Matrix4fc root, RootTransform placement, float orientationYaw,
                          Map<String, Supplier<Matrix4fc>> nodeMatrices) {
             this.tick = tick;
             this.position = position;
+            this.timeline = timeline;
             this.root = root;
             this.placement = placement;
             this.orientationYaw = orientationYaw;
@@ -1073,6 +1079,7 @@ public final class EmotePlayback {
         public float orientationYaw() { return this.orientationYaw; }
         public int tick() { return this.tick; }
         public PlaybackPosition position() { return this.position; }
+        public PlaybackTimeline timeline() { return this.timeline; }
     }
 
     private record PoseStep(AnimationEvaluator evaluator, AnimationEvaluator.Pose pose,

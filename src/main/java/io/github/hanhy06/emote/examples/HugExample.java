@@ -46,14 +46,14 @@ public final class HugExample implements EmoteCallbacks {
 
     @Override
     public void onStart(PlaybackContext context) {
-        ServerPlayer owner = (ServerPlayer) context.getActor("actor").orElseThrow();
+        ServerPlayer owner = (ServerPlayer) context.getActor().orElseThrow();
         Hug previous = this.hugs.get(owner.getUUID());
 
         if (previous != null) {
             finish(previous);
         }
 
-        Hug hug = new Hug(owner, context.getSessionId(), this.api.get(PUT_AWAY_SIGN).orElseThrow().durationTicks());
+        Hug hug = new Hug(owner, context, this.api.get(PUT_AWAY_SIGN).orElseThrow().durationTicks());
         this.hugs.put(owner.getUUID(), hug);
 
         // The Sequence callback keeps the same state when its active animation changes.
@@ -69,25 +69,25 @@ public final class HugExample implements EmoteCallbacks {
             return;
         }
 
-        PlaybackInfo playback = this.api.getPlayback(context.getSessionId()).orElseThrow();
-        if (playback.position() == null) {
+        PlaybackPosition position = context.getPosition();
+        if (position == null) {
             return;
         }
 
-        if (Integer.valueOf(HUG_STEP).equals(playback.position().stepIndex())) {
+        if (Integer.valueOf(HUG_STEP).equals(position.stepIndex())) {
             // Without a partner, stop at the neutral boundary before the hug begins.
             finish(hug);
             return;
         }
 
-        if (Integer.valueOf(STOW_STEP).equals(playback.position().stepIndex())) {
+        if (Integer.valueOf(STOW_STEP).equals(position.stepIndex())) {
             hug.stage = Stage.STOWING;
             if (hug.interaction != null) {
                 hug.interaction.discard();
                 hug.interaction = null;
             }
 
-            if (hug.partnerSession == null) {
+            if (hug.partnerPlayback == null) {
                 return;
             }
 
@@ -96,7 +96,7 @@ public final class HugExample implements EmoteCallbacks {
                 embrace(hug);
             } else {
                 // Keep the partner visible at the starting pose until the sign is stowed.
-                this.api.setAnimationTick(hug.partnerSession, 0);
+                hug.partnerPlayback.setAnimationTick(0);
             }
             return;
         }
@@ -160,8 +160,8 @@ public final class HugExample implements EmoteCallbacks {
     public void tick() {
         for (Hug hug : List.copyOf(this.hugs.values())) {
             if (
-                this.api.getPlayback(hug.ownerSession).isEmpty()
-                    || (hug.partnerSession != null && this.api.getPlayback(hug.partnerSession).isEmpty())
+                !hug.ownerPlayback.isActive()
+                    || (hug.partnerPlayback != null && !hug.partnerPlayback.isActive())
             ) {
                 // Also catches sessions cancelled before their first frame was applied.
                 finish(hug);
@@ -170,15 +170,14 @@ public final class HugExample implements EmoteCallbacks {
     }
 
     private void updatePlacement(PlaybackContext context, Hug hug) {
-        PlaybackInfo playback = this.api.getPlayback(context.getSessionId()).orElseThrow();
         hug.ownerPlacement = PlaybackPlacement.external(
-            context.getRootPosition(), playback.placement().yaw()
+            context.getRootPosition(), context.getPlacement().yaw()
         );
 
         // The locator provides world position; this example faces the partner toward the owner.
         hug.partnerPlacement = PlaybackPlacement.external(
             context.getNodeWorldPosition(context.getPayload()).orElseThrow(),
-            playback.placement().yaw() + 180.0F
+            context.getPlacement().yaw() + 180.0F
         );
     }
 
@@ -202,12 +201,12 @@ public final class HugExample implements EmoteCallbacks {
             return;
         }
 
-        if (!this.api.setStep(hug.ownerSession, STOW_STEP, 0, 0)) {
+        if (!hug.ownerPlayback.setStep(STOW_STEP, 0, 0)) {
             return;
         }
 
         // Freeze the placement and reserve the partner before another click can be accepted.
-        this.api.setPlacement(hug.ownerSession, hug.ownerPlacement);
+        hug.ownerPlayback.setPlacement(hug.ownerPlacement);
         hug.partner = partner;
         hug.stage = Stage.STOWING;
         if (hug.interaction != null) {
@@ -225,7 +224,7 @@ public final class HugExample implements EmoteCallbacks {
 
             PlayResult result = this.api.play(partner, HUG_PLAYER1, hug.partnerPlacement);
             if (result instanceof PlayResult.Success success) {
-                hug.partnerSession = success.playback().sessionId();
+                hug.partnerPlayback = success.playback();
             } else {
                 partner.sendSystemMessage(result.errorMessage());
                 finish(hug);
@@ -242,15 +241,15 @@ public final class HugExample implements EmoteCallbacks {
             || hug.owner.level() != hug.partner.level()
             || hug.owner.level().getPlayerByUUID(hug.owner.getUUID()) != hug.owner
             || hug.owner.level().getPlayerByUUID(hug.partner.getUUID()) != hug.partner
-            || this.api.getPlayback(hug.partnerSession).isEmpty()) {
+            || !hug.partnerPlayback.isActive()) {
             finish(hug);
             return;
         }
         hug.stage = Stage.HUGGING;
         try {
             // Start both hug motions next tick without recreating either model.
-            if (!this.api.setStep(hug.ownerSession, HUG_STEP, 0, 0)
-                || !this.api.setAnimationTick(hug.partnerSession, 0)) {
+            if (!hug.ownerPlayback.setStep(HUG_STEP, 0, 0)
+                || !hug.partnerPlayback.setAnimationTick(0)) {
                 finish(hug);
             }
         } catch (RuntimeException exception) {
@@ -269,10 +268,10 @@ public final class HugExample implements EmoteCallbacks {
             hug.interaction.discard();
         }
 
-        // Stop by session ID to avoid stopping an unrelated emote started by the same player.
-        this.api.stop(hug.ownerSession);
-        if (hug.partnerSession != null) {
-            this.api.stop(hug.partnerSession);
+        // These objects keep addressing the original sessions if either player starts another emote.
+        hug.ownerPlayback.stop();
+        if (hug.partnerPlayback != null) {
+            hug.partnerPlayback.stop();
         }
     }
 
@@ -286,9 +285,9 @@ public final class HugExample implements EmoteCallbacks {
     private static final class Hug {
         final ServerPlayer owner;
 
-        final UUID ownerSession;
+        final Playback ownerPlayback;
         final int stowDurationTicks;
-        UUID partnerSession;
+        Playback partnerPlayback;
         ServerPlayer partner;
 
         Stage stage = Stage.WAITING;
@@ -296,9 +295,9 @@ public final class HugExample implements EmoteCallbacks {
         PlaybackPlacement ownerPlacement;
         PlaybackPlacement partnerPlacement;
 
-        Hug(ServerPlayer owner, UUID ownerSession, int stowDurationTicks) {
+        Hug(ServerPlayer owner, Playback ownerPlayback, int stowDurationTicks) {
             this.owner = owner;
-            this.ownerSession = ownerSession;
+            this.ownerPlayback = ownerPlayback;
             this.stowDurationTicks = stowDurationTicks;
         }
     }

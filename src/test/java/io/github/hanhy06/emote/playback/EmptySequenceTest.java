@@ -252,6 +252,62 @@ class EmptySequenceTest {
     }
 
     @Test
+    void keepsCallbackPoseAndTimelineAtTheirEventWhenSeekingAcrossSequenceSteps(@TempDir Path directory) throws Exception {
+        var json = """
+            {"type":"animation","schema_version":5,"id":"test:callback_pose","metadata":{"name":"Callback pose","description":""},
+             "nodes":{"n":{"transform":[{"id":"position","op":"translate","value":[0,0,0]}],
+                             "attachments":{"text":{"type":"text_display","text":"probe"}}}},
+             "animation":{"duration":"2t","tracks":[{"target":{"node":"n","operation":"position"},"channel":"value",
+                 "driver":{"type":"expression","value":[{"molang":"10 + q.anim_time_ticks"},0,0]}}]}}
+            """;
+        var animation = PreparedAnimation.prepare(new AnimationJsonParser().parse(directory.resolve("pose.json"),
+            json.getBytes(StandardCharsets.UTF_8)), registries);
+        var sequence = PreparedSequence.prepare(new EmoteSequence(Identifier.parse("test:callback_sequence"), animation.metadata(),
+            new EmoteSequence.Settings(0, animation.playerBehavior()), List.of(
+                new EmoteSequence.AnimationStep(animation.model().id(), 1),
+                new EmoteSequence.AnimationStep(EmoteSequence.Control.EMPTY.id(), 1),
+                new EmoteSequence.AnimationStep(animation.model().id(), 1))), Map.of(animation.id(), animation));
+        var playback = new EmotePlayback(sequence);
+        var starts = new ArrayList<EmotePlayback.PoseView>();
+        var closes = new ArrayList<EmotePlayback.PoseView>();
+        var reasons = new ArrayList<PlaybackStopReason>();
+        playback.bindLifecycleListener(new EmotePlayback.LifecycleListener() {
+            public void onStart(PreparedAnimation child) { starts.add(playback.notificationPose()); }
+            public void onClose(PlaybackStopReason reason) {
+                closes.add(playback.notificationPose());
+                reasons.add(reason);
+            }
+        });
+        apply(playback.prepareStart(new PoseTarget()));
+        apply(playback.prepareAdvance());
+        var frame = apply(playback.prepareAdvance());
+        assertEquals(PlaybackTimeline.Phase.EMPTY, frame.pose().position().phase());
+        var firstClose = closes.getFirst();
+        assertEquals(0, firstClose.position().stepIndex());
+        assertEquals(2, firstClose.position().animationTick());
+        assertEquals(12, firstClose.nodeMatrix("n").m30());
+        assertNull(firstClose.timeline().segments().get(1).endTick());
+
+        for (int tick = 0; tick < 5; tick++) apply(playback.prepareAdvance());
+        apply(playback.prepareStep(2, 0, 0));
+        var secondStart = starts.getLast();
+        assertEquals(2, secondStart.position().stepIndex());
+        assertEquals(7, secondStart.tick());
+        assertEquals(0, secondStart.position().animationTick());
+        assertEquals(7, secondStart.timeline().segments().get(1).endTick());
+        assertEquals(secondStart.position().animationId(), secondStart.timeline().segments().get(secondStart.position().segmentIndex()).animationId());
+        assertEquals(10, secondStart.nodeMatrix("n").m30());
+        apply(playback.prepareAnimationTick(1));
+        apply(playback.prepareStop(PlaybackStopReason.MANUAL));
+        assertEquals(List.of(PlaybackStopReason.FINISHED, PlaybackStopReason.MANUAL), reasons);
+        assertEquals(1, closes.getLast().position().animationTick());
+        assertEquals(11, closes.getLast().nodeMatrix("n").m30());
+        assertEquals(10, secondStart.nodeMatrix("n").m30());
+        assertNull(firstClose.timeline().segments().get(1).endTick());
+        assertNull(playback.notificationPose());
+    }
+
+    @Test
     void sharesMolangVariablesAcrossSequenceExecutionsAndSeek(@TempDir Path directory) throws Exception {
         JsonObject json = JsonParser.parseString("""
             {"type":"animation","schema_version":5,"id":"test:variable_writer","metadata":{"name":"Variables","description":""},

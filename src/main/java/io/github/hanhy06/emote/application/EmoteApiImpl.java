@@ -10,7 +10,6 @@ import io.github.hanhy06.emote.playback.PlaybackSession;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.phys.Vec3;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -66,57 +65,6 @@ public final class EmoteApiImpl extends EmoteApi {
     }
 
     @Override
-    public boolean stop(UUID sessionId) {
-        Objects.requireNonNull(sessionId, "sessionId");
-        requireServerThread();
-        return this.engine.stop(sessionId, PlaybackStopReason.MANUAL) != null;
-    }
-
-    @Override
-    public boolean setPlacement(UUID sessionId, PlaybackPlacement placement) {
-        Objects.requireNonNull(sessionId, "sessionId");
-        Objects.requireNonNull(placement, "placement");
-        requireServerThread();
-        return this.engine.setPlacement(sessionId, placement);
-    }
-
-    @Override
-    public boolean setTick(UUID sessionId, int tick) {
-        Objects.requireNonNull(sessionId, "sessionId");
-        requireServerThread();
-        if (tick < 0) throw new IllegalArgumentException("Tick must be non-negative");
-        PlaybackSession session = this.engine.findSession(sessionId);
-        return session != null && session.setTick(tick);
-    }
-
-    @Override
-    public boolean setAnimationTick(UUID sessionId, int tick) {
-        Objects.requireNonNull(sessionId, "sessionId");
-        requireServerThread();
-        if (tick < 0) throw new IllegalArgumentException("Tick must be non-negative");
-        PlaybackSession session = this.engine.findSession(sessionId);
-        return session != null && session.setAnimationTick(tick);
-    }
-
-    @Override
-    public boolean setStep(UUID sessionId, int stepIndex, int repeatIndex, int tick) {
-        Objects.requireNonNull(sessionId, "sessionId");
-        requireServerThread();
-        if (stepIndex < 0 || repeatIndex < 0 || tick < 0) throw new IllegalArgumentException("Step, repeat and tick must not be negative");
-        PlaybackSession session = this.engine.findSession(sessionId);
-        return session != null && session.setStep(stepIndex, repeatIndex, tick);
-    }
-
-    @Override
-    public Optional<Vec3> getNodeWorldPosition(UUID sessionId, String nodeId) {
-        Objects.requireNonNull(sessionId, "sessionId");
-        Objects.requireNonNull(nodeId, "nodeId");
-        requireServerThread();
-        return Optional.ofNullable(this.engine.findSession(sessionId))
-            .flatMap(session -> session.nodeWorldPosition(nodeId));
-    }
-
-    @Override
     public Registration register(EmoteAnimation animation) throws EmoteLoadException {
         Objects.requireNonNull(animation, "animation");
         requireServerThread();
@@ -154,10 +102,10 @@ public final class EmoteApiImpl extends EmoteApi {
     }
 
     @Override
-    public Optional<PlaybackInfo> getPlayback(ServerPlayer player) {
+    public Optional<Playback> getPlayback(ServerPlayer player) {
         Objects.requireNonNull(player, "player");
         requireServerThread();
-        return Optional.ofNullable(this.playerPlaybackManager.findActive(player.getUUID())).map(PlaybackSession::info);
+        return Optional.ofNullable(this.playerPlaybackManager.findActive(player.getUUID())).map(PlaybackSession::view);
     }
 
     @Override
@@ -166,18 +114,10 @@ public final class EmoteApiImpl extends EmoteApi {
     }
 
     @Override
-    public Optional<PlaybackInfo> getPlayback(UUID sessionId) {
+    public Optional<Playback> getPlayback(UUID sessionId) {
         Objects.requireNonNull(sessionId, "sessionId");
         requireServerThread();
-        return Optional.ofNullable(this.engine.findSession(sessionId)).map(PlaybackSession::info);
-    }
-
-    @Override
-    public Optional<PlaybackTimeline> getTimeline(UUID sessionId) {
-        Objects.requireNonNull(sessionId, "sessionId");
-        requireServerThread();
-        return Optional.ofNullable(this.engine.findSession(sessionId))
-            .map(PlaybackSession::timeline);
+        return Optional.ofNullable(this.engine.findSession(sessionId)).map(PlaybackSession::view);
     }
 
     @Override
