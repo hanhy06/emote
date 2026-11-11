@@ -167,8 +167,8 @@ export function assignSkinPart(document: ConversionDocument, selectedCandidateId
     const restored = structuredClone(candidate.originalAttachment);
     if (attachment.visible === undefined) delete restored.visible;
     else restored.visible = attachment.visible;
-    if (attachment.entity_nbt === undefined) delete restored.entity_nbt;
-    else restored.entity_nbt = attachment.entity_nbt;
+    if (attachment.entity_snbt === undefined) delete restored.entity_snbt;
+    else restored.entity_snbt = attachment.entity_snbt;
     nodes[candidate.nodeId] = { ...node, attachments: { ...node.attachments, [candidate.attachmentId]: restored } };
   }
   let result = { ...document, nodes };
@@ -225,7 +225,7 @@ function applySkinGroups(document: ConversionDocument, part: PlayerSkinPart, gro
     const attachment = node.attachments?.[candidate.attachmentId] ?? candidate.originalAttachment;
     nodes[candidate.nodeId] = { ...node,
       attachments: { ...node.attachments, [candidate.attachmentId]: { type: "player_skin", part, region: { from: index / orders.length, to: (index + 1) / orders.length },
-        ...(attachment.visible === undefined ? {} : { visible: attachment.visible }), ...(attachment.entity_nbt === undefined ? {} : { entity_nbt: attachment.entity_nbt }) } },
+        ...(attachment.visible === undefined ? {} : { visible: attachment.visible }), ...(attachment.entity_snbt === undefined ? {} : { entity_snbt: attachment.entity_snbt }) } },
     };
     skinCandidates[id] = { ...candidate, order };
   }

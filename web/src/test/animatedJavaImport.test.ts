@@ -45,10 +45,10 @@ it("applies player render scale with and without cube groups and keeps direct di
     const pose = evaluatePose(output, 0, (value) => { if (typeof value !== "number") throw new Error("Unexpected expression"); return value; });
     expect(pose.item.matrix.elements.every((value, axis) => Math.abs(value - expected.elements[axis]) < 1e-10)).toBe(true);
     expect(pose.item.visible).toBe(true);
-    expect(nbtFields(output.nodes.item.attachments?.display.entity_nbt)).toEqual({ billboard: '"fixed"', shadow_radius: "2" });
+    expect(nbtFields(output.nodes.item.attachments?.display.entity_snbt)).toEqual({ billboard: '"fixed"', shadow_radius: "2" });
     if (hasCube) {
       expect(output.nodes.bone.visible).toBe(false);
-      expect(nbtFields(output.nodes.bone.attachments?.display.entity_nbt)).toEqual({ billboard: '"center"', shadow_radius: "5" });
+      expect(nbtFields(output.nodes.bone.attachments?.display.entity_snbt)).toEqual({ billboard: '"center"', shadow_radius: "5" });
     }
   }
 });
@@ -62,7 +62,7 @@ it("imports independent sky and block brightness and only applies enabled bright
   ];
   const { input, output } = await importProject({ elements: cases.map(({ uuid, config }) => ({ ...display(uuid), configs: { default: config } })), outliner: cases.map(({ uuid }) => uuid) });
   expect(input.diagnostics).toEqual([]);
-  for (const { uuid, expected } of cases) expect(nbtFields(output.nodes[uuid].attachments?.display.entity_nbt)).toEqual(expected);
+  for (const { uuid, expected } of cases) expect(nbtFields(output.nodes[uuid].attachments?.display.entity_snbt)).toEqual(expected);
 
   const direct = display("item");
   const bright = await importProject({
@@ -113,7 +113,7 @@ it("skips excluded variant nodes, preserves partial patches and reapplies defaul
   const cubeNodes = Object.entries(output.nodes).filter(([, node]) => typeof node.source?.node_id === "string" && ["cube_a", "cube_b"].includes(node.source.node_id));
   expect(cubeNodes).toHaveLength(2);
   const stateAt = (id: string, tick: number) => {
-    const state = nbtFields(output.nodes[id].attachments?.display.entity_nbt);
+    const state = nbtFields(output.nodes[id].attachments?.display.entity_snbt);
     const track = output.animation.tracks.find((track) => track.target.node === id && track.channel === "nbt");
     if (track?.driver.type === "state") for (const key of track.driver.keys) {
       if (parseMinecraftTime(key.time) > tick) break;

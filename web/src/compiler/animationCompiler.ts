@@ -63,7 +63,7 @@ export function compileAnimation(document: ConversionDocument, index: number, st
   }
   for (const node of Object.values(ir.nodes)) for (const attachment of Object.values(node.attachments ?? {})) {
     if (attachment.type === "player_skin") {
-      delete attachment.entity_nbt;
+      delete attachment.entity_snbt;
       continue;
     }
     if (attachment.type === "block_display" && typeof attachment.block_state_snbt === "string" && attachment.block_state_snbt.trim()) {
@@ -73,7 +73,7 @@ export function compileAnimation(document: ConversionDocument, index: number, st
         // Leave unparseable input for the mod loader.
       }
     }
-    if (attachment.entity_nbt) attachment.entity_nbt = formatNbt(attachment.entity_nbt);
+    if (attachment.entity_snbt) attachment.entity_snbt = formatNbt(attachment.entity_snbt);
   }
   for (const track of ir.animation.tracks) {
     if (track.channel !== "nbt" || track.driver.type !== "state") continue;

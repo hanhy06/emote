@@ -136,7 +136,7 @@ public final class AnimationJsonParser {
                 JsonObject definition = document.requireObject(a.getValue(), p);
                 String type = nonempty(definition, "type", p, document);
                 boolean visible = bool(definition, "visible", true, p, document);
-                CompoundTag nbt = definition.has("entity_nbt") ? compound(document.requireString(definition, "entity_nbt", p), p + ".entity_nbt", true, document) : new CompoundTag();
+                CompoundTag nbt = definition.has("entity_snbt") ? compound(document.requireString(definition, "entity_snbt", p), p + ".entity_snbt", true, document) : new CompoundTag();
                 Attachment attachment = switch (type) {
                     case "item_display" -> new ItemAttachment(visible, nbt, compound(document.requireString(definition, "item_stack_snbt", p), p + ".item_stack_snbt", false, document), nonempty(definition, "item_display", p, document));
                     case "block_display" -> new BlockAttachment(visible, nbt, compound(document.requireString(definition, "block_state_snbt", p), p + ".block_state_snbt", false, document));
@@ -151,7 +151,7 @@ public final class AnimationJsonParser {
                     case "external" -> new ExternalAttachment(visible, document.requireIdentifier(nonempty(definition, "key", p, document), p + ".key"), document.requireElement(definition, "data", p));
                     default -> throw document.error(p + ".type", "unknown attachment");
                 };
-                if (!(attachment instanceof ItemAttachment || attachment instanceof BlockAttachment || attachment instanceof TextAttachment) && definition.has("entity_nbt")) throw document.error(p + ".entity_nbt", "requires a display attachment");
+                if (!(attachment instanceof ItemAttachment || attachment instanceof BlockAttachment || attachment instanceof TextAttachment) && definition.has("entity_snbt")) throw document.error(p + ".entity_snbt", "requires a display attachment");
                 attachments.put(a.getKey(), attachment);
             }
             nodes.put(entry.getKey(), new Node(n.has("name") ? document.requireString(n, "name", path) : null,

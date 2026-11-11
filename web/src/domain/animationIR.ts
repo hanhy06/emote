@@ -17,7 +17,7 @@ export type TransformOperationIR = { id: string } & (
 
 export type AttachmentIR = {
   visible?: boolean;
-  entity_nbt?: string;
+  entity_snbt?: string;
 } & (
   | { type: "item_display"; item_stack_snbt: string; item_display: string }
   | { type: "block_display"; block_state_snbt: string }

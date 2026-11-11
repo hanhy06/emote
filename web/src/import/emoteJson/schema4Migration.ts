@@ -81,7 +81,7 @@ export function migrateAnimation(value: unknown, nodeHints: Record<string, Impor
     }
     if (attachment) {
       node.attachments = { display: { ...attachment, ...(source.visible === undefined ? {} : { visible: source.visible }),
-        ...(source.entity_nbt ? { entity_nbt: source.entity_nbt } : {}) } };
+        ...(source.entity_nbt ? { entity_snbt: source.entity_nbt } : {}) } };
       if (attachment.type === "item_display" && source.skin) {
         nodeHints[id] = { sourceNodeId: id, skinCandidates: { display: { groupId: id, suggestion: { ...source.skin } } } };
       }

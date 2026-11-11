@@ -25,8 +25,8 @@ export function referencedItemModelResources(ir: AnimationIR): Set<string> {
   };
   for (const node of Object.values(ir.nodes)) for (const attachment of Object.values(node.attachments ?? {})) {
     if (attachment.type === "item_display") collect(readItemStack(attachment.item_stack_snbt));
-    if (attachment.entity_nbt) {
-      const item = readDisplayNbt(attachment.entity_nbt).itemStack;
+    if (attachment.entity_snbt) {
+      const item = readDisplayNbt(attachment.entity_snbt).itemStack;
       if (item) collect(item);
     }
   }

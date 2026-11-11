@@ -29,7 +29,7 @@ const animation: AnimationJson = {
       parent: "root", inherit: { rotation: "entity", scale: false, visibility: true },
       transform: [{ id: "position", op: "translate", value: [0, 1.5, 0] }, { id: "spin", op: "rotate_euler", order: "ZYX", value: [0, 0, 0] }],
       attachments: {
-        prop: { type: "item_display", item_stack_snbt: '{id:"minecraft:paper",count:1}', item_display: "fixed", entity_nbt: "{glowing:1b}" },
+        prop: { type: "item_display", item_stack_snbt: '{id:"minecraft:paper",count:1}', item_display: "fixed", entity_snbt: "{glowing:1b}" },
         custom: { type: "external", key: "example:accessory", data: { variant: "keep" } },
       },
     },
@@ -228,7 +228,7 @@ it("edits animation ticks independently of preview delays and keeps generated ev
 it("omits skin NBT only in output and restores original display data when unassigned", async () => {
   const authored = structuredClone(animation);
   authored.nodes.arm.attachments!.prop = {
-    type: "item_display", item_stack_snbt: '{id:"minecraft:player_head",count:1}', item_display: "none", visible: true, entity_nbt: "{Glowing:1b}",
+    type: "item_display", item_stack_snbt: '{id:"minecraft:player_head",count:1}', item_display: "none", visible: true, entity_snbt: "{Glowing:1b}",
   };
   authored.nodes.arm.attachments!.other = structuredClone(animation.nodes.arm.attachments!.prop);
   authored.animation.tracks.push({ ...structuredClone(nbtTrack), target: { node: "arm", attachment: "other" } });
@@ -252,7 +252,7 @@ it("omits skin NBT only in output and restores original display data when unassi
 
 it("fits attachments independently without duplicating node expressions and restores their authored tracks and data", async () => {
   const authored = structuredClone(animation);
-  authored.nodes.arm.attachments!.prop = { type: "item_display", item_stack_snbt: '{id:"minecraft:player_head",count:1}', item_display: "none", entity_nbt: "{Glowing:1b}" };
+  authored.nodes.arm.attachments!.prop = { type: "item_display", item_stack_snbt: '{id:"minecraft:player_head",count:1}', item_display: "none", entity_snbt: "{Glowing:1b}" };
   authored.nodes.arm.attachments!.other = structuredClone(authored.nodes.arm.attachments!.prop);
   authored.nodes.arm.attachments!.decoration = structuredClone(animation.nodes.arm.attachments!.prop);
   authored.nodes.locator = { parent: "arm", transform: [{ id: "position", op: "translate", value: [0, 1, 0] }] };

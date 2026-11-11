@@ -54,7 +54,7 @@ it("imports schema 4 into editable IR and exports schema 5 with transforms, skin
   expect(actual).not.toHaveProperty("timeline");
   expect(actual.settings).not.toHaveProperty("playback");
   expect(actual.settings).not.toHaveProperty("display_interpolation");
-  expect(actual.nodes.prop).toMatchObject({ parent: "root", attachments: { display: { type: "item_display", visible: false, entity_nbt: "{glowing:1b}" } } });
+  expect(actual.nodes.prop).toMatchObject({ parent: "root", attachments: { display: { type: "item_display", visible: false, entity_snbt: "{glowing:1b}" } } });
   expect(actual.animation.tracks.find((track) => track.channel === "nbt")!.driver).toMatchObject({ keys: [
     { time: "0t", value: { merge: "{glowing:0b}" } }, { time: "1s", value: { merge: { molang: "v.patch" } } },
   ] });

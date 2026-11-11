@@ -16,7 +16,7 @@ export function importedNodeIR(node: ImportedNode, parent?: string): NodeIR {
     : { type: "text_display" as const, text: node.text };
   return { ...common,
     ...(node.type === "item_display" && node.modelGeometryMatrix ? { transform: [{ id: "model_geometry", op: "matrix" as const, value: node.modelGeometryMatrix }] } : {}),
-    attachments: { display: { ...content, ...(node.entityNbt ? { entity_nbt: node.entityNbt } : {}) } },
+    attachments: { display: { ...content, ...(node.entityNbt ? { entity_snbt: node.entityNbt } : {}) } },
   };
 }
 
