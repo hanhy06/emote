@@ -304,7 +304,7 @@ export function App() {
             const showCommandWarning = severity === "warning" && eventReview.hasCommands;
             const showReview = severity === "warning" && eventReview.hasSelectedReview;
             if (!issues.length && !showSkinWarning && !showCommandWarning && !showReview) return null;
-            return <details className={`message diagnostic-group ${severity === "error" ? "error" : "warning"}`} key={severity}>
+            return <details className={`message diagnostic-group ${severity === "error" ? "error" : "warning"}`} key={`${eventEditorRevision}:${severity}`} open={showCommandWarning}>
               <summary>{severity === "error" ? "Error" : "Warn"}</summary>
               <div className="diagnostic-body">
                 {(issues.length > 0 || showSkinWarning || showCommandWarning) && <ul className="diagnostic-messages">

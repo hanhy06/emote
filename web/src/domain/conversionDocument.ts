@@ -9,7 +9,7 @@ import type { GeneratedResource } from "./generatedResource";
 import type { EmoteCallback, EmotePlayerBehavior, SequenceStep } from "./emoteDefinition";
 import type { ImportedProject, ImportedSkinPart, InputFormat } from "./conversionSeed";
 
-export const DEFAULT_TARGET_MINECRAFT_VERSION = "26.3";
+export const DEFAULT_TARGET_MINECRAFT_VERSION = "26.4";
 
 export interface SkinCandidate {
   nodeId: string;
