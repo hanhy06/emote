@@ -76,10 +76,10 @@ Inspect the current playback and its resolved timeline. Use `PlaybackInfo.sessio
 |---|---|
 | `PlaybackInfo.state()` | Current playback state. |
 | `PlaybackInfo.elapsedTicks()` | Elapsed playback ticks. |
-| `PlaybackInfo.tick()` | Current tick in the complete playback timeline. |
-| `PlaybackInfo.position()` | Current segment, Sequence step and repetition, phase, phase-local tick, and active Animation. |
+| `PlaybackInfo.timelineTick()` | Current tick in the complete playback timeline. |
+| `PlaybackInfo.cursor()` | Current segment, Sequence step and repetition, phase, phase-local tick, and active Animation. |
 | `PlaybackInfo.placement()` | Current root position, yaw, and placement mode. |
-| `PlaybackPosition.animationTick()` | Animation-local tick; `null` outside the `ANIMATION` phase. |
+| `PlaybackCursor.animationTick()` | Animation-local tick; `null` outside the `ANIMATION` phase. |
 | `PlaybackTimeline.segments()` | Resolved `START_DELAY`, `ANIMATION`, `TRANSITION`, `WAIT`, `EMPTY`, `LOOP_DELAY`, or `HOLD` segments. Random choices and repeats are already resolved for this session. |
 
 Segment ranges include the start tick and exclude the end tick. An indefinite hold has no end tick. Sequence step and repetition indices are zero-based and refer to the original step and repetition.
@@ -90,9 +90,9 @@ Move within a running playback without creating a new session.
 
 | API | Behavior |
 |---|---|
-| `setTick(sessionId, tick)` | Moves to a tick in the complete playback timeline, including Sequence transitions and waits. |
-| `setAnimationTick(sessionId, tick)` | Moves within the active Animation; returns `false` outside the Animation phase. |
-| `setStep(sessionId, stepIndex, repeatIndex, tick)` | Moves to the resolved Animation or `emote:empty` at a Sequence step and repetition. |
+| `seekTimeline(sessionId, tick)` | Moves to a tick in the complete playback timeline, including Sequence transitions and waits. |
+| `seekAnimation(sessionId, tick)` | Moves within the active Animation; returns `false` outside the Animation phase. |
+| `seekStep(sessionId, stepIndex, repeatIndex, tick)` | Moves to the resolved Animation or `emote:empty` at a Sequence step and repetition. |
 
 Position changes are unavailable for `server_sync` playback. Target ticks start at zero. Invalid indices or out-of-range ticks throw `IllegalArgumentException`; an absent session returns `false`.
 
@@ -158,11 +158,11 @@ Register a named callback and select it in an Animation or Sequence's root `call
 | `getPayload()` | The unchanged payload string from the JSON callback entry. |
 | `getServer()`, `getWorld()` | The Minecraft server and playback world. |
 | `getElapsedTicks()` | Elapsed ticks since this callback scope began. |
-| `getTick()` | Current tick in the complete playback timeline. |
+| `getTimelineTick()` | Current tick in the complete playback timeline. |
 | `getAnimationTick()` | Animation-local tick. Animation callbacks use their segment's tick; root callbacks return `null` outside the Animation phase. |
-| `setTick(tick)` | Moves within the complete playback timeline. |
-| `setAnimationTick(tick)` | Moves within the active Animation. |
-| `setStep(stepIndex, repeatIndex, tick)` | Moves to a resolved Sequence Animation or `emote:empty`. Position-control rules above apply. |
+| `seekTimeline(tick)` | Moves within the complete playback timeline. |
+| `seekAnimation(tick)` | Moves within the active Animation. |
+| `seekStep(stepIndex, repeatIndex, tick)` | Moves to a resolved Sequence Animation or `emote:empty`. Position-control rules above apply. |
 | `getActor(name)` | Actor entity as an `Optional<Entity>`; use `"actor"` for the playback actor. |
 | `getAttachmentEntity(nodeId, attachmentId)` | Display entity as an `Optional<Entity>`; empty for attachments without an entity or unavailable entities. |
 | `getNodeWorldPosition(nodeId)` | Transformed node origin in world coordinates, including nodes without entity attachments. |

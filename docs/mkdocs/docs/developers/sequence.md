@@ -148,7 +148,7 @@ Use these IDs as an `emote` value or include them in random selection to control
 
 `emote:continue` may be selected consecutively. A Sequence must have at least one real Animation candidate.
 
-Use [`setStep`](api.md#playback-position-control) to move to another step, or target `emote:empty` with local tick `0`. The next Animation after `emote:empty` skips its `transition`.
+Use [`seekStep`](api.md#playback-position-control) to move to another step, or target `emote:empty` with local tick `0`. The next Animation after `emote:empty` skips its `transition`.
 
 ## Common settings
 
