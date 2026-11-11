@@ -25,11 +25,11 @@ public final class ApiEventDispatcher implements PlaybackEngine.Lifecycle {
         return register(this.playbackListeners, Objects.requireNonNull(listener, "listener"));
     }
 
-    public Component beforePlay(ServerPlayer player, PreparedEmote emote, PlaySource source) {
+    public Component onStarting(ServerPlayer player, PreparedEmote emote, PlaySource source) {
         EmotePlayEvent event = new EmotePlayEvent(player, emote.info(), source);
         for (EmotePlayListener listener : this.playListeners) {
             try {
-                listener.beforePlay(event);
+                listener.onStarting(event);
             } catch (RuntimeException exception) {
                 EmoteMod.LOGGER.warn("Emote play listener {} failed", listener.getClass().getName(), exception);
                 event.cancel(Component.literal("Something went wrong while checking this emote."));

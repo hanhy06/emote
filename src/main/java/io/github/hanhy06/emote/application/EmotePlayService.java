@@ -57,7 +57,7 @@ public class EmotePlayService implements AccessConfigListener {
         if (!decision.isAllowed()) {
             return decision.rejection();
         }
-        Component cancellationMessage = this.apiEvents.beforePlay(player, emote, source);
+        Component cancellationMessage = this.apiEvents.onStarting(player, emote, source);
         if (cancellationMessage != null) {
             return PlayResult.failure(cancellationMessage);
         }
