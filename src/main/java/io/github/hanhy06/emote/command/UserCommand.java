@@ -12,8 +12,9 @@ import io.github.hanhy06.emote.application.EmoteQueryService;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.IdentifierArgument;
+import net.minecraft.commands.suggestions.SuggestionContext;
+import net.minecraft.commands.suggestions.SuggestionProviders;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -70,9 +71,9 @@ public final class UserCommand {
     private LiteralArgumentBuilder<CommandSourceStack> createPlayCommand() {
         return Commands.literal("play")
             .then(Commands.argument("id", IdentifierArgument.id())
-                .suggests((context, builder) -> SharedSuggestionProvider.suggestResource(
+                .suggests(SuggestionProviders.serverOnly((server, context, builder) -> SuggestionContext.suggestResource(
                     getSuggestedPlayIds(context.getSource()).stream().map(Identifier::parse), builder
-                ))
+                )))
                 .executes(this::play));
     }
 
@@ -81,8 +82,8 @@ public final class UserCommand {
             .executes(context -> stop(context.getSource()));
     }
 
-    private List<String> getSuggestedPlayIds(CommandSourceStack source) {
-        return source.getEntity() instanceof ServerPlayer player
+    private List<String> getSuggestedPlayIds(SuggestionContext source) {
+        return source.entity() instanceof ServerPlayer player
             ? this.emoteQueryService.getPlayableIds(player)
             : this.emoteQueryService.getAllIds();
     }

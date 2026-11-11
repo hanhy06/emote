@@ -8,6 +8,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.permissions.Permissions;
 
 import java.io.IOException;
 
@@ -20,7 +21,7 @@ public final class AccountCommand {
 
     public LiteralArgumentBuilder<CommandSourceStack> createCommand() {
         return Commands.literal("account")
-            .requires(Commands.hasPermission(Commands.LEVEL_OWNERS))
+            .requires(AccountCommand::isOwner)
             .executes(context -> list(context.getSource()))
             .then(Commands.literal("login")
                 .executes(context -> login(context.getSource())))
@@ -81,7 +82,7 @@ public final class AccountCommand {
     }
 
     private static boolean isOwner(CommandSourceStack source) {
-        return Commands.hasPermission(Commands.LEVEL_OWNERS).test(source);
+        return source.permissions().hasPermission(Permissions.COMMANDS_OWNER);
     }
 
     private static boolean canReceive(CommandSourceStack source) {

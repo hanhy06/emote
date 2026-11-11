@@ -18,9 +18,10 @@ import io.github.hanhy06.emote.skin.SkinProcessingStats;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.IdentifierArgument;
+import net.minecraft.commands.suggestions.SuggestionContext;
+import net.minecraft.commands.suggestions.SuggestionProviders;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
@@ -142,10 +143,10 @@ public final class AdminCommand {
         return Commands.literal("enable")
             .requires(PermissionService::canManage)
             .then(Commands.argument("id", IdentifierArgument.id())
-                .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
+                .suggests(SuggestionProviders.serverOnly((server, context, builder) -> SuggestionContext.suggest(
                     this.configManager.getAccessConfig().disabled(),
                     builder
-                ))
+                )))
                 .executes(context -> setEnabled(
                     context.getSource(),
                     IdentifierArgument.getId(context, "id").toString(),
@@ -157,10 +158,10 @@ public final class AdminCommand {
         return Commands.literal("disable")
             .requires(PermissionService::canManage)
             .then(Commands.argument("id", IdentifierArgument.id())
-                .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
+                .suggests(SuggestionProviders.serverOnly((server, context, builder) -> SuggestionContext.suggest(
                     this.emoteCatalog.fileEmotes().stream().map(PreparedEmote::id),
                     builder
-                ))
+                )))
                 .executes(context -> setEnabled(
                     context.getSource(),
                     IdentifierArgument.getId(context, "id").toString(),

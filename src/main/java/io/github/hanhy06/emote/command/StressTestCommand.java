@@ -18,8 +18,9 @@ import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.TimeArgument;
+import net.minecraft.commands.suggestions.SuggestionContext;
+import net.minecraft.commands.suggestions.SuggestionProviders;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
@@ -55,10 +56,10 @@ final class StressTestCommand {
                     new StressLoad(DEFAULT_INSTANCE_COUNT, LoadUnit.INSTANCES)
                 ))
                 .then(Commands.argument("load", StringArgumentType.word())
-                    .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
+                    .suggests(SuggestionProviders.serverOnly((server, context, builder) -> SuggestionContext.suggest(
                         List.of(Integer.toString(DEFAULT_INSTANCE_COUNT), DEFAULT_INSTANCE_COUNT + "i", Config.DEFAULT_MAX_ACTIVE_DISPLAY_ENTITIES + "d"),
                         builder
-                    ))
+                    )))
                     .executes(context -> startStressTest(
                         context.getSource(),
                         IntegerArgumentType.getInteger(context, "time"),
