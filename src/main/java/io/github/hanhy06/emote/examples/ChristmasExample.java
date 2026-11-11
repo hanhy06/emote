@@ -51,9 +51,9 @@ public final class ChristmasExample implements EmoteCallbacks {
         if (!INSTRUMENTS.contains(context.getEmoteId().toString())) {
             return;
         }
-        this.instruments.put(context.getId(), context);
+        this.instruments.put(context.getSessionId(), context);
         this.chorusByInstrument.values().removeIf(chorus -> !chorus.isActive());
-        if (this.chorusByInstrument.containsKey(context.getId())) {
+        if (this.chorusByInstrument.containsKey(context.getSessionId())) {
             return;
         }
 
@@ -63,7 +63,7 @@ public final class ChristmasExample implements EmoteCallbacks {
         for (Playback candidate : this.instruments.values()) {
             if (candidate.isActive() && candidate.getWorld() == context.getWorld()
                 && candidate.getRootPosition().distanceToSqr(position) <= RANGE_SQUARED
-                && !this.chorusByInstrument.containsKey(candidate.getId())) {
+                && !this.chorusByInstrument.containsKey(candidate.getSessionId())) {
                 members.putIfAbsent(candidate.getEmoteId().toString(), candidate);
             }
         }
@@ -80,14 +80,14 @@ public final class ChristmasExample implements EmoteCallbacks {
         // Start a scene without an actor so it can run alongside all four performances.
         if (this.api.play(context.getWorld(), Identifier.parse(CHORUS), center, 0) instanceof PlayResult.Success success) {
             for (Playback member : members.values()) {
-                this.chorusByInstrument.put(member.getId(), success.playback());
+                this.chorusByInstrument.put(member.getSessionId(), success.playback());
             }
         }
     }
 
     @Override
     public void onClose(PlaybackContext context) {
-        UUID instrumentId = context.getId();
+        UUID instrumentId = context.getSessionId();
         this.instruments.remove(instrumentId);
         Playback chorus = this.chorusByInstrument.get(instrumentId);
         if (chorus != null) {

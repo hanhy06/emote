@@ -259,7 +259,7 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
             if (!EmoteMod.SERVER.isSameThread()) throw new IllegalStateException("Playback access must run on the server thread.");
         }
 
-        public UUID getId() { return PlaybackSession.this.sessionId; }
+        public UUID getSessionId() { return PlaybackSession.this.sessionId; }
         public Identifier getEmoteId() { return PlaybackSession.this.emoteInfo.id(); }
         public EmoteInfo getEmote() { return PlaybackSession.this.emoteInfo; }
         public MinecraftServer getServer() { return EmoteMod.SERVER; }
@@ -314,13 +314,13 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
         public boolean seekStep(int stepIndex, int repeatIndex, int animationTick) { requireServerThread(); return PlaybackSession.this.seekStep(stepIndex, repeatIndex, animationTick); }
         public boolean setPlacement(PlaybackPlacement placement) {
             requireServerThread();
-            return PlaybackSession.this.engine.setPlacement(getId(), Objects.requireNonNull(placement, "placement"));
+            return PlaybackSession.this.engine.setPlacement(getSessionId(), Objects.requireNonNull(placement, "placement"));
         }
         public PlaybackInfo snapshot() {
             requireServerThread();
             var pose = pose();
             UUID playerUuid = PlaybackSession.this.actors.get("actor") instanceof ServerPlayer player ? player.getUUID() : null;
-            return new PlaybackInfo(getId(), playerUuid, getEmoteId(), PlaybackSession.this.state, PlaybackSession.this.elapsedTicks,
+            return new PlaybackInfo(getSessionId(), playerUuid, getEmoteId(), PlaybackSession.this.state, PlaybackSession.this.elapsedTicks,
                 pose == null ? null : Integer.valueOf(pose.timelineTick()), pose == null ? null : pose.cursor(), placement(pose));
         }
     }

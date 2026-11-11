@@ -11,7 +11,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface Playback {
-    UUID getId();
+    UUID getSessionId();
     Identifier getEmoteId();
     EmoteInfo getEmote();
     PlaybackState getState();
