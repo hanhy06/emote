@@ -19,10 +19,10 @@ import java.util.UUID;
 
 public final class ChristmasExample implements EmoteCallbacks {
     private static final Set<String> INSTRUMENTS = Set.of(
-        "christmas:piano_deck_the_halls", "christmas:recorder_deck_the_halls",
-        "christmas:handbell_deck_the_halls", "christmas:drum_deck_the_halls"
+        "christmas:piano", "christmas:recorder",
+        "christmas:handbell", "christmas:drum"
     );
-    private static final String CHORUS = "christmas:chorus_deck_the_halls";
+    private static final String CHORUS = "christmas:chorus";
     private static final double RANGE_SQUARED = 8 * 8;
 
     private final EmoteApi api;
