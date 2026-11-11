@@ -23,7 +23,7 @@ export function ExportPanel({
     <section className="export">
       <div className="section-heading export-heading">
         <div>
-          <span className="step-label">Page 3</span>
+          <span className="step-label">Page 2</span>
           <h2>Output</h2>
           <p>Download one animation or download every JSON file in sequence.</p>
         </div>

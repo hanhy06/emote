@@ -63,7 +63,7 @@ h3 { margin: 20px 0 10px; font-size: 15px; font-weight: 600; }
 .project-summary dl { display: flex; gap: 32px; margin: 0; }
 .project-summary dl div { display: grid; gap: 4px; min-width: 80px; }
 .project-summary dd { margin: 0; font-size: 14px; }
-.workflow-pages { display: grid; grid-template-columns: repeat(3, 1fr); margin: 0 0 22px; border: 1px solid #bcbcbc; }
+.workflow-pages { display: grid; grid-template-columns: repeat(2, 1fr); margin: 0 0 22px; border: 1px solid #bcbcbc; }
 .workflow-pages button { display: flex; align-items: center; justify-content: flex-start; min-height: 48px; gap: 10px; border: 0; border-right: 1px solid #d2d2d2; border-radius: 0; text-align: left; }
 .workflow-pages button:last-child { border-right: 0; }
 .workflow-pages button span { display: grid; width: 24px; height: 24px; place-items: center; color: #fff; background: #777; font-size: 12px; }
@@ -89,16 +89,30 @@ h3 { margin: 20px 0 10px; font-size: 15px; font-weight: 600; }
 .selection-box { position: absolute; z-index: 1; border: 1px solid #0067c0; background: rgb(0 103 192 / 14%); pointer-events: none; }
 .preview-loading { display: grid; height: 540px; place-items: center; color: #666; background: #f4f4f4; }
 .preview-error { height: 540px; margin: 0; padding: 16px; color: #b00020; }
-.assignment-panel { display: flex; flex-direction: column; height: 540px; padding: 14px; overflow-y: auto; scrollbar-gutter: stable; border-left: 1px solid #aaa; background: #fff; }
-.assignment-panel > p { flex: 0 0 auto; margin: 0 0 12px; color: #555; font-size: 13px; line-height: 1.45; }
+.inspector { min-width: 0; height: 540px; overflow-y: auto; overscroll-behavior: contain; border-left: 1px solid #aaa; background: #fff; }
+.editor.properties-only { grid-template-columns: 1fr; }
+.properties-only .inspector { height: auto; max-height: 540px; border-left: 0; }
+.property-section, .event-disclosure { border: 0; border-bottom: 1px solid #ddd; }
+.property-section > summary, .event-disclosure { position: relative; display: grid; width: 100%; gap: 3px; padding: 10px 34px 10px 14px; text-align: left; background: #fff; cursor: pointer; list-style: none; }
+.property-section > summary::-webkit-details-marker { display: none; }
+.property-section > summary:hover, .event-disclosure:hover { background: #f4f6f8; }
+.property-section > summary::after, .event-disclosure::after { position: absolute; top: 20px; right: 15px; width: 7px; height: 7px; border: solid #555; border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); content: ""; }
+.property-section[open] > summary::after, .event-disclosure[aria-expanded="true"]::after { transform: rotate(225deg); }
+.property-section > summary:focus-visible, .event-disclosure:focus-visible { outline: 2px solid #0067c0; outline-offset: -2px; }
+.inspector strong { font-size: 14px; }
+.inspector small { color: #555; overflow-wrap: anywhere; }
+.inspector small.error { color: #8a0018; }
+.property-body { padding: 4px 14px 14px; }
+.property-body h3 { margin: 16px 0 8px; }
+.field-hint { margin: 4px 0 10px; color: #555; font-size: 12px; line-height: 1.45; }
+.part-picker summary { padding: 5px 0; cursor: pointer; font-size: 13px; }
 .assignment-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
-.assignment-panel > .assignment-buttons, .assignment-panel > .order-control { flex: 0 0 auto; }
 .assignment-buttons button { display: flex; align-items: center; gap: 6px; }
 .assignment-buttons i { flex: 0 0 10px; width: 10px; height: 10px; }
 .order-control { display: grid; grid-template-columns: auto minmax(0, 1fr) 2ch; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 13px; }
 .order-control input { min-width: 0; padding: 0; }
 .order-control output { text-align: right; font-variant-numeric: tabular-nums; }
-.part-list { position: relative; flex: 1 0 180px; min-height: 180px; margin: 0; padding: 0 4px 0 0; overflow-y: auto; list-style: none; }
+.part-list { margin: 4px 0 0; padding: 0; list-style: none; }
 .part-list button { display: flex; justify-content: space-between; width: 100%; margin-bottom: 4px; }
 .part-list button.selected { border-color: #0067c0; background: #e5f1fb; }
 .export { margin-top: 28px; padding: 20px; border: 1px solid #cfcfcf; }
@@ -117,29 +131,22 @@ h3 { margin: 20px 0 10px; font-size: 15px; font-weight: 600; }
 .event-json[aria-invalid="true"] { border-color: #c42b1c; }
 .event-json:disabled { opacity: 0.55; }
 .event-json-error { margin: 8px 0 0; color: #a4262c; font-size: 12px; line-height: 1.45; }
-.fields { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-.fields label { display: grid; gap: 4px; font-size: 13px; }
-.fields .checkbox { display: flex; align-items: center; align-self: end; min-height: 34px; gap: 8px; }
-.fields .checkbox input { min-height: 0; }
-.fields label small { color: #666; font-size: 11px; line-height: 1.4; }
-.settings-section h3 { margin-top: 0; }
-.playback-behavior { margin-top: 18px; padding-top: 2px; border-top: 1px solid #e2e2e2; }
-.playback-behavior > p { margin: -4px 0 10px; color: #666; font-size: 12px; }
-.settings-selectors { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; }
-.playback-settings-group { display: grid; grid-column: 1 / -1; grid-template-columns: inherit; align-items: start; gap: 12px; }
-.settings-selectors input, .settings-selectors select { min-width: 0; height: 34px; min-height: 34px; }
-.settings-toggles { grid-template-columns: repeat(4, max-content); margin-top: 14px; column-gap: 48px; row-gap: 6px; }
-.settings-toggles .checkbox { align-self: center; min-height: 28px; }
+.fields, .playback-settings-group { display: grid; gap: 7px; }
+.fields label { display: grid; grid-template-columns: minmax(84px, 0.8fr) minmax(0, 1.2fr); gap: 8px; align-items: center; font-size: 13px; }
+.fields input, .fields select { min-width: 0; width: 100%; }
+.fields .checkbox { display: flex; align-items: center; min-height: 27px; }
+.fields .checkbox input { width: auto; min-height: 0; }
+.settings-toggles { margin-top: 12px; gap: 2px; }
 .additional-metadata { margin-top: 18px; padding-top: 2px; border-top: 1px solid #e2e2e2; }
   .additional-metadata-heading h3 { margin-bottom: 4px; }
   .additional-metadata-heading p, .empty-metadata { margin: 0 0 10px; color: #666; font-size: 12px; }
   .metadata-add-button { display: block; width: fit-content; margin-top: 10px; padding: 6px 10px; font-size: 13px; }
   .metadata-editor-list { display: grid; gap: 8px; }
-  .metadata-editor-row { display: grid; grid-template-columns: minmax(120px, 0.3fr) minmax(220px, 1fr) auto; align-items: end; gap: 8px; padding: 8px; border: 1px solid #d7d7d7; }
+  .metadata-editor-row { display: grid; grid-template-columns: minmax(0, 1fr); align-items: end; gap: 8px; padding: 8px; border: 1px solid #d7d7d7; }
   .metadata-editor-row label { display: grid; min-width: 0; gap: 4px; font-size: 13px; }
   .metadata-editor-row input { width: 100%; min-height: 30px; height: 30px; padding: 4px 7px; }
   .metadata-editor-row .metadata-json-value { font-family: Consolas, monospace; }
-  .metadata-editor-row > button { height: 30px; margin-bottom: 1px; padding: 4px 10px; font-size: 13px; }
+  .metadata-editor-row > button { justify-self: start; height: 30px; margin-bottom: 1px; padding: 4px 10px; font-size: 13px; }
   .metadata-editor-row .error { grid-column: 1 / -1; margin: 0; }
 .download-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .bundle-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-bottom: 18px; }
@@ -149,9 +156,6 @@ h3 { margin: 20px 0 10px; font-size: 15px; font-weight: 600; }
 .download-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .primary-button { color: #fff; border-color: #005a9e; background: #0067c0; }
 .primary-button:hover:not(:disabled) { color: #fff; border-color: #004f8a; background: #005a9e; }
-@media (max-width: 1000px) {
-  .settings-selectors, .settings-toggles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
 @media (max-width: 700px) {
   .app { padding: 22px 16px 36px; }
   .app-header, .section-heading, .project-summary { align-items: stretch; flex-direction: column; }
@@ -161,16 +165,12 @@ h3 { margin: 20px 0 10px; font-size: 15px; font-weight: 600; }
   .project-summary dl { gap: 16px; }
   .project-selectors { flex-direction: column; width: 100%; margin-left: 0; }
   .project-animation, .project-version { min-width: 0; }
-  .workflow-pages { grid-template-columns: 1fr; }
-  .workflow-pages button { border-right: 0; border-bottom: 1px solid #d2d2d2; }
   .preview-controls { align-items: stretch; flex-direction: column; }
   .editor { grid-template-columns: 1fr; }
   .part-preview { height: 420px; }
   .preview-loading { height: 420px; }
   .preview-error { height: 420px; }
-  .assignment-panel { height: min(420px, 70vh); border-top: 1px solid #aaa; border-left: 0; }
+  .inspector { height: auto; max-height: min(420px, 70vh); border-top: 1px solid #aaa; border-left: 0; }
   .event-editor-heading { align-items: flex-start; flex-direction: column; }
   .fields { grid-template-columns: 1fr; }
-  .settings-selectors, .settings-toggles { grid-template-columns: 1fr; }
-    .metadata-editor-row { grid-template-columns: 1fr; }
 }

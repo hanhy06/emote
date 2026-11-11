@@ -14,7 +14,7 @@ import type { PlayerSkinPart } from "./domain/player";
 import type { AnimationEntryIR, EventIR } from "./domain/animationIR";
 import { TICKS_PER_SECOND } from "./format/time";
 
-export type WorkspacePage = 0 | 1 | 2;
+export type WorkspacePage = 0 | 1;
 export type SelectedFrame = { type: "create" } | { type: "timeline"; animationTick: number };
 
 export interface ConversionSession {

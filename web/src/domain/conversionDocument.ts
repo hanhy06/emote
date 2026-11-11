@@ -237,8 +237,8 @@ export function updateLifecycleEvents(document: ConversionDocument, animationInd
   const animation = document.animations[animationIndex];
   if (!animation) return document;
   const { callbacks, ...commandEvents } = events;
-  return updateAnimation(document, animationIndex, { ...animation, callbacks: structuredClone(callbacks),
-    clip: { ...animation.clip, events: { ...structuredClone(commandEvents), timeline: structuredClone(animation.clip.events?.timeline ?? []) } } });
+  return updateAnimation(document, animationIndex, { ...animation, callbacks,
+    clip: { ...animation.clip, events: { ...commandEvents, timeline: animation.clip.events?.timeline ?? [] } } });
 }
 
 export function replaceTimelineEvents(document: ConversionDocument, animationIndex: number, animationTick: number, events: EventIR[]): ConversionDocument {
@@ -248,7 +248,7 @@ export function replaceTimelineEvents(document: ConversionDocument, animationInd
   return updateAnimation(document, animationIndex, { ...animation,
     clip: { ...animation.clip, events: { ...animation.clip.events, timeline: [
       ...(animation.clip.events?.timeline ?? []).filter((event) => parseMinecraftTime(event.time) !== animationTick),
-      ...structuredClone(events).map((event) => ({ ...event, time: `${animationTick}t` })),
+      ...events.map((event) => ({ ...event, time: `${animationTick}t` })),
     ].sort((first, second) => parseAnimationSeconds(first.time) - parseAnimationSeconds(second.time)) } } });
 }
 

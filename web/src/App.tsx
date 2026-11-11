@@ -53,6 +53,7 @@ const IMPORT_FORMATS = [
 export function App() {
   const [workspace, dispatch] = useReducer(workspaceReducer, INITIAL_WORKSPACE);
   const [eventJsonValid, setEventJsonValid] = useState(true);
+  const [eventsOpen, setEventsOpen] = useState(false);
   const [settingsValid, setSettingsValid] = useState(true);
   const [eventEditorRevision, setEventEditorRevision] = useState(0);
   const { session, page, openError, exportError, operation } = workspace;
@@ -84,6 +85,16 @@ export function App() {
   const previewParts = preview?.parts ?? [];
   const hasReviewNodes = candidateParts.length > 0;
 
+  const clipEvents = selectedAnimation?.clip.events;
+  const eventSummary = useMemo(() => {
+    if (selectedAnimationTick === null) {
+      const count = (clipEvents?.start?.length ?? 0) + (clipEvents?.loop?.length ?? 0) + (clipEvents?.stop?.length ?? 0);
+      return `Create pose · ${count} events · ${selectedAnimation?.callbacks?.length ?? 0} callbacks`;
+    }
+    const count = clipEvents?.timeline?.filter(event => parseMinecraftTime(event.time) === selectedAnimationTick).length ?? 0;
+    return `Tick ${selectedAnimationTick} · ${count} events`;
+  }, [clipEvents, selectedAnimationTick, selectedAnimation?.callbacks]);
+
   async function handleFileChange(event: TargetedEvent<HTMLInputElement>) {
     const inputElement = event.currentTarget;
     const files = [...(inputElement.files ?? [])];
@@ -97,6 +108,7 @@ export function App() {
       await showLoadingScreen();
       const document = await importFileBatch(files);
       setEventJsonValid(true);
+      setEventsOpen(false);
       setSettingsValid(true);
       setEventEditorRevision((revision) => revision + 1);
       dispatch({ type: "documents_open_succeeded", document });
@@ -199,7 +211,7 @@ export function App() {
             <h3>Workflow</h3>
             <ol className="workflow-list">
               <li><span>1</span><p><strong>Open files</strong><small>Choose one or more files. Each format is detected automatically.</small></p></li>
-              <li><span>2</span><p><strong>Review skin parts</strong><small>Assign player skin parts when the project contains them.</small></p></li>
+              <li><span>2</span><p><strong>Edit animation</strong><small>Assign skin parts and edit playback, metadata, and events.</small></p></li>
               <li><span>3</span><p><strong>Download the result</strong><small>Export Emote JSON and any generated resources.</small></p></li>
             </ol>
           </div>
@@ -238,8 +250,8 @@ export function App() {
           </section>
 
           <nav className="workflow-pages" aria-label="Conversion pages">
-            {(["Review", "Settings", "Export"] as const).map((label, index) => (
-              <button className={page === index ? "active" : ""} type="button" disabled={(!eventJsonValid || !settingsValid) && page !== index} onClick={() => dispatch({ type: "page_selected", page: index as WorkspacePage })} key={label}>
+            {(["Edit", "Export"] as const).map((label, index) => (
+              <button aria-current={page === index ? "step" : undefined} className={page === index ? "active" : ""} type="button" disabled={(!eventJsonValid || !settingsValid) && page !== index} onClick={() => dispatch({ type: "page_selected", page: index as WorkspacePage })} key={label}>
                 <span>{index + 1}</span>{label}
               </button>
             ))}
@@ -286,11 +298,7 @@ export function App() {
           {page === 0 && <section className="workspace page-panel" aria-labelledby="workspace-title">
             <div className="section-heading">
               <div>
-                <span className="step-label">Page 1</span>
-                <h2 id="workspace-title">{hasReviewNodes ? "Review model assignments" : "Review imported animation"}</h2>
-                <p>{hasReviewNodes
-                  ? "Select model parts, then assign their player role."
-                  : "This file does not contain assignable model parts."}</p>
+                <h2 id="workspace-title">Edit animation</h2>
               </div>
               <div className="preview-controls">
                 {availability?.status === "approximate" && <output title={availability.reason}>Approximate preview</output>}
@@ -317,21 +325,21 @@ export function App() {
                 </div>
               </div>
             </div>
-            {hasReviewNodes ? (
-              <div className="editor">
-                {availability?.status === "unavailable" ? (
-                  <div className="no-skin-parts"><strong>3D preview unavailable</strong><span>{availability.reason}</span></div>
-                ) : <Suspense fallback={<div className="preview-loading" role="status">Loading 3D preview…</div>}>
-                  <PartPreview
-                    key={project.origin.sourceName}
-                    parts={previewParts}
-                    assignments={assignments}
-                    selectedCandidateIds={selectedCandidateIds}
-                    onSelectCandidate={handleCandidateSelect}
-                    onSelectCandidates={handleCandidatesSelect}
-                  />
-                </Suspense>}
-                <AssignmentPanel
+            <div className={hasReviewNodes ? "editor" : "editor properties-only"}>
+              {hasReviewNodes && (availability?.status === "unavailable" ? (
+                <div className="no-skin-parts"><strong>3D preview unavailable</strong><span>{availability.reason}</span></div>
+              ) : <Suspense fallback={<div className="preview-loading" role="status">Loading 3D preview…</div>}>
+                <PartPreview
+                  key={project.origin.sourceName}
+                  parts={previewParts}
+                  assignments={assignments}
+                  selectedCandidateIds={selectedCandidateIds}
+                  onSelectCandidate={handleCandidateSelect}
+                  onSelectCandidates={handleCandidatesSelect}
+                />
+              </Suspense>)}
+              <aside className="inspector" aria-label="Animation properties">
+                {hasReviewNodes && <AssignmentPanel
                   parts={candidateParts}
                   assignments={assignments}
                   orders={orders}
@@ -342,37 +350,40 @@ export function App() {
                   }}
                   onAssignOrder={(order) => dispatch({ type: "skin_order_assigned", order })}
                   onSelectCandidate={handleCandidateSelect}
+                />}
+                <SettingsPanel
+                  key={`${eventEditorRevision}:${animationIndex}`}
+                  animation={selectedAnimation}
+                  disabled={busy}
+                  onChange={(ir) => dispatch({ type: "animation_changed", ir })}
+                  onValidityChange={setSettingsValid}
                 />
-              </div>
-            ) : (
-              <div className="no-skin-parts"><strong>Ready to export</strong><span>No player skin assignments are required.</span></div>
-            )}
-            <EventPanel
-              key={`${eventEditorRevision}:${animationIndex}:${selectedAnimationTick === null ? "lifecycle" : selectedAnimationTick}`}
-              events={{
-                start: selectedAnimation.clip.events?.start ?? [],
-                timeline: selectedAnimation.clip.events?.timeline ?? [],
-                loop: selectedAnimation.clip.events?.loop ?? [],
-                stop: selectedAnimation.clip.events?.stop ?? [],
-              }}
-              callbacks={selectedAnimation.callbacks}
-              animationTick={selectedAnimationTick}
-              disabled={busy}
-              onLifecycleChange={(events) => dispatch({ type: "lifecycle_events_changed", events })}
-              onTimelineChange={(animationTick, events) => dispatch({ type: "timeline_events_changed", animationTick, events })}
-              onValidityChange={setEventJsonValid}
-            />
+                <button className="event-disclosure" type="button" aria-expanded={eventsOpen} aria-controls="frame-events" onClick={() => setEventsOpen(!eventsOpen)}>
+                  <strong>Events</strong>
+                  <small className={eventJsonValid ? "" : "error"}>{eventJsonValid ? eventSummary : "Invalid event JSON"}</small>
+                </button>
+              </aside>
+            </div>
+            <div id="frame-events" hidden={!eventsOpen}>
+              <EventPanel
+                key={`${eventEditorRevision}:${animationIndex}:${selectedAnimationTick === null ? "lifecycle" : selectedAnimationTick}`}
+                events={{
+                  start: selectedAnimation.clip.events?.start ?? [],
+                  timeline: selectedAnimation.clip.events?.timeline ?? [],
+                  loop: selectedAnimation.clip.events?.loop ?? [],
+                  stop: selectedAnimation.clip.events?.stop ?? [],
+                }}
+                callbacks={selectedAnimation.callbacks}
+                animationTick={selectedAnimationTick}
+                disabled={busy}
+                onLifecycleChange={(events) => dispatch({ type: "lifecycle_events_changed", events })}
+                onTimelineChange={(animationTick, events) => dispatch({ type: "timeline_events_changed", animationTick, events })}
+                onValidityChange={setEventJsonValid}
+              />
+            </div>
           </section>}
 
-          {page === 1 && selectedAnimation && <SettingsPanel
-            key={`${eventEditorRevision}:${animationIndex}`}
-            animation={selectedAnimation}
-            disabled={busy}
-            onChange={(ir) => dispatch({ type: "animation_changed", ir })}
-            onValidityChange={setSettingsValid}
-          />}
-
-          {page === 2 && <ExportPanel
+          {page === 1 && <ExportPanel
             assignmentSummary={assignmentSummary(project)}
             animations={project.animations}
             error={exportError}
