@@ -11,12 +11,12 @@ export function importedNodeIR(node: ImportedNode, parent?: string): NodeIR {
   const profile = minecraftVersionProfile("26.3");
   const common = { ...(parent ? { parent } : {}), ...(node.type === "anchor" ? {} : { visible: node.visible }) };
   if (node.type === "anchor") return common;
-  const content = node.type === "item_display" ? { type: "item_display" as const, item_stack_snbt: writeItemStack(node.itemStack, profile), item_display: node.itemDisplay }
+  const content = node.type === "item_display" ? { type: "item_display" as const, item_stack_snbt: writeItemStack(node.itemStack, profile), item_display: node.displayContext }
     : node.type === "block_display" ? { type: "block_display" as const, block_state_snbt: writeBlockState(node.blockState, profile) }
     : { type: "text_display" as const, text: node.text };
   return { ...common,
     ...(node.type === "item_display" && node.modelGeometryMatrix ? { transform: [{ id: "model_geometry", op: "matrix" as const, value: node.modelGeometryMatrix }] } : {}),
-    attachments: { display: { ...content, ...(node.entityNbt ? { entity_snbt: node.entityNbt } : {}) } },
+    attachments: { display: { ...content, ...(node.entitySnbt ? { entity_snbt: node.entitySnbt } : {}) } },
   };
 }
 

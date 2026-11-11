@@ -53,7 +53,7 @@ export function compileAnimation(document: ConversionDocument, index: number, st
     }
   }
   const profile = minecraftVersionProfile(document.targetMinecraftVersion);
-  function formatNbt(value: string): string {
+  function formatDisplaySnbt(value: string): string {
     try {
       const patch = readDisplayNbt(value);
       return patch.blockState ? writeDisplayNbt(patch, profile) : value;
@@ -73,13 +73,13 @@ export function compileAnimation(document: ConversionDocument, index: number, st
         // Leave unparseable input for the mod loader.
       }
     }
-    if (attachment.entity_snbt) attachment.entity_snbt = formatNbt(attachment.entity_snbt);
+    if (attachment.entity_snbt) attachment.entity_snbt = formatDisplaySnbt(attachment.entity_snbt);
   }
   for (const track of ir.animation.tracks) {
     if (track.channel !== "nbt" || track.driver.type !== "state") continue;
     for (const key of track.driver.keys) {
       const patch = key.value as NbtPatchIR;
-      if (typeof patch.merge === "string") patch.merge = formatNbt(patch.merge);
+      if (typeof patch.merge === "string") patch.merge = formatDisplaySnbt(patch.merge);
     }
   }
   removeRedundantKeyframes(ir);

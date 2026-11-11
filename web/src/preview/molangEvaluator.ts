@@ -5,7 +5,7 @@ import type { SharedValueResolverIR } from "../domain/animationIRCurves";
 import { PREVIEW_RUNTIME_QUERY_VALUES, previewRuntimeQueryFunction, usesRuntimeMolangState } from "../format/molang/runtimeAnalysis";
 
 export interface PreviewMolangContext {
-  animationTime: number;
+  animationTimeSeconds: number;
   keyframeLerpTime: number;
   lifeTime?: number;
   resolveValue?: SharedValueResolverIR;
@@ -34,8 +34,8 @@ export class PreviewMolangEvaluator {
     try {
       const variables: Record<string, number | SharedValueResolverIR> = {
         ...PREVIEW_RUNTIME_QUERY_VALUES,
-        "query.anim_time": context.animationTime,
-        "q.anim_time": context.animationTime,
+        "query.anim_time": context.animationTimeSeconds,
+        "q.anim_time": context.animationTimeSeconds,
         "query.delta_time": 1 / TICKS_PER_SECOND,
         "q.delta_time": 1 / TICKS_PER_SECOND,
         "query.key_frame_lerp_time": context.keyframeLerpTime,

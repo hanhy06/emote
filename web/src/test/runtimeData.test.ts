@@ -205,16 +205,16 @@ it("edits animation ticks independently of preview delays and keeps generated ev
     const project = await readInput("emote_json", { name: "delay.json", bytes: new TextEncoder().encode(JSON.stringify(authored)) });
     let state = workspaceReducer(INITIAL_WORKSPACE, { type: "documents_open_succeeded", document: createConversionDocument(project, "Emote JSON") });
     expect(state.session!.selectedFrame).toEqual({ type: "create" });
-    state = workspaceReducer(state, { type: "frame_selected", frame: { type: "timeline", tick: 5 } });
+    state = workspaceReducer(state, { type: "frame_selected", frame: { type: "timeline", animationTick: 5 } });
     let session = state.session!;
     const preview = createPreviewModel(session.document, session.document.animations[0], session.selectedFrame);
     expect(preview.parts[0].matrix[3]).toBe(0.25);
     expect(preview.availability).toEqual({ status: "full" });
     const event = { source: { type: "server" as const }, origin: { type: "root" as const }, action: { type: "commands" as const, commands: ["say frame"] } };
-    state = workspaceReducer(state, { type: "timeline_events_changed", tick: 5, events: [event] });
-    state = workspaceReducer(state, { type: "frame_selected", frame: { type: "timeline", tick: 30 } });
-    expect(state.session!.selectedFrame).toEqual({ type: "timeline", tick: 20 });
-    state = workspaceReducer(state, { type: "timeline_events_changed", tick: 20, events: [event] });
+    state = workspaceReducer(state, { type: "timeline_events_changed", animationTick: 5, events: [event] });
+    state = workspaceReducer(state, { type: "frame_selected", frame: { type: "timeline", animationTick: 30 } });
+    expect(state.session!.selectedFrame).toEqual({ type: "timeline", animationTick: 20 });
+    state = workspaceReducer(state, { type: "timeline_events_changed", animationTick: 20, events: [event] });
     session = state.session!;
     const [output] = await exportAnimation(session.document, 0);
     const actual: AnimationJson = JSON.parse(await output.blob.text());
@@ -354,7 +354,7 @@ it("preserves and evaluates shared v5 curves, dynamic arguments and blend in tra
   expect(evaluateEasing({ kernel: "blockbench_expo", direction: "in" }, 0)).toBe(1 / 1024);
   expect(evaluateEasing({ kernel: "blockbench_steps", direction: "in", count: 5 }, 1)).toBe(0.8);
   const preview = new PreviewMolangEvaluator();
-  expect(preview.evaluate("q.value('bend', 0) + q.key_frame_lerp_time", { animationTime: 0.75, keyframeLerpTime: 0.25, resolveValue: () => 1.5 })).toBe(1.75);
+  expect(preview.evaluate("q.value('bend', 0) + q.key_frame_lerp_time", { animationTimeSeconds: 0.75, keyframeLerpTime: 0.25, resolveValue: () => 1.5 })).toBe(1.75);
 });
 
 it("preserves sequence timing, choices, controls, callbacks and external references", async () => {

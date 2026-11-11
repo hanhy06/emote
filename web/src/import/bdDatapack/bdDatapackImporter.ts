@@ -41,10 +41,10 @@ function importNode(display: BdSourceDisplay): ImportedNode {
   const common = {
     binding: { sourceNodeId: display.id, skinGroupId: display.id },
     visible: true,
-    ...(display.entityNbt ? { entityNbt: display.entityNbt } : {}),
+    ...(display.entitySnbt ? { entitySnbt: display.entitySnbt } : {}),
   };
   if (display.type === "item_display") {
-    return { ...common, type: "item_display", itemStack: display.itemStack, itemDisplay: display.itemDisplay };
+    return { ...common, type: "item_display", itemStack: display.itemStack, displayContext: display.displayContext };
   }
   if (display.type === "block_display") return { ...common, type: "block_display", blockState: display.blockState };
   return { ...common, type: "text_display", text: display.text };
@@ -66,7 +66,7 @@ function createBdAnimationIR(animation: BdDatapackSource["animations"][number], 
       visible: node.type === "anchor" ? true : node.visible,
       inherit: { visibility: false },
       source: { node_id: display.tag, editor_node_id: id, nbt: [
-        { time: "0t", snbt: display.originalNbt },
+        { time: "0t", snbt: display.originalSnbt },
         ...animation.nbt[id].map((frame) => ({ time: `${frame.tick}t`, snbt: writeDisplayNbt(frame.value, profile) })),
       ] },
       transform: initial ? [
@@ -89,7 +89,7 @@ function createBdAnimationIR(animation: BdDatapackSource["animations"][number], 
         if (previous.time === time) { previous.post = post; previous.interpolation = interpolation; }
         else frames.push({ time, pre, post, interpolation });
       };
-      let state = { from: initial, to: initial, start: (display.interpolationDelay ?? 0) / 20, duration: (display.interpolationDuration ?? 0) / 20 };
+      let state = { from: initial, to: initial, start: (display.interpolationDelayTicks ?? 0) / 20, duration: (display.interpolationDurationTicks ?? 0) / 20 };
       const at = (time: number) => state.duration === 0 ? state.to : interpolateDisplayTransformation(state.from, state.to, (time - state.start) / state.duration);
       for (const frame of sourceTransforms) {
         const time = frame.tick / 20;

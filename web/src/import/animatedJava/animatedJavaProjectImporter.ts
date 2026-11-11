@@ -430,7 +430,7 @@ function applyGroupDefaultConfigs(nodes: Record<string, ImportedNode>, graph: Pr
       const node = nodes[nodeId];
       if (!node || node.type === "anchor") continue;
       if (config.invisible === true) node.visible = false;
-      if (nbt) node.entityNbt = mergeSnbt(node.entityNbt, nbt);
+      if (nbt) node.entitySnbt = mergeSnbt(node.entitySnbt, nbt);
     }
   }
 }
@@ -484,14 +484,14 @@ function importProjectAnchor(element: AjProjectLocator): ImportedNode {
 
 function importProjectElement(element: AjProjectDisplayElement): ImportedNode {
   const config = nativeDefaultConfig(element);
-  const entityNbt = nativeDisplayConfigNbt(config);
+  const entitySnbt = nativeDisplayConfigNbt(config);
   const visible = element.visibility !== false && config?.invisible !== true;
   if (element.type === "animated_java:vanilla_block_display") {
     return {
       binding: { sourceNodeId: element.uuid },
       type: "block_display",
       visible,
-      ...(entityNbt ? { entityNbt } : {}),
+      ...(entitySnbt ? { entitySnbt } : {}),
       blockState: blockArgumentToData(element.block ?? "minecraft:air"),
     };
   }
@@ -500,8 +500,8 @@ function importProjectElement(element: AjProjectDisplayElement): ImportedNode {
       binding: { sourceNodeId: element.uuid },
       type: "item_display",
       visible,
-      ...(entityNbt ? { entityNbt } : {}),
-      itemDisplay: element.itemDisplay ?? element.item_display ?? "none",
+      ...(entitySnbt ? { entitySnbt } : {}),
+      displayContext: element.itemDisplay ?? element.item_display ?? "none",
       itemStack: itemArgumentToData(element.item ?? "minecraft:air"),
     };
   }
@@ -509,7 +509,7 @@ function importProjectElement(element: AjProjectDisplayElement): ImportedNode {
     binding: { sourceNodeId: element.uuid },
     type: "text_display",
     visible,
-    ...(entityNbt ? { entityNbt } : {}),
+    ...(entitySnbt ? { entitySnbt } : {}),
     text: element.text ?? { text: element.name },
   };
 }

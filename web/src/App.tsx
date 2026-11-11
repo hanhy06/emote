@@ -62,8 +62,8 @@ export function App() {
   const project = session?.document ?? null;
   const animationIndex = session?.animationIndex ?? 0;
   const selectedAnimation = project?.animations[animationIndex];
-  const selectedTick = session?.selectedFrame.type === "timeline" ? session.selectedFrame.tick : null;
-  const frameIndex = selectedTick === null ? 0 : selectedTick + 1;
+  const selectedAnimationTick = session?.selectedFrame.type === "timeline" ? session.selectedFrame.animationTick : null;
+  const frameIndex = selectedAnimationTick === null ? 0 : selectedAnimationTick + 1;
   const durationTicks = selectedAnimation ? parseMinecraftTime(selectedAnimation.clip.duration, 1) : 0;
   const preview = useMemo(() => {
     if (!session) return null;
@@ -298,19 +298,19 @@ export function App() {
                   <span id="animation-frame-label">Animation frame</span>
                   <input type="range" aria-labelledby="animation-frame-label" min="0" max={durationTicks + 1} step="1" value={frameIndex} disabled={!eventJsonValid} onChange={(event) => {
                     const index = Number(event.currentTarget.value);
-                    dispatch({ type: "frame_selected", frame: index === 0 ? { type: "create" } : { type: "timeline", tick: index - 1 } });
+                    dispatch({ type: "frame_selected", frame: index === 0 ? { type: "create" } : { type: "timeline", animationTick: index - 1 } });
                   }} />
-                  {selectedTick === null ? <output>Create pose</output> : <label className="frame-tick">
-                    <input key={`${eventEditorRevision}:${animationIndex}:${selectedTick}`} type="number" aria-label="Animation tick"
-                      min="0" max={durationTicks} step="1" defaultValue={selectedTick} disabled={!eventJsonValid} onBlur={(event) => {
+                  {selectedAnimationTick === null ? <output>Create pose</output> : <label className="frame-tick">
+                    <input key={`${eventEditorRevision}:${animationIndex}:${selectedAnimationTick}`} type="number" aria-label="Animation tick"
+                      min="0" max={durationTicks} step="1" defaultValue={selectedAnimationTick} disabled={!eventJsonValid} onBlur={(event) => {
                         const input = event.currentTarget;
-                        const tick = Number(input.value);
-                        if (!input.validity.valid || !Number.isInteger(tick) || tick < 0 || tick > durationTicks) {
-                          input.value = String(selectedTick);
+                        const animationTick = Number(input.value);
+                        if (!input.validity.valid || !Number.isInteger(animationTick) || animationTick < 0 || animationTick > durationTicks) {
+                          input.value = String(selectedAnimationTick);
                           return;
                         }
-                        input.value = String(tick);
-                        if (tick !== selectedTick) dispatch({ type: "frame_selected", frame: { type: "timeline", tick } });
+                        input.value = String(animationTick);
+                        if (animationTick !== selectedAnimationTick) dispatch({ type: "frame_selected", frame: { type: "timeline", animationTick } });
                       }} />
                     tick
                   </label>}
@@ -348,7 +348,7 @@ export function App() {
               <div className="no-skin-parts"><strong>Ready to export</strong><span>No player skin assignments are required.</span></div>
             )}
             <EventPanel
-              key={`${eventEditorRevision}:${animationIndex}:${selectedTick === null ? "lifecycle" : selectedTick}`}
+              key={`${eventEditorRevision}:${animationIndex}:${selectedAnimationTick === null ? "lifecycle" : selectedAnimationTick}`}
               events={{
                 start: selectedAnimation.clip.events?.start ?? [],
                 timeline: selectedAnimation.clip.events?.timeline ?? [],
@@ -356,10 +356,10 @@ export function App() {
                 stop: selectedAnimation.clip.events?.stop ?? [],
               }}
               callbacks={selectedAnimation.callbacks}
-              tick={selectedTick}
+              animationTick={selectedAnimationTick}
               disabled={busy}
               onLifecycleChange={(events) => dispatch({ type: "lifecycle_events_changed", events })}
-              onTimelineChange={(tick, events) => dispatch({ type: "timeline_events_changed", tick, events })}
+              onTimelineChange={(animationTick, events) => dispatch({ type: "timeline_events_changed", animationTick, events })}
               onValidityChange={setEventJsonValid}
             />
           </section>}

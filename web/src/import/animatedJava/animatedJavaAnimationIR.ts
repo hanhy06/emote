@@ -135,7 +135,7 @@ export function createAnimatedJavaAnimationIR(source: AjProjectAnimation, projec
     if (nbt.length && node.attachments?.display && importedNode.type !== "anchor") {
       const atZero = nbt[0].time === 0 ? nbt[0].value : undefined;
       const removeBrightness = nbt.some((frame) => frame.value.rawFields.some((field) => field.name === "brightness"))
-        && ![...readDisplayNbt(importedNode.entityNbt ?? "{}").rawFields, ...(atZero?.rawFields ?? [])].some((field) => field.name === "brightness");
+        && ![...readDisplayNbt(importedNode.entitySnbt ?? "{}").rawFields, ...(atZero?.rawFields ?? [])].some((field) => field.name === "brightness");
       const initial = { time: 0, value: initialDisplayNbt(importedNode, nbt.map((frame) => removeBrightness
         ? { ...frame.value, rawFields: frame.value.rawFields.filter((field) => field.name !== "brightness") } : frame.value), atZero) };
       if (nbt[0].time === 0) nbt[0] = initial;

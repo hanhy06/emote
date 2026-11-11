@@ -28,14 +28,14 @@ export interface ImportedProject {
 export interface ImportedNodeBase {
   binding: { sourceNodeId: string; skinGroupId?: string; skinSceneId?: string };
   visible: boolean;
-  entityNbt?: string;
+  entitySnbt?: string;
 }
 
 export type ImportedNode =
   | (ImportedNodeBase & {
     type: "item_display";
     itemStack: ItemStackData;
-    itemDisplay: string;
+    displayContext: string;
     skin?: ImportedSkinPart;
     suggestedSkin?: ImportedSkinPart;
     playerHeadConversionMatrix?: Matrix16;
@@ -43,7 +43,7 @@ export type ImportedNode =
   })
   | (ImportedNodeBase & { type: "block_display"; blockState: BlockStateData })
   | (ImportedNodeBase & { type: "text_display"; text: unknown })
-  | (Omit<ImportedNodeBase, "visible" | "entityNbt"> & { type: "anchor" });
+  | (Omit<ImportedNodeBase, "visible" | "entitySnbt"> & { type: "anchor" });
 
 export interface ImportedSkinPart {
   part: PlayerSkinPart;

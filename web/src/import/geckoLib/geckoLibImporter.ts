@@ -81,7 +81,7 @@ export function importGeckoLibProject(project: GeckoLibBbmodelProject, sourceNam
         },
         type: "item_display",
         visible: true,
-        itemDisplay: "none",
+        displayContext: "none",
         itemStack: {
           id: "minecraft:paper",
           count: 1,

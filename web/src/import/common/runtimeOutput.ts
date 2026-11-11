@@ -12,12 +12,12 @@ const TEXT_DISPLAY_NBT_DEFAULTS: Readonly<Record<string, string>> = {
 
 export function initialDisplayNbt(node: ImportedNode, patches: readonly DisplayNbtPatch[], atZero?: DisplayNbtPatch): DisplayNbtPatch {
   if (node.type === "anchor") throw new Error("Anchor nodes do not support NBT tracks.");
-  const source = readDisplayNbt(node.entityNbt ?? "{}");
+  const source = readDisplayNbt(node.entitySnbt ?? "{}");
   const sourceFields = new Map([...source.rawFields, ...(atZero?.rawFields ?? [])].map((field) => [field.name, field.value]));
   const names = new Set(patches.flatMap((patch) => patch.rawFields.map((field) => field.name)));
   const rawFields = [...names].map((name) => {
     const value = sourceFields.get(name) ?? DISPLAY_NBT_DEFAULTS[name] ?? (node.type === "text_display" ? TEXT_DISPLAY_NBT_DEFAULTS[name] : undefined)
-      ?? (name === "item_display" && node.type === "item_display" ? JSON.stringify(node.itemDisplay) : undefined)
+      ?? (name === "item_display" && node.type === "item_display" ? JSON.stringify(node.displayContext) : undefined)
       ?? (name === "text" && node.type === "text_display" ? JSON.stringify(node.text) : undefined);
     if (value === undefined) throw new Error(`NBT track field ${name} requires an explicit initial value in the source node.`);
     return { name, value };

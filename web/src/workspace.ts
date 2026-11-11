@@ -15,7 +15,7 @@ import type { AnimationEntryIR, EventIR } from "./domain/animationIR";
 import { TICKS_PER_SECOND } from "./format/time";
 
 export type WorkspacePage = 0 | 1 | 2;
-export type SelectedFrame = { type: "create" } | { type: "timeline"; tick: number };
+export type SelectedFrame = { type: "create" } | { type: "timeline"; animationTick: number };
 
 export interface ConversionSession {
   document: ConversionDocument;
@@ -51,7 +51,7 @@ export type WorkspaceAction =
   | { type: "animation_changed"; ir: AnimationEntryIR }
   | { type: "minecraft_version_changed"; version: string }
   | { type: "lifecycle_events_changed"; events: { callbacks: EmoteCallback[]; start: EventIR[]; loop: EventIR[]; stop: EventIR[] } }
-  | { type: "timeline_events_changed"; tick: number; events: EventIR[] };
+  | { type: "timeline_events_changed"; animationTick: number; events: EventIR[] };
 
 export const EMPTY_SELECTION = new Set<string>();
 
@@ -86,7 +86,7 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
     case "frame_selected":
       return updateSession(state, (session) => ({ ...session,
         selectedFrame: action.frame.type === "create" ? action.frame : { type: "timeline",
-          tick: Math.max(0, Math.min(action.frame.tick, parseMinecraftTime(session.document.animations[session.animationIndex].clip.duration, 1))) },
+          animationTick: Math.max(0, Math.min(action.frame.animationTick, parseMinecraftTime(session.document.animations[session.animationIndex].clip.duration, 1))) },
         selectedCandidateIds: new Set() }));
     case "candidate_selected":
       return updateSession(state, (session) => ({
@@ -126,7 +126,7 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
     case "timeline_events_changed":
       return updateSession(state, (session) => ({
         ...session,
-        document: replaceTimelineEvents(session.document, session.animationIndex, action.tick, action.events),
+        document: replaceTimelineEvents(session.document, session.animationIndex, action.animationTick, action.events),
       }));
   }
 }

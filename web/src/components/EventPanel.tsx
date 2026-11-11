@@ -9,26 +9,26 @@ import { isResourceLocation } from "../format/resourceLocation";
 interface EventPanelProps {
   events: ConversionAnimationEvents;
   callbacks?: EmoteCallback[];
-  tick: number | null;
+  animationTick: number | null;
   disabled: boolean;
   onLifecycleChange: (events: Pick<ConversionAnimationEvents, "start" | "loop" | "stop"> & { callbacks: EmoteCallback[] }) => void;
-  onTimelineChange: (tick: number, events: EventIR[]) => void;
+  onTimelineChange: (animationTick: number, events: EventIR[]) => void;
   onValidityChange: (valid: boolean) => void;
 }
 
-export function EventPanel({ events, callbacks, tick, disabled, onLifecycleChange, onTimelineChange, onValidityChange }: EventPanelProps) {
+export function EventPanel({ events, callbacks, animationTick, disabled, onLifecycleChange, onTimelineChange, onValidityChange }: EventPanelProps) {
   const [error, setError] = useState("");
-  const initialValue = tick === null
+  const initialValue = animationTick === null
     ? JSON.stringify({ callbacks: callbacks ?? [], start: events.start, loop: events.loop, stop: events.stop }, null, 2)
     : JSON.stringify(events.timeline.flatMap((event) => {
-      if (parseMinecraftTime(event.time) !== tick) return [];
+      if (parseMinecraftTime(event.time) !== animationTick) return [];
       const { time: _time, ...body } = event;
       return [body];
     }), null, 2);
   function handleInput(value: string) {
     try {
       const parsed: unknown = JSON.parse(value);
-      if (tick !== null) onTimelineChange(tick, parseEventArray(parsed, "Timeline events", true));
+      if (animationTick !== null) onTimelineChange(animationTick, parseEventArray(parsed, "Timeline events", true));
       else {
         const lifecycle = requireRecord(parsed, "Lifecycle events");
         const callbacks = lifecycle.callbacks === undefined ? [] : requireArray(lifecycle.callbacks, "callbacks").map((value, index) => {
@@ -58,15 +58,15 @@ export function EventPanel({ events, callbacks, tick, disabled, onLifecycleChang
       <div className="event-editor-heading">
         <div>
           <h3 id="event-editor-heading">Events</h3>
-          <p>{tick === null
+          <p>{animationTick === null
             ? "Edit callbacks and start, loop, and stop events as JSON. Changes are saved as soon as the JSON is valid."
             : "Edit the events at this tick as a JSON array. The selected tick supplies the event time automatically. Changes are saved as soon as the JSON is valid."}</p>
         </div>
-        <span className="event-scope">{tick === null ? "Create pose · Lifecycle" : `Tick ${tick} · Timeline`}</span>
+        <span className="event-scope">{animationTick === null ? "Create pose · Lifecycle" : `Tick ${animationTick} · Timeline`}</span>
       </div>
       <div className="event-editor-body">
         <textarea className="event-json" defaultValue={initialValue} disabled={disabled} spellcheck={false}
-          aria-label={tick === null ? "Lifecycle events JSON" : `Timeline events JSON at tick ${tick}`} aria-invalid={error ? true : undefined}
+          aria-label={animationTick === null ? "Lifecycle events JSON" : `Timeline events JSON at tick ${animationTick}`} aria-invalid={error ? true : undefined}
           onInput={(event) => handleInput(event.currentTarget.value)} />
         {error && <p className="event-json-error" role="alert">{error} Fix the JSON or press Ctrl+Z before leaving this event scope.</p>}
       </div>

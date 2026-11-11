@@ -68,7 +68,7 @@ export function createEmotecraftNodes(slices: readonly EmotecraftSlice[]): Recor
       binding: { sourceNodeId: slice.id, skinGroupId: group },
       type: "item_display",
       visible: true,
-      itemDisplay: "none",
+      displayContext: "none",
       itemStack: { id: "minecraft:player_head", count: 1 },
       playerHeadConversionMatrix: slicePlayerHeadConversion(slice),
       suggestedSkin: { part: slice.source.part, order: slice.order },

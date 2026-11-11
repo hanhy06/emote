@@ -68,7 +68,7 @@ export function createBedrockPlayerNodes(): Record<string, ImportedNode> {
       binding: { sourceNodeId: slice.id},
       type: "item_display",
       visible: true,
-      itemDisplay: "none",
+      displayContext: "none",
       itemStack: { id: "minecraft:player_head", count: 1 },
       playerHeadConversionMatrix: bedrockPlayerHeadConversionMatrix(slice.bone, slice.from, slice.to),
       suggestedSkin: { part: slice.bone.cube.skin, order: slice.order },
