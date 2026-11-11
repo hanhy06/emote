@@ -21,6 +21,8 @@ import java.util.function.Supplier;
 
 public final class PlaybackSession implements EmotePlayback.LifecycleListener {
     private final PlaybackEngine engine;
+    private final PlaybackEngine.Lifecycle lifecycle;
+    private PlaybackEngine.Lifecycle stateListener;
     private final EmoteInfo emoteInfo;
     private final View view = new View();
     private final UUID sessionId;
@@ -37,7 +39,9 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
     private @Nullable Supplier<EmotePlayback.Frame> pendingSeek;
     private @Nullable PlaybackPlacement pendingPlacement;
     private EmotePlayback.@Nullable PoseView appliedPose;
-    private EmotePlayback.@Nullable Frame preparedFrame;
+    private EmotePlayback.@Nullable Frame frame;
+    private @Nullable RuntimeException frameError;
+    private boolean firstFrame, frameApplied, apiStarted;
     private PlaybackPlacement.Mode appliedPlacementMode;
     private final ResourceKey<Level> levelKey;
     private final PlaybackScene scene;
@@ -52,9 +56,11 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
         PlaybackScene scene,
         EmotePlayback playback,
         Map<String, Entity> actors,
-        PlaybackPlacement.Mode placementMode
+        PlaybackPlacement.Mode placementMode,
+        PlaybackEngine.Lifecycle lifecycle
     ) {
         this.engine = Objects.requireNonNull(engine, "engine");
+        this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle");
         this.sessionId = Objects.requireNonNull(sessionId, "sessionId");
         this.levelKey = Objects.requireNonNull(levelKey, "levelKey");
         this.scene = Objects.requireNonNull(scene, "scene");
@@ -82,14 +88,20 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
             pose == null ? this.scene.orientationYaw() : pose.orientationYaw());
     }
 
-    public PlaybackPlacement.Mode placementMode() { return this.placementMode; }
     public boolean isActive() { return this.state == PlaybackState.PENDING || this.state == PlaybackState.RUNNING; }
-    public void queuePlacement(PlaybackPlacement placement) { this.pendingPlacement = placement; }
-    public @Nullable PlaybackPlacement takePlacement() {
-        PlaybackPlacement placement = this.pendingPlacement;
-        this.pendingPlacement = null;
-        if (placement != null) this.placementMode = placement.mode();
-        return placement;
+
+    void registered(PlaybackEngine.Lifecycle stateListener) {
+        this.stateListener = stateListener;
+        this.lifecycle.onRegistered(this);
+    }
+
+    private boolean setPlacement(PlaybackPlacement placement) {
+        if (!isActive()) return false;
+        if (placement.mode() == PlaybackPlacement.Mode.ACTOR && this.lifecycle.resolveActorPlacement(this) == null) {
+            throw new IllegalArgumentException("Playback has no actor placement");
+        }
+        this.pendingPlacement = placement;
+        return true;
     }
 
     public void bindCallbacks(
@@ -101,7 +113,7 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
         this.playback.bindLifecycleListener(this);
     }
 
-    public void start() {
+    private void start() {
         if (this.callbacksStarted) throw new IllegalStateException("Callbacks already started.");
         if (this.state != PlaybackState.RUNNING) return;
         this.callbacksStarted = true;
@@ -136,35 +148,107 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
         return true;
     }
 
-    public EmotePlayback.@Nullable Frame prepareFrame(long serverTick, long worldTick) {
-        if (!isActive() || this.lastServerTick == serverTick) return null;
-        this.lastServerTick = serverTick;
-        if (!this.initialized) {
-            this.preparedFrame = this.playback.playbackMode() == EmoteAnimation.PlaybackMode.SERVER_SYNC
-                ? this.playback.prepareStartSynchronized(this.scene, worldTick) : this.playback.prepareStart(this.scene);
-            this.initialized = true;
-            return this.preparedFrame;
+    boolean prepareFrame(long serverTick, long worldTick) {
+        if (!isActive() || this.lastServerTick == serverTick) return false;
+        this.frameError = null;
+        this.frameApplied = false;
+        this.firstFrame = this.state == PlaybackState.PENDING;
+        try {
+            PlaybackStopReason reason = this.lifecycle.beforeTick(this);
+            if (!isActive()) return false;
+            if (reason != null) { this.engine.stop(this, reason); return false; }
+            PlaybackPlacement requested = this.pendingPlacement;
+            this.pendingPlacement = null;
+            if (requested != null) this.placementMode = requested.mode();
+            RootTransform placement = this.placementMode == PlaybackPlacement.Mode.ACTOR
+                ? this.lifecycle.resolveActorPlacement(this)
+                : requested == null ? RootTransform.create(this.scene.root().position(), this.scene.viewYaw())
+                    : RootTransform.create(requested.position(), requested.yaw());
+            if (placement == null) throw new IllegalArgumentException("Playback has no actor placement");
+            float deadzone = requested == null && this.placementMode == PlaybackPlacement.Mode.ACTOR ? this.lifecycle.rotationDeadzone(this) : 0;
+            this.scene.preparePlacement(placement, deadzone);
+            this.lastServerTick = serverTick;
+            if (!this.initialized) {
+                this.frame = this.playback.playbackMode() == EmoteAnimation.PlaybackMode.SERVER_SYNC
+                    ? this.playback.prepareStartSynchronized(this.scene, worldTick) : this.playback.prepareStart(this.scene);
+                this.initialized = true;
+            } else {
+                Supplier<EmotePlayback.Frame> seek = this.pendingSeek;
+                this.pendingSeek = null;
+                this.frame = seek == null ? null : seek.get();
+                if (this.frame == null) this.frame = this.playback.prepareAdvance();
+            }
+            return true;
+        } catch (RuntimeException exception) {
+            EmoteMod.LOGGER.warn("Failed to prepare emote {}", emoteId(), exception);
+            this.engine.stop(this, PlaybackStopReason.ERROR);
+            return false;
         }
-        Supplier<EmotePlayback.Frame> seek = this.pendingSeek;
-        this.pendingSeek = null;
-        EmotePlayback.Frame frame = seek == null ? null : seek.get();
-        this.preparedFrame = frame == null ? this.playback.prepareAdvance() : frame;
-        return this.preparedFrame;
     }
 
-    public void applyFrame(EmotePlayback.Frame frame) {
-        this.scene.applyPlacement();
-        frame.apply();
-        this.scene.applyAnimationSkin(frame.skinAnimationId());
-        if (this.appliedPose != null) this.elapsedTicks++;
-        this.appliedPose = frame.pose();
-        this.appliedPlacementMode = this.placementMode;
-        this.state = PlaybackState.RUNNING;
+    void calculateFrame() {
+        try { this.frame.calculate(); }
+        catch (RuntimeException exception) { this.frameError = exception; }
     }
 
-    public void releaseFrame() { this.preparedFrame = null; }
+    void failFrame(RuntimeException exception) { this.frameError = exception; }
 
-    public void stopPlayback(PlaybackStopReason reason) {
+    void discardFrame() {
+        if (this.frame != null && !this.frameApplied) this.frame.discard();
+        this.frame = null;
+    }
+
+    void applyFrame() {
+        if (!isActive() || this.frameError != null) {
+            discardFrame();
+            if (this.frameError != null && isActive()) {
+                EmoteMod.LOGGER.warn("Failed to calculate emote {}", emoteId(), this.frameError);
+                this.engine.stop(this, PlaybackStopReason.ERROR);
+            }
+            return;
+        }
+        try {
+            this.scene.applyPlacement();
+            this.frame.apply();
+            this.frameApplied = true;
+            this.scene.applyAnimationSkin(this.frame.skinAnimationId());
+            if (this.appliedPose != null) this.elapsedTicks++;
+            this.appliedPose = this.frame.pose();
+            this.appliedPlacementMode = this.placementMode;
+            this.state = PlaybackState.RUNNING;
+            if (this.firstFrame) this.scene.add();
+        } catch (RuntimeException exception) {
+            EmoteMod.LOGGER.warn("Failed to apply emote {}", emoteId(), exception);
+            discardFrame();
+            this.engine.stop(this, PlaybackStopReason.ERROR);
+        }
+    }
+
+    void dispatchFrame() {
+        if (this.frame == null || !this.frameApplied || !isActive()) return;
+        try {
+            if (this.firstFrame) {
+                this.lifecycle.onStarted(this);
+                if (!isActive()) return;
+                this.apiStarted = true;
+                this.stateListener.onStarted(this);
+                if (!isActive()) return;
+                start();
+            }
+            if (!isActive()) return;
+            this.lifecycle.onFrameApplied(this);
+            if (!isActive()) return;
+            this.frame.dispatchEvents();
+            if (!isActive()) return;
+            if (!this.firstFrame) tickCallbacks();
+            if (isActive() && this.frame.result() == EmotePlayback.AdvanceResult.FINISHED) this.engine.stop(this, PlaybackStopReason.FINISHED);
+        } catch (RuntimeException exception) {
+            EmoteMod.LOGGER.warn("Failed to dispatch emote {}", emoteId(), exception);
+            this.engine.stop(this, PlaybackStopReason.ERROR);
+        } finally { this.frame = null; }
+    }
+
+    private void stopPlayback(PlaybackStopReason reason) {
         if (!this.initialized) return;
         EmotePlayback.Frame frame = this.playback.prepareStop(reason);
         frame.apply();
@@ -210,7 +294,7 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
         }
     }
 
-    public void tickCallbacks() {
+    private void tickCallbacks() {
         if (!this.callbacksStarted || this.state != PlaybackState.RUNNING) return;
         for (Context context : this.callbackContexts) {
             context.dispatch(context.binding.callbacks()::onTick);
@@ -218,17 +302,24 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
         }
     }
 
-    public boolean beginClose(PlaybackStopReason reason) {
+    boolean beginClose(PlaybackStopReason reason) {
         if (!isActive()) return false;
         this.state = PlaybackState.CLOSING;
         this.pendingSeek = null;
         this.pendingPlacement = null;
-        if (this.preparedFrame != null) this.preparedFrame.cancelEvents();
+        if (this.frame != null) this.frame.cancelEvents();
         this.stopReason = Objects.requireNonNull(reason, "reason");
         return true;
     }
 
-    public void closeCallbacks() {
+    void notifyClosing() {
+        try {
+            for (String id : this.scene.nodes().keySet()) this.scene.setVisible(id, false);
+            this.lifecycle.onClosing(this);
+        } catch (RuntimeException exception) { EmoteMod.LOGGER.warn("Failed to close emote {}", emoteId(), exception); }
+    }
+
+    private void closeCallbacks() {
         if (this.state != PlaybackState.CLOSING || this.callbacksClosed) return;
         this.callbacksClosed = true;
         onClose(this.stopReason);
@@ -248,8 +339,26 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
         } finally { context.userState = null; }
     }
 
-    public void completeClose() {
-        this.state = PlaybackState.CLOSED;
+    void finishClose() {
+        PlaybackStopReason reason = stopReason();
+        try {
+            discardFrame();
+            try { stopPlayback(reason); }
+            catch (RuntimeException exception) { EmoteMod.LOGGER.warn("Failed to run stop events for emote {}", emoteId(), exception); }
+            closeCallbacks();
+        } finally {
+            try { this.lifecycle.onStopped(this, reason); }
+            catch (RuntimeException exception) { EmoteMod.LOGGER.warn("Failed to notify emote {} stopped", emoteId(), exception); }
+            finally {
+                try {
+                    if (this.apiStarted) {
+                        try { this.stateListener.onStopped(this, reason); }
+                        catch (RuntimeException exception) { EmoteMod.LOGGER.warn("Failed to notify emote {} API stop", emoteId(), exception); }
+                    }
+                    this.scene.close();
+                } finally { this.state = PlaybackState.CLOSED; }
+            }
+        }
     }
 
     private class View implements Playback {
@@ -314,7 +423,7 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
         public boolean seekStep(int stepIndex, int repeatIndex, int animationTick) { requireServerThread(); return PlaybackSession.this.seekStep(stepIndex, repeatIndex, animationTick); }
         public boolean setPlacement(PlaybackPlacement placement) {
             requireServerThread();
-            return PlaybackSession.this.engine.setPlacement(getSessionId(), Objects.requireNonNull(placement, "placement"));
+            return PlaybackSession.this.setPlacement(Objects.requireNonNull(placement, "placement"));
         }
         public PlaybackInfo snapshot() {
             requireServerThread();

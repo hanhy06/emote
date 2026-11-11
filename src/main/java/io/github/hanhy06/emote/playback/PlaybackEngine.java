@@ -2,7 +2,6 @@ package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.PlaybackPlacement;
-import io.github.hanhy06.emote.api.PlaybackState;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.config.ConfigListener;
@@ -23,14 +22,14 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 public final class PlaybackEngine implements ConfigListener {
-    private final Map<UUID, ActivePlayback> activePlaybacks = new HashMap<>();
-    private final List<ActivePlayback> closingPlaybacks = new ArrayList<>();
+    private final Map<UUID, PlaybackSession> activePlaybacks = new HashMap<>();
+    private final List<PlaybackSession> closingPlaybacks = new ArrayList<>();
     private final CallbackRegistry callbackRegistry = new CallbackRegistry();
     private int activeDisplayEntities;
     private int maxActiveDisplayEntities = Config.DEFAULT_MAX_ACTIVE_DISPLAY_ENTITIES;
     private PlaybackStressTest stressTest;
     private ExecutorService poseExecutor;
-    private List<ActivePlayback> framePlaybacks = List.of();
+    private List<PlaybackSession> framePlaybacks = List.of();
     private @Nullable Future<?> frameTask;
     private Lifecycle stateListener = Lifecycle.NONE;
     private boolean stopping;
@@ -71,20 +70,6 @@ public final class PlaybackEngine implements ConfigListener {
 
     public enum FailureReason { DISPLAY_LIMIT, START_REJECTED }
 
-    private static final class ActivePlayback {
-        final PlaybackSession session;
-        final Lifecycle lifecycle, stateListener;
-        EmotePlayback.@Nullable Frame frame;
-        @Nullable RuntimeException frameError;
-        boolean firstFrame, frameApplied, apiStarted;
-
-        ActivePlayback(PlaybackSession session, Lifecycle lifecycle, Lifecycle stateListener) {
-            this.session = session;
-            this.lifecycle = lifecycle;
-            this.stateListener = stateListener;
-        }
-    }
-
     public CallbackRegistry callbackRegistry() { return this.callbackRegistry; }
     public void startWorker() {
         this.stopping = false;
@@ -97,10 +82,7 @@ public final class PlaybackEngine implements ConfigListener {
         try {
             try { awaitFrames(); }
             catch (RuntimeException exception) { EmoteMod.LOGGER.warn("Failed to finish emote frames during shutdown", exception); }
-            for (ActivePlayback playback : this.framePlaybacks) {
-                if (playback.frame != null && !playback.frameApplied) playback.frame.discard();
-                playback.session.releaseFrame();
-            }
+            for (PlaybackSession session : this.framePlaybacks) session.discardFrame();
             this.framePlaybacks = List.of();
             this.stressTest.stop();
             this.stressTest.discardFrames();
@@ -131,11 +113,10 @@ public final class PlaybackEngine implements ConfigListener {
             scene = PlaybackScene.create(request.level(), request.root(), emote);
             playback.bindEvents(new EventCommandExecutor(request.level(), request.commandSource(), scene));
             if (request.skin() != null) scene.setSkins(request.skin());
-            session = new PlaybackSession(this, UUID.randomUUID(), request.level().dimension(), scene, playback, request.actors(), request.placementMode());
+            session = new PlaybackSession(this, UUID.randomUUID(), request.level().dimension(), scene, playback, request.actors(), request.placementMode(), request.lifecycle());
             session.bindCallbacks(bindings, animationBindings);
             if (replacedSession != null) stop(replacedSession, PlaybackStopReason.REPLACED);
-            register(session, request.lifecycle());
-            request.lifecycle().onRegistered(session);
+            register(session);
             return new StartResult.Success(session);
         } catch (RuntimeException exception) {
             EmoteMod.LOGGER.warn("Failed to register emote {}", emote.id(), exception);
@@ -145,16 +126,16 @@ public final class PlaybackEngine implements ConfigListener {
         }
     }
 
-    void register(PlaybackSession session, Lifecycle lifecycle) {
-        if (this.activePlaybacks.putIfAbsent(session.sessionId(), new ActivePlayback(session, lifecycle, this.stateListener)) != null) {
+    private void register(PlaybackSession session) {
+        if (this.activePlaybacks.putIfAbsent(session.sessionId(), session) != null) {
             throw new IllegalStateException("Playback session is already registered: " + session.sessionId());
         }
         this.activeDisplayEntities += session.scene().displayEntityCount();
+        session.registered(this.stateListener);
     }
 
     public @Nullable PlaybackSession findSession(UUID sessionId) {
-        ActivePlayback playback = this.activePlaybacks.get(sessionId);
-        return playback == null ? null : playback.session;
+        return this.activePlaybacks.get(sessionId);
     }
     public boolean contains(PlaybackSession session) { return findSession(session.sessionId()) == session; }
 
@@ -163,58 +144,23 @@ public final class PlaybackEngine implements ConfigListener {
         return session == null ? null : stop(session, reason);
     }
 
-    public boolean setPlacement(UUID sessionId, PlaybackPlacement placement) {
-        ActivePlayback playback = this.activePlaybacks.get(sessionId);
-        if (playback == null) return false;
-        if (placement.mode() == PlaybackPlacement.Mode.ACTOR && playback.lifecycle.resolveActorPlacement(playback.session) == null) {
-            throw new IllegalArgumentException("Playback has no actor placement");
-        }
-        playback.session.queuePlacement(placement);
-        return true;
-    }
-
     public void beginTick() {
         if (this.frameTask != null || !this.framePlaybacks.isEmpty()) throw new IllegalStateException("Previous emote tick has not finished");
-        List<ActivePlayback> frames = new ArrayList<>();
+        List<PlaybackSession> frames = new ArrayList<>();
         boolean hasStressFrames = this.stressTest.prepareTick();
-        for (ActivePlayback playback : List.copyOf(this.activePlaybacks.values())) {
-            PlaybackSession session = playback.session;
+        for (PlaybackSession session : List.copyOf(this.activePlaybacks.values())) {
             if (!contains(session)) continue;
-            playback.frame = null;
-            playback.frameError = null;
-            playback.frameApplied = false;
-            playback.firstFrame = session.state() == PlaybackState.PENDING;
-            try {
-                PlaybackStopReason reason = playback.lifecycle.beforeTick(session);
-                if (!contains(session)) continue;
-                if (reason != null) { stop(session, reason); continue; }
-                PlaybackPlacement requested = session.takePlacement();
-                RootTransform placement = session.placementMode() == PlaybackPlacement.Mode.ACTOR
-                    ? playback.lifecycle.resolveActorPlacement(session)
-                    : requested == null ? RootTransform.create(session.scene().root().position(), session.scene().viewYaw())
-                        : RootTransform.create(requested.position(), requested.yaw());
-                if (placement == null) throw new IllegalArgumentException("Playback has no actor placement");
-                float deadzone = requested == null && session.placementMode() == PlaybackPlacement.Mode.ACTOR ? playback.lifecycle.rotationDeadzone(session) : 0;
-                session.scene().preparePlacement(placement, deadzone);
-                playback.frame = session.prepareFrame(EmoteMod.SERVER.getTickCount(), EmoteMod.SERVER.overworld().getGameTime());
-                if (playback.frame != null) frames.add(playback);
-            } catch (RuntimeException exception) {
-                EmoteMod.LOGGER.warn("Failed to prepare emote {}", session.emoteId(), exception);
-                stop(session, PlaybackStopReason.ERROR);
-            }
+            if (session.prepareFrame(EmoteMod.SERVER.getTickCount(), EmoteMod.SERVER.overworld().getGameTime())) frames.add(session);
         }
         this.framePlaybacks = List.copyOf(frames);
         if (!frames.isEmpty() || hasStressFrames) {
             try {
                 this.frameTask = this.poseExecutor.submit(() -> {
-                    for (ActivePlayback playback : frames) {
-                        try { playback.frame.calculate(); }
-                        catch (RuntimeException exception) { playback.frameError = exception; }
-                    }
+                    for (PlaybackSession session : frames) session.calculateFrame();
                     this.stressTest.calculateFrames();
                 });
             } catch (RuntimeException exception) {
-                for (ActivePlayback playback : frames) playback.frameError = exception;
+                for (PlaybackSession session : frames) session.failFrame(exception);
                 this.stressTest.failFrames(exception);
             }
         }
@@ -241,114 +187,45 @@ public final class PlaybackEngine implements ConfigListener {
         long endTickStartedNanos = System.nanoTime();
         try { awaitFrames(); }
         catch (RuntimeException exception) {
-            for (ActivePlayback playback : this.framePlaybacks) playback.frameError = exception;
+            for (PlaybackSession session : this.framePlaybacks) session.failFrame(exception);
             this.stressTest.failFrames(exception);
         }
-        for (ActivePlayback playback : this.framePlaybacks) {
-            if (!contains(playback.session) || playback.frameError != null) {
-                playback.frame.discard();
-                playback.session.releaseFrame();
-                if (playback.frameError != null && contains(playback.session)) {
-                    EmoteMod.LOGGER.warn("Failed to calculate emote {}", playback.session.emoteId(), playback.frameError);
-                    stop(playback.session, PlaybackStopReason.ERROR);
-                }
-                continue;
-            }
-            try {
-                playback.session.applyFrame(playback.frame);
-                playback.frameApplied = true;
-                if (playback.firstFrame) playback.session.scene().add();
-            } catch (RuntimeException exception) {
-                EmoteMod.LOGGER.warn("Failed to apply emote {}", playback.session.emoteId(), exception);
-                if (!playback.frameApplied) playback.frame.discard();
-                playback.session.releaseFrame();
-                stop(playback.session, PlaybackStopReason.ERROR);
-            }
-        }
+        for (PlaybackSession session : this.framePlaybacks) session.applyFrame();
         this.stressTest.applyFrames();
         finishClosings();
-        for (ActivePlayback playback : this.framePlaybacks) {
-            PlaybackSession session = playback.session;
-            if (!playback.frameApplied || !contains(session)) continue;
-            try {
-                if (playback.firstFrame) {
-                    playback.lifecycle.onStarted(session);
-                    if (!contains(session)) continue;
-                    playback.apiStarted = true;
-                    playback.stateListener.onStarted(session);
-                    if (!contains(session)) continue;
-                    session.start();
-                }
-                if (!contains(session)) continue;
-                playback.lifecycle.onFrameApplied(session);
-                if (!contains(session)) continue;
-                playback.frame.dispatchEvents();
-                if (!contains(session)) continue;
-                if (!playback.firstFrame) session.tickCallbacks();
-                if (contains(session) && playback.frame.result() == EmotePlayback.AdvanceResult.FINISHED) stop(session, PlaybackStopReason.FINISHED);
-            } catch (RuntimeException exception) {
-                EmoteMod.LOGGER.warn("Failed to dispatch emote {}", session.emoteId(), exception);
-                stop(session, PlaybackStopReason.ERROR);
-            } finally { session.releaseFrame(); }
-        }
+        for (PlaybackSession session : this.framePlaybacks) session.dispatchFrame();
         this.framePlaybacks = List.of();
         finishClosings();
         this.stressTest.tick(endTickStartedNanos);
     }
 
     public @Nullable PlaybackSession stop(PlaybackSession session, PlaybackStopReason reason) {
-        ActivePlayback playback = this.activePlaybacks.get(session.sessionId());
-        if (playback == null || playback.session != session || !session.beginClose(reason)) return null;
+        if (!contains(session) || !session.beginClose(reason)) return null;
         this.activePlaybacks.remove(session.sessionId());
         this.activeDisplayEntities -= session.scene().displayEntityCount();
-        this.closingPlaybacks.add(playback);
-        try {
-            for (String id : session.scene().nodes().keySet()) session.scene().setVisible(id, false);
-            playback.lifecycle.onClosing(session);
-        } catch (RuntimeException exception) { EmoteMod.LOGGER.warn("Failed to close emote {}", session.emoteId(), exception); }
+        this.closingPlaybacks.add(session);
+        session.notifyClosing();
         return session;
     }
 
     private void finishClosings() {
         while (!this.closingPlaybacks.isEmpty()) {
-            List<ActivePlayback> closing = List.copyOf(this.closingPlaybacks);
+            List<PlaybackSession> closing = List.copyOf(this.closingPlaybacks);
             this.closingPlaybacks.clear();
-            for (ActivePlayback playback : closing) finishCleanup(playback);
-        }
-    }
-
-    private void finishCleanup(ActivePlayback playback) {
-        PlaybackSession session = playback.session;
-        PlaybackStopReason reason = session.stopReason();
-        try {
-            try { session.stopPlayback(reason); }
-            catch (RuntimeException exception) { EmoteMod.LOGGER.warn("Failed to run stop events for emote {}", session.emoteId(), exception); }
-            session.closeCallbacks();
-        } finally {
-            try { playback.lifecycle.onStopped(session, reason); }
-            catch (RuntimeException exception) { EmoteMod.LOGGER.warn("Failed to notify emote {} stopped", session.emoteId(), exception); }
-            finally {
-                try {
-                    if (playback.apiStarted) {
-                        try { playback.stateListener.onStopped(session, reason); }
-                        catch (RuntimeException exception) { EmoteMod.LOGGER.warn("Failed to notify emote {} API stop", session.emoteId(), exception); }
-                    }
-                    session.scene().close();
-                } finally { session.completeClose(); }
-            }
+            for (PlaybackSession session : closing) session.finishClose();
         }
     }
 
     public void stopAll() { stopAll(PlaybackStopReason.MANUAL); }
     public void stopAll(PlaybackStopReason reason) {
         this.stressTest.stop();
-        for (ActivePlayback playback : List.copyOf(this.activePlaybacks.values())) stop(playback.session, reason);
+        for (PlaybackSession session : List.copyOf(this.activePlaybacks.values())) stop(session, reason);
     }
     public void stopById(String id) { stopById(id, PlaybackStopReason.EMOTE_REMOVED); }
     public void stopById(String id, PlaybackStopReason reason) {
         this.stressTest.stopById(id);
-        for (ActivePlayback playback : List.copyOf(this.activePlaybacks.values())) {
-            if (playback.session.emoteId().equals(id)) stop(playback.session, reason);
+        for (PlaybackSession session : List.copyOf(this.activePlaybacks.values())) {
+            if (session.emoteId().equals(id)) stop(session, reason);
         }
     }
     public int activeDisplayEntityCount() { return this.stressTest.displayEntityCount() + this.activeDisplayEntities; }
