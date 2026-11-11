@@ -12,8 +12,8 @@ public record PlaybackInfo(
     Identifier emoteId,
     PlaybackState state,
     long elapsedTicks,
-    @Nullable Integer tick,
-    @Nullable PlaybackPosition position,
+    @Nullable Integer timelineTick,
+    @Nullable PlaybackCursor cursor,
     PlaybackPlacement placement
 ) {
     public PlaybackInfo {

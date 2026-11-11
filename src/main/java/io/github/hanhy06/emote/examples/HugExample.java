@@ -6,7 +6,7 @@ import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.Playback;
 import io.github.hanhy06.emote.api.PlaybackContext;
 import io.github.hanhy06.emote.api.PlaybackPlacement;
-import io.github.hanhy06.emote.api.PlaybackPosition;
+import io.github.hanhy06.emote.api.PlaybackCursor;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
@@ -75,18 +75,18 @@ public final class HugExample implements EmoteCallbacks {
             return;
         }
 
-        PlaybackPosition position = context.getPosition();
-        if (position == null) {
+        PlaybackCursor cursor = context.getCursor();
+        if (cursor == null) {
             return;
         }
 
-        if (Integer.valueOf(HUG_STEP).equals(position.stepIndex())) {
+        if (Integer.valueOf(HUG_STEP).equals(cursor.stepIndex())) {
             // Without a partner, stop at the neutral boundary before the hug begins.
             finish(hug);
             return;
         }
 
-        if (Integer.valueOf(STOW_STEP).equals(position.stepIndex())) {
+        if (Integer.valueOf(STOW_STEP).equals(cursor.stepIndex())) {
             hug.stage = Stage.STOWING;
             if (hug.interaction != null) {
                 hug.interaction.discard();
@@ -97,12 +97,12 @@ public final class HugExample implements EmoteCallbacks {
                 return;
             }
 
-            Integer tick = context.getAnimationTick();
-            if (tick != null && tick >= hug.stowDurationTicks - 1) {
+            Integer animationTick = context.getAnimationTick();
+            if (animationTick != null && animationTick >= hug.stowDurationTicks - 1) {
                 embrace(hug);
             } else {
                 // Keep the partner visible at the starting pose until the sign is stowed.
-                hug.partnerPlayback.setAnimationTick(0);
+                hug.partnerPlayback.seekAnimation(0);
             }
             return;
         }
@@ -112,10 +112,10 @@ public final class HugExample implements EmoteCallbacks {
         }
 
         updatePlacement(context, hug);
-        Integer tick = context.getAnimationTick();
+        Integer animationTick = context.getAnimationTick();
 
         // Allow interaction after the sign-drawing motion has finished.
-        if (tick == null || tick < SIGN_READY_TICK) {
+        if (animationTick == null || animationTick < SIGN_READY_TICK) {
             return;
         }
 
@@ -207,7 +207,7 @@ public final class HugExample implements EmoteCallbacks {
             return;
         }
 
-        if (!hug.ownerPlayback.setStep(STOW_STEP, 0, 0)) {
+        if (!hug.ownerPlayback.seekStep(STOW_STEP, 0, 0)) {
             return;
         }
 
@@ -254,8 +254,8 @@ public final class HugExample implements EmoteCallbacks {
         hug.stage = Stage.HUGGING;
         try {
             // Start both hug motions next tick without recreating either model.
-            if (!hug.ownerPlayback.setStep(HUG_STEP, 0, 0)
-                || !hug.partnerPlayback.setAnimationTick(0)) {
+            if (!hug.ownerPlayback.seekStep(HUG_STEP, 0, 0)
+                || !hug.partnerPlayback.seekAnimation(0)) {
                 finish(hug);
             }
         } catch (RuntimeException exception) {

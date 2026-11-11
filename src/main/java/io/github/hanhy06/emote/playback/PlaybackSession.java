@@ -112,27 +112,27 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
         }
     }
 
-    private boolean setTick(int tick) {
+    private boolean seekTimeline(int timelineTick) {
         if (this.state != PlaybackState.RUNNING) return false;
-        if (tick < 0) throw new IllegalArgumentException("Tick must be non-negative");
-        if (!this.playback.canSetTick(tick)) return false;
-        this.pendingSeek = () -> this.playback.prepareTick(tick);
+        if (timelineTick < 0) throw new IllegalArgumentException("Tick must be non-negative");
+        if (!this.playback.canSeekTimeline(timelineTick)) return false;
+        this.pendingSeek = () -> this.playback.prepareSeekTimeline(timelineTick);
         return true;
     }
 
-    private boolean queueAnimationTick(int animationTick, EmotePlayback.@Nullable PoseView pose) {
-        if (this.state != PlaybackState.RUNNING || pose == null || pose.position().phase() != PlaybackTimeline.Phase.ANIMATION || !this.playback.canSeek()) return false;
-        if (animationTick < 0 || animationTick > this.playback.animationDuration(pose.position())) throw new IllegalArgumentException("Tick is outside the animation");
-        int segment = pose.position().segmentIndex();
-        this.pendingSeek = () -> this.playback.position().segmentIndex() == segment ? this.playback.prepareAnimationTick(animationTick) : null;
+    private boolean queueAnimationSeek(int animationTick, EmotePlayback.@Nullable PoseView pose) {
+        if (this.state != PlaybackState.RUNNING || pose == null || pose.cursor().phase() != PlaybackTimeline.Phase.ANIMATION || !this.playback.canSeek()) return false;
+        if (animationTick < 0 || animationTick > this.playback.animationDurationTicks(pose.cursor())) throw new IllegalArgumentException("Tick is outside the animation");
+        int segment = pose.cursor().segmentIndex();
+        this.pendingSeek = () -> this.playback.cursor().segmentIndex() == segment ? this.playback.prepareSeekAnimation(animationTick) : null;
         return true;
     }
 
-    private boolean setStep(int stepIndex, int repeatIndex, int animationTick) {
+    private boolean seekStep(int stepIndex, int repeatIndex, int animationTick) {
         if (this.state != PlaybackState.RUNNING) return false;
         this.playback.stepSegment(stepIndex, repeatIndex, animationTick);
         if (!this.playback.canSeek()) return false;
-        this.pendingSeek = () -> this.playback.prepareStep(stepIndex, repeatIndex, animationTick);
+        this.pendingSeek = () -> this.playback.prepareSeekStep(stepIndex, repeatIndex, animationTick);
         return true;
     }
 
@@ -270,9 +270,9 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
         public PlaybackState getState() { requireServerThread(); return PlaybackSession.this.state; }
         public boolean isActive() { requireServerThread(); return PlaybackSession.this.isActive(); }
         public long getElapsedTicks() { requireServerThread(); return PlaybackSession.this.elapsedTicks; }
-        public @Nullable Integer getTick() { requireServerThread(); var pose = pose(); return pose == null ? null : Integer.valueOf(pose.tick()); }
-        public @Nullable PlaybackPosition getPosition() { requireServerThread(); var pose = pose(); return pose == null ? null : pose.position(); }
-        public @Nullable Integer getAnimationTick() { var position = getPosition(); return position == null ? null : position.animationTick(); }
+        public @Nullable Integer getTimelineTick() { requireServerThread(); var pose = pose(); return pose == null ? null : Integer.valueOf(pose.timelineTick()); }
+        public @Nullable PlaybackCursor getCursor() { requireServerThread(); var pose = pose(); return pose == null ? null : pose.cursor(); }
+        public @Nullable Integer getAnimationTick() { var cursor = getCursor(); return cursor == null ? null : cursor.animationTick(); }
         public @Nullable PlaybackTimeline getTimeline() { requireServerThread(); var pose = pose(); return pose == null ? null : pose.timeline(); }
         public PlaybackPlacement getPlacement() { requireServerThread(); return placement(pose()); }
         public Vec3 getRootPosition() { return getPlacement().position(); }
@@ -309,9 +309,9 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
             requireServerThread();
             return PlaybackSession.this.engine.stop(PlaybackSession.this, Objects.requireNonNull(reason, "reason")) != null;
         }
-        public boolean setTick(int tick) { requireServerThread(); return PlaybackSession.this.setTick(tick); }
-        public boolean setAnimationTick(int animationTick) { requireServerThread(); return PlaybackSession.this.queueAnimationTick(animationTick, pose()); }
-        public boolean setStep(int stepIndex, int repeatIndex, int animationTick) { requireServerThread(); return PlaybackSession.this.setStep(stepIndex, repeatIndex, animationTick); }
+        public boolean seekTimeline(int timelineTick) { requireServerThread(); return PlaybackSession.this.seekTimeline(timelineTick); }
+        public boolean seekAnimation(int animationTick) { requireServerThread(); return PlaybackSession.this.queueAnimationSeek(animationTick, pose()); }
+        public boolean seekStep(int stepIndex, int repeatIndex, int animationTick) { requireServerThread(); return PlaybackSession.this.seekStep(stepIndex, repeatIndex, animationTick); }
         public boolean setPlacement(PlaybackPlacement placement) {
             requireServerThread();
             return PlaybackSession.this.engine.setPlacement(getId(), Objects.requireNonNull(placement, "placement"));
@@ -321,7 +321,7 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
             var pose = pose();
             UUID playerUuid = PlaybackSession.this.actors.get("actor") instanceof ServerPlayer player ? player.getUUID() : null;
             return new PlaybackInfo(getId(), playerUuid, getEmoteId(), PlaybackSession.this.state, PlaybackSession.this.elapsedTicks,
-                pose == null ? null : Integer.valueOf(pose.tick()), pose == null ? null : pose.position(), placement(pose));
+                pose == null ? null : Integer.valueOf(pose.timelineTick()), pose == null ? null : pose.cursor(), placement(pose));
         }
     }
 

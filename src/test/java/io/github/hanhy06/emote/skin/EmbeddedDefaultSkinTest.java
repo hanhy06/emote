@@ -140,9 +140,9 @@ class EmbeddedDefaultSkinTest {
         assertEquals(first.id(), apply(playback.prepareStart(new Target())).skinAnimationId());
         assertEquals(first.id(), apply(playback.prepareAdvance(2)).skinAnimationId());
         assertEquals(second.id(), apply(playback.prepareAdvance(2)).skinAnimationId());
-        assertEquals(first.id(), apply(playback.prepareStep(4, 0, 1)).skinAnimationId());
-        assertNull(apply(playback.prepareStep(3, 0, 0)).skinAnimationId());
-        assertEquals(second.id(), apply(playback.prepareStep(2, 0, 0)).skinAnimationId());
+        assertEquals(first.id(), apply(playback.prepareSeekStep(4, 0, 1)).skinAnimationId());
+        assertNull(apply(playback.prepareSeekStep(3, 0, 0)).skinAnimationId());
+        assertEquals(second.id(), apply(playback.prepareSeekStep(2, 0, 0)).skinAnimationId());
     }
 
     @Test
@@ -272,8 +272,8 @@ class EmbeddedDefaultSkinTest {
             assertEquals(dressed, preparation.textures().get(apply(playback.prepareStart(new Target())).skinAnimationId()));
             assertEquals(dressed, preparation.textures().get(apply(playback.prepareAdvance(2)).skinAnimationId()));
             assertEquals(own, preparation.textures().get(apply(playback.prepareAdvance(2)).skinAnimationId()));
-            assertEquals(dressed, preparation.textures().get(apply(playback.prepareStep(0, 0, 1)).skinAnimationId()));
-            assertEquals(own, preparation.textures().get(apply(playback.prepareStep(2, 0, 1)).skinAnimationId()));
+            assertEquals(dressed, preparation.textures().get(apply(playback.prepareSeekStep(0, 0, 1)).skinAnimationId()));
+            assertEquals(own, preparation.textures().get(apply(playback.prepareSeekStep(2, 0, 1)).skinAnimationId()));
 
             var replacement = PlayerSkinSource.fromPng(png(0xff998877));
             var replacementOverride = replacement.withOverride(first.model().skin().override());

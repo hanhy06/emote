@@ -476,7 +476,7 @@ class SamplePoseTest {
                 var queryCount = queryThreads.size();
                 var calculation = worker.submit(advance::calculate);
                 assertEquals(previous, target.matrices);
-                assertThrows(IllegalStateException.class, () -> playback.prepareTick(10));
+                assertThrows(IllegalStateException.class, () -> playback.prepareSeekTimeline(10));
                 assertTrue(workerThread.get() != mainThread);
                 release.countDown();
                 calculation.get();
@@ -485,10 +485,10 @@ class SamplePoseTest {
                 assertEquals(previous, target.matrices);
                 advance.apply();
                 advance.dispatchEvents();
-                assertEquals(4, playback.currentTick());
+                assertEquals(4, playback.timelineTick());
                 assertThrows(IllegalStateException.class, advance::calculate);
 
-                var seek = playback.prepareTick(10);
+                var seek = playback.prepareSeekTimeline(10);
                 worker.submit(seek::calculate).get();
                 seek.apply();
                 seek.dispatchEvents();
@@ -498,7 +498,7 @@ class SamplePoseTest {
                 referenceInitial.calculate();
                 referenceInitial.apply();
                 referenceInitial.dispatchEvents();
-                var referenceSeek = reference.prepareTick(10);
+                var referenceSeek = reference.prepareSeekTimeline(10);
                 referenceSeek.calculate();
                 referenceSeek.apply();
                 referenceSeek.dispatchEvents();
@@ -546,10 +546,10 @@ class SamplePoseTest {
         playback.bindEvents(event -> effects.add("event:" + event.animationId() + ":" + event.animationTick() + ":" + event.pose().nodeMatrix("n").m30()));
         playback.bindLifecycleListener(new EmotePlayback.LifecycleListener() {
             public void onStart(PreparedAnimation animation) {
-                effects.add("start:" + animation.id() + ":" + playback.position().animationTick() + ":" + playback.currentTransformation("n").getMatrix().m30());
+                effects.add("start:" + animation.id() + ":" + playback.cursor().animationTick() + ":" + playback.currentTransformation("n").getMatrix().m30());
             }
             public void onTick(int tick) {
-                effects.add("tick:" + tick + ":" + playback.position().animationTick() + ":" + playback.currentTransformation("n").getMatrix().m30());
+                effects.add("tick:" + tick + ":" + playback.cursor().animationTick() + ":" + playback.currentTransformation("n").getMatrix().m30());
             }
             public void onClose(PlaybackStopReason reason) { effects.add("close:" + reason); }
         });
@@ -563,7 +563,7 @@ class SamplePoseTest {
         initial.dispatchEvents();
         effects.clear();
         var advance = playback.prepareAdvance(3);
-        assertEquals(io.github.hanhy06.emote.api.PlaybackTimeline.Phase.TRANSITION, playback.position().phase());
+        assertEquals(io.github.hanhy06.emote.api.PlaybackTimeline.Phase.TRANSITION, playback.cursor().phase());
         assertTrue(effects.isEmpty());
         assertEquals(0, target.matrices.get("n").m30(), 1e-6);
         advance.calculate();
@@ -575,7 +575,7 @@ class SamplePoseTest {
         advance.dispatchEvents();
         assertEquals(List.of("event:test:common_curves:2:2.0", "tick:2:2:2.0", "close:FINISHED"), effects);
         var next = playback.prepareAdvance(2);
-        assertEquals(1, playback.position().animationTick());
+        assertEquals(1, playback.cursor().animationTick());
         next.calculate();
         next.apply();
         assertEquals(11, target.matrices.get("n").m30(), 1e-6);
