@@ -8,10 +8,10 @@ import net.minecraft.world.level.block.state.BlockState;
 import java.util.Objects;
 
 public sealed interface DisplayData permits DisplayData.Item, DisplayData.Block, DisplayData.Text {
-    record Item(ItemStack itemStack, ItemDisplayContext itemDisplay) implements DisplayData {
+    record Item(ItemStack itemStack, ItemDisplayContext displayContext) implements DisplayData {
         public Item {
             itemStack = Objects.requireNonNull(itemStack, "itemStack").copy();
-            Objects.requireNonNull(itemDisplay, "itemDisplay");
+            Objects.requireNonNull(displayContext, "displayContext");
         }
 
         @Override

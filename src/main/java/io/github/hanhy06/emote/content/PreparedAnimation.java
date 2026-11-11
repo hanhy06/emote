@@ -159,7 +159,7 @@ public final class PreparedAnimation implements PreparedEmote {
                 try {
                     DisplayData data = switch (value) {
                         case ItemAttachment item -> new DisplayData.Item(ItemStack.CODEC.parse(registries.createSerializationContext(NbtOps.INSTANCE), item.itemStackNbt()).getOrThrow(),
-                            ItemDisplayContext.CODEC.parse(JsonOps.INSTANCE, new JsonPrimitive(item.itemDisplay())).getOrThrow());
+                            ItemDisplayContext.CODEC.parse(JsonOps.INSTANCE, new JsonPrimitive(item.displayContext())).getOrThrow());
                         case BlockAttachment block -> new DisplayData.Block(BlockState.CODEC.parse(registries.createSerializationContext(NbtOps.INSTANCE), block.blockStateNbt()).getOrThrow());
                         case TextAttachment text -> new DisplayData.Text(ComponentSerialization.CODEC.parse(registries.createSerializationContext(JsonOps.INSTANCE), text.text()).getOrThrow());
                         case SkinAttachment ignored -> new DisplayData.Item(new ItemStack(Items.PLAYER_HEAD), ItemDisplayContext.NONE);

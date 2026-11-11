@@ -103,7 +103,7 @@ public record EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings set
         boolean visible();
         default CompoundTag entityNbt() { return new CompoundTag(); }
     }
-    public record ItemAttachment(boolean visible, CompoundTag entityNbt, CompoundTag itemStackNbt, String itemDisplay) implements Attachment {}
+    public record ItemAttachment(boolean visible, CompoundTag entityNbt, CompoundTag itemStackNbt, String displayContext) implements Attachment {}
     public record BlockAttachment(boolean visible, CompoundTag entityNbt, CompoundTag blockStateNbt) implements Attachment {}
     public record TextAttachment(boolean visible, CompoundTag entityNbt, JsonElement text) implements Attachment {}
     public record SkinAttachment(boolean visible, PlayerSkinPart part, double from, double to) implements Attachment {}
