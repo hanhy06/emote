@@ -1,3 +1,4 @@
+import type { ComponentChildren } from "preact";
 import { useState } from "preact/hooks";
 import type { TimeValueIR } from "../domain/animationIR";
 import type { ConversionAnimation } from "../domain/conversionDocument";
@@ -12,12 +13,17 @@ const STOP_CONDITION_OPTIONS = [
 
 interface SettingsPanelProps {
   animation: ConversionAnimation;
+  category: string;
+  onCategoryChange: (category: string) => void;
+  frameControls: ComponentChildren;
+  eventsValid: boolean;
+  children: ComponentChildren;
   disabled: boolean;
   onChange: (animation: ConversionAnimation) => void;
   onValidityChange: (valid: boolean) => void;
 }
 
-export function SettingsPanel({ animation, disabled, onChange, onValidityChange }: SettingsPanelProps) {
+export function SettingsPanel({ animation, disabled, onChange, onValidityChange, frameControls, eventsValid, children, category, onCategoryChange }: SettingsPanelProps) {
   const [drafts, setDrafts] = useState<Record<string, { value: string; error: string }>>({});
   const settings = animation.settings ?? {};
   const playback = animation.clip.playback ?? {};
@@ -64,42 +70,62 @@ export function SettingsPanel({ animation, disabled, onChange, onValidityChange 
   const errors = Object.entries(drafts).filter(([, draft]) => draft.error);
   const metadataFields = (key: string) => ["namespace", "name", "description"].includes(key) || key.startsWith("metadata:");
   const metadataErrors = errors.filter(([key]) => metadataFields(key));
-  const playbackErrors = errors.filter(([key]) => !metadataFields(key));
-  const modeLabel = { once: "Play once", hold: "Hold last frame", loop: "Loop", server_sync: "Server-synchronized loop" }[mode];
-
+  const settingsErrors = errors.filter(([key]) => !metadataFields(key));
   return (
-    <>
-      <details className="property-section">
-        <summary><strong>Playback</strong><small className={playbackErrors.length ? "error" : ""}>{playbackErrors.length ? "Check playback settings" : `${modeLabel} · Cooldown ${settings.cooldown ?? "0s"}`}</small></summary>
-        <div className="property-body">
-          <div className="fields settings-selectors">
-            <div className="playback-settings-group">
-              <label>Playback mode<select value={animation.playbackMode} disabled={disabled} onChange={(event) => {
-                const value = event.currentTarget.value;
-                const nextDrafts = { ...drafts };
-                if (value !== "loop") delete nextDrafts.loop_start;
-                if (value === "source" || value === "once" || value === "hold") delete nextDrafts.loop_delay;
-                setDrafts(nextDrafts);
-                onValidityChange(Object.values(nextDrafts).every((draft) => !draft.error));
-                if (value === "source") {
-                  onChange({ ...animation, playbackMode: "source", clip: { ...animation.clip, playback: structuredClone(animation.sourcePlayback) } });
-                  return;
-                }
-                const nextMode = value as NonNullable<typeof playback.mode>;
-                onChange({ ...animation, playbackMode: nextMode, clip: { ...animation.clip, playback: { ...playback, mode: nextMode, loop_start: nextMode === "loop" ? playback.loop_start ?? "0t" : "0t",
-                  loop_delay: nextMode === "once" || nextMode === "hold" ? "0t" : playback.loop_delay ?? "0t" } } });
-              }}>
-                <option value="source">Source setting</option>
-                <option value="once">Play once</option><option value="hold">Hold last frame</option><option value="loop">Loop</option><option value="server_sync">Server-synchronized loop</option>
-              </select></label>
-              <label>Loop start<input value={timeText("loop_start", playback.loop_start)} disabled={disabled || mode !== "loop"} onInput={(event) => editDraft("loop_start", event.currentTarget.value)} onBlur={(event) => updateTime("loop_start", event.currentTarget.value)} /></label>
-              <label>Loop delay<input value={timeText("loop_delay", playback.loop_delay)} disabled={disabled || mode === "once" || mode === "hold"} onInput={(event) => editDraft("loop_delay", event.currentTarget.value)} onBlur={(event) => updateTime("loop_delay", event.currentTarget.value)} /></label>
-            </div>
-            <label>Cooldown<input value={timeText("cooldown", settings.cooldown)} disabled={disabled} onInput={(event) => editDraft("cooldown", event.currentTarget.value)} onBlur={(event) => updateTime("cooldown", event.currentTarget.value)} /></label>
-          </div>
-          <p className="field-hint">Time accepts d, s, t, or bare ticks.</p>
-          <h3>Player behavior</h3>
+    <section className="settings-panel" aria-label="Animation settings">
+      <div className="settings-toolbar">
+        <div className="settings-tabs" role="tablist" aria-label="Settings categories" onKeyDown={event => {
+          if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+          const tabs = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+          const current = tabs.findIndex(tab => tab === document.activeElement);
+          const next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1
+            : (current + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+          event.preventDefault();
+          tabs[next].click();
+          tabs[next].focus();
+        }}>
+          {[
+            { id: "settings", label: "Settings", invalid: settingsErrors.length > 0 },
+            { id: "metadata", label: "Metadata", invalid: metadataErrors.length > 0 },
+            { id: "events", label: "Events", invalid: !eventsValid },
+          ].map(tab => <button key={tab.id} id={`settings-tab-${tab.id}`} type="button" role="tab"
+            aria-selected={category === tab.id} aria-controls={`settings-panel-${tab.id}`}
+            tabIndex={category === tab.id ? 0 : -1} className={tab.invalid ? "error" : ""}
+            onClick={() => onCategoryChange(tab.id)}>{tab.label}{tab.invalid && <span className="tab-error" aria-label="Contains errors">!</span>}</button>)}
+        </div>
+        {frameControls}
+      </div>
+      {(errors.length > 0 || !eventsValid) && <p className="settings-errors error" role="status">
+        {[
+          ...(settingsErrors.length ? ["Check settings."] : []),
+          ...(metadataErrors.length ? ["Check metadata."] : []),
+          ...(!eventsValid ? ["Fix the event JSON before changing frames or exporting."] : []),
+        ].join(" ")}
+      </p>}
+      <div id="settings-category">
+        <section id="settings-panel-settings" role="tabpanel" aria-labelledby="settings-tab-settings" hidden={category !== "settings"}>
           <div className="fields">
+            <label>Playback mode<select value={animation.playbackMode} disabled={disabled} onChange={(event) => {
+              const value = event.currentTarget.value;
+              const nextDrafts = { ...drafts };
+              if (value !== "loop") delete nextDrafts.loop_start;
+              if (value === "source" || value === "once" || value === "hold") delete nextDrafts.loop_delay;
+              setDrafts(nextDrafts);
+              onValidityChange(Object.values(nextDrafts).every((draft) => !draft.error));
+              if (value === "source") {
+                onChange({ ...animation, playbackMode: "source", clip: { ...animation.clip, playback: structuredClone(animation.sourcePlayback) } });
+                return;
+              }
+              const nextMode = value as NonNullable<typeof playback.mode>;
+              onChange({ ...animation, playbackMode: nextMode, clip: { ...animation.clip, playback: { ...playback, mode: nextMode, loop_start: nextMode === "loop" ? playback.loop_start ?? "0t" : "0t",
+                loop_delay: nextMode === "once" || nextMode === "hold" ? "0t" : playback.loop_delay ?? "0t" } } });
+            }}>
+              <option value="source">Source setting</option>
+              <option value="once">Play once</option><option value="hold">Hold last frame</option><option value="loop">Loop</option><option value="server_sync">Server-synchronized loop</option>
+            </select></label>
+            <label>Loop start<input value={timeText("loop_start", playback.loop_start)} disabled={disabled || mode !== "loop"} onInput={(event) => editDraft("loop_start", event.currentTarget.value)} onBlur={(event) => updateTime("loop_start", event.currentTarget.value)} /></label>
+            <label>Loop delay<input value={timeText("loop_delay", playback.loop_delay)} disabled={disabled || mode === "once" || mode === "hold"} onInput={(event) => editDraft("loop_delay", event.currentTarget.value)} onBlur={(event) => updateTime("loop_delay", event.currentTarget.value)} /></label>
+            <label>Cooldown<input value={timeText("cooldown", settings.cooldown)} disabled={disabled} onInput={(event) => editDraft("cooldown", event.currentTarget.value)} onBlur={(event) => updateTime("cooldown", event.currentTarget.value)} /></label>
             <label>Movement distance<input type="number" min="0" step="0.05" value={drafts.movement_distance?.value ?? player.stop_conditions.movement_distance} disabled={disabled} onInput={(event) => editDraft("movement_distance", event.currentTarget.value)} onBlur={(event) => {
               const text = event.currentTarget.value;
               commit("movement_distance", text, () => {
@@ -115,17 +141,17 @@ export function SettingsPanel({ animation, disabled, onChange, onValidityChange 
               });
             }} /></label>
           </div>
-          <div className="fields settings-toggles">
-            <label className="checkbox"><input type="checkbox" checked={settings.standalone ?? true} disabled={disabled} onChange={(event) => onChange({ ...animation, settings: { ...settings, standalone: event.currentTarget.checked } })} />Standalone animation</label>
-            <label className="checkbox"><input type="checkbox" checked={player.hidden} disabled={disabled} onChange={(event) => onChange({ ...animation, settings: { ...settings, player: { ...player, hidden: event.currentTarget.checked } } })} />Hide original player</label>
-            {STOP_CONDITION_OPTIONS.map(([condition, label]) => <label className="checkbox" key={condition}><input type="checkbox" checked={player.stop_conditions[condition]} disabled={disabled} onChange={(event) => updatePlayerStopCondition(condition, event.currentTarget.checked)} />{label}</label>)}
+          <p className="field-hint">Time accepts d, s, t, or bare ticks.</p>
+          <div className="settings-choices">
+            <div className="fields settings-toggles">
+              <label className="checkbox"><input type="checkbox" checked={settings.standalone ?? true} disabled={disabled} onChange={(event) => onChange({ ...animation, settings: { ...settings, standalone: event.currentTarget.checked } })} />Standalone animation</label>
+              <label className="checkbox"><input type="checkbox" checked={player.hidden} disabled={disabled} onChange={(event) => onChange({ ...animation, settings: { ...settings, player: { ...player, hidden: event.currentTarget.checked } } })} />Hide original player</label>
+              {STOP_CONDITION_OPTIONS.map(([condition, label]) => <label className="checkbox" key={condition}><input type="checkbox" checked={player.stop_conditions[condition]} disabled={disabled} onChange={(event) => updatePlayerStopCondition(condition, event.currentTarget.checked)} />{label}</label>)}
+            </div>
           </div>
-          {playbackErrors.map(([field, draft]) => <p className="error" role="alert" key={field}>{field}: {draft.error}</p>)}
-        </div>
-      </details>
-      <details className="property-section">
-        <summary><strong>Metadata</strong><small className={metadataErrors.length ? "error" : ""}>{metadataErrors.length ? "Check metadata" : animation.metadata.name}</small></summary>
-        <div className="property-body">
+          {settingsErrors.map(([field, draft]) => <p className="error" role="alert" key={field}>{field}: {draft.error}</p>)}
+        </section>
+        <section id="settings-panel-metadata" role="tabpanel" aria-labelledby="settings-tab-metadata" hidden={category !== "metadata"}>
           <div className="fields">
             <label>Namespace<input value={drafts.namespace?.value ?? namespace} disabled={disabled} onInput={(event) => editDraft("namespace", event.currentTarget.value)} onBlur={(event) => {
               const value = event.currentTarget.value;
@@ -149,8 +175,9 @@ export function SettingsPanel({ animation, disabled, onChange, onValidityChange 
             onValidityChange(Object.values(next).every(draft => !draft.error));
           }} onChange={(metadata) => onChange({ ...animation, metadata: { ...metadata, name: animation.metadata.name, description: animation.metadata.description } })} />
           {metadataErrors.filter(([field]) => !field.startsWith("metadata:")).map(([field, draft]) => <p className="error" role="alert" key={field}>{field}: {draft.error}</p>)}
-        </div>
-      </details>
-    </>
+        </section>
+        <section id="settings-panel-events" role="tabpanel" aria-labelledby="settings-tab-events" hidden={category !== "events"}>{children}</section>
+      </div>
+    </section>
   );
 }

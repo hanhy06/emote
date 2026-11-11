@@ -1,4 +1,4 @@
-import { parseAnimationSeconds, parseMinecraftTime } from "./format/time";
+import { parseMinecraftTime } from "./format/time";
 import {
   assignSkinOrder,
   assignSkinPart,
@@ -12,7 +12,6 @@ import { animationReferenceTargets, isSequenceControlId, type EmoteCallback } fr
 import type { ConversionIssue } from "./foundation/diagnostics";
 import type { PlayerSkinPart } from "./domain/player";
 import type { AnimationEntryIR, EventIR } from "./domain/animationIR";
-import { TICKS_PER_SECOND } from "./format/time";
 
 export type WorkspacePage = 0 | 1;
 export type SelectedFrame = { type: "create" } | { type: "timeline"; animationTick: number };
@@ -82,7 +81,9 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
     case "page_selected":
       return { ...state, page: action.page };
     case "animation_selected":
-      return updateSession(state, (session) => selectSessionAnimation(session, action.index));
+      return updateSession(state, (session) => session.document.animations[action.index]
+        ? { ...session, animationIndex: action.index, selectedFrame: { type: "create" }, selectedCandidateIds: new Set() }
+        : session);
     case "frame_selected":
       return updateSession(state, (session) => ({ ...session,
         selectedFrame: action.frame.type === "create" ? action.frame : { type: "timeline",
@@ -141,23 +142,16 @@ export function assignmentSummary(document: ConversionDocument): string {
   return document.resources.size ? `${skin} · ${document.resources.size} resource files` : skin;
 }
 
-export function eventReviewLocations(document: ConversionDocument | null): { owner: string; locations: string[] }[] {
-  if (!document) return [];
-  const review: { owner: string; locations: string[] }[] = [];
-  for (const animation of document.animations) {
-    const events = animation.clip.events;
-    const locations: string[] = [];
-    if (events?.start?.some((event) => event.action.type === "commands" && event.action.commands.length > 0)) locations.push("start");
-    const times = [...new Set(events?.timeline?.filter((event) => event.action.type === "commands" && event.action.commands.length > 0).map((event) => event.time) ?? [])].sort((first, second) => parseAnimationSeconds(first) - parseAnimationSeconds(second));
-    if (times.length) locations.push(`frames: ${times.map((time) => `${Number((parseAnimationSeconds(time) * TICKS_PER_SECOND).toPrecision(12))}t`).join(", ")}`);
-    for (const phase of ["loop", "stop"] as const) {
-      if (events?.[phase]?.some((event) => event.action.type === "commands" && event.action.commands.length > 0)) locations.push(phase);
-    }
-    if (animation.callbacks?.length) locations.push("callbacks");
-    if (locations.length) review.push({ owner: `Animation ${animation.id}`, locations });
-  }
-  if (document.sequence.callbacks?.length) review.push({ owner: `Sequence ${document.sequence.name}`, locations: ["callbacks"] });
-  return review;
+export function eventReviewSummary(document: ConversionDocument | null, animationIndex: number) {
+  const animation = document?.animations[animationIndex];
+  return {
+    hasCommands: document?.animations.some(animation => Object.values(animation.clip.events ?? {})
+      .some(events => events.some(event => event.action.type === "commands" && event.action.commands.length > 0))) ?? false,
+    hasSelectedReview: Boolean(animation?.callbacks?.length) || Object.values(animation?.clip.events ?? {})
+      .some(events => events.some(event => event.action.type === "commands" && event.action.commands.length > 0)),
+    commandTicks: [...new Set(animation?.clip.events?.timeline?.filter(event => event.action.type === "commands" && event.action.commands.length > 0)
+      .map(event => parseMinecraftTime(event.time)) ?? [])].sort((first, second) => first - second),
+  };
 }
 
 export function sequenceReferenceWarnings(document: ConversionDocument | null): ConversionIssue[] {
@@ -196,16 +190,10 @@ function selectCandidates(current: ReadonlySet<string>, candidateIds: readonly s
   return next;
 }
 
-function selectSessionAnimation(session: ConversionSession, animationIndex: number): ConversionSession {
-  if (!session.document.animations[animationIndex]) return session;
-  return { ...session, animationIndex, selectedFrame: { type: "create" }, selectedCandidateIds: new Set() };
-}
-
 function updateSession(
   state: WorkspaceState,
   edit: (session: ConversionSession) => ConversionSession,
 ): WorkspaceState {
   if (!state.session) return state;
-  const session = edit(state.session);
-  return { ...state, session };
+  return { ...state, session: edit(state.session) };
 }

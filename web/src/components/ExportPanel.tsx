@@ -29,7 +29,7 @@ export function ExportPanel({
         </div>
         <span className="summary-badge">{assignmentSummary}</span>
       </div>
-      {error && <p className="error" role="alert">{error}</p>}
+      {error && <p className="error" role="alert"><strong>Error</strong> {error}</p>}
       {animations.length >= 1 && <div className="bundle-actions">
         <button type="button" disabled={disabled} onClick={onDownloadAllAnimations}>Download all JSON</button>
         <button className="primary-button" type="button" disabled={disabled} onClick={onDownloadSequence}>Download sequence files</button>

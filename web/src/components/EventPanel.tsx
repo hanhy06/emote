@@ -1,3 +1,4 @@
+import type { ComponentChildren } from "preact";
 import { useState } from "preact/hooks";
 import type { EmoteCallback } from "../domain/emoteDefinition";
 import type { EventIR } from "../domain/animationIR";
@@ -8,6 +9,7 @@ import { isResourceLocation } from "../format/resourceLocation";
 
 interface EventPanelProps {
   events: ConversionAnimationEvents;
+  commandSourceControl: ComponentChildren;
   callbacks?: EmoteCallback[];
   animationTick: number | null;
   disabled: boolean;
@@ -16,11 +18,11 @@ interface EventPanelProps {
   onValidityChange: (valid: boolean) => void;
 }
 
-export function EventPanel({ events, callbacks, animationTick, disabled, onLifecycleChange, onTimelineChange, onValidityChange }: EventPanelProps) {
+export function EventPanel({ events, callbacks, animationTick, disabled, onLifecycleChange, onTimelineChange, onValidityChange, commandSourceControl }: EventPanelProps) {
   const [error, setError] = useState("");
-  const initialValue = animationTick === null
-    ? JSON.stringify({ callbacks: callbacks ?? [], start: events.start, loop: events.loop, stop: events.stop }, null, 2)
-    : JSON.stringify(events.timeline.flatMap((event) => {
+  const initialValue = JSON.stringify(animationTick === null
+    ? { callbacks: callbacks ?? [], start: events.start, loop: events.loop, stop: events.stop }
+    : events.timeline.flatMap((event) => {
       if (parseMinecraftTime(event.time) !== animationTick) return [];
       const { time: _time, ...body } = event;
       return [body];
@@ -62,7 +64,7 @@ export function EventPanel({ events, callbacks, animationTick, disabled, onLifec
             ? "Edit callbacks and start, loop, and stop events as JSON. Changes are saved as soon as the JSON is valid."
             : "Edit the events at this tick as a JSON array. The selected tick supplies the event time automatically. Changes are saved as soon as the JSON is valid."}</p>
         </div>
-        <span className="event-scope">{animationTick === null ? "Create pose · Lifecycle" : `Tick ${animationTick} · Timeline`}</span>
+        {commandSourceControl}
       </div>
       <div className="event-editor-body">
         <textarea className="event-json" defaultValue={initialValue} disabled={disabled} spellcheck={false}

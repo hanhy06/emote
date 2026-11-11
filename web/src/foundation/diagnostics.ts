@@ -5,27 +5,6 @@ export interface ConversionIssue {
   sourcePath?: string;
 }
 
-export interface ConversionIssueGroup {
-  code: string;
-  label: string;
-  issues: ConversionIssue[];
-}
-
-export function groupConversionWarnings(issues: readonly ConversionIssue[]): ConversionIssueGroup[] {
-  const groups = new Map<string, ConversionIssue[]>();
-  for (const issue of issues) {
-    if (issue.severity !== "warning") continue;
-    const group = groups.get(issue.code);
-    if (group) group.push(issue);
-    else groups.set(issue.code, [issue]);
-  }
-  return [...groups].map(([code, groupedIssues]) => ({
-    code,
-    label: code.split("_").map((word) => word === "molang" ? "Molang" : word[0].toUpperCase() + word.slice(1)).join(" "),
-    issues: groupedIssues,
-  }));
-}
-
 export class ConversionError extends Error {
   readonly code: string;
   readonly sourcePath?: string;
@@ -53,7 +32,7 @@ export function conversionErrorMessage(reason: unknown, fallbackMessage: string)
 
 export function skippedAnimationIssue(name: string, sourcePath: string, reason: unknown): ConversionIssue {
   return {
-    severity: "warning",
+    severity: "error",
     code: "animation_skipped",
     message: `${name} was skipped: ${conversionErrorMessage(reason, "Could not import this animation.")}`,
     sourcePath: reason instanceof ConversionError ? reason.sourcePath ?? sourcePath : sourcePath,

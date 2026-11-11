@@ -37,7 +37,7 @@ export async function importFileBatch(files: readonly ImportFile[]): Promise<Con
   results.forEach((result, index) => {
     if (result.status === "rejected") {
       failures.push({
-        severity: "warning",
+        severity: "error",
         code: "file_import_failed",
         message: `${files[index].name}: ${conversionErrorMessage(result.reason, "Could not import this file.")}`,
         sourcePath: files[index].name,
