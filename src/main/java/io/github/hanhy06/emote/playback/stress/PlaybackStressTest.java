@@ -18,7 +18,8 @@ import java.util.function.ToIntFunction;
 import java.util.random.RandomGenerator;
 
 import static io.github.hanhy06.emote.playback.stress.StressTestTiming.Phase.*;
-import static io.github.hanhy06.emote.playback.stress.StressTestTiming.ThreadRole.*;
+import static io.github.hanhy06.emote.playback.stress.StressTestTiming.ThreadRole.MAIN;
+import static io.github.hanhy06.emote.playback.stress.StressTestTiming.ThreadRole.WORKER;
 
 public final class PlaybackStressTest {
     public static final int DEFAULT_INSTANCE_COUNT = 50;

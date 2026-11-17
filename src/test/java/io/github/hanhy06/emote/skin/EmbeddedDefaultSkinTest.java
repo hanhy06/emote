@@ -3,6 +3,7 @@ package io.github.hanhy06.emote.skin;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.math.Transformation;
+import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.content.loader.AnimationJsonParser;
@@ -38,7 +39,6 @@ import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import io.github.hanhy06.emote.config.Config;
 
 import static org.junit.jupiter.api.Assertions.*;
 

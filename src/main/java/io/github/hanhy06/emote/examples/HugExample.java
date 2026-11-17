@@ -1,12 +1,6 @@
 package io.github.hanhy06.emote.examples;
 
-import io.github.hanhy06.emote.api.EmoteApi;
-import io.github.hanhy06.emote.api.EmoteCallbacks;
-import io.github.hanhy06.emote.api.PlayResult;
-import io.github.hanhy06.emote.api.Playback;
-import io.github.hanhy06.emote.api.PlaybackContext;
-import io.github.hanhy06.emote.api.PlaybackPlacement;
-import io.github.hanhy06.emote.api.PlaybackCursor;
+import io.github.hanhy06.emote.api.*;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;

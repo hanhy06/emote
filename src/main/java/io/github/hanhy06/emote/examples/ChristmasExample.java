@@ -1,21 +1,12 @@
 package io.github.hanhy06.emote.examples;
 
-import io.github.hanhy06.emote.api.EmoteApi;
-import io.github.hanhy06.emote.api.EmoteCallbacks;
-import io.github.hanhy06.emote.api.PlayResult;
-import io.github.hanhy06.emote.api.Playback;
-import io.github.hanhy06.emote.api.PlaybackContext;
-import io.github.hanhy06.emote.api.PlaybackStopReason;
+import io.github.hanhy06.emote.api.*;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec3;
 
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 public final class ChristmasExample implements EmoteCallbacks {
     private static final Set<String> INSTRUMENTS = Set.of(
