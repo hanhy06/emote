@@ -68,7 +68,7 @@ public final class AdminCommand {
 
     LiteralArgumentBuilder<CommandSourceStack> createInfoCommand() {
         return Commands.literal("info")
-            .requires(PermissionService::canManage)
+            .requires(PermissionService.CAN_MANAGE)
             .executes(context -> info(context.getSource()));
     }
 
@@ -122,26 +122,26 @@ public final class AdminCommand {
 
     LiteralArgumentBuilder<CommandSourceStack> createReloadCommand() {
         return Commands.literal("reload")
-            .requires(PermissionService::canManage)
+            .requires(PermissionService.CAN_MANAGE)
             .executes(context -> reload(context.getSource()));
     }
 
     LiteralArgumentBuilder<CommandSourceStack> createListCommand() {
         return Commands.literal("list")
-            .requires(PermissionService::canManage)
+            .requires(PermissionService.CAN_MANAGE)
             .executes(context -> list(context.getSource()));
     }
 
     LiteralArgumentBuilder<CommandSourceStack> createStopPlayerCommand() {
         return Commands.literal("stop")
             .then(Commands.argument("player", EntityArgument.players())
-                .requires(PermissionService::canManage)
+                .requires(PermissionService.CAN_MANAGE)
                 .executes(this::stopPlayer));
     }
 
     LiteralArgumentBuilder<CommandSourceStack> createEnableCommand() {
         return Commands.literal("enable")
-            .requires(PermissionService::canManage)
+            .requires(PermissionService.CAN_MANAGE)
             .then(Commands.argument("id", IdentifierArgument.id())
                 .suggests(SuggestionProviders.serverOnly((server, context, builder) -> SuggestionContext.suggest(
                     this.configManager.getAccessConfig().disabled(),
@@ -156,7 +156,7 @@ public final class AdminCommand {
 
     LiteralArgumentBuilder<CommandSourceStack> createDisableCommand() {
         return Commands.literal("disable")
-            .requires(PermissionService::canManage)
+            .requires(PermissionService.CAN_MANAGE)
             .then(Commands.argument("id", IdentifierArgument.id())
                 .suggests(SuggestionProviders.serverOnly((server, context, builder) -> SuggestionContext.suggest(
                     this.emoteCatalog.fileEmotes().stream().map(PreparedEmote::id),

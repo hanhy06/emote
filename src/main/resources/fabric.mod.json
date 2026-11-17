@@ -34,8 +34,8 @@
         "fabricloader": ">=0.20.1",
         "minecraft": ">26.3",
         "java": ">=25",
-        "fabric-api": "*",
-        "fabric-permissions-api-v0": "*"
+        "fabric-api": ">=0.166.2",
+        "fabric-permission-api-v1": "*"
     },
     "suggests": {
         "polymer-autohost": "*"
