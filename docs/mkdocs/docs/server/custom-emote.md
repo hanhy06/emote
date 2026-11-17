@@ -1,6 +1,6 @@
 # Adding Custom Emotes
 
-To use your own animation, convert the source project to Emote JSON with the [Emote Converter](https://hanhy06.github.io/emote/converter/), then install the exported files on the server. Conversion is performed locally in your browser.
+To use your own animation, convert the source project to Emote JSON with the [Emote Converter](https://docs.hanhy06.kr/emote/converter/), then install the exported files on the server. Conversion is performed locally in your browser.
 
 ## Supported formats
 

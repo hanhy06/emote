@@ -6,8 +6,8 @@
 
 [▶ Watch the full emote demo on YouTube](https://youtu.be/iJI04gY8A6c?si=h71TccN11jvLIFa3)
 
-[![Web converter](https://img.shields.io/badge/Web_converter-0067C0?style=flat-square&logo=githubpages&logoColor=white)](https://hanhy06.github.io/emote/converter/)
-[![Wiki](https://img.shields.io/badge/Wiki-9d4edd?style=flat-square&logo=materialformkdocs&logoColor=white)](https://hanhy06.github.io/emote/)
+[![Web converter](https://img.shields.io/badge/Web_converter-0067C0?style=flat-square&logo=githubpages&logoColor=white)](https://docs.hanhy06.kr/emote/converter/)
+[![Wiki](https://img.shields.io/badge/Wiki-9d4edd?style=flat-square&logo=materialformkdocs&logoColor=white)](https://docs.hanhy06.kr/emote/)
 [![Modrinth](https://img.shields.io/badge/Modrinth-00AF5C?style=flat-square&logo=modrinth&logoColor=white)](https://modrinth.com/mod/emote)
 [![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/hanhy06/emote)
 [![Discord](https://img.shields.io/badge/Discord-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/CRWqKbSebW)
@@ -60,7 +60,7 @@ config/emote/
 ├── emote/
 └── resource-pack/
 ```
-The directory and configuration files are created automatically on first startup, with 20+ [sample emotes](https://github.com/hanhy06/emote/tree/26.3/docs/sample) included under `emote/`.
+The directory and configuration files are created automatically on first startup, with 20+ [sample emotes](https://github.com/hanhy06/emote/tree/HEAD/docs/sample) included under `emote/`.
 
 Place JSON exported by the converter under `emote/`. Subdirectories are loaded as well, and emotes use the `id` in the JSON rather than the filename. Invalid files are skipped individually, while every file sharing a duplicate ID is rejected.
 
@@ -110,9 +110,9 @@ Set `mineskin_api_key` to generate player skin textures when no bake accounts ar
 
 ## Web converter
 
-[Emote Converter](https://hanhy06.github.io/emote/converter/) converts and configures projects without requiring direct edits to Animation JSON. All processing happens locally in the browser.
+[Emote Converter](https://docs.hanhy06.kr/emote/converter/) converts and configures projects without requiring direct edits to Animation JSON. All processing happens locally in the browser.
 
-For a step-by-step guide to converting and installing your own emotes, see [Adding Custom Emotes](https://hanhy06.github.io/emote/server/custom-emote/).
+For a step-by-step guide to converting and installing your own emotes, see [Adding Custom Emotes](https://docs.hanhy06.kr/emote/server/custom-emote/).
 
 Use the 3D preview to assign skin parts, then configure metadata, playback behavior, stop conditions, and events.
 
@@ -128,7 +128,7 @@ The web converter supports animation curves including Bézier, Catmull-Rom, boun
 
 Each animation can define a cooldown, player visibility, stop conditions such as movement, jumping, attacking, and taking damage, and events.
 
-- [Animation format](https://hanhy06.github.io/emote/developers/animation/)
+- [Animation format](https://docs.hanhy06.kr/emote/developers/animation/)
 
 ### Sequence
 
@@ -152,13 +152,13 @@ Connect short animation clips in order and combine waits, weighted random choice
 }
 ```
 
-- [Sequence format](https://hanhy06.github.io/emote/developers/sequence/)
+- [Sequence format](https://docs.hanhy06.kr/emote/developers/sequence/)
 
 ## Mod API
 
 `EmoteApi.getInstance()` provides playback control, runtime registration, state queries, cancellable play listeners, playback lifecycle listeners, and named lifecycle callbacks. Register callbacks with `EmoteApi.registerCallbacks` and select them in the Animation or Sequence's root `callbacks` array. State changes must run on the server thread, and runtime registrations survive reloads.
 
-- [Mod API](https://hanhy06.github.io/emote/developers/api/)
+- [Mod API](https://docs.hanhy06.kr/emote/developers/api/)
 
 ## Troubleshooting
 
