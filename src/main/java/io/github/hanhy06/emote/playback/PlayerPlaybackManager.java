@@ -11,7 +11,6 @@ import io.github.hanhy06.emote.mixin.accessor.EntitySharedFlagsAccessor;
 import io.github.hanhy06.emote.playback.molang.PlayerMolangQueries;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import net.fabricmc.fabric.api.networking.v1.EntityTrackingEvents;
-import net.minecraft.core.BlockPos;
 import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
 import net.minecraft.network.protocol.game.ClientboundSetEquipmentPacket;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -90,12 +89,7 @@ public final class PlayerPlaybackManager {
             @Override public @Nullable PlaybackStopReason beforeTick(PlaybackSession session) {
                 if (!player.isAlive() || EmoteMod.SERVER.getPlayerList().getPlayer(player.getUUID()) != player
                     || !player.level().dimension().equals(session.levelKey())) return PlaybackStopReason.PLAYER_UNAVAILABLE;
-                if (playerState.behavior().stopConditions().submerge()) {
-                    double eyeY = player.getEyeY();
-                    BlockPos eyePos = BlockPos.containing(player.getX(), eyeY, player.getZ());
-                    var fluid = player.level().getFluidState(eyePos);
-                    if (!fluid.isEmpty() && eyeY <= eyePos.getY() + fluid.getHeightForCamera(player.level(), eyePos)) return PlaybackStopReason.SUBMERGED;
-                }
+                if (playerState.behavior().stopConditions().submerge() && player.isUnderWater()) return PlaybackStopReason.SUBMERGED;
                 if (shouldStopForMovement(player, playerState)) return PlaybackStopReason.MOVED;
                 return null;
             }
