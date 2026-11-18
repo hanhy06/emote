@@ -414,7 +414,7 @@ export function App() {
           </section>}
 
           {page === 1 && <ExportPanel
-            assignmentSummary={assignmentSummary(project)}
+            assignmentSummary={animations.length > 0 ? assignmentSummary(project) : undefined}
             animations={animations}
             error={exportError}
             disabled={busy || !settingsValid}
