@@ -81,7 +81,7 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
       const effects = projectEffectEvents(animation, cubeContent, animationDiagnostics, sourceIndex);
       const state = resolveAnimatedJavaAnimationState(effects, animation, project, nodes, transformGraph, nodeBindings, animationDiagnostics, sourceIndex);
       const ir = createAnimatedJavaAnimationIR(animation, project, transformGraph, nodes, PLAYER_RENDER_SCALE, state.nodeFrames, cubeContent);
-      ir.skin = skin;
+      ir.skin = readBlockbenchSkin(project.textures, animation.name) ?? skin;
       ir.animation.events = { start: state.startEvents, timeline: state.timelineEvents, loop: [], stop: [] };
       diagnostics.push(...animationDiagnostics);
       return [{ ir, id: sanitizeResourcePath(animation.name, `animation_${sourceIndex + 1}`), name: cubeContent ? animation.name : prettify(animation.name) }];
