@@ -115,7 +115,7 @@ export function importGeckoLibProject(project: GeckoLibBbmodelProject, sourceNam
     const animationDiagnostics: ConversionIssue[] = [];
     try {
       const imported = importAnimation(animation, sourceIndex, animationBones, nodes, animationDiagnostics);
-      imported.ir.skin = skin;
+      imported.ir.skin = readBlockbenchSkin(project.textures, animation.name) ?? skin;
       animations.push(imported);
       diagnostics.push(...animationDiagnostics);
     } catch (reason) {
