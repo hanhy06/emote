@@ -234,30 +234,29 @@ function applySkinGroups(document: ConversionDocument, part: PlayerSkinPart, gro
   return { ...document, nodes, skinCandidates };
 }
 
-export function updateLifecycleEvents(document: ConversionDocument, animationIndex: number,
+export function updateLifecycleEvents(document: ConversionDocument, index: number,
   events: Pick<ConversionAnimationEvents, "start" | "loop" | "stop"> & { callbacks: EmoteCallback[] }): ConversionDocument {
-  const animation = animationEntries(document)[animationIndex];
-  if (!animation) return document;
+  const animation = document.entries[index];
+  if (animation?.type !== "animation") return document;
   const { callbacks, ...commandEvents } = events;
-  return updateAnimation(document, animationIndex, { ...animation, callbacks,
+  return replaceEntry(document, index, { ...animation, callbacks,
     clip: { ...animation.clip, events: { ...commandEvents, timeline: animation.clip.events?.timeline ?? [] } } });
 }
 
-export function replaceTimelineEvents(document: ConversionDocument, animationIndex: number, animationTick: number, events: EventIR[]): ConversionDocument {
-  const animation = animationEntries(document)[animationIndex];
-  if (!animation) return document;
+export function replaceTimelineEvents(document: ConversionDocument, index: number, animationTick: number, events: EventIR[]): ConversionDocument {
+  const animation = document.entries[index];
+  if (animation?.type !== "animation") return document;
   if (!Number.isInteger(animationTick) || animationTick < 0 || animationTick > parseMinecraftTime(animation.clip.duration, 1)) throw new Error("Event tick must be within the animation duration.");
-  return updateAnimation(document, animationIndex, { ...animation,
+  return replaceEntry(document, index, { ...animation,
     clip: { ...animation.clip, events: { ...animation.clip.events, timeline: [
       ...(animation.clip.events?.timeline ?? []).filter((event) => parseMinecraftTime(event.time) !== animationTick),
       ...events.map((event) => ({ ...event, time: `${animationTick}t` })),
     ].sort((first, second) => parseAnimationSeconds(first.time) - parseAnimationSeconds(second.time)) } } });
 }
 
-export function updateAnimation(document: ConversionDocument, animationIndex: number, animation: AnimationEntryIR): ConversionDocument {
-  const current = animationEntries(document)[animationIndex];
-  if (!current) return document;
-  const normalized = structuredClone(animation);
-  normalizeAnimationTimes(normalized);
-  return { ...document, entries: document.entries.map((entry) => entry === current ? { ...entry, ...normalized } : entry) };
+export function replaceEntry(document: ConversionDocument, index: number, entry: ConversionEntry): ConversionDocument {
+  if (document.entries[index]?.type !== entry.type) return document;
+  const entries = [...document.entries];
+  entries[index] = entry;
+  return { ...document, entries };
 }

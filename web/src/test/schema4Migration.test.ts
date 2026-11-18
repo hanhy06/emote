@@ -6,6 +6,7 @@ import { importFileBatch } from "../import/importBatch";
 import { createDefaultPlayerBehavior } from "../domain/emoteDefinition";
 import type { AnimationJson } from "../format/animation";
 import { detectInputFormat, readInput } from "../import/formats";
+import { INITIAL_WORKSPACE, workspaceReducer } from "../workspace";
 import sequenceReference from "../../../docs/reference/sequence.json";
 
 const legacy = {
@@ -125,6 +126,25 @@ it("imports a schema 4 sequence with animations and exports its steps and refere
   expect(animation).toMatchObject({ id: "example:legacy", schema_version: 5 });
   const reopened = await readInput("emote_sequence", { name: "sequence.json", bytes: new TextEncoder().encode(JSON.stringify(actual)) });
   expect(reopened.entries).toEqual(document.entries.filter((entry) => entry.type === "sequence"));
+
+  let state = workspaceReducer(INITIAL_WORKSPACE, { type: "documents_open_succeeded", document });
+  state = workspaceReducer(state, { type: "entry_selected", index: 1 });
+  const selected = state.session!.document.entries[state.session!.selectedIndex];
+  if (selected.type !== "sequence") throw new Error("Expected to select the sequence in a mixed document.");
+  const player = { ...selected.settings.player, hidden: false };
+  state = workspaceReducer(state, { type: "entry_changed", index: 1, entry: {
+    ...selected, metadata: { ...selected.metadata, name: "Edited sequence" }, settings: { ...selected.settings, player },
+  } });
+  state = workspaceReducer(state, { type: "entry_selected", index: 0 });
+  const selectedAnimation = state.session!.document.entries[state.session!.selectedIndex];
+  expect(selectedAnimation).toBe(document.entries[0]);
+  state = workspaceReducer(state, { type: "entry_changed", index: 0, entry: {
+    ...selectedAnimation, metadata: { ...selectedAnimation.metadata, name: "Edited animation" },
+  } });
+  const edited = state.session!.document;
+  expect(edited.entries[0].metadata.name).toBe("Edited animation");
+  expect(edited.entries[0].clip).toBe(document.entries[0].clip);
+  expect(edited.entries[1]).toMatchObject({ metadata: { name: "Edited sequence" }, settings: { player } });
 });
 
 it("round-trips sequence playback and command events through the common clip without assigning a duration", async () => {

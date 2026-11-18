@@ -6,20 +6,21 @@ import {
   skinPartAssignments,
   replaceTimelineEvents,
   updateLifecycleEvents,
-  updateAnimation,
+  replaceEntry,
   type ConversionDocument,
+  type ConversionEntry,
 } from "./domain/conversionDocument";
 import { animationReferenceTargets, isSequenceControlId, type EmoteCallback } from "./domain/emoteDefinition";
 import type { ConversionIssue } from "./foundation/diagnostics";
 import type { PlayerSkinPart } from "./domain/player";
-import type { AnimationEntryIR, EventIR } from "./domain/animationIR";
+import type { EventIR } from "./domain/animationIR";
 
 export type WorkspacePage = 0 | 1;
 export type SelectedFrame = { type: "create" } | { type: "timeline"; animationTick: number };
 
 export interface ConversionSession {
   document: ConversionDocument;
-  animationIndex: number;
+  selectedIndex: number;
   selectedFrame: SelectedFrame;
   selectedCandidateIds: Set<string>;
 }
@@ -42,13 +43,13 @@ export type WorkspaceAction =
   | { type: "export_failed"; message: string }
   | { type: "operation_finished" }
   | { type: "page_selected"; page: WorkspacePage }
-  | { type: "animation_selected"; index: number }
+  | { type: "entry_selected"; index: number }
   | { type: "frame_selected"; frame: SelectedFrame }
   | { type: "candidate_selected"; candidateId: string; additive: boolean }
   | { type: "candidates_selected"; candidateIds: readonly string[]; additive: boolean }
   | { type: "skin_part_assigned"; part: PlayerSkinPart | null }
   | { type: "skin_order_assigned"; order: number }
-  | { type: "animation_changed"; ir: AnimationEntryIR }
+  | { type: "entry_changed"; index: number; entry: ConversionEntry }
   | { type: "minecraft_version_changed"; version: string }
   | { type: "lifecycle_events_changed"; events: { callbacks: EmoteCallback[]; start: EventIR[]; loop: EventIR[]; stop: EventIR[] } }
   | { type: "timeline_events_changed"; animationTick: number; events: EventIR[] };
@@ -69,7 +70,7 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
       return { ...state, openError: "", exportError: "", operation: { type: "opening", message: action.message } };
     case "documents_open_succeeded":
       return { ...state,
-        session: { document: action.document, animationIndex: 0, selectedFrame: { type: "create" }, selectedCandidateIds: new Set() },
+        session: { document: action.document, selectedIndex: 0, selectedFrame: { type: "create" }, selectedCandidateIds: new Set() },
         page: 0, operation: { type: "idle" } };
     case "open_failed":
       return { ...state, openError: action.message, operation: { type: "idle" } };
@@ -81,15 +82,18 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
       return { ...state, operation: { type: "idle" } };
     case "page_selected":
       return { ...state, page: action.page };
-    case "animation_selected":
-      return updateSession(state, (session) => animationEntries(session.document)[action.index]
-        ? { ...session, animationIndex: action.index, selectedFrame: { type: "create" }, selectedCandidateIds: new Set() }
+    case "entry_selected":
+      return updateSession(state, (session) => session.document.entries[action.index]
+        ? { ...session, selectedIndex: action.index, selectedFrame: { type: "create" }, selectedCandidateIds: new Set() }
         : session);
     case "frame_selected":
-      return updateSession(state, (session) => ({ ...session,
-        selectedFrame: action.frame.type === "create" ? action.frame : { type: "timeline",
-          animationTick: Math.max(0, Math.min(action.frame.animationTick, parseMinecraftTime(animationEntries(session.document)[session.animationIndex].clip.duration, 1))) },
-        selectedCandidateIds: new Set() }));
+      return updateSession(state, (session) => {
+        const animation = session.document.entries[session.selectedIndex];
+        if (animation?.type !== "animation") return session;
+        return { ...session, selectedCandidateIds: new Set(),
+          selectedFrame: action.frame.type === "create" ? action.frame : { type: "timeline",
+            animationTick: Math.max(0, Math.min(action.frame.animationTick, parseMinecraftTime(animation.clip.duration, 1))) } };
+      });
     case "candidate_selected":
       return updateSession(state, (session) => ({
         ...session,
@@ -110,10 +114,10 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
         ...session,
         document: assignSkinOrder(session.document, session.selectedCandidateIds, action.order),
       }));
-    case "animation_changed":
+    case "entry_changed":
       return updateSession(state, (session) => ({
         ...session,
-        document: updateAnimation(session.document, session.animationIndex, action.ir),
+        document: replaceEntry(session.document, action.index, action.entry),
       }));
     case "minecraft_version_changed":
       return updateSession(state, (session) => ({
@@ -123,12 +127,12 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
     case "lifecycle_events_changed":
       return updateSession(state, (session) => ({
         ...session,
-        document: updateLifecycleEvents(session.document, session.animationIndex, action.events),
+        document: updateLifecycleEvents(session.document, session.selectedIndex, action.events),
       }));
     case "timeline_events_changed":
       return updateSession(state, (session) => ({
         ...session,
-        document: replaceTimelineEvents(session.document, session.animationIndex, action.animationTick, action.events),
+        document: replaceTimelineEvents(session.document, session.selectedIndex, action.animationTick, action.events),
       }));
   }
 }
@@ -143,9 +147,10 @@ export function assignmentSummary(document: ConversionDocument): string {
   return document.resources.size ? `${skin} · ${document.resources.size} resource files` : skin;
 }
 
-export function eventReviewSummary(document: ConversionDocument | null, animationIndex: number) {
+export function eventReviewSummary(document: ConversionDocument | null, selectedIndex: number) {
   const animations = document ? animationEntries(document) : [];
-  const animation = animations[animationIndex];
+  const selected = document?.entries[selectedIndex];
+  const animation = selected?.type === "animation" ? selected : undefined;
   return {
     hasCommands: animations.some(animation => Object.values(animation.clip.events ?? {})
       .some(events => events.some(event => event.action.type === "commands" && event.action.commands.length > 0))),
