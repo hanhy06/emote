@@ -53,9 +53,12 @@ it("preserves delayed and interrupted BD display interpolation through numeric I
   }
   const project = await readInput("bd_datapack", { name: "curves.zip", bytes: zipSync(files) });
   expect(project.diagnostics).toEqual([]);
-  const [output] = await exportProject(createConversionDocument(project, "BD"), 0);
+  const expected = JSON.parse(await readFile(new URL("../../../src/test/resources/bd-curves.json", import.meta.url), "utf8"));
+  const document = createConversionDocument(project, "BD");
+  document.targetMinecraftVersion = expected.target_minecraft_version;
+  const [output] = await exportProject(document, 0);
   const animation: AnimationJson = JSON.parse(await output.blob.text());
-  expect(animation).toEqual(JSON.parse(await readFile(new URL("../../../src/test/resources/bd-curves.json", import.meta.url), "utf8")));
+  expect(animation).toEqual(expected);
   expect(animation.schema_version).toBe(5);
   expect(animation.nodes.display_0.transform!.map((operation) => operation.id)).toEqual(["position", "left_rotation", "scale", "right_rotation"]);
   expect(animation.animation.tracks.map((track) => track.driver.type === "curve" ? track.driver.segments.map((segment) => segment.interpolation) : [])

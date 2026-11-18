@@ -14,9 +14,12 @@ import capeSource from "./fixtures/emotecraft-cape-source.json";
 
 async function exported(source: PalAnimation, name: string): Promise<AnimationIR> {
   const project = importEmotecraftFile({ animation: source, metadata: { name, badges: [] } }, `${name}.emotecraft`);
-  const [file] = await exportProject(createConversionDocument(project, "Emotecraft"), 0);
+  const expected = JSON.parse(await readFile(new URL(`../../../src/test/resources/${name}.json`, import.meta.url), "utf8"));
+  const document = createConversionDocument(project, "Emotecraft");
+  document.targetMinecraftVersion = expected.target_minecraft_version;
+  const [file] = await exportProject(document, 0);
   const animation = JSON.parse(await file.blob.text());
-  expect(animation).toEqual(JSON.parse(await readFile(new URL(`../../../src/test/resources/${name}.json`, import.meta.url), "utf8")));
+  expect(animation).toEqual(expected);
   return animation;
 }
 

@@ -245,10 +245,12 @@ it("preserves single-command conditions and skips only animations with condition
 it("exports locator functions with animated node origins and keeps the exact v5 artifact consumed by the mod test", async () => {
   const path = new URL("../../../src/test/resources/aj-function-source.ajblueprint", import.meta.url);
   const input = await readInput("animated_java_blueprint", { name: "aj-function-source.ajblueprint", bytes: await readFile(path) });
+  const expected = JSON.parse(await readFile(new URL("../../../src/test/resources/aj-function-export.json", import.meta.url), "utf8"));
   const document = createConversionDocument(input, "AJ");
+  document.targetMinecraftVersion = expected.target_minecraft_version;
   const [json] = await exportProject(document, 0);
   const output = JSON.parse(await json.blob.text());
-  expect(output).toEqual(JSON.parse(await readFile(new URL("../../../src/test/resources/aj-function-export.json", import.meta.url), "utf8")));
+  expect(output).toEqual(expected);
   expect(input.diagnostics).toEqual([]);
   const locatorEvents = output.animation.events.timeline.filter((event: { origin: { type: string } }) => event.origin.type === "node");
   expect(locatorEvents.map((event: { time: string; origin: unknown; action: unknown }) => [event.time, event.origin, event.action])).toEqual([
