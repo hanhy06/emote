@@ -35,6 +35,7 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
         private static final String ALL_EMOTES = "*";
 
         private final String permission;
+        private final Identifier permissionId;
         private final List<String> emotes;
         private final Optional<CooldownModifier> cooldown;
         private final Optional<IdleSettings> idle;
@@ -51,7 +52,15 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
             if (permission == null || permission.isBlank()) {
                 throw new IllegalArgumentException("permission must not be blank");
             }
+            int separator = permission.indexOf('.');
+            Identifier permissionId = separator > 0 && separator < permission.length() - 1
+                ? Identifier.tryBuild(permission.substring(0, separator), permission.substring(separator + 1))
+                : null;
+            if (permissionId == null) {
+                throw new IllegalArgumentException("permission must use namespace.node format: " + permission);
+            }
             this.permission = permission;
+            this.permissionId = permissionId;
 
             this.emotes = normalizeIds(
                 emotes,
@@ -69,6 +78,10 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
 
         public String permission() {
             return this.permission;
+        }
+
+        public Identifier permissionId() {
+            return this.permissionId;
         }
 
         public List<String> emotes() {

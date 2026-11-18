@@ -9,22 +9,13 @@ import net.minecraft.server.permissions.PermissionLevel;
 import java.util.function.Predicate;
 
 public final class PermissionService {
-    public static final String MANAGE_PERMISSION = "emote.manage";
-    public static final String BYPASS_PERMISSION = "emote.bypass";
-    public static final Predicate<CommandSourceStack> CAN_MANAGE = PermissionPredicates.require(permissionId(MANAGE_PERMISSION), PermissionLevel.GAMEMASTERS);
+    public static final Identifier MANAGE_PERMISSION = Identifier.fromNamespaceAndPath("emote", "manage");
+    public static final Identifier BYPASS_PERMISSION = Identifier.fromNamespaceAndPath("emote", "bypass");
+    public static final Predicate<CommandSourceStack> CAN_MANAGE = PermissionPredicates.require(MANAGE_PERMISSION, PermissionLevel.GAMEMASTERS);
 
     private PermissionService() {}
 
-    public static boolean has(ServerPlayer player, String permission, boolean defaultValue) {
-        return player.checkPermission(permissionId(permission), defaultValue);
+    public static boolean has(ServerPlayer player, Identifier permission, boolean defaultValue) {
+        return player.checkPermission(permission, defaultValue);
     }
-
-    private static Identifier permissionId(String permission) {
-        int separator = permission.indexOf('.');
-        if (separator <= 0 || separator == permission.length() - 1) {
-            throw new IllegalArgumentException("permission must use namespace.node format: " + permission);
-        }
-        return Identifier.fromNamespaceAndPath(permission.substring(0, separator), permission.substring(separator + 1));
-    }
-
 }
