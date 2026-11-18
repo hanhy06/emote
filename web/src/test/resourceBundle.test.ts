@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { strFromU8, unzipSync } from "fflate";
 import { expect, it } from "vitest";
-import { assignSkinPart, createConversionDocument } from "../domain/conversionDocument";
+import { animationEntries, assignSkinPart, createConversionDocument } from "../domain/conversionDocument";
 import { exportProject } from "../export/projectExporter";
 import { readInput } from "../import/formats";
 
@@ -13,9 +13,10 @@ it("packages the generated models and textures referenced by exported AJ and bbm
     const project = await readInput(format, { name: path.split("/").at(-1)!, bytes: await readFile(new URL(`../../../${path}`, import.meta.url)) });
     const imported = createConversionDocument(project, format);
     const document = assignSkinPart(imported, new Set(Object.keys(imported.skinCandidates)), null);
-    const index = document.entries.findIndex((animation) => animation.sourceName === name);
+    const animations = animationEntries(document);
+    const index = animations.findIndex((animation) => animation.sourceName === name);
     expect(index, path).toBeGreaterThanOrEqual(0);
-    const entry = document.entries[index];
+    const entry = animations[index];
     const expectedReferences = itemReferences({ nodes: entry.nodeIds.map((id) => document.nodes[id]), animation: entry.clip });
     expect(expectedReferences.size, `${path}: native cubes must require generated models`).toBeGreaterThan(0);
     const outputs = await exportProject(document, index);

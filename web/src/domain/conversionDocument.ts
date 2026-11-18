@@ -20,7 +20,9 @@ export interface SkinCandidate {
   order?: number;
 }
 
-interface ConversionEntryFields extends Omit<AnimationIR, "nodes" | "animation" | "target_minecraft_version"> {
+export interface ConversionAnimation extends Omit<AnimationIR, "nodes" | "animation" | "target_minecraft_version"> {
+  type: "animation";
+  clip: ClipIR;
   nodeIds: string[];
   sourceName: string;
   sourceReferenceId?: string;
@@ -28,11 +30,9 @@ interface ConversionEntryFields extends Omit<AnimationIR, "nodes" | "animation" 
   playbackMode: "source" | NonNullable<NonNullable<ClipIR["playback"]>["mode"]>;
 }
 
-export type ConversionAnimation = ConversionEntryFields & { type: "animation"; clip: ClipIR };
-export type ConversionSequence = ConversionEntryFields & {
+export type ConversionSequence = Pick<ConversionAnimation, "id" | "metadata" | "callbacks" | "sourceName"> & {
   type: "sequence";
-  settings: NonNullable<AnimationIR["settings"]> & { cooldown: string; player: EmotePlayerBehavior };
-  clip: Omit<ClipIR, "duration"> & { duration?: string };
+  settings: { cooldown: string; player: EmotePlayerBehavior };
   steps: SequenceStep[];
 };
 export type ConversionEntry = ConversionAnimation | ConversionSequence;

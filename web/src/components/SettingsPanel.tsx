@@ -1,7 +1,7 @@
 import type { ComponentChildren } from "preact";
 import { useState } from "preact/hooks";
 import type { ClipIR, TimeValueIR } from "../domain/animationIR";
-import type { ConversionEntry } from "../domain/conversionDocument";
+import type { ConversionAnimation, ConversionEntry } from "../domain/conversionDocument";
 import { AdditionalMetadataEditor } from "./AdditionalMetadataEditor";
 import { SkinOptions } from "./SkinOptions";
 import { createDefaultPlayerBehavior } from "../domain/emoteDefinition";
@@ -27,9 +27,9 @@ interface SettingsPanelProps {
 
 export function SettingsPanel({ entry, onChange, disabled, onValidityChange, frameControls, eventsValid, children, category, onCategoryChange }: SettingsPanelProps) {
   const [drafts, setDrafts] = useState<Record<string, { value: string; error: string }>>({});
-  const isAnimation = entry.type === "animation";
+  const animation = entry.type === "animation" ? entry : undefined;
   const settings = entry.settings ?? {};
-  const playback = entry.clip.playback ?? {};
+  const playback = animation?.clip.playback ?? {};
   const player = settings.player ?? createDefaultPlayerBehavior();
   const cooldown = settings.cooldown;
   const mode = playback.mode ?? "once";
@@ -38,16 +38,15 @@ export function SettingsPanel({ entry, onChange, disabled, onValidityChange, fra
   const path = entry.id.slice(separator + 1);
   const { name, description, ...additionalMetadata } = entry.metadata;
 
-  function updateSettings(patch: NonNullable<ConversionEntry["settings"]>) {
+  function updateSettings(patch: NonNullable<ConversionAnimation["settings"]>) {
     const next = { ...entry };
     next.settings = { ...settings, ...patch };
     onChange(next);
   }
 
-  function updatePlayback(playback: ClipIR["playback"], playbackMode = entry.playbackMode) {
-    const next = { ...entry, playbackMode };
-    next.clip = { ...entry.clip, playback };
-    onChange(next);
+  function updatePlayback(playback: ClipIR["playback"], playbackMode?: ConversionAnimation["playbackMode"]) {
+    if (!animation) return;
+    onChange({ ...animation, playbackMode: playbackMode ?? animation.playbackMode, clip: { ...animation.clip, playback } });
   }
 
   function commit(field: string, value: string, edit: () => void) {
@@ -101,7 +100,7 @@ export function SettingsPanel({ entry, onChange, disabled, onValidityChange, fra
           {[
             { id: "settings", label: "Settings", invalid: settingsErrors.length > 0 },
             { id: "options", label: "Options", invalid: optionsErrors.length > 0 },
-            { id: "events", label: "Events", invalid: !eventsValid },
+            { id: "events", label: animation ? "Events" : "Callbacks", invalid: !eventsValid },
           ].map(tab => <button key={tab.id} id={`settings-tab-${tab.id}`} type="button" role="tab"
             aria-selected={category === tab.id} aria-controls={`settings-panel-${tab.id}`}
             tabIndex={category === tab.id ? 0 : -1} className={tab.invalid ? "error" : ""}
@@ -113,7 +112,7 @@ export function SettingsPanel({ entry, onChange, disabled, onValidityChange, fra
         {[
           ...(settingsErrors.length ? ["Check settings."] : []),
           ...(optionsErrors.length ? ["Check options."] : []),
-          ...(!eventsValid ? ["Fix the event JSON before changing frames or exporting."] : []),
+          ...(!eventsValid ? [animation ? "Fix the event JSON before changing frames or exporting." : "Fix the callback JSON before exporting."] : []),
         ].join(" ")}
       </p>}
       <div id="settings-category">
@@ -138,26 +137,28 @@ export function SettingsPanel({ entry, onChange, disabled, onValidityChange, fra
               const value = event.currentTarget.value;
               commit("description", value, () => onChange({ ...entry, metadata: { ...entry.metadata, description: value } }));
             }} /></label>
-            <label>Playback mode<select value={entry.playbackMode} disabled={disabled} onChange={(event) => {
-              const value = event.currentTarget.value;
-              const nextDrafts = { ...drafts };
-              if (value !== "loop") delete nextDrafts.loop_start;
-              if (value === "source" || value === "once" || value === "hold") delete nextDrafts.loop_delay;
-              setDrafts(nextDrafts);
-              onValidityChange(Object.values(nextDrafts).every((draft) => !draft.error));
-              if (value === "source") {
-                updatePlayback(structuredClone(entry.sourcePlayback), "source");
-                return;
-              }
-              const nextMode = value as NonNullable<typeof playback.mode>;
-              updatePlayback({ ...playback, mode: nextMode, loop_start: nextMode === "loop" ? playback.loop_start ?? "0t" : "0t",
-                loop_delay: nextMode === "once" || nextMode === "hold" ? "0t" : playback.loop_delay ?? "0t" }, nextMode);
-            }}>
-              <option value="source">Source setting</option>
-              <option value="once">Play once</option><option value="hold">Hold last frame</option><option value="loop">Loop</option><option value="server_sync">Server-synchronized loop</option>
-            </select></label>
-            <label>Loop start<input value={timeText("loop_start", playback.loop_start)} disabled={disabled || mode !== "loop"} onInput={(event) => editDraft("loop_start", event.currentTarget.value)} onBlur={(event) => updateTime("loop_start", event.currentTarget.value)} /></label>
-            <label>Loop delay<input value={timeText("loop_delay", playback.loop_delay)} disabled={disabled || mode === "once" || mode === "hold"} onInput={(event) => editDraft("loop_delay", event.currentTarget.value)} onBlur={(event) => updateTime("loop_delay", event.currentTarget.value)} /></label>
+            {animation && <>
+              <label>Playback mode<select value={animation.playbackMode} disabled={disabled} onChange={(event) => {
+                const value = event.currentTarget.value;
+                const nextDrafts = { ...drafts };
+                if (value !== "loop") delete nextDrafts.loop_start;
+                if (value === "source" || value === "once" || value === "hold") delete nextDrafts.loop_delay;
+                setDrafts(nextDrafts);
+                onValidityChange(Object.values(nextDrafts).every((draft) => !draft.error));
+                if (value === "source") {
+                  updatePlayback(structuredClone(animation.sourcePlayback), "source");
+                  return;
+                }
+                const nextMode = value as NonNullable<typeof playback.mode>;
+                updatePlayback({ ...playback, mode: nextMode, loop_start: nextMode === "loop" ? playback.loop_start ?? "0t" : "0t",
+                  loop_delay: nextMode === "once" || nextMode === "hold" ? "0t" : playback.loop_delay ?? "0t" }, nextMode);
+              }}>
+                <option value="source">Source setting</option>
+                <option value="once">Play once</option><option value="hold">Hold last frame</option><option value="loop">Loop</option><option value="server_sync">Server-synchronized loop</option>
+              </select></label>
+              <label>Loop start<input value={timeText("loop_start", playback.loop_start)} disabled={disabled || mode !== "loop"} onInput={(event) => editDraft("loop_start", event.currentTarget.value)} onBlur={(event) => updateTime("loop_start", event.currentTarget.value)} /></label>
+              <label>Loop delay<input value={timeText("loop_delay", playback.loop_delay)} disabled={disabled || mode === "once" || mode === "hold"} onInput={(event) => editDraft("loop_delay", event.currentTarget.value)} onBlur={(event) => updateTime("loop_delay", event.currentTarget.value)} /></label>
+            </>}
             <label>Cooldown<input value={timeText("cooldown", cooldown)} disabled={disabled} onInput={(event) => editDraft("cooldown", event.currentTarget.value)} onBlur={(event) => updateTime("cooldown", event.currentTarget.value)} /></label>
             <label>Movement distance<input type="number" min="0" step="any" value={drafts.movement_distance?.value ?? player.stop_conditions.movement_distance} disabled={disabled} onInput={(event) => editDraft("movement_distance", event.currentTarget.value)} onBlur={(event) => {
               const text = event.currentTarget.value;
@@ -167,7 +168,7 @@ export function SettingsPanel({ entry, onChange, disabled, onValidityChange, fra
                 updateSettings({ player: { ...player, stop_conditions: { ...player.stop_conditions, movement_distance: value } } });
               });
             }} /></label>
-            {isAnimation && <label>Rotation deadzone<input type="number" min="0" max="180" step="1" value={drafts.rotation_deadzone?.value ?? settings.rotation_deadzone ?? 50} disabled={disabled} onInput={(event) => editDraft("rotation_deadzone", event.currentTarget.value)} onBlur={(event) => {
+            {animation && <label>Rotation deadzone<input type="number" min="0" max="180" step="1" value={drafts.rotation_deadzone?.value ?? animation.settings?.rotation_deadzone ?? 50} disabled={disabled} onInput={(event) => editDraft("rotation_deadzone", event.currentTarget.value)} onBlur={(event) => {
               const text = event.currentTarget.value;
               commit("rotation_deadzone", text, () => updateSettings({ rotation_deadzone: Number(text) }));
             }} /></label>}
@@ -177,7 +178,7 @@ export function SettingsPanel({ entry, onChange, disabled, onValidityChange, fra
         </section>
         <section id="settings-panel-options" role="tabpanel" aria-labelledby="settings-tab-options" hidden={category !== "options"}>
           <div className="fields settings-toggles">
-            {isAnimation && <label className="checkbox"><input type="checkbox" checked={settings.standalone ?? true} disabled={disabled} onChange={(event) => updateSettings({ standalone: event.currentTarget.checked })} />Standalone animation</label>}
+            {animation && <label className="checkbox"><input type="checkbox" checked={animation.settings?.standalone ?? true} disabled={disabled} onChange={(event) => updateSettings({ standalone: event.currentTarget.checked })} />Standalone animation</label>}
             <label className="checkbox"><input type="checkbox" checked={player.hidden} disabled={disabled} onChange={(event) => updateSettings({ player: { ...player, hidden: event.currentTarget.checked } })} />Hide original player</label>
             {STOP_CONDITION_OPTIONS.map(([condition, label]) => <label className="checkbox" key={condition}><input type="checkbox" checked={player.stop_conditions[condition]} disabled={disabled} onChange={(event) => updateSettings({ player: { ...player, stop_conditions: { ...player.stop_conditions, [condition]: event.currentTarget.checked } } })} />{label}</label>)}
           </div>
@@ -189,7 +190,7 @@ export function SettingsPanel({ entry, onChange, disabled, onValidityChange, fra
             setDrafts(next);
             onValidityChange(Object.values(next).every(draft => !draft.error));
           }} onChange={(additionalMetadata) => onChange({ ...entry, metadata: { ...additionalMetadata, name, description } })} />
-          {isAnimation && <SkinOptions skin={entry.skin} disabled={disabled} onChange={(skin) => onChange({ ...entry, skin })} />}
+          {animation && <SkinOptions skin={animation.skin} disabled={disabled} onChange={(skin) => onChange({ ...animation, skin })} />}
         </section>
         <section id="settings-panel-events" role="tabpanel" aria-labelledby="settings-tab-events" hidden={category !== "events"}>{children}</section>
       </div>

@@ -33,9 +33,6 @@ export async function exportProject(document: ConversionDocument, selection: Exp
     let sequenceId = baseSequenceId;
     let suffix = 1;
     while (entries.some((entry) => entry.id === sequenceId)) sequenceId = `${baseSequenceId}.${suffix++}`;
-    const { duration, playback, events } = importedSequence?.clip ?? {};
-    const hasPlayback = playback && Object.keys(playback).length > 0;
-    const hasEvents = Object.values(events ?? {}).some((phase) => phase.length > 0);
     const sequence = {
       type: "sequence",
       schema_version: EMOTE_SCHEMA_VERSION,
@@ -47,7 +44,6 @@ export async function exportProject(document: ConversionDocument, selection: Exp
         cooldown: entries[0]?.settings?.cooldown ?? "0t",
         player: entries[0]?.settings?.player ?? createDefaultPlayerBehavior(),
       },
-      ...(duration !== undefined || hasPlayback || hasEvents ? { animation: { duration, playback, events } } : {}),
       steps: importedSequence
         ? importedSequence.steps.map((step) => remapSequenceStep(step, references))
         : entries.map((entry) => ({ emote: entry.id })),

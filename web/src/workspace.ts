@@ -84,9 +84,8 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
     case "frame_selected":
       return updateSession(state, (session) => {
         const entry = session.document.entries[session.selectedIndex];
-        if (!entry) return session;
-        const duration = entry.clip.duration;
-        const durationTicks = duration === undefined ? Infinity : parseMinecraftTime(duration, 1);
+        if (entry?.type !== "animation") return session;
+        const durationTicks = parseMinecraftTime(entry.clip.duration, 1);
         return { ...session, selectedCandidateIds: new Set(),
           selectedFrame: action.frame.type === "create" ? action.frame : { type: "timeline",
             animationTick: Math.max(0, Math.min(action.frame.animationTick, durationTicks)) } };
@@ -137,12 +136,13 @@ export function assignmentSummary(document: ConversionDocument): string {
 export function eventReviewSummary(document: ConversionDocument | null, selectedIndex: number) {
   const animations = document ? animationEntries(document) : [];
   const selected = document?.entries[selectedIndex];
+  const events = selected?.type === "animation" ? selected.clip.events : undefined;
   return {
     hasCommands: animations.some(animation => Object.values(animation.clip.events ?? {})
       .some(events => events.some(event => event.action.type === "commands" && event.action.commands.length > 0))),
-    hasSelectedReview: Boolean(selected?.callbacks?.length) || Object.values(selected?.clip.events ?? {})
+    hasSelectedReview: Boolean(selected?.callbacks?.length) || Object.values(events ?? {})
       .some(events => events.some(event => event.action.type === "commands" && event.action.commands.length > 0)),
-    commandTicks: [...new Set(selected?.clip.events?.timeline?.filter(event => event.action.type === "commands" && event.action.commands.length > 0)
+    commandTicks: [...new Set(events?.timeline?.filter(event => event.action.type === "commands" && event.action.commands.length > 0)
       .map(event => parseMinecraftTime(event.time)) ?? [])].sort((first, second) => first - second),
   };
 }

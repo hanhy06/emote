@@ -1,4 +1,3 @@
-import { parseMinecraftTime } from "../../format/time";
 import type { ConversionSequence, ImportedConversionDocument } from "../../domain/conversionDocument";
 import type { SequenceStep, SequenceWeightedChoice } from "../../domain/emoteDefinition";
 import { isRecord, requireArray, requireRecord, type RuntimeRecord } from "../../format/runtimeValue";
@@ -7,32 +6,30 @@ import { parseInputJson } from "../common/inputCache";
 
 interface EmoteSequence extends Pick<ConversionSequence, "id" | "metadata" | "settings" | "callbacks"> {
   target_minecraft_version?: string;
-  animation?: Pick<ConversionSequence["clip"], "duration" | "playback" | "events">;
   steps: RuntimeRecord[];
 }
 
 export function importSequence(input: ImportInput, formatLabel: string): ImportedConversionDocument {
   const inputValue = parseInputJson(input);
   if (!isRecord(inputValue) || inputValue.type !== "sequence") throw new Error("Input is not an Emote sequence.");
-  const { id, metadata, settings, callbacks, animation, steps, target_minecraft_version } = structuredClone(inputValue) as unknown as EmoteSequence;
+  const { id, metadata, settings, callbacks, steps, target_minecraft_version } = structuredClone(inputValue) as unknown as EmoteSequence;
   requireRecord(settings, "$.settings");
   requireRecord(settings.player, "$.settings.player");
   if (callbacks != null) requireArray(callbacks, "$.callbacks");
-  if (animation?.duration !== undefined) parseMinecraftTime(animation.duration, 1);
-  for (const event of animation?.events?.timeline ?? []) parseMinecraftTime(event.time);
   return {
     origin: { source: "emote_sequence", sourceName: input.name, formatLabel, metadata, namespace: id.split(":")[0] },
     targetMinecraftVersion: target_minecraft_version,
-    nodes: {}, skinCandidates: {}, diagnostics: [], resources: new Map(),
+    nodes: {}, skinCandidates: {}, resources: new Map(),
+    diagnostics: Object.hasOwn(inputValue, "animation") ? [{
+      severity: "warning", code: "unsupported_sequence_animation",
+      message: "The server ignores the animation block on sequences. This block is omitted from export.",
+      sourcePath: "$.animation",
+    }] : [],
     entries: [{
       type: "sequence",
       id, metadata, settings, callbacks: callbacks ?? undefined,
-      nodeIds: [],
-      clip: { ...animation, tracks: [] },
       steps: steps.map(importStep),
       sourceName: metadata.name,
-      sourcePlayback: structuredClone(animation?.playback),
-      playbackMode: "source",
     }],
   };
 }

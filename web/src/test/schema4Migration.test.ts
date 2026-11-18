@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { createConversionDocument, skinPartOrders } from "../domain/conversionDocument";
+import { animationEntries, createConversionDocument, skinPartOrders } from "../domain/conversionDocument";
 import { evaluatePose } from "../domain/animationIRPose";
 import { exportProject } from "../export/projectExporter";
 import { importFileBatch } from "../import/importBatch";
@@ -124,7 +124,10 @@ it("imports a schema 4 sequence with animations and exports its steps and refere
   const actual = JSON.parse(await outputs.at(-1)!.blob.text());
   expect(actual).toEqual({ ...sequence, schema_version: 5 });
   const animation: AnimationJson = JSON.parse(await outputs[0].blob.text());
-  expect(animation).toMatchObject({ id: "example:legacy", schema_version: 5 });
+  expect(animation).toMatchObject({
+    id: "example:legacy", schema_version: 5,
+    animation: { playback: legacy.settings.playback, events: { start: [{ action: { type: "commands", commands: ["say original start"] } }] } },
+  });
   const reopened = await readInput("emote_sequence", { name: "sequence.json", bytes: new TextEncoder().encode(JSON.stringify(actual)) });
   expect(reopened.entries).toEqual(document.entries.filter((entry) => entry.type === "sequence"));
 
@@ -144,11 +147,11 @@ it("imports a schema 4 sequence with animations and exports its steps and refere
   } });
   const edited = state.session!.document;
   expect(edited.entries[0].metadata.name).toBe("Edited animation");
-  expect(edited.entries[0].clip).toBe(document.entries[0].clip);
+  expect(animationEntries(edited)[0].clip).toBe(animationEntries(document)[0].clip);
   expect(edited.entries[1]).toMatchObject({ metadata: { name: "Edited sequence" }, settings: { player } });
 });
 
-it("round-trips sequence playback and command events through the common clip without assigning a duration", async () => {
+it("edits and exports standalone sequence callbacks and reports unsupported animation data", async () => {
   const command = {
     source: { type: "player" }, origin: { type: "root" }, action: { type: "commands", commands: ["say sequence"] },
   };
@@ -158,31 +161,28 @@ it("round-trips sequence playback and command events through the common clip wit
     name: "sequence.json",
     arrayBuffer: async () => new TextEncoder().encode(JSON.stringify(source)).buffer,
   }]);
-  expect(document.entries[0]).toMatchObject({ type: "sequence", nodeIds: [], clip: { ...animation, tracks: [] } });
-  expect(document.entries[0].clip).not.toHaveProperty("duration");
-  const [output] = await exportProject(document, "sequence");
-  const bytes = new Uint8Array(await output.blob.arrayBuffer());
-  expect(JSON.parse(new TextDecoder().decode(bytes))).toEqual(source);
-  const reopened = await readInput("emote_sequence", { name: output.fileName, bytes });
-  expect(reopened.entries).toEqual(document.entries);
+  const [entry] = document.entries;
+  expect(entry.type).toBe("sequence");
+  expect(entry).not.toHaveProperty("clip");
+  expect(document.diagnostics).toEqual([
+    expect.objectContaining({ severity: "warning", code: "unsupported_sequence_animation", sourcePath: "$.animation" }),
+  ]);
 
   let state = workspaceReducer(INITIAL_WORKSPACE, { type: "documents_open_succeeded", document });
   const callbacks = [{ name: "example:edited" }];
-  const lifecycle = { callbacks, start: [command], loop: [command], stop: [command] };
-  state = workspaceReducer(state, { type: "entry_changed", index: 0, entry: parseEventEdit(document.entries[0], null, JSON.stringify(lifecycle)) });
-  const tickCommand = { ...command, action: { ...command.action, commands: ["say frame"] } };
-  for (const tick of [0, 42]) {
-    state = workspaceReducer(state, { type: "frame_selected", frame: { type: "timeline", animationTick: tick } });
-    expect(state.session!.selectedFrame).toEqual({ type: "timeline", animationTick: tick });
-    const entry = parseEventEdit(state.session!.document.entries[0], tick, JSON.stringify([tickCommand]));
-    state = workspaceReducer(state, { type: "entry_changed", index: 0, entry });
-  }
+  expect(() => parseEventEdit(entry, null, JSON.stringify({ callbacks, start: [command] }))).toThrow(/only callbacks/);
+  expect(() => parseEventEdit(entry, 0, JSON.stringify([command]))).toThrow(/require an animation/);
+  state = workspaceReducer(state, { type: "frame_selected", frame: { type: "timeline", animationTick: 0 } });
+  expect(state.session!.selectedFrame).toEqual({ type: "create" });
+  state = workspaceReducer(state, { type: "entry_changed", index: 0, entry: parseEventEdit(entry, null, JSON.stringify({ callbacks })) });
+
   const edited = state.session!.document;
-  const [editedOutput] = await exportProject(edited, "sequence");
-  const editedBytes = new Uint8Array(await editedOutput.blob.arrayBuffer());
-  expect(JSON.parse(new TextDecoder().decode(editedBytes))).toEqual({ ...source, callbacks, animation: {
-    playback: animation.playback,
-    events: { start: lifecycle.start, loop: lifecycle.loop, stop: lifecycle.stop, timeline: [0, 42].map((tick) => ({ ...tickCommand, time: `${tick}t` })) },
-  } });
-  expect((await readInput("emote_sequence", { name: editedOutput.fileName, bytes: editedBytes })).entries).toEqual(edited.entries);
+  const outputs = await exportProject(edited, "sequence");
+  expect(outputs).toHaveLength(1);
+  const [output] = outputs;
+  const bytes = new Uint8Array(await output.blob.arrayBuffer());
+  expect(JSON.parse(new TextDecoder().decode(bytes))).toEqual({ ...sequenceReference, callbacks });
+  const reopened = await readInput("emote_sequence", { name: output.fileName, bytes });
+  expect(reopened.entries).toEqual(edited.entries);
+  expect(reopened.diagnostics).toEqual([]);
 });

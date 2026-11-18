@@ -18,14 +18,16 @@ interface EventPanelProps {
 
 export function EventPanel({ entry, animationTick, disabled, onChange, onValidityChange, commandSourceControl }: EventPanelProps) {
   const [error, setError] = useState("");
-  const events = entry.clip.events;
-  const initialValue = JSON.stringify(animationTick !== null
+  const isSequence = entry.type === "sequence";
+  const events = isSequence ? undefined : entry.clip.events;
+  const callbacks = entry.callbacks ?? [];
+  const initialValue = JSON.stringify(isSequence ? { callbacks } : animationTick !== null
     ? (events?.timeline ?? []).flatMap((event) => {
       if (parseMinecraftTime(event.time) !== animationTick) return [];
       const { time: _time, ...body } = event;
       return [body];
     })
-    : { callbacks: entry.callbacks ?? [], start: events?.start ?? [], loop: events?.loop ?? [], stop: events?.stop ?? [] }, null, 2);
+    : { callbacks, start: events?.start ?? [], loop: events?.loop ?? [], stop: events?.stop ?? [] }, null, 2);
   function handleInput(value: string) {
     try {
       onChange(parseEventEdit(entry, animationTick, value));
@@ -41,8 +43,9 @@ export function EventPanel({ entry, animationTick, disabled, onChange, onValidit
     <section className="event-editor" aria-labelledby="event-editor-heading">
       <div className="event-editor-heading">
         <div>
-          <h3 id="event-editor-heading">Events</h3>
-          <p>{animationTick === null
+          <h3 id="event-editor-heading">{isSequence ? "Callbacks" : "Events"}</h3>
+          <p>{isSequence ? "Edit the sequence callbacks as JSON. Changes are saved as soon as the JSON is valid."
+            : animationTick === null
             ? "Edit callbacks and start, loop, and stop events as JSON. Changes are saved as soon as the JSON is valid."
             : "Edit the events at this tick as a JSON array. The selected tick supplies the event time automatically. Changes are saved as soon as the JSON is valid."}</p>
         </div>
@@ -50,7 +53,8 @@ export function EventPanel({ entry, animationTick, disabled, onChange, onValidit
       </div>
       <div className="event-editor-body">
         <textarea className="event-json" defaultValue={initialValue} disabled={disabled} spellcheck={false}
-          aria-label={animationTick === null ? "Lifecycle events JSON" : `Timeline events JSON at tick ${animationTick}`} aria-invalid={error ? true : undefined}
+          aria-label={isSequence ? "Sequence callbacks JSON" : animationTick === null ? "Lifecycle events JSON" : `Timeline events JSON at tick ${animationTick}`}
+          aria-invalid={error ? true : undefined}
           onInput={(event) => handleInput(event.currentTarget.value)} />
         {error && <p className="event-json-error" role="alert">{error} Fix the JSON or press Ctrl+Z before leaving this event scope.</p>}
       </div>
@@ -60,11 +64,9 @@ export function EventPanel({ entry, animationTick, disabled, onChange, onValidit
 
 export function parseEventEdit(entry: ConversionEntry, animationTick: number | null, value: string): ConversionEntry {
   const parsed: unknown = JSON.parse(value);
-  const next = { ...entry };
-  const events = { ...entry.clip.events };
   if (animationTick === null) {
-    const lifecycle = requireRecord(parsed, "Lifecycle events");
-    next.callbacks = requireArray(lifecycle.callbacks === undefined ? [] : lifecycle.callbacks, "callbacks").map((value, index) => {
+    const lifecycle = requireRecord(parsed, entry.type === "sequence" ? "Sequence callbacks" : "Lifecycle events");
+    const callbacks = requireArray(lifecycle.callbacks === undefined ? [] : lifecycle.callbacks, "callbacks").map((value, index) => {
       const path = `callbacks[${index}]`;
       const callback = requireRecord(value, path);
       const name = requireString(callback.name, `${path}.name`);
@@ -72,21 +74,28 @@ export function parseEventEdit(entry: ConversionEntry, animationTick: number | n
       if (callback.payload !== undefined) requireString(callback.payload, `${path}.payload`);
       return callback as unknown as EmoteCallback;
     });
+    if (entry.type === "sequence") {
+      if (Object.keys(lifecycle).some(key => key !== "callbacks")) throw new Error("Sequence events must contain only callbacks.");
+      return { ...entry, callbacks };
+    }
+    const events = { ...entry.clip.events };
     for (const phase of ["start", "loop", "stop"] as const) {
       events[phase] = parseEventArray(lifecycle[phase] === undefined ? [] : lifecycle[phase], phase);
     }
-  } else {
-    const time = formatMinecraftTime(animationTick);
-    if (entry.clip.duration !== undefined && animationTick > parseMinecraftTime(entry.clip.duration, 1)) {
-      throw new Error("Event tick must be within the animation duration.");
-    }
-    events.timeline = [
-      ...(events.timeline ?? []).filter((event) => parseMinecraftTime(event.time) !== animationTick),
-      ...parseEventArray(parsed, "Timeline events", true).map((event) => ({ ...event, time })),
-    ].sort((first, second) => parseAnimationSeconds(first.time) - parseAnimationSeconds(second.time));
+    return { ...entry, callbacks, clip: { ...entry.clip, events } };
   }
-  next.clip = { ...entry.clip, events };
-  return next;
+
+  if (entry.type !== "animation") throw new Error("Timeline events require an animation.");
+  const time = formatMinecraftTime(animationTick);
+  if (animationTick > parseMinecraftTime(entry.clip.duration, 1)) {
+    throw new Error("Event tick must be within the animation duration.");
+  }
+  const events = { ...entry.clip.events };
+  events.timeline = [
+    ...(events.timeline ?? []).filter((event) => parseMinecraftTime(event.time) !== animationTick),
+    ...parseEventArray(parsed, "Timeline events", true).map((event) => ({ ...event, time })),
+  ].sort((first, second) => parseAnimationSeconds(first.time) - parseAnimationSeconds(second.time));
+  return { ...entry, clip: { ...entry.clip, events } };
 }
 
 function parseEventArray(value: unknown, path: string, timeline = false): EventIR[] {
