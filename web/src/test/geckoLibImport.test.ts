@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import MolangParser from "molangjs/dist/molang.esm.js";
 import { Euler, Matrix4, Vector3 } from "three";
-import { animationEntries, createConversionDocument } from "../domain/conversionDocument";
+import { createConversionDocument } from "../domain/conversionDocument";
 import { compileAnimation } from "../compiler/animationCompiler";
 import { evaluatePose } from "../domain/animationIRPose";
 import { readInput } from "../import/formats";
@@ -15,7 +15,7 @@ async function importAnimation(groups: BbGroup[], animation: Partial<BbAnimation
   };
   const input = await readInput("geckolib_bbmodel", { name: "model.bbmodel", bytes: new TextEncoder().encode(JSON.stringify(project)) });
   const document = createConversionDocument(input, "BB");
-  return { input, document, output: compileAnimation(document, animationEntries(document)[0]).animation };
+  return { input, document, output: compileAnimation(document, 0).animation };
 }
 
 const group = (uuid: string, name: string): BbGroup => ({ uuid, name, origin: [0, 0, 0], rotation: [0, 0, 0] });

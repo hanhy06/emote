@@ -1,5 +1,7 @@
-import { createConversionDocument, type ConversionDocument, type ImportedConversionDocument } from "../domain/conversionDocument";
+import type { ConversionDocument } from "../domain/conversionDocument";
+import { createConversionDocument } from "../domain/conversionDocument";
 import { combineConversionDocuments } from "../domain/conversionBatch";
+import type { ImportedSequence } from "../domain/emoteDefinition";
 import { ConversionError, conversionErrorMessage, type ConversionIssue } from "../foundation/diagnostics";
 import { detectInputFormat, readInput, INPUT_FORMATS } from "./formats";
 
@@ -12,20 +14,25 @@ export async function importFileBatch(files: readonly ImportFile[]): Promise<Con
   const results = await Promise.allSettled(files.map(async (file) => {
     const input = { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) };
     const format = await detectInputFormat(input);
+    const label = INPUT_FORMATS[format].label;
+    let source;
     try {
-      const source = await readInput(format, input);
-      return "entries" in source ? source : createConversionDocument(source, INPUT_FORMATS[format].label);
+      source = await readInput(format, input);
     } catch (reason) {
       throw ConversionError.fromUnknown(
         reason,
         `${format}_import_failed`,
-        `Could not import ${input.name} as ${INPUT_FORMATS[format].label}.`,
+        `Could not import ${input.name} as ${label}.`,
         input.name,
       );
     }
+    return "kind" in source
+      ? { sequence: source }
+      : { document: createConversionDocument(source, label) };
   }));
 
-  const documents: ImportedConversionDocument[] = [];
+  const documents: ConversionDocument[] = [];
+  const sequences: ImportedSequence[] = [];
   const failures: ConversionIssue[] = [];
   results.forEach((result, index) => {
     if (result.status === "rejected") {
@@ -37,12 +44,13 @@ export async function importFileBatch(files: readonly ImportFile[]): Promise<Con
       });
       return;
     }
-    documents.push(result.value);
+    if (result.value.document) documents.push(result.value.document);
+    else if (result.value.sequence) sequences.push(result.value.sequence);
   });
 
   if (documents.length === 0 && failures.length > 0) {
     throw new ConversionError("file_import_failed", failures.map((failure) => failure.message).join(" "));
   }
-  const document = combineConversionDocuments(documents);
+  const document = combineConversionDocuments(documents, sequences);
   return failures.length === 0 ? document : { ...document, diagnostics: [...document.diagnostics, ...failures] };
 }

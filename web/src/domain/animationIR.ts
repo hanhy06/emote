@@ -133,6 +133,17 @@ export interface SkinIR {
   override?: { texture: string; mask: string };
 }
 
+export interface AnimationEntryIR extends Omit<AnimationIR, "nodes" | "animation" | "target_minecraft_version"> {
+  nodeIds: string[];
+  clip: ClipIR;
+}
+
+export interface AnimationSetIR {
+  nodes: Record<string, NodeIR>;
+  animations: AnimationEntryIR[];
+  targetMinecraftVersion: string;
+}
+
 export function attachmentTargetId(nodeId: string, attachmentId: string): string {
   return JSON.stringify([nodeId, attachmentId]);
 }

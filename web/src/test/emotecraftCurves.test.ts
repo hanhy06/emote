@@ -6,7 +6,7 @@ import type { AnimationIR, CurveIR } from "../domain/animationIR";
 import { evaluatePose } from "../domain/animationIRPose";
 import type { ScalarEvaluatorIR } from "../domain/animationIRCurves";
 import { createConversionDocument } from "../domain/conversionDocument";
-import { exportProject } from "../export/projectExporter";
+import { exportAnimation } from "../export/projectExporter";
 import { readInput } from "../import/formats";
 import { createEmotecraftAnimationIR } from "../import/emotecraft/emotecraftAnimationIR";
 import { importEmotecraftFile } from "../import/emotecraft/emotecraftImporter";
@@ -60,7 +60,7 @@ it("preserves independent axes and reuses one bend sample for joint translation,
   const parser = new MolangParser();
   for (const [name, animation] of [["reference", reference], ["dynamic", dynamic]] as const) {
     const project = importEmotecraftFile({ animation, metadata: { name, badges: [] } }, `${name}.emotecraft`);
-    const [output] = await exportProject(createConversionDocument(project, "Emotecraft"), 0);
+    const [output] = await exportAnimation(createConversionDocument(project, "Emotecraft"), 0);
     const exported: AnimationIR = JSON.parse(await output.blob.text());
     expect(exported).toEqual(JSON.parse(await readFile(new URL(`../../../src/test/resources/emotecraft-${name}.json`, import.meta.url), "utf8")));
     for (const tick of [0, 5, 10, 20, 40]) {

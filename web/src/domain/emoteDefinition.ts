@@ -37,6 +37,19 @@ export function createDefaultPlayerBehavior(): EmotePlayerBehavior {
   };
 }
 
+export interface ImportedSequence {
+  callbacks?: EmoteCallback[];
+  kind: "sequence";
+  source: "emote_sequence";
+  sourceName: string;
+  id: string;
+  targetMinecraftVersion?: string;
+  metadata: EmoteMetadata;
+  cooldown: string;
+  player: EmotePlayerBehavior;
+  steps: SequenceStep[];
+}
+
 export type SequenceStep = SequenceAnimationStep | SequenceWaitStep;
 
 export interface SequenceAnimationStep {
