@@ -1,6 +1,5 @@
 import { EMOTE_SCHEMA_VERSION } from "../../format/emote";
-import type { ConversionSequence } from "../../domain/conversionDocument";
-import type { ImportedSequence } from "../../domain/conversionSeed";
+import type { ConversionSequence, ImportedConversionDocument } from "../../domain/conversionDocument";
 import type { SequenceStep, SequenceWeightedChoice } from "../../domain/emoteDefinition";
 import { isRecord, requireRecord, type RuntimeRecord } from "../../format/runtimeValue";
 import type { ImportInput } from "../input";
@@ -25,16 +24,16 @@ function convertSequenceInput(input: ImportInput): EmoteSequence | null {
   return value as unknown as EmoteSequence;
 }
 
-export function importSequence(input: ImportInput): ImportedSequence {
+export function importSequence(input: ImportInput, formatLabel: string): ImportedConversionDocument {
   const sequence = convertSequenceInput(input);
   if (!sequence) throw new Error("Input is not an Emote sequence.");
   requireRecord(sequence.settings, "$.settings");
   requireRecord(sequence.settings.player, "$.settings.player");
   return {
-    kind: "sequence",
-    sourceName: input.name,
-    ...(sequence.target_minecraft_version ? { targetMinecraftVersion: sequence.target_minecraft_version } : {}),
-    entry: {
+    origin: { source: "emote_sequence", sourceName: input.name, formatLabel, metadata: sequence.metadata, namespace: sequence.id.split(":")[0] },
+    targetMinecraftVersion: sequence.target_minecraft_version,
+    nodes: {}, skinCandidates: {}, diagnostics: [], resources: new Map(),
+    entries: [{
       type: "sequence",
       id: sequence.id,
       metadata: structuredClone(sequence.metadata),
@@ -46,7 +45,7 @@ export function importSequence(input: ImportInput): ImportedSequence {
       sourceName: sequence.metadata.name,
       sourcePlayback: structuredClone(sequence.animation?.playback),
       playbackMode: "source",
-    },
+    }],
   };
 }
 

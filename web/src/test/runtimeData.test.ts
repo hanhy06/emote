@@ -362,7 +362,7 @@ it("preserves sequence timing, choices, controls, callbacks and external referen
   const expected = JSON.parse(bytes.toString("utf8"));
   const sequence = await readInput("emote_sequence", { name: "sequence.json", bytes });
   const project = await readInput("emote_json", { name: "runtime.json", bytes: new TextEncoder().encode(JSON.stringify(animation)) });
-  const document = combineConversionDocuments([createConversionDocument(project, "Emote JSON")], [sequence]);
+  const document = combineConversionDocuments([createConversionDocument(project, "Emote JSON"), sequence]);
   const outputs = await exportAnimations(document, true);
   const exported = await Promise.all(outputs.filter((output) => output.fileName.endsWith(".json")).map(async (output) => JSON.parse(await output.blob.text())));
   expect(exported.find((output) => output.type === "sequence")).toEqual(expected);
@@ -375,13 +375,17 @@ it("reserves authored IDs and preserves ambiguous sequence references instead of
     const project = await readInput("emote_json", { name: `input_${index}.json`, bytes: new TextEncoder().encode(JSON.stringify(authored)) });
     return createConversionDocument(project, "Emote JSON");
   }));
-  const document = combineConversionDocuments(documents);
-  expect(document.entries.map((entry) => entry.id)).toEqual(["probe:a", "probe:a_3", "probe:a_2", "probe:unique"]);
-  document.sequence.steps = [
+  const steps = [
     { emote: "probe:a" },
-    { emote: [{ id: "probe:a_2", chance: 3 }, { id: "probe:a", chance: 1 }] },
+    { emote: ["probe:a_2", 3, "probe:a", 1] },
     { emote: "probe:unique" }, { emote: "external:unknown" }, { emote: "emote:break" }, { emote: "emote:empty" },
   ];
+  const sequence = await readInput("emote_sequence", { name: "sequence.json", bytes: new TextEncoder().encode(JSON.stringify({
+    type: "sequence", schema_version: 5, id: "example:sequence", metadata: animation.metadata,
+    settings: { cooldown: "0t", player: animation.settings!.player }, steps,
+  })) });
+  const document = combineConversionDocuments([...documents, sequence]);
+  expect(document.entries.map((entry) => entry.id)).toEqual(["probe:a", "probe:a_3", "probe:a_2", "probe:unique", "example:sequence"]);
   let outputs = await exportAnimations(document, true);
   let exported = await Promise.all(outputs.map(async (output) => JSON.parse(await output.blob.text())));
   expect(exported.find((entry) => entry.type === "sequence").steps).toEqual([
@@ -403,6 +407,24 @@ it("reserves authored IDs and preserves ambiguous sequence references instead of
     "sequence_ambiguous_reference", "sequence_ambiguous_reference", "sequence_external_reference",
   ]);
   expect(document).toEqual(snapshot);
+});
+
+it("generates a sequence from the final animation IDs and gives it a distinct filename", async () => {
+  const ids = ["emote:runtime_preservation", "example:second"];
+  const documents = await Promise.all(ids.map(async (id) => {
+    const bytes = new TextEncoder().encode(JSON.stringify({ ...animation, id }));
+    return createConversionDocument(await readInput("emote_json", { name: `${id}.json`, bytes }), "Emote JSON");
+  }));
+  const document = combineConversionDocuments(documents);
+  const outputs = await exportAnimations(document, true);
+  const sequence = outputs.at(-1)!;
+  expect(sequence.fileName).toBe("emote.runtime_preservation.1.json");
+  expect(JSON.parse(await sequence.blob.text())).toEqual({
+    type: "sequence", schema_version: 5, target_minecraft_version: "26.3", id: "emote:runtime_preservation.1",
+    metadata: animation.metadata, settings: { cooldown: animation.settings!.cooldown, player: animation.settings!.player },
+    steps: ids.map((emote) => ({ emote })),
+  });
+  expect(document.entries.map((entry) => entry.type)).toEqual(["animation", "animation"]);
 });
 
 it("rejects invalid shared dependencies and dynamic curve parameters", async () => {

@@ -6,7 +6,7 @@ import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocat
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
 import { parseAnimationSeconds, parseMinecraftTime } from "../format/time";
 import type { GeneratedResource } from "./generatedResource";
-import type { EmoteCallback, EmotePlayerBehavior, SequenceStep } from "./emoteDefinition";
+import type { EmoteCallback, EmoteMetadata, EmotePlayerBehavior, SequenceStep } from "./emoteDefinition";
 import type { ImportedProject, ImportedSkinPart, InputFormat } from "./conversionSeed";
 
 export const DEFAULT_TARGET_MINECRAFT_VERSION = "26.4";
@@ -39,30 +39,19 @@ export type ConversionEntry = ConversionAnimation | ConversionSequence;
 
 export type ConversionAnimationEvents = Required<NonNullable<AnimationIR["animation"]["events"]>>;
 
-export interface SequenceOutputSettings {
-  callbacks?: EmoteCallback[];
-  namespace: string;
-  idPath?: string;
-  name: string;
-  description: string;
-  additionalMetadata: Record<string, unknown>;
-  cooldown: string;
-  player: EmotePlayerBehavior;
-  steps?: SequenceStep[];
-}
-
 export interface ConversionDocument {
-  origin: { source: InputFormat; sourceName: string; formatLabel: string };
+  origin: { source: InputFormat; sourceName: string; formatLabel: string; metadata: EmoteMetadata; namespace: string };
   entries: ConversionEntry[];
   nodes: Record<string, NodeIR>;
   targetMinecraftVersion: string;
   skinCandidates: Record<string, SkinCandidate>;
-  sequence: SequenceOutputSettings;
   diagnostics: ConversionIssue[];
   resources: Map<string, GeneratedResource>;
 }
 
-export function animationEntries(document: ConversionDocument): ConversionAnimation[] {
+export type ImportedConversionDocument = Omit<ConversionDocument, "targetMinecraftVersion"> & { targetMinecraftVersion?: string };
+
+export function animationEntries(document: Pick<ConversionDocument, "entries">): ConversionAnimation[] {
   return document.entries.filter((entry) => entry.type === "animation");
 }
 
@@ -135,12 +124,10 @@ export function createConversionDocument(project: ImportedProject, formatLabel: 
       sourceReferenceId: animation.sourceReferenceId };
   });
   let document: ConversionDocument = {
-    origin: { source: project.source, sourceName: project.sourceName, formatLabel },
+    origin: { source: project.source, sourceName: project.sourceName, formatLabel, metadata: project.suggestedMetadata, namespace },
     targetMinecraftVersion: project.suggestedMinecraftVersion && Object.hasOwn(MINECRAFT_VERSION_PROFILES, project.suggestedMinecraftVersion)
       ? project.suggestedMinecraftVersion : DEFAULT_TARGET_MINECRAFT_VERSION,
     nodes, skinCandidates, entries,
-    sequence: { namespace, name: project.suggestedMetadata.name, description: project.suggestedMetadata.description,
-      additionalMetadata, cooldown: project.suggestedCooldown ?? "0t", player: project.suggestedPlayer },
     diagnostics: project.diagnostics, resources: project.resources,
   };
   for (const scene of new Set(Object.values(skinCandidates).map((candidate) => candidate.sceneId))) for (const part of [...new Set(Object.values(suggestions).map((suggestion) => suggestion.part))]) {

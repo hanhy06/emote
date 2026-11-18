@@ -1,4 +1,5 @@
-import type { ImportedProject, ImportedSequence, InputFormat } from "../domain/conversionSeed";
+import type { ImportedProject, InputFormat } from "../domain/conversionSeed";
+import type { ImportedConversionDocument } from "../domain/conversionDocument";
 import type { ImportInput } from "./input";
 import { ConversionError } from "../foundation/diagnostics";
 import { isRecord } from "../format/runtimeValue";
@@ -65,13 +66,13 @@ async function matchesInputFormat(input: ImportInput, format: InputFormat): Prom
   }
 }
 
-export function readInput(format: "emote_sequence", input: ImportInput): Promise<ImportedSequence>;
+export function readInput(format: "emote_sequence", input: ImportInput): Promise<ImportedConversionDocument>;
 export function readInput(format: Exclude<InputFormat, "emote_sequence">, input: ImportInput): Promise<ImportedProject>;
-export function readInput(format: InputFormat, input: ImportInput): Promise<ImportedProject | ImportedSequence>;
-export async function readInput(format: InputFormat, input: ImportInput): Promise<ImportedProject | ImportedSequence> {
+export function readInput(format: InputFormat, input: ImportInput): Promise<ImportedProject | ImportedConversionDocument>;
+export async function readInput(format: InputFormat, input: ImportInput): Promise<ImportedProject | ImportedConversionDocument> {
   switch (format) {
     case "emote_sequence":
-      return (await import("./emoteJson/sequenceImporter")).importSequence(input);
+      return (await import("./emoteJson/sequenceImporter")).importSequence(input, INPUT_FORMATS[format].label);
     case "bd_datapack": {
       const [{ importBdDatapack }, { readBdDatapackSource }] = await Promise.all([import("./bdDatapack/bdDatapackImporter"), import("./bdDatapack/bdDatapackSource")]);
       return importBdDatapack(readBdDatapackSource(input), input.name);

@@ -124,21 +124,24 @@ it("imports a schema 4 sequence with animations and exports its steps and refere
   const animation: AnimationJson = JSON.parse(await outputs[0].blob.text());
   expect(animation).toMatchObject({ id: "example:legacy", schema_version: 5 });
   const reopened = await readInput("emote_sequence", { name: "sequence.json", bytes: new TextEncoder().encode(JSON.stringify(actual)) });
-  expect(reopened.entry.steps).toEqual(document.sequence.steps);
+  expect(reopened.entries).toEqual(document.entries.filter((entry) => entry.type === "sequence"));
 });
 
-it("imports sequence playback and command events into the common clip without assigning a duration", async () => {
+it("round-trips sequence playback and command events through the common clip without assigning a duration", async () => {
   const command = {
     source: { type: "player" }, origin: { type: "root" }, action: { type: "commands", commands: ["say sequence"] },
   };
   const animation = { playback: { mode: "loop" }, events: { start: [command], timeline: [{ ...command, time: "0t" }] } };
+  const source = { ...sequenceReference, animation };
   const document = await importFileBatch([{
-    name: "legacy.json",
-    arrayBuffer: async () => new TextEncoder().encode(JSON.stringify(legacy)).buffer,
-  }, {
     name: "sequence.json",
-    arrayBuffer: async () => new TextEncoder().encode(JSON.stringify({ ...sequenceReference, animation })).buffer,
+    arrayBuffer: async () => new TextEncoder().encode(JSON.stringify(source)).buffer,
   }]);
-  expect(document.entries[1]).toMatchObject({ type: "sequence", nodeIds: [], clip: { ...animation, tracks: [] } });
-  expect(document.entries[1].clip).not.toHaveProperty("duration");
+  expect(document.entries[0]).toMatchObject({ type: "sequence", nodeIds: [], clip: { ...animation, tracks: [] } });
+  expect(document.entries[0].clip).not.toHaveProperty("duration");
+  const [output] = await exportAnimations(document, true);
+  const bytes = new Uint8Array(await output.blob.arrayBuffer());
+  expect(JSON.parse(new TextDecoder().decode(bytes))).toEqual(source);
+  const reopened = await readInput("emote_sequence", { name: output.fileName, bytes });
+  expect(reopened.entries).toEqual(document.entries);
 });

@@ -1,9 +1,9 @@
 import { compileAnimation } from "../compiler/animationCompiler";
 import { animationEntries, type ConversionDocument } from "../domain/conversionDocument";
-import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
+import { isResourceLocation, sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { EMOTE_SCHEMA_VERSION } from "../format/emote";
 import type { ExportResult } from "./types";
-import { animationReferenceTargets, isSequenceControlId, type SequenceWeightedChoice, type SequenceStep } from "../domain/emoteDefinition";
+import { animationReferenceTargets, createDefaultPlayerBehavior, isSequenceControlId, type SequenceWeightedChoice, type SequenceStep } from "../domain/emoteDefinition";
 
 export async function exportAnimation(document: ConversionDocument, animationIndex: number): Promise<ExportResult[]> {
   const compiled = compileAnimation(document, animationIndex);
@@ -20,7 +20,8 @@ export async function exportAnimation(document: ConversionDocument, animationInd
 
 export async function exportAnimations(document: ConversionDocument, includeSequence: boolean): Promise<ExportResult[]> {
   const entries = animationEntries(document);
-  if (entries.length === 0) throw new Error("The project does not contain animations.");
+  const importedSequence = document.entries.find((entry) => entry.type === "sequence");
+  if (entries.length === 0 && (!includeSequence || !importedSequence)) throw new Error("The project does not contain animations.");
   const compiled = entries.map((_, index) => compileAnimation(
     document,
     index,
@@ -34,22 +35,32 @@ export async function exportAnimations(document: ConversionDocument, includeSequ
     fileName: fileNames[index],
   }));
   if (includeSequence) {
-    const sequenceOutput = structuredClone(document.sequence);
     const references = animationReferenceTargets(entries);
-    const baseSequenceId = `${sanitizeNamespace(sequenceOutput.namespace)}:${sanitizeResourcePath(sequenceOutput.idPath ?? sequenceOutput.name)}`;
+    const metadata = importedSequence?.metadata ?? document.origin.metadata;
+    const id = importedSequence?.id ?? `${document.origin.namespace}:${metadata.name}`;
+    const separator = id.indexOf(":");
+    const baseSequenceId = isResourceLocation(id) ? id
+      : `${sanitizeNamespace(id.slice(0, separator))}:${sanitizeResourcePath(id.slice(separator + 1))}`;
     let sequenceId = baseSequenceId;
     let suffix = 1;
     while (animations.some((animation) => animation.id === sequenceId)) sequenceId = `${baseSequenceId}.${suffix++}`;
+    const { duration, playback, events } = importedSequence?.clip ?? {};
+    const hasPlayback = playback && Object.keys(playback).length > 0;
+    const hasEvents = Object.values(events ?? {}).some((phase) => phase.length > 0);
     const sequence = {
       type: "sequence",
       schema_version: EMOTE_SCHEMA_VERSION,
       target_minecraft_version: document.targetMinecraftVersion,
       id: sequenceId,
-      ...(sequenceOutput.callbacks?.length ? { callbacks: sequenceOutput.callbacks } : {}),
-      metadata: { ...sequenceOutput.additionalMetadata, name: sequenceOutput.name, description: sequenceOutput.description },
-      settings: { cooldown: sequenceOutput.cooldown, player: sequenceOutput.player },
-      steps: sequenceOutput.steps
-        ? sequenceOutput.steps.map((step) => remapSequenceStep(step, references))
+      ...(importedSequence?.callbacks?.length ? { callbacks: importedSequence.callbacks } : {}),
+      metadata,
+      settings: importedSequence?.settings ?? {
+        cooldown: entries[0]?.settings?.cooldown ?? "0t",
+        player: entries[0]?.settings?.player ?? createDefaultPlayerBehavior(),
+      },
+      ...(duration !== undefined || hasPlayback || hasEvents ? { animation: { duration, playback, events } } : {}),
+      steps: importedSequence
+        ? importedSequence.steps.map((step) => remapSequenceStep(step, references))
         : animations.map((animation) => ({ emote: animation.id })),
     };
     const baseFileName = emoteFileName(sequence.id);
