@@ -1,13 +1,14 @@
 package io.github.hanhy06.emote.command;
 
-import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import io.github.hanhy06.emote.skin.account.MinecraftAccountManager;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.arguments.StringArgument;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.permissions.PermissionCheck;
 import net.minecraft.server.permissions.Permissions;
 
 import java.io.IOException;
@@ -21,13 +22,13 @@ public final class AccountCommand {
 
     public LiteralArgumentBuilder<CommandSourceStack> createCommand() {
         return Commands.literal("account")
-            .requires(AccountCommand::isOwner)
+            .requires(Commands.hasPermission(new PermissionCheck.Require(Permissions.COMMANDS_OWNER)))
             .executes(context -> list(context.getSource()))
             .then(Commands.literal("login")
                 .executes(context -> login(context.getSource())))
             .then(Commands.literal("remove")
-                .then(Commands.argument("account", StringArgumentType.word())
-                    .executes(context -> remove(context.getSource(), StringArgumentType.getString(context, "account")))));
+                .then(Commands.argument("account", StringArgument.word())
+                    .executes(context -> remove(context.getSource(), StringArgument.getString(context, "account")))));
     }
 
     private int list(CommandSourceStack source) {

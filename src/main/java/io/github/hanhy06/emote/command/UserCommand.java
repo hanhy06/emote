@@ -1,7 +1,5 @@
 package io.github.hanhy06.emote.command;
 
-import com.mojang.brigadier.arguments.IntegerArgumentType;
-import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
@@ -13,6 +11,8 @@ import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.IdentifierArgument;
+import net.minecraft.commands.arguments.IntegerArgument;
+import net.minecraft.commands.arguments.StringArgument;
 import net.minecraft.commands.suggestions.SuggestionContext;
 import net.minecraft.commands.suggestions.SuggestionProviders;
 import net.minecraft.resources.Identifier;
@@ -41,10 +41,10 @@ public final class UserCommand {
     public LiteralArgumentBuilder<CommandSourceStack> createRoot() {
         return Commands.literal("emote")
             .executes(context -> openMenu(context.getSource(), 1))
-            .then(Commands.argument("page", IntegerArgumentType.integer(1))
+            .then(Commands.argument("page", IntegerArgument.integer(1))
                 .executes(context -> openMenu(
                     context.getSource(),
-                    IntegerArgumentType.getInteger(context, "page")
+                    IntegerArgument.getInteger(context, "page")
                 )))
             .then(createSearchCommand())
             .then(createPlayCommand())
@@ -54,17 +54,17 @@ public final class UserCommand {
     private LiteralArgumentBuilder<CommandSourceStack> createSearchCommand() {
         return Commands.literal("search")
             .executes(context -> openSearch(context.getSource()))
-            .then(Commands.argument("query", StringArgumentType.string())
+            .then(Commands.argument("query", StringArgument.string())
                 .executes(context -> openMenu(
                     context.getSource(),
                     1,
-                    StringArgumentType.getString(context, "query")
+                    StringArgument.getString(context, "query")
                 ))
-                .then(Commands.argument("page", IntegerArgumentType.integer(1))
+                .then(Commands.argument("page", IntegerArgument.integer(1))
                     .executes(context -> openMenu(
                         context.getSource(),
-                        IntegerArgumentType.getInteger(context, "page"),
-                        StringArgumentType.getString(context, "query")
+                        IntegerArgument.getInteger(context, "page"),
+                        StringArgument.getString(context, "query")
                     ))));
     }
 

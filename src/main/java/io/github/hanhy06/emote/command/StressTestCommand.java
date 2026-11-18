@@ -1,7 +1,5 @@
 package io.github.hanhy06.emote.command;
 
-import com.mojang.brigadier.arguments.IntegerArgumentType;
-import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
@@ -18,6 +16,8 @@ import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.arguments.IntegerArgument;
+import net.minecraft.commands.arguments.StringArgument;
 import net.minecraft.commands.arguments.TimeArgument;
 import net.minecraft.commands.suggestions.SuggestionContext;
 import net.minecraft.commands.suggestions.SuggestionProviders;
@@ -52,18 +52,18 @@ final class StressTestCommand {
             .then(Commands.argument("time", TimeArgument.time(1))
                 .executes(context -> startStressTest(
                     context.getSource(),
-                    IntegerArgumentType.getInteger(context, "time"),
+                    IntegerArgument.getInteger(context, "time"),
                     new StressLoad(DEFAULT_INSTANCE_COUNT, LoadUnit.INSTANCES)
                 ))
-                .then(Commands.argument("load", StringArgumentType.word())
+                .then(Commands.argument("load", StringArgument.word())
                     .suggests(SuggestionProviders.serverOnly((server, context, builder) -> SuggestionContext.suggest(
                         List.of(Integer.toString(DEFAULT_INSTANCE_COUNT), DEFAULT_INSTANCE_COUNT + "i", Config.DEFAULT_MAX_ACTIVE_DISPLAY_ENTITIES + "d"),
                         builder
                     )))
                     .executes(context -> startStressTest(
                         context.getSource(),
-                        IntegerArgumentType.getInteger(context, "time"),
-                        parseLoad(StringArgumentType.getString(context, "load"))
+                        IntegerArgument.getInteger(context, "time"),
+                        parseLoad(StringArgument.getString(context, "load"))
                     ))))
             .then(Commands.literal("stop")
                 .executes(context -> stopStressTest(context.getSource())));
