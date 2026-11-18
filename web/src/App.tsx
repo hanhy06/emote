@@ -6,7 +6,7 @@ import { EventPanel } from "./components/EventPanel";
 import { ExportPanel } from "./components/ExportPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { downloadExports } from "./export/download";
-import type { ExportResult } from "./export/types";
+import type { ExportSelection } from "./export/projectExporter";
 import { INPUT_FORMATS } from "./import/formats";
 import { importFileBatch } from "./import/importBatch";
 import { conversionErrorMessage } from "./foundation/diagnostics";
@@ -167,35 +167,22 @@ export function App() {
     }
   }
 
-  async function runExport(action: () => Promise<readonly ExportResult[]>, fallbackMessage: string, progressMessage: string) {
-    if (busy) return;
-    dispatch({ type: "export_started", message: progressMessage });
+  async function handleDownload(selection: ExportSelection) {
+    if (!session || busy) return;
+    const singleAnimation = typeof selection === "number";
+    const message = selection === "sequence" ? (animations.length ? "Creating sequence files" : "Creating sequence file")
+      : singleAnimation ? "Creating animation file" : "Creating animation files";
+    dispatch({ type: "export_started", message });
 
     try {
       await showLoadingScreen();
-      downloadExports(await action());
+      const { exportProject } = await import("./export/projectExporter");
+      downloadExports(await exportProject(session.document, selection));
     } catch (reason) {
-      dispatch({ type: "export_failed", message: conversionErrorMessage(reason, fallbackMessage) });
+      dispatch({ type: "export_failed", message: conversionErrorMessage(reason, singleAnimation ? "Conversion failed." : "File export failed.") });
     } finally {
       dispatch({ type: "operation_finished" });
     }
-  }
-
-  async function handleAnimationDownload(index: number) {
-    if (!session) return;
-
-    await runExport(async () => {
-      const { exportAnimation } = await import("./export/projectExporter");
-      return exportAnimation(session.document, index);
-    }, "Conversion failed.", "Creating animation file");
-  }
-
-  async function handleAnimationBundle(includeSequence: boolean) {
-    if (!session) return;
-    await runExport(async () => {
-      const { exportAnimations } = await import("./export/projectExporter");
-      return exportAnimations(session.document, includeSequence);
-    }, "File export failed.", includeSequence ? "Creating sequence files" : "Creating animation files");
   }
 
   const handleCandidateSelect = useCallback((candidateId: string, additive: boolean) => {
@@ -431,9 +418,9 @@ export function App() {
             animations={animations}
             error={exportError}
             disabled={busy || !settingsValid}
-            onDownloadAnimation={handleAnimationDownload}
-            onDownloadAllAnimations={() => handleAnimationBundle(false)}
-            onDownloadSequence={() => handleAnimationBundle(true)}
+            onDownloadAnimation={handleDownload}
+            onDownloadAllAnimations={() => handleDownload("animations")}
+            onDownloadSequence={() => handleDownload("sequence")}
           />}
         </>
       )}

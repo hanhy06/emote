@@ -1,6 +1,6 @@
 import type { ConversionIssue } from "../foundation/diagnostics";
 import type { PlayerSkinPart } from "./player";
-import { attachmentTargetId, orderedNodeIds, type AnimationEntryIR, type AnimationIR, type AttachmentIR, type ClipIR, type NodeIR, type TransformOperationIR } from "./animationIR";
+import { attachmentTargetId, orderedNodeIds, type AnimationIR, type AttachmentIR, type ClipIR, type NodeIR, type TransformOperationIR } from "./animationIR";
 import { normalizeAnimationTimes, remapClip } from "./animationIRConversion";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
@@ -20,7 +20,8 @@ export interface SkinCandidate {
   order?: number;
 }
 
-interface ConversionEntryFields extends Omit<AnimationEntryIR, "clip"> {
+interface ConversionEntryFields extends Omit<AnimationIR, "nodes" | "animation" | "target_minecraft_version"> {
+  nodeIds: string[];
   sourceName: string;
   sourceReferenceId?: string;
   sourcePlayback: ClipIR["playback"];
@@ -77,7 +78,7 @@ export function createConversionDocument(project: ImportedProject, formatLabel: 
       loop: ir.animation.events?.loop ?? [],
       stop: ir.animation.events?.stop ?? [],
     };
-    normalizeAnimationTimes(ir, project.source !== "emote_json");
+    normalizeAnimationTimes(ir.animation, project.source !== "emote_json");
     const ids = new Map<string, string>();
     for (const sourceId of orderedNodeIds(ir.nodes)) {
       const sourceNode = ir.nodes[sourceId];

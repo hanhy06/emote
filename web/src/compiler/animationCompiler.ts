@@ -1,17 +1,14 @@
 import type { AnimationIR, NbtPatchIR } from "../domain/animationIR";
-import { animationEntries, type ConversionDocument } from "../domain/conversionDocument";
+import type { ConversionAnimation, ConversionDocument } from "../domain/conversionDocument";
 import { referencedItemModelResources } from "../domain/generatedResource";
 import { minecraftVersionProfile } from "../format/minecraftVersionProfiles";
 import { readBlockState, readDisplayNbt, writeBlockState, writeDisplayNbt } from "../format/minecraftData";
 import { parseSnbtCompound } from "../format/snbt";
 import type { AnimationJson } from "../format/animation";
 import { EMOTE_SCHEMA_VERSION } from "../format/emote";
-import { ConversionError } from "../foundation/diagnostics";
 import { removeRedundantKeyframes, removeTinyStaticNodes } from "./animationOptimization";
 
-export function compileAnimation(document: ConversionDocument, index: number, standalone?: boolean): { animation: AnimationJson; generatedResourceReferences: ReadonlySet<string> } {
-  const entry = animationEntries(document)[index];
-  if (!entry) throw new ConversionError("unknown_animation", `Animation ${index + 1} does not exist.`);
+export function compileAnimation(document: ConversionDocument, entry: ConversionAnimation, standalone?: boolean): { animation: AnimationJson; generatedResourceReferences: ReadonlySet<string> } {
   const nodeIds = new Set(entry.nodeIds);
   for (const track of entry.clip.tracks) nodeIds.add(track.target.node);
   for (const phase of Object.values(entry.clip.events ?? {})) for (const event of phase ?? []) {

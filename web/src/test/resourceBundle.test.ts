@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { strFromU8, unzipSync } from "fflate";
 import { expect, it } from "vitest";
 import { assignSkinPart, createConversionDocument } from "../domain/conversionDocument";
-import { exportAnimation } from "../export/projectExporter";
+import { exportProject } from "../export/projectExporter";
 import { readInput } from "../import/formats";
 
 it("packages the generated models and textures referenced by exported AJ and bbmodel animations", async () => {
@@ -18,7 +18,7 @@ it("packages the generated models and textures referenced by exported AJ and bbm
     const entry = document.entries[index];
     const expectedReferences = itemReferences({ nodes: entry.nodeIds.map((id) => document.nodes[id]), animation: entry.clip });
     expect(expectedReferences.size, `${path}: native cubes must require generated models`).toBeGreaterThan(0);
-    const outputs = await exportAnimation(document, index);
+    const outputs = await exportProject(document, index);
     const json = outputs.find((output) => output.fileName.endsWith(".json"))!;
     const zip = outputs.find((output) => output.fileName.endsWith(".zip"));
     expect(zip, `${path}: referenced resources require a ZIP`).toBeDefined();

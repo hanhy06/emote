@@ -1,13 +1,13 @@
 import { expect, it } from "vitest";
 import { readFile } from "node:fs/promises";
 import { Euler, Matrix4 } from "three";
-import { createConversionDocument } from "../domain/conversionDocument";
+import { animationEntries, createConversionDocument } from "../domain/conversionDocument";
 import { compileAnimation } from "../compiler/animationCompiler";
 import { evaluatePose } from "../domain/animationIRPose";
 import { readInput } from "../import/formats";
 import { parseSnbtCompound } from "../format/snbt";
 import { parseMinecraftTime } from "../format/time";
-import { exportAnimation } from "../export/projectExporter";
+import { exportProject } from "../export/projectExporter";
 import type { NbtPatchIR } from "../domain/animationIR";
 import type { AjProject, AjProjectDisplayElement, AjProjectGroup } from "../import/animatedJava/animatedJavaProjectSchema";
 
@@ -19,7 +19,7 @@ async function importProject(extra: Partial<AjProject> = {}) {
   };
   const input = await readInput("animated_java_blueprint", { name: "model.ajblueprint", bytes: new TextEncoder().encode(JSON.stringify(project)) });
   const document = createConversionDocument(input, "AJ");
-  return { input, document, output: compileAnimation(document, 0).animation };
+  return { input, document, output: compileAnimation(document, animationEntries(document)[0]).animation };
 }
 
 const group = (uuid: string): AjProjectGroup => ({ uuid, name: uuid, origin: [16, 32, 48], rotation: [0, 0, 0] });
@@ -143,7 +143,7 @@ it("skips excluded variant nodes, preserves partial patches and reapplies defaul
   expect(stateAt(cubeNodes[0][0], 16).shadow_strength).toBe("0.5");
   expect(stateAt("item", 16).billboard).toBe('"vertical"');
   expect(evaluatePose(output, 0.6, (value) => Number(value)).child.visible).toBe(false);
-  const [json] = await exportAnimation(document, 0);
+  const [json] = await exportProject(document, 0);
   expect(JSON.parse(await json.blob.text()).animation.tracks).toEqual(output.animation.tracks);
 
   const warnings = await importProject({
@@ -193,7 +193,7 @@ it("keeps variant config functions bound to their display entities including gen
     });
     expect(phaseEvents.at(-1)).toEqual({ time, source: { type: "player" }, origin: { type: "root" }, action: { type: "commands", commands: [`say root ${phase}`] } });
   }
-  const [json] = await exportAnimation(document, 0);
+  const [json] = await exportProject(document, 0);
   expect(JSON.parse(await json.blob.text()).animation.events.timeline).toEqual(events);
 });
 
@@ -237,7 +237,7 @@ it("preserves single-command conditions and skips only animations with condition
   expect(input.diagnostics[0].message).toContain("4t: conditional variant state changes");
   expect(input.diagnostics[1].message).toContain("one shared condition evaluation");
   expect(JSON.stringify(input.diagnostics)).not.toContain("private");
-  const [json] = await exportAnimation(document, 0);
+  const [json] = await exportProject(document, 0);
   expect(JSON.parse(await json.blob.text()).animation.events).toEqual(output.animation.events);
   await expect(importProject({ ...project, animations: project.animations!.slice(1, 2) })).rejects.toThrow("No Animated Java animations could be imported");
 });
@@ -246,7 +246,7 @@ it("exports locator functions with animated node origins and keeps the exact v5 
   const path = new URL("../../../src/test/resources/aj-function-source.ajblueprint", import.meta.url);
   const input = await readInput("animated_java_blueprint", { name: "aj-function-source.ajblueprint", bytes: await readFile(path) });
   const document = createConversionDocument(input, "AJ");
-  const [json] = await exportAnimation(document, 0);
+  const [json] = await exportProject(document, 0);
   const output = JSON.parse(await json.blob.text());
   expect(output).toEqual(JSON.parse(await readFile(new URL("../../../src/test/resources/aj-function-export.json", import.meta.url), "utf8")));
   expect(input.diagnostics).toEqual([]);

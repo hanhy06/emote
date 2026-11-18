@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { createConversionDocument, skinPartOrders } from "../domain/conversionDocument";
 import { evaluatePose } from "../domain/animationIRPose";
-import { exportAnimation, exportAnimations } from "../export/projectExporter";
+import { exportProject } from "../export/projectExporter";
 import { importFileBatch } from "../import/importBatch";
 import { createDefaultPlayerBehavior } from "../domain/emoteDefinition";
 import type { AnimationJson } from "../format/animation";
@@ -49,7 +49,7 @@ it("imports schema 4 into editable IR and exports schema 5 with transforms, skin
   expect(document.nodes.arm.attachments!.display).toMatchObject({ type: "player_skin", part: "left_arm", region: { from: 0, to: 0.5 } });
   expect(document.nodes.duplicate.attachments!.display).toEqual(document.nodes.arm.attachments!.display);
   expect(document.nodes.lower.attachments!.display).toMatchObject({ region: { from: 0.5, to: 1 } });
-  const [output] = await exportAnimation(document, 0);
+  const [output] = await exportProject(document, 0);
   const actual: AnimationJson = JSON.parse(await output.blob.text());
   expect(actual).toMatchObject({ type: "animation", schema_version: 5, id: legacy.id, metadata: legacy.metadata, callbacks: legacy.callbacks,
     settings: { standalone: false, cooldown: "0.25s", rotation_deadzone: 25 },
@@ -75,7 +75,7 @@ it("imports schema 4 into editable IR and exports schema 5 with transforms, skin
   expect(half[1]).toBeCloseTo(Math.SQRT1_2);
   expect(evaluatePose(actual, 1, (value) => typeof value === "number" ? value : 1).prop.matrix.elements[12]).toBeCloseTo(4);
   const reopened = await readInput("emote_json", { name: "migrated.json", bytes: new TextEncoder().encode(JSON.stringify(actual)) });
-  const [reexported] = await exportAnimation(createConversionDocument(reopened, "Emote JSON"), 0);
+  const [reexported] = await exportProject(createConversionDocument(reopened, "Emote JSON"), 0);
   expect(JSON.parse(await reexported.blob.text())).toEqual(actual);
 });
 
@@ -91,7 +91,7 @@ it("keeps Molang Euler rotation and skips unsupported fields without losing the 
     ] } },
   };
   const project = await readInput("emote_json", { name: "partial.json", bytes: new TextEncoder().encode(JSON.stringify(source)) });
-  const [output] = await exportAnimation(createConversionDocument(project, "Emote JSON"), 0);
+  const [output] = await exportProject(createConversionDocument(project, "Emote JSON"), 0);
   const actual: AnimationJson = JSON.parse(await output.blob.text());
   expect(actual.nodes.prop.transform![1]).toMatchObject({ op: "rotate_euler", order: "XYZ" });
   expect(actual.nodes.unknown).toMatchObject({ parent: "root" });
@@ -120,7 +120,7 @@ it("imports a schema 4 sequence with animations and exports its steps and refere
   const document = await importFileBatch([legacy, sequence].map((value, index) => ({ name: `${index}.json`,
     arrayBuffer: async () => new TextEncoder().encode(JSON.stringify(value)).buffer })));
   expect(document.entries.map(({ type, id }) => [type, id])).toEqual([["animation", "example:legacy"], ["sequence", "example:sequence"]]);
-  const outputs = await exportAnimations(document, true);
+  const outputs = await exportProject(document, "sequence");
   const actual = JSON.parse(await outputs.at(-1)!.blob.text());
   expect(actual).toEqual({ ...sequence, schema_version: 5 });
   const animation: AnimationJson = JSON.parse(await outputs[0].blob.text());
@@ -160,7 +160,7 @@ it("round-trips sequence playback and command events through the common clip wit
   }]);
   expect(document.entries[0]).toMatchObject({ type: "sequence", nodeIds: [], clip: { ...animation, tracks: [] } });
   expect(document.entries[0].clip).not.toHaveProperty("duration");
-  const [output] = await exportAnimations(document, true);
+  const [output] = await exportProject(document, "sequence");
   const bytes = new Uint8Array(await output.blob.arrayBuffer());
   expect(JSON.parse(new TextDecoder().decode(bytes))).toEqual(source);
   const reopened = await readInput("emote_sequence", { name: output.fileName, bytes });
@@ -178,7 +178,7 @@ it("round-trips sequence playback and command events through the common clip wit
     state = workspaceReducer(state, { type: "entry_changed", index: 0, entry });
   }
   const edited = state.session!.document;
-  const [editedOutput] = await exportAnimations(edited, true);
+  const [editedOutput] = await exportProject(edited, "sequence");
   const editedBytes = new Uint8Array(await editedOutput.blob.arrayBuffer());
   expect(JSON.parse(new TextDecoder().decode(editedBytes))).toEqual({ ...source, callbacks, animation: {
     playback: animation.playback,
