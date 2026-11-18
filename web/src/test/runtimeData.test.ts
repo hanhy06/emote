@@ -411,6 +411,27 @@ it("reserves authored IDs and preserves ambiguous sequence references instead of
   expect(document).toEqual(snapshot);
 });
 
+it("rejects duplicate animation IDs in bundles and distinguishes filenames for different IDs", async () => {
+  const documents = await Promise.all(["probe:same.name", "other:same.name"].map(async (id) => {
+    const bytes = new TextEncoder().encode(JSON.stringify({ ...animation, id }));
+    return createConversionDocument(await readInput("emote_json", { name: `${id}.json`, bytes }), "Emote JSON");
+  }));
+  const document = combineConversionDocuments(documents);
+  const [first, second] = animationEntries(document);
+  second.id = first.id;
+  for (const selection of ["animations", "sequence"] as const) {
+    await expect(exportProject(document, selection)).rejects.toMatchObject({
+      code: "duplicate_animation_id", message: expect.stringContaining(first.id),
+    });
+  }
+  expect(await exportProject(document, 0)).toHaveLength(1);
+
+  second.id = "probe:same/name";
+  const outputs = await exportProject(document, "animations");
+  expect(outputs.map(output => output.fileName)).toEqual(["probe.same.name.json", "probe.same.name.1.json"]);
+  expect(await Promise.all(outputs.map(async output => JSON.parse(await output.blob.text()).id))).toEqual([first.id, second.id]);
+});
+
 it("generates a sequence from the final animation IDs and gives it a distinct filename", async () => {
   const ids = ["emote:runtime_preservation", "example:second"];
   const documents = await Promise.all(ids.map(async (id) => {

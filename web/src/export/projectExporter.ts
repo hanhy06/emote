@@ -13,7 +13,17 @@ export async function exportProject(document: ConversionDocument, selection: Exp
   const includeSequence = selection === "sequence";
   const importedSequence = includeSequence ? document.entries.find((entry) => entry.type === "sequence") : undefined;
   if (typeof selection !== "number" && !entries.length && !importedSequence) throw new Error("The project does not contain animations.");
-  const fileNames = animationFileNames(entries.map((entry) => entry.id));
+  const animationIds = entries.map((entry) => entry.id);
+  if (typeof selection !== "number") {
+    const seenIds = new Set<string>();
+    for (const id of animationIds) {
+      if (seenIds.has(id)) {
+        throw new ConversionError("duplicate_animation_id", `Multiple animations use the ID ${id}. Give each animation a unique ID before downloading the bundle.`);
+      }
+      seenIds.add(id);
+    }
+  }
+  const fileNames = animationFileNames(animationIds);
   const generatedResourceReferences = new Set<string>();
   const indexes = typeof selection === "number" ? [selection] : entries.map((_, index) => index);
   const files: ExportResult[] = indexes.map((index) => {
