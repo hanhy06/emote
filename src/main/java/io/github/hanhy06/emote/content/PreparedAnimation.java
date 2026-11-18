@@ -331,9 +331,7 @@ public final class PreparedAnimation implements PreparedEmote {
 
     public static Quaternionf operationRotation(EmoteAnimation.Operation operation, double[] value, Quaternionf rotation, Quaterniond quaternion) {
         if (operation.op() == EmoteAnimation.OperationType.ROTATE_QUATERNION) {
-            quaternion.set(value[0], value[1], value[2], value[3]);
-            if (quaternion.lengthSquared() == 0) throw new IllegalArgumentException("Zero quaternion");
-            return rotation.set(quaternion.normalize());
+            return rotation.set(normalizeQuaternion(value, quaternion));
         }
         rotation.identity();
         for (char axis : operation.order().name().toCharArray()) {
@@ -343,6 +341,14 @@ public final class PreparedAnimation implements PreparedEmote {
             else rotation.rotateZ(radians);
         }
         return rotation.normalize();
+    }
+
+    public static Quaterniond normalizeQuaternion(double[] value, Quaterniond quaternion) {
+        quaternion.set(value[0], value[1], value[2], value[3]);
+        double lengthSquared = quaternion.lengthSquared();
+        if (lengthSquared == 0) throw new IllegalArgumentException("Zero quaternion");
+        if (!Double.isFinite(lengthSquared)) throw new IllegalArgumentException("Non-finite quaternion length");
+        return quaternion.normalize();
     }
 
     public String id() {

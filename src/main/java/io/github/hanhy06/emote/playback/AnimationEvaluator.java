@@ -393,8 +393,8 @@ final class AnimationEvaluator {
         if (segment.interpolation() == Interpolation.STEP || driver.atKey() == KeyPolicy.SEGMENT && segment.interpolation() == Interpolation.BEZIER && progress == 0) return component ? vector(startValues, progress) : start;
         double eased = component ? progress : easing(segment.easing(), progress);
         if (segment.interpolation() == Interpolation.SLERP) {
-            Quaterniond rotation = this.slerpStart.set(start[0], start[1], start[2], start[3]).normalize()
-                .slerp(this.slerpEnd.set(end[0], end[1], end[2], end[3]).normalize(), eased).normalize();
+            Quaterniond rotation = PreparedAnimation.normalizeQuaternion(start, this.slerpStart)
+                .slerp(PreparedAnimation.normalizeQuaternion(end, this.slerpEnd), eased).normalize();
             return new double[]{rotation.x, rotation.y, rotation.z, rotation.w};
         }
         double[] previous = !component && segment.interpolation() == Interpolation.CATMULL_ROM && segment.previous() != null ? vector(segment.previous(), progress) : start;

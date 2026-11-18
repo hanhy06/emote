@@ -724,6 +724,29 @@ class SamplePoseTest {
         }
     }
 
+    @Test
+    void rejectsZeroQuaternionEndpointsAtLoadOrBeforeSlerp() throws Exception {
+        String json = """
+            {"type":"animation","schema_version":5,"id":"test:rotation","metadata":{"name":"Rotation","description":""},
+             "nodes":{"node":{"transform":[{"id":"r","op":"rotate_quaternion","value":[0,0,0,1]}]}},
+             "animation":{"duration":"2t","tracks":[
+                 {"target":{"node":"node","operation":"r"},"channel":"value","driver":{"type":"curve","keys":[
+                     {"time":"0t","value":[0,0,0,1]},
+                     {"time":"2t","pre":[0,0,0,%s],"post":[0,0,0,1]}],"segments":[{"interpolation":"slerp"}]}}]}}
+            """;
+        var parser = new AnimationJsonParser();
+        var path = Path.of("rotation.json");
+        var loadError = assertThrows(EmoteLoadException.class, () -> parser.parse(path, json.formatted("0").getBytes(StandardCharsets.UTF_8)));
+        assertEquals("$.animation.tracks[0].driver.keys[1].pre", loadError.fieldPath());
+
+        var loaded = parser.parse(path, json.formatted("{\"molang\":\"0\"}").getBytes(StandardCharsets.UTF_8));
+        var evaluator = new AnimationEvaluator(PreparedAnimation.prepare(loaded, registries), MolangQuerySource.EMPTY);
+        evaluator.initialize(0, 0);
+        evaluator.evaluateFrame(0, 0, 0, 0, false);
+        var sampleError = assertThrows(IllegalArgumentException.class, () -> evaluator.sampleFrame(1, 0, 1, 1, false, true));
+        assertEquals("Zero quaternion", sampleError.getMessage());
+    }
+
     private static final class PoseTarget implements EmotePlayback.PoseTarget {
         final Map<String, Matrix4f> matrices = new HashMap<>();
         final Map<String, CompoundTag> nbt = new HashMap<>();

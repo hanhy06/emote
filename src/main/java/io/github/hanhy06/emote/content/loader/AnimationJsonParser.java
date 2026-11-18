@@ -317,7 +317,13 @@ public final class AnimationJsonParser {
     }
 
     private Value value(JsonElement raw, Channel channel, int componentCount, String path, EmoteJsonDocument document) throws EmoteLoadException {
-        if (channel == Channel.VALUE) return vector(raw, componentCount, false, path, document);
+        if (channel == Channel.VALUE) {
+            VectorValue vector = vector(raw, componentCount, false, path, document);
+            if (componentCount == 4 && vector.components().stream().allMatch(component -> component instanceof ConstantValue constant && constant.value() == 0)) {
+                throw document.error(path, "quaternion must not be zero");
+            }
+            return vector;
+        }
         if (channel == Channel.VISIBLE) {
             if (raw.isJsonPrimitive() && raw.getAsJsonPrimitive().isBoolean()) return new ConstantVisibility(raw.getAsBoolean());
             ScalarValue expression = scalar(raw, path, document);
