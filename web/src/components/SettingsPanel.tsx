@@ -3,6 +3,7 @@ import { useState } from "preact/hooks";
 import type { TimeValueIR } from "../domain/animationIR";
 import type { ConversionAnimation } from "../domain/conversionDocument";
 import { AdditionalMetadataEditor } from "./AdditionalMetadataEditor";
+import { SkinOptions } from "./SkinOptions";
 import { createDefaultPlayerBehavior } from "../domain/emoteDefinition";
 import { parseMinecraftTime } from "../format/time";
 
@@ -169,6 +170,7 @@ export function SettingsPanel({ animation, disabled, onChange, onValidityChange,
             setDrafts(next);
             onValidityChange(Object.values(next).every(draft => !draft.error));
           }} onChange={(metadata) => onChange({ ...animation, metadata: { ...metadata, name: animation.metadata.name, description: animation.metadata.description } })} />
+          <SkinOptions skin={animation.skin} disabled={disabled} onChange={(skin) => onChange({ ...animation, skin })} />
         </section>
         <section id="settings-panel-events" role="tabpanel" aria-labelledby="settings-tab-events" hidden={category !== "events"}>{children}</section>
       </div>
