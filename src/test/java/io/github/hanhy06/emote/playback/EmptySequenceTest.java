@@ -416,6 +416,17 @@ class EmptySequenceTest {
                 assertEquals(1, frame.pose().cursor().segmentTick());
                 assertEquals(1, target.matrix.m30(), 1e-5);
                 assertEquals(elapsedTicks, target.matrix.m31(), 1e-5);
+
+                frame = apply(playback.prepareSeekAnimation(0));
+                assertEquals(11, frame.timeline().durationTicks());
+                assertThrows(IllegalArgumentException.class, () -> playback.canSeekTimeline(2));
+                frame = apply(playback.prepareSeekTimeline(10));
+                assertEquals(8, frame.pose().cursor().segmentTick());
+                assertEquals(7, frame.pose().cursor().animationTick());
+                assertEquals(7, target.matrix.m30(), 1e-5);
+                assertEquals(11, frame.timeline().durationTicks());
+                frame = apply(playback.prepareSeekTimeline(3));
+                assertEquals(0, frame.pose().cursor().animationTick());
             }
             int timelineTick = dynamic ? 4 : 3;
             frame = apply(playback.prepareSeekAnimation(6));
@@ -425,6 +436,13 @@ class EmptySequenceTest {
             assertEquals(6, target.matrix.m30(), 1e-5);
             assertEquals(elapsedTicks, target.matrix.m31(), 1e-5);
             assertEquals(1, events.size());
+            if (!dynamic) {
+                frame = apply(playback.prepareSeekTimeline(4));
+                assertEquals(7, frame.pose().cursor().animationTick());
+                assertEquals(5, frame.timeline().durationTicks());
+                frame = apply(playback.prepareSeekTimeline(timelineTick));
+                assertEquals(6, frame.pose().cursor().animationTick());
+            }
             for (int tick = 0; tick < (dynamic ? 1 : 2); tick++) frame = apply(playback.prepareAdvance());
             assertEquals(EmotePlayback.AdvanceResult.FINISHED, frame.result());
             assertEquals(5, frame.pose().timelineTick());

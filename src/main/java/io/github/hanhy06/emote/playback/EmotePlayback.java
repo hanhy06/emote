@@ -694,8 +694,8 @@ public final class EmotePlayback {
 
     public boolean canSeekTimeline(int timelineTick) {
         if (timelineTick < 0) throw new IllegalArgumentException("Timeline tick must be non-negative");
-        if ((this.emote instanceof PreparedSequence)) locateSequence(timelineTick);
-        else locateAnimation(timelineTick);
+        var segment = this.emote instanceof PreparedSequence ? locateSequence(timelineTick) : locateAnimation(timelineTick);
+        if (segment.phase() == PlaybackTimeline.Phase.ANIMATION) animationTickAtTimeline(segment, timelineTick);
         return canSeek();
     }
 
@@ -719,7 +719,7 @@ public final class EmotePlayback {
         this.animationTick = switch (segment.phase()) {
             case START_DELAY -> 0;
             case LOOP_DELAY, HOLD -> this.model.clip().durationTicks();
-            default -> this.segmentTick + (this.loopCount == 0 ? 0 : this.model.settings().playback().loopStartTick());
+            default -> animationTickAtTimeline(segment, timelineTick);
         };
         if (this.phase == PlaybackPhase.START_DELAY) {
             this.loopCount = 0;
@@ -731,7 +731,6 @@ public final class EmotePlayback {
             this.loopDelayTicks = Objects.requireNonNull(segment.endTick()) - Objects.requireNonNull(segment.startTick());
             this.remainingDelayTicks = segment.endTick() - timelineTick;
         }
-        else if (this.phase == PlaybackPhase.RUNNING) this.animationEndTick = Math.addExact(timelineTick, this.model.clip().durationTicks() - this.animationTick);
         this.evaluator.prepareFrame(this.animationTick, this.loopCount, 0, this.lifetimeTicks);
         applyAnimationPose(0, false);
         if (this.phase != PlaybackPhase.START_DELAY) activateAnimationEvents(false);
@@ -750,6 +749,16 @@ public final class EmotePlayback {
             return segment;
         }
         throw new IllegalArgumentException("Animation location is outside the known timeline");
+    }
+
+    private int animationTickAtTimeline(PlaybackTimeline.Segment segment, int timelineTick) {
+        int duration = this.emote instanceof PreparedSequence
+            ? selectedAnimation(segment).animation().model().clip().durationTicks() : this.model.clip().durationTicks();
+        int animationTick = duration - (Objects.requireNonNull(segment.endTick()) - timelineTick);
+        if (animationTick < 0 || animationTick > duration) {
+            throw new IllegalArgumentException("Timeline tick maps outside the animation");
+        }
+        return animationTick;
     }
 
     public boolean canSeekAnimation(int animationTick) {
@@ -813,10 +822,10 @@ public final class EmotePlayback {
         boolean dynamicClock = segment.phase() == PlaybackTimeline.Phase.ANIMATION && selectedAnimation(segment).animation().model().clip().clock() != null;
         int location = segment.phase() == PlaybackTimeline.Phase.EMPTY || dynamicClock || segment.startTick() == null
             ? this.timelineTick : segment.startTick() + animationTick;
-        seekSequence(index, location, animationTick);
+        seekSequence(segment, location, animationTick);
     }
 
-    private int locateSequence(int timelineTick) {
+    private PlaybackTimeline.Segment locateSequence(int timelineTick) {
         var segments = timeline().segments();
         for (var segment : segments) {
             if (segment.startTick() == null || timelineTick < segment.startTick()) continue;
@@ -834,14 +843,13 @@ public final class EmotePlayback {
                     }
                 }
             }
-            return segment.segmentIndex();
+            return segment;
         }
         throw new IllegalArgumentException("Sequence location is outside the known timeline");
     }
 
-    private void seekSequence(int destination, int location, @Nullable Integer animationTick) {
-        var segments = timeline().segments();
-        var segment = segments.get(destination);
+    private void seekSequence(PlaybackTimeline.Segment segment, int location, @Nullable Integer animationTick) {
+        int destination = segment.segmentIndex();
         boolean sameExecution = this.child != null && !this.child.eventsStopped && segment.animationId() != null && this.childSelection == selectedAnimation(segment);
         if (sameExecution && destination == this.sequenceSegment && segment.phase() == PlaybackTimeline.Phase.TRANSITION) {
             this.segmentTick = location - Objects.requireNonNull(segment.startTick());
@@ -854,7 +862,7 @@ public final class EmotePlayback {
         int local = animationTick != null ? animationTick : location - Objects.requireNonNull(segment.startTick());
         boolean dynamicClock = segment.phase() == PlaybackTimeline.Phase.ANIMATION && selectedAnimation(segment).animation().model().clip().clock() != null;
         int elapsed = dynamicClock ? sameExecution ? this.segmentTick : 0 : local;
-        if (destination > this.sequenceSegment && segments.get(this.sequenceSegment).phase() == PlaybackTimeline.Phase.EMPTY) {
+        if (destination > this.sequenceSegment && this.sequenceSegments.get(this.sequenceSegment).phase() == PlaybackTimeline.Phase.EMPTY) {
             this.segmentLengths.put(this.sequenceSegment, this.segmentTick);
         }
         this.segmentStarts.keySet().removeIf(index -> index >= destination);
@@ -889,16 +897,18 @@ public final class EmotePlayback {
         this.phase = PlaybackPhase.RUNNING;
         if (segment.phase() == PlaybackTimeline.Phase.ANIMATION) {
             var selected = selectedAnimation(segment);
+            int clipTick = animationTick != null ? animationTick : animationTickAtTimeline(segment, location);
             if (!sameExecution) {
                 prepareChild(selected);
             }
             this.segmentStarts.put(destination, this.timelineTick);
+            if (animationTick == null) this.segmentLengths.put(destination, segment.endTick() - segment.startTick());
             this.segmentTick = elapsed;
             this.timelineTick = location;
             this.child.phase = PlaybackPhase.RUNNING;
             this.child.segmentTick = elapsed;
             this.child.timelineTick = Math.addExact(this.child.animationStartTick, elapsed);
-            this.child.seekAnimationPose(local);
+            this.child.seekAnimationPose(clipTick);
             clearAppliedPose();
             copyChildPose();
             hideUnusedNodes();
