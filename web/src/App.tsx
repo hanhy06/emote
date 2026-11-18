@@ -21,10 +21,10 @@ import {
   type SelectedFrame,
 } from "./workspace";
 import { createPreviewModel } from "./preview/previewModel";
-import { parseMinecraftTime } from "./format/time";
+import { formatMinecraftTime, parseMinecraftTime } from "./format/time";
 import { MINECRAFT_VERSION_PROFILES } from "./format/minecraftVersionProfiles";
 import type { EventIR } from "./domain/animationIR";
-import { animationEntries, skinPartAssignments, skinPartOrders } from "./domain/conversionDocument";
+import { animationEntries, skinPartAssignments, skinPartOrders, type ConversionEntry } from "./domain/conversionDocument";
 const PartPreview = lazy(() => import("./components/PartPreview"));
 const ACCEPTED_EXTENSIONS = [...new Set(Object.values(INPUT_FORMATS).map((format) => format.extension))]
   .map((extension) => `.${extension}`)
@@ -67,10 +67,13 @@ export function App() {
   const animations = useMemo(() => project ? animationEntries(project) : [], [project]);
   const selectedIndex = session?.selectedIndex ?? 0;
   const selectedEntry = project?.entries.at(selectedIndex);
+  const changeEntry = (entry: ConversionEntry) => dispatch({ type: "entry_changed", index: selectedIndex, entry });
   const selectedAnimation = selectedEntry?.type === "animation" ? selectedEntry : undefined;
   const selectedAnimationTick = session?.selectedFrame.type === "timeline" ? session.selectedFrame.animationTick : null;
   const frameIndex = selectedAnimationTick === null ? 0 : selectedAnimationTick + 1;
-  const durationTicks = selectedAnimation ? parseMinecraftTime(selectedAnimation.clip.duration, 1) : 0;
+  const duration = selectedEntry?.clip.duration;
+  const durationTicks = duration === undefined ? undefined : parseMinecraftTime(duration, 1);
+  const initialFrameLabel = selectedAnimation ? "Create pose" : "Lifecycle";
   const preview = useMemo(() => {
     if (!session || !selectedAnimation) return null;
     return createPreviewModel(session.document, selectedAnimation, session.selectedFrame);
@@ -93,7 +96,7 @@ export function App() {
       ["player", { label: "Player", source: { type: "player" } }],
       ["server", { label: "Server", source: { type: "server" } }],
     ]);
-    for (const nodeId of selectedAnimation?.nodeIds ?? []) {
+    for (const nodeId of selectedEntry?.nodeIds ?? []) {
       const node = project?.nodes[nodeId];
       for (const attachment of Object.keys(node?.attachments ?? {})) {
         options.set(JSON.stringify([nodeId, attachment]), {
@@ -103,7 +106,7 @@ export function App() {
       }
     }
     const current = new Set<string>();
-    for (const events of Object.values(selectedAnimation?.clip.events ?? {})) {
+    for (const events of Object.values(selectedEntry?.clip.events ?? {})) {
       for (const event of events) {
         if (event.action.type !== "commands") continue;
         const source = event.source;
@@ -115,18 +118,20 @@ export function App() {
       }
     }
     return { options, value: current.size === 1 ? current.values().next().value ?? "" : "", hasCommands: current.size > 0 };
-  }, [selectedAnimation, project?.nodes]);
+  }, [selectedEntry, project?.nodes]);
 
   function handleCommandSourceChange(value: string) {
     const option = commandSources.options.get(value);
-    if (!option || !selectedAnimation || busy || !eventJsonValid) return;
-    const animation = structuredClone(selectedAnimation);
-    for (const events of Object.values(animation.clip.events ?? {})) {
-      for (const event of events) {
+    if (!option || !selectedEntry?.clip.events || busy || !eventJsonValid) return;
+    const entry = { ...selectedEntry };
+    const events = structuredClone(selectedEntry.clip.events);
+    for (const phase of Object.values(events)) {
+      for (const event of phase) {
         if (event.action.type === "commands") event.source = { ...option.source };
       }
     }
-    dispatch({ type: "entry_changed", index: selectedIndex, entry: animation });
+    entry.clip = { ...selectedEntry.clip, events };
+    changeEntry(entry);
     setCommandSourceRevision(revision => revision + 1);
   }
 
@@ -319,12 +324,12 @@ export function App() {
                 {showReview && <div className="command-frame-control">
                   <input id="command-frame" type="range" aria-label="Command frame" min="0" max={reviewTicks.length} step="1" value={reviewFrameIndex}
                     disabled={busy || !eventJsonValid || !settingsValid || reviewTicks.length === 0}
-                    aria-valuetext={selectedAnimationTick === null ? "Create pose" : `${selectedAnimationTick}t`}
+                    aria-valuetext={selectedAnimationTick === null ? initialFrameLabel : `${selectedAnimationTick}t`}
                     onInput={event => {
                       const index = Number(event.currentTarget.value);
                       handleReviewLocation(index === 0 ? { type: "create" } : { type: "timeline", animationTick: reviewTicks[index - 1] });
                     }} />
-                  <output htmlFor="command-frame">{selectedAnimationTick === null ? "Create pose" : `${selectedAnimationTick}t`}</output>
+                  <output htmlFor="command-frame">{selectedAnimationTick === null ? initialFrameLabel : `${selectedAnimationTick}t`}</output>
                 </div>}
               </div>
             </details>;
@@ -368,29 +373,34 @@ export function App() {
             <SettingsPanel
               key={`${eventEditorRevision}:${selectedIndex}`}
               entry={selectedEntry}
-              onChange={(entry) => dispatch({ type: "entry_changed", index: selectedIndex, entry })}
+              onChange={changeEntry}
               category={settingsCategory}
               onCategoryChange={setSettingsCategory}
               disabled={busy}
               onValidityChange={setSettingsValid}
               frameControls={
-                selectedAnimation && <div className="frame-slider">
-                  <span id="animation-frame-label">Animation frame</span>
-                  <input type="range" aria-labelledby="animation-frame-label" min="0" max={durationTicks + 1} step="1" value={frameIndex} disabled={!eventJsonValid} onChange={(event) => {
-                    const index = Number(event.currentTarget.value);
-                    dispatch({ type: "frame_selected", frame: index === 0 ? { type: "create" } : { type: "timeline", animationTick: index - 1 } });
-                  }} />
-                  {selectedAnimationTick === null ? <output>Create pose</output> : <label className="frame-tick">
-                    <input key={`${eventEditorRevision}:${selectedIndex}:${selectedAnimationTick}`} type="number" aria-label="Animation tick"
-                      min="0" max={durationTicks} step="1" defaultValue={selectedAnimationTick} disabled={!eventJsonValid} onBlur={(event) => {
+                <div className="frame-slider">
+                  <span id="event-frame-label">Frame</span>
+                  {durationTicks === undefined
+                    ? <button type="button" disabled={busy || !eventJsonValid || selectedAnimationTick === null}
+                        onClick={() => dispatch({ type: "frame_selected", frame: { type: "create" } })}>Lifecycle</button>
+                    : <input type="range" aria-labelledby="event-frame-label" min="0" max={durationTicks + 1} step="1" value={frameIndex} disabled={busy || !eventJsonValid} onChange={(event) => {
+                      const index = Number(event.currentTarget.value);
+                      dispatch({ type: "frame_selected", frame: index === 0 ? { type: "create" } : { type: "timeline", animationTick: index - 1 } });
+                    }} />}
+                  {selectedAnimationTick === null && durationTicks !== undefined ? <output>{initialFrameLabel}</output> : <label className="frame-tick">
+                    <input key={`${eventEditorRevision}:${selectedIndex}:${selectedAnimationTick}`} type="number" aria-label="Event tick"
+                      min="0" max={durationTicks} step="1" placeholder="0" defaultValue={selectedAnimationTick ?? ""} disabled={busy || !eventJsonValid}
+                      onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} onBlur={(event) => {
                         const input = event.currentTarget;
-                        const animationTick = Number(input.value);
-                        if (!input.validity.valid || !Number.isInteger(animationTick) || animationTick < 0 || animationTick > durationTicks) {
-                          input.value = String(selectedAnimationTick);
-                          return;
+                        try {
+                          const tick = input.validity.valid ? input.valueAsNumber : NaN;
+                          const animationTick = parseMinecraftTime(formatMinecraftTime(tick));
+                          input.value = String(animationTick);
+                          if (animationTick !== selectedAnimationTick) dispatch({ type: "frame_selected", frame: { type: "timeline", animationTick } });
+                        } catch {
+                          input.value = selectedAnimationTick === null ? "" : String(selectedAnimationTick);
                         }
-                        input.value = String(animationTick);
-                        if (animationTick !== selectedAnimationTick) dispatch({ type: "frame_selected", frame: { type: "timeline", animationTick } });
                       }} />
                     tick
                   </label>}
@@ -398,28 +408,21 @@ export function App() {
               }
               eventsValid={eventJsonValid}
             >
-              {selectedAnimation && <EventPanel
+              <EventPanel
                 key={`${eventEditorRevision}:${commandSourceRevision}:${selectedIndex}:${selectedAnimationTick === null ? "lifecycle" : selectedAnimationTick}`}
-                events={{
-                  start: selectedAnimation.clip.events?.start ?? [],
-                  timeline: selectedAnimation.clip.events?.timeline ?? [],
-                  loop: selectedAnimation.clip.events?.loop ?? [],
-                  stop: selectedAnimation.clip.events?.stop ?? [],
-                }}
-                commandSourceControl={<label className="event-command-source">Animation command source
+                entry={selectedEntry}
+                animationTick={selectedAnimationTick}
+                onChange={changeEntry}
+                commandSourceControl={<label className="event-command-source">Command source
                   <select value={commandSources.value} disabled={busy || !eventJsonValid || !commandSources.hasCommands}
                     onChange={event => handleCommandSourceChange(event.currentTarget.value)}>
                     {!commandSources.value && <option value="" disabled>{commandSources.hasCommands ? "Mixed" : "No commands"}</option>}
                     {[...commandSources.options].map(([value, option]) => <option key={value} value={value}>{option.label}</option>)}
                   </select>
                 </label>}
-                callbacks={selectedAnimation.callbacks}
-                animationTick={selectedAnimationTick}
                 disabled={busy}
-                onLifecycleChange={(events) => dispatch({ type: "lifecycle_events_changed", events })}
-                onTimelineChange={(animationTick, events) => dispatch({ type: "timeline_events_changed", animationTick, events })}
                 onValidityChange={setEventJsonValid}
-              />}
+              />
             </SettingsPanel>
           </section>}
 

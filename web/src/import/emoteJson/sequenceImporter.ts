@@ -1,4 +1,5 @@
 import { EMOTE_SCHEMA_VERSION } from "../../format/emote";
+import { parseMinecraftTime } from "../../format/time";
 import type { ConversionSequence, ImportedConversionDocument } from "../../domain/conversionDocument";
 import type { SequenceStep, SequenceWeightedChoice } from "../../domain/emoteDefinition";
 import { isRecord, requireRecord, type RuntimeRecord } from "../../format/runtimeValue";
@@ -29,6 +30,8 @@ export function importSequence(input: ImportInput, formatLabel: string): Importe
   if (!sequence) throw new Error("Input is not an Emote sequence.");
   requireRecord(sequence.settings, "$.settings");
   requireRecord(sequence.settings.player, "$.settings.player");
+  if (sequence.animation?.duration !== undefined) parseMinecraftTime(sequence.animation.duration, 1);
+  for (const event of sequence.animation?.events?.timeline ?? []) parseMinecraftTime(event.time);
   return {
     origin: { source: "emote_sequence", sourceName: input.name, formatLabel, metadata: sequence.metadata, namespace: sequence.id.split(":")[0] },
     targetMinecraftVersion: sequence.target_minecraft_version,

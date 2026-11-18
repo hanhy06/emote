@@ -7,6 +7,7 @@ import { createDefaultPlayerBehavior } from "../domain/emoteDefinition";
 import type { AnimationJson } from "../format/animation";
 import { detectInputFormat, readInput } from "../import/formats";
 import { INITIAL_WORKSPACE, workspaceReducer } from "../workspace";
+import { parseEventEdit } from "../components/EventPanel";
 import sequenceReference from "../../../docs/reference/sequence.json";
 
 const legacy = {
@@ -164,4 +165,24 @@ it("round-trips sequence playback and command events through the common clip wit
   expect(JSON.parse(new TextDecoder().decode(bytes))).toEqual(source);
   const reopened = await readInput("emote_sequence", { name: output.fileName, bytes });
   expect(reopened.entries).toEqual(document.entries);
+
+  let state = workspaceReducer(INITIAL_WORKSPACE, { type: "documents_open_succeeded", document });
+  const callbacks = [{ name: "example:edited" }];
+  const lifecycle = { callbacks, start: [command], loop: [command], stop: [command] };
+  state = workspaceReducer(state, { type: "entry_changed", index: 0, entry: parseEventEdit(document.entries[0], null, JSON.stringify(lifecycle)) });
+  const tickCommand = { ...command, action: { ...command.action, commands: ["say frame"] } };
+  for (const tick of [0, 42]) {
+    state = workspaceReducer(state, { type: "frame_selected", frame: { type: "timeline", animationTick: tick } });
+    expect(state.session!.selectedFrame).toEqual({ type: "timeline", animationTick: tick });
+    const entry = parseEventEdit(state.session!.document.entries[0], tick, JSON.stringify([tickCommand]));
+    state = workspaceReducer(state, { type: "entry_changed", index: 0, entry });
+  }
+  const edited = state.session!.document;
+  const [editedOutput] = await exportAnimations(edited, true);
+  const editedBytes = new Uint8Array(await editedOutput.blob.arrayBuffer());
+  expect(JSON.parse(new TextDecoder().decode(editedBytes))).toEqual({ ...source, callbacks, animation: {
+    playback: animation.playback,
+    events: { start: lifecycle.start, loop: lifecycle.loop, stop: lifecycle.stop, timeline: [0, 42].map((tick) => ({ ...tickCommand, time: `${tick}t` })) },
+  } });
+  expect((await readInput("emote_sequence", { name: editedOutput.fileName, bytes: editedBytes })).entries).toEqual(edited.entries);
 });

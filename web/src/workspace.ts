@@ -4,16 +4,13 @@ import {
   assignSkinOrder,
   assignSkinPart,
   skinPartAssignments,
-  replaceTimelineEvents,
-  updateLifecycleEvents,
   replaceEntry,
   type ConversionDocument,
   type ConversionEntry,
 } from "./domain/conversionDocument";
-import { animationReferenceTargets, isSequenceControlId, type EmoteCallback } from "./domain/emoteDefinition";
+import { animationReferenceTargets, isSequenceControlId } from "./domain/emoteDefinition";
 import type { ConversionIssue } from "./foundation/diagnostics";
 import type { PlayerSkinPart } from "./domain/player";
-import type { EventIR } from "./domain/animationIR";
 
 export type WorkspacePage = 0 | 1;
 export type SelectedFrame = { type: "create" } | { type: "timeline"; animationTick: number };
@@ -50,9 +47,7 @@ export type WorkspaceAction =
   | { type: "skin_part_assigned"; part: PlayerSkinPart | null }
   | { type: "skin_order_assigned"; order: number }
   | { type: "entry_changed"; index: number; entry: ConversionEntry }
-  | { type: "minecraft_version_changed"; version: string }
-  | { type: "lifecycle_events_changed"; events: { callbacks: EmoteCallback[]; start: EventIR[]; loop: EventIR[]; stop: EventIR[] } }
-  | { type: "timeline_events_changed"; animationTick: number; events: EventIR[] };
+  | { type: "minecraft_version_changed"; version: string };
 
 export const EMPTY_SELECTION = new Set<string>();
 
@@ -88,11 +83,13 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
         : session);
     case "frame_selected":
       return updateSession(state, (session) => {
-        const animation = session.document.entries[session.selectedIndex];
-        if (animation?.type !== "animation") return session;
+        const entry = session.document.entries[session.selectedIndex];
+        if (!entry) return session;
+        const duration = entry.clip.duration;
+        const durationTicks = duration === undefined ? Infinity : parseMinecraftTime(duration, 1);
         return { ...session, selectedCandidateIds: new Set(),
           selectedFrame: action.frame.type === "create" ? action.frame : { type: "timeline",
-            animationTick: Math.max(0, Math.min(action.frame.animationTick, parseMinecraftTime(animation.clip.duration, 1))) } };
+            animationTick: Math.max(0, Math.min(action.frame.animationTick, durationTicks)) } };
       });
     case "candidate_selected":
       return updateSession(state, (session) => ({
@@ -124,16 +121,6 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
         ...session,
         document: { ...session.document, targetMinecraftVersion: action.version },
       }));
-    case "lifecycle_events_changed":
-      return updateSession(state, (session) => ({
-        ...session,
-        document: updateLifecycleEvents(session.document, session.selectedIndex, action.events),
-      }));
-    case "timeline_events_changed":
-      return updateSession(state, (session) => ({
-        ...session,
-        document: replaceTimelineEvents(session.document, session.selectedIndex, action.animationTick, action.events),
-      }));
   }
 }
 
@@ -150,13 +137,12 @@ export function assignmentSummary(document: ConversionDocument): string {
 export function eventReviewSummary(document: ConversionDocument | null, selectedIndex: number) {
   const animations = document ? animationEntries(document) : [];
   const selected = document?.entries[selectedIndex];
-  const animation = selected?.type === "animation" ? selected : undefined;
   return {
     hasCommands: animations.some(animation => Object.values(animation.clip.events ?? {})
       .some(events => events.some(event => event.action.type === "commands" && event.action.commands.length > 0))),
-    hasSelectedReview: Boolean(animation?.callbacks?.length) || Object.values(animation?.clip.events ?? {})
+    hasSelectedReview: Boolean(selected?.callbacks?.length) || Object.values(selected?.clip.events ?? {})
       .some(events => events.some(event => event.action.type === "commands" && event.action.commands.length > 0)),
-    commandTicks: [...new Set(animation?.clip.events?.timeline?.filter(event => event.action.type === "commands" && event.action.commands.length > 0)
+    commandTicks: [...new Set(selected?.clip.events?.timeline?.filter(event => event.action.type === "commands" && event.action.commands.length > 0)
       .map(event => parseMinecraftTime(event.time)) ?? [])].sort((first, second) => first - second),
   };
 }

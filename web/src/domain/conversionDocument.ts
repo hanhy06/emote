@@ -1,12 +1,11 @@
 import type { ConversionIssue } from "../foundation/diagnostics";
 import type { PlayerSkinPart } from "./player";
-import { attachmentTargetId, orderedNodeIds, type AnimationEntryIR, type AnimationIR, type AttachmentIR, type ClipIR, type EventIR, type NodeIR, type TransformOperationIR } from "./animationIR";
+import { attachmentTargetId, orderedNodeIds, type AnimationEntryIR, type AnimationIR, type AttachmentIR, type ClipIR, type NodeIR, type TransformOperationIR } from "./animationIR";
 import { normalizeAnimationTimes, remapClip } from "./animationIRConversion";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
-import { parseAnimationSeconds, parseMinecraftTime } from "../format/time";
 import type { GeneratedResource } from "./generatedResource";
-import type { EmoteCallback, EmoteMetadata, EmotePlayerBehavior, SequenceStep } from "./emoteDefinition";
+import type { EmoteMetadata, EmotePlayerBehavior, SequenceStep } from "./emoteDefinition";
 import type { ImportedProject, ImportedSkinPart, InputFormat } from "./conversionSeed";
 
 export const DEFAULT_TARGET_MINECRAFT_VERSION = "26.4";
@@ -36,8 +35,6 @@ export type ConversionSequence = ConversionEntryFields & {
   steps: SequenceStep[];
 };
 export type ConversionEntry = ConversionAnimation | ConversionSequence;
-
-export type ConversionAnimationEvents = Required<NonNullable<AnimationIR["animation"]["events"]>>;
 
 export interface ConversionDocument {
   origin: { source: InputFormat; sourceName: string; formatLabel: string; metadata: EmoteMetadata; namespace: string };
@@ -232,26 +229,6 @@ function applySkinGroups(document: ConversionDocument, part: PlayerSkinPart, gro
     skinCandidates[id] = { ...candidate, order };
   }
   return { ...document, nodes, skinCandidates };
-}
-
-export function updateLifecycleEvents(document: ConversionDocument, index: number,
-  events: Pick<ConversionAnimationEvents, "start" | "loop" | "stop"> & { callbacks: EmoteCallback[] }): ConversionDocument {
-  const animation = document.entries[index];
-  if (animation?.type !== "animation") return document;
-  const { callbacks, ...commandEvents } = events;
-  return replaceEntry(document, index, { ...animation, callbacks,
-    clip: { ...animation.clip, events: { ...commandEvents, timeline: animation.clip.events?.timeline ?? [] } } });
-}
-
-export function replaceTimelineEvents(document: ConversionDocument, index: number, animationTick: number, events: EventIR[]): ConversionDocument {
-  const animation = document.entries[index];
-  if (animation?.type !== "animation") return document;
-  if (!Number.isInteger(animationTick) || animationTick < 0 || animationTick > parseMinecraftTime(animation.clip.duration, 1)) throw new Error("Event tick must be within the animation duration.");
-  return replaceEntry(document, index, { ...animation,
-    clip: { ...animation.clip, events: { ...animation.clip.events, timeline: [
-      ...(animation.clip.events?.timeline ?? []).filter((event) => parseMinecraftTime(event.time) !== animationTick),
-      ...events.map((event) => ({ ...event, time: `${animationTick}t` })),
-    ].sort((first, second) => parseAnimationSeconds(first.time) - parseAnimationSeconds(second.time)) } } });
 }
 
 export function replaceEntry(document: ConversionDocument, index: number, entry: ConversionEntry): ConversionDocument {

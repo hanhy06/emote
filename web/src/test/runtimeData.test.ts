@@ -1,7 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { expect, it } from "vitest";
 import { combineConversionDocuments } from "../domain/conversionBatch";
-import { animationEntries, assignSkinPart, createConversionDocument, replaceTimelineEvents } from "../domain/conversionDocument";
+import { animationEntries, assignSkinPart, createConversionDocument } from "../domain/conversionDocument";
+import { parseEventEdit } from "../components/EventPanel";
 import { exportAnimation, exportAnimations } from "../export/projectExporter";
 import type { AnimationJson } from "../format/animation";
 import { readInput } from "../import/formats";
@@ -211,17 +212,18 @@ it("edits animation ticks independently of preview delays and keeps generated ev
     expect(preview.parts[0].matrix[3]).toBe(0.25);
     expect(preview.availability).toEqual({ status: "full" });
     const event = { source: { type: "server" as const }, origin: { type: "root" as const }, action: { type: "commands" as const, commands: ["say frame"] } };
-    state = workspaceReducer(state, { type: "timeline_events_changed", animationTick: 5, events: [event] });
+    const eventJson = JSON.stringify([event]);
+    state = workspaceReducer(state, { type: "entry_changed", index: 0, entry: parseEventEdit(session.document.entries[0], 5, eventJson) });
     state = workspaceReducer(state, { type: "frame_selected", frame: { type: "timeline", animationTick: 30 } });
     expect(state.session!.selectedFrame).toEqual({ type: "timeline", animationTick: 20 });
-    state = workspaceReducer(state, { type: "timeline_events_changed", animationTick: 20, events: [event] });
+    state = workspaceReducer(state, { type: "entry_changed", index: 0, entry: parseEventEdit(state.session!.document.entries[0], 20, eventJson) });
     session = state.session!;
     const [output] = await exportAnimation(session.document, 0);
     const actual: AnimationJson = JSON.parse(await output.blob.text());
     expect(actual.animation.duration).toBe("20t");
     expect(actual.animation.playback!.start_delay).toEqual(startDelay);
     expect(actual.animation.events!.timeline).toEqual([{ ...event, time: "5t" }, { ...event, time: "20t" }]);
-    expect(() => replaceTimelineEvents(session.document, 0, 30, [event])).toThrow(/within the animation duration/);
+    expect(() => parseEventEdit(session.document.entries[0], 30, eventJson)).toThrow(/within the animation duration/);
   }
 });
 
