@@ -166,8 +166,6 @@ Each image is a Base64-encoded 64×64 PNG with classic (wide) arm UVs. When usin
 
 A white mask also replaces transparent texture pixels, allowing the override to erase the skin's outer layer. The inner layer remains opaque.
 
-For an Animated Java project with a skin override, see [cheer.ajblueprint](https://github.com/hanhy06/emote/blob/HEAD/docs/reference/aj/cheer.ajblueprint).
-
 ## Callbacks {#callbacks}
 
 Select callbacks registered by another server mod in `callbacks` to run code at playback start, ticks, loops, and close.
