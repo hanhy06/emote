@@ -2,51 +2,33 @@ import type { ComponentChildren } from "preact";
 import { useState } from "preact/hooks";
 import type { EmoteCallback } from "../domain/emoteDefinition";
 import type { EventIR } from "../domain/animationIR";
-import type { ConversionAnimationEvents } from "../domain/conversionDocument";
-import { parseMinecraftTime } from "../format/time";
+import type { ConversionEntry } from "../domain/conversionDocument";
+import { formatMinecraftTime, parseAnimationSeconds, parseMinecraftTime } from "../format/time";
 import { requireArray, requireNumberArray, requireRecord, requireString } from "../format/runtimeValue";
 import { isResourceLocation } from "../format/resourceLocation";
 
 interface EventPanelProps {
-  events: ConversionAnimationEvents;
-  commandSourceControl: ComponentChildren;
-  callbacks?: EmoteCallback[];
+  entry: ConversionEntry;
   animationTick: number | null;
+  commandSourceControl: ComponentChildren;
   disabled: boolean;
-  onLifecycleChange: (events: Pick<ConversionAnimationEvents, "start" | "loop" | "stop"> & { callbacks: EmoteCallback[] }) => void;
-  onTimelineChange: (animationTick: number, events: EventIR[]) => void;
+  onChange: (entry: ConversionEntry) => void;
   onValidityChange: (valid: boolean) => void;
 }
 
-export function EventPanel({ events, callbacks, animationTick, disabled, onLifecycleChange, onTimelineChange, onValidityChange, commandSourceControl }: EventPanelProps) {
+export function EventPanel({ entry, animationTick, disabled, onChange, onValidityChange, commandSourceControl }: EventPanelProps) {
   const [error, setError] = useState("");
-  const initialValue = JSON.stringify(animationTick === null
-    ? { callbacks: callbacks ?? [], start: events.start, loop: events.loop, stop: events.stop }
-    : events.timeline.flatMap((event) => {
+  const events = entry.clip.events;
+  const initialValue = JSON.stringify(animationTick !== null
+    ? (events?.timeline ?? []).flatMap((event) => {
       if (parseMinecraftTime(event.time) !== animationTick) return [];
       const { time: _time, ...body } = event;
       return [body];
-    }), null, 2);
+    })
+    : { callbacks: entry.callbacks ?? [], start: events?.start ?? [], loop: events?.loop ?? [], stop: events?.stop ?? [] }, null, 2);
   function handleInput(value: string) {
     try {
-      const parsed: unknown = JSON.parse(value);
-      if (animationTick !== null) onTimelineChange(animationTick, parseEventArray(parsed, "Timeline events", true));
-      else {
-        const lifecycle = requireRecord(parsed, "Lifecycle events");
-        const callbacks = lifecycle.callbacks === undefined ? [] : requireArray(lifecycle.callbacks, "callbacks").map((value, index) => {
-          const path = `callbacks[${index}]`;
-          const callback = requireRecord(value, path);
-          const name = requireString(callback.name, `${path}.name`);
-          if (!isResourceLocation(name)) throw new Error(`${path}.name must be a resource location.`);
-          if (callback.payload !== undefined) requireString(callback.payload, `${path}.payload`);
-          return callback as unknown as EmoteCallback;
-        });
-        onLifecycleChange({ callbacks,
-          start: lifecycle.start === undefined ? [] : parseEventArray(lifecycle.start, "start"),
-          loop: lifecycle.loop === undefined ? [] : parseEventArray(lifecycle.loop, "loop"),
-          stop: lifecycle.stop === undefined ? [] : parseEventArray(lifecycle.stop, "stop"),
-        });
-      }
+      onChange(parseEventEdit(entry, animationTick, value));
       setError("");
       onValidityChange(true);
     } catch (reason) {
@@ -74,6 +56,37 @@ export function EventPanel({ events, callbacks, animationTick, disabled, onLifec
       </div>
     </section>
   );
+}
+
+export function parseEventEdit(entry: ConversionEntry, animationTick: number | null, value: string): ConversionEntry {
+  const parsed: unknown = JSON.parse(value);
+  const next = { ...entry };
+  const events = { ...entry.clip.events };
+  if (animationTick === null) {
+    const lifecycle = requireRecord(parsed, "Lifecycle events");
+    next.callbacks = requireArray(lifecycle.callbacks === undefined ? [] : lifecycle.callbacks, "callbacks").map((value, index) => {
+      const path = `callbacks[${index}]`;
+      const callback = requireRecord(value, path);
+      const name = requireString(callback.name, `${path}.name`);
+      if (!isResourceLocation(name)) throw new Error(`${path}.name must be a resource location.`);
+      if (callback.payload !== undefined) requireString(callback.payload, `${path}.payload`);
+      return callback as unknown as EmoteCallback;
+    });
+    for (const phase of ["start", "loop", "stop"] as const) {
+      events[phase] = parseEventArray(lifecycle[phase] === undefined ? [] : lifecycle[phase], phase);
+    }
+  } else {
+    const time = formatMinecraftTime(animationTick);
+    if (entry.clip.duration !== undefined && animationTick > parseMinecraftTime(entry.clip.duration, 1)) {
+      throw new Error("Event tick must be within the animation duration.");
+    }
+    events.timeline = [
+      ...(events.timeline ?? []).filter((event) => parseMinecraftTime(event.time) !== animationTick),
+      ...parseEventArray(parsed, "Timeline events", true).map((event) => ({ ...event, time })),
+    ].sort((first, second) => parseAnimationSeconds(first.time) - parseAnimationSeconds(second.time));
+  }
+  next.clip = { ...entry.clip, events };
+  return next;
 }
 
 function parseEventArray(value: unknown, path: string, timeline = false): EventIR[] {

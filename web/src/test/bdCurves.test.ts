@@ -4,7 +4,7 @@ import { Matrix4 } from "three";
 import { expect, it } from "vitest";
 import { evaluatePose } from "../domain/animationIRPose";
 import { createConversionDocument } from "../domain/conversionDocument";
-import { exportAnimation } from "../export/projectExporter";
+import { exportProject } from "../export/projectExporter";
 import type { AnimationJson } from "../format/animation";
 import { readInput } from "../import/formats";
 import source from "./fixtures/bd-curves.json";
@@ -21,13 +21,14 @@ it("preserves sparse frame timing and commands without a generator comment or di
         ? `data merge entity @e[tag=bd_0,limit=1] {transformation:[${source.matrices.instant.join(",")}]}` : "say last"),
     });
     const document = await importFileBatch([{ name: "sparse.zip", arrayBuffer: async () => Uint8Array.from(bytes).buffer }]);
-    const [file] = await exportAnimation(document, 0);
+    const [file] = await exportProject(document, 0);
     const animation: AnimationJson = JSON.parse(await file.blob.text());
     expect(animation.animation.duration).toBe("16t");
     expect(animation.animation.events?.timeline?.map((event) => event.time)).toEqual(hasDisplay ? ["4t"] : ["4t", "14t"]);
     expect(animation.animation.events?.timeline?.[0].action).toEqual({ type: "commands", commands: ["say first"] });
     if (!hasDisplay) {
       expect(animation.nodes).toEqual({});
+      expect(document.entries[0]).toMatchObject({ type: "animation", nodeIds: [], clip: { duration: "16t", tracks: [] } });
       continue;
     }
     for (const tick of [0, 4, 13, 14, 15]) {
@@ -52,7 +53,7 @@ it("preserves delayed and interrupted BD display interpolation through numeric I
   }
   const project = await readInput("bd_datapack", { name: "curves.zip", bytes: zipSync(files) });
   expect(project.diagnostics).toEqual([]);
-  const [output] = await exportAnimation(createConversionDocument(project, "BD"), 0);
+  const [output] = await exportProject(createConversionDocument(project, "BD"), 0);
   const animation: AnimationJson = JSON.parse(await output.blob.text());
   expect(animation).toEqual(JSON.parse(await readFile(new URL("../../../src/test/resources/bd-curves.json", import.meta.url), "utf8")));
   expect(animation.schema_version).toBe(5);

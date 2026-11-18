@@ -1,48 +1,39 @@
-import { EMOTE_SCHEMA_VERSION } from "../../format/emote";
-import type { EmoteCallback, EmoteMetadata, EmotePlayerBehavior, ImportedSequence, SequenceStep, SequenceWeightedChoice } from "../../domain/emoteDefinition";
-import { isRecord, type RuntimeRecord } from "../../format/runtimeValue";
+import { parseMinecraftTime } from "../../format/time";
+import type { ConversionSequence, ImportedConversionDocument } from "../../domain/conversionDocument";
+import type { SequenceStep, SequenceWeightedChoice } from "../../domain/emoteDefinition";
+import { isRecord, requireArray, requireRecord, type RuntimeRecord } from "../../format/runtimeValue";
 import type { ImportInput } from "../input";
 import { parseInputJson } from "../common/inputCache";
 
-interface EmoteSequence {
-  callbacks?: EmoteCallback[];
-  type: "sequence";
-  schema_version: 4 | typeof EMOTE_SCHEMA_VERSION;
+interface EmoteSequence extends Pick<ConversionSequence, "id" | "metadata" | "settings" | "callbacks"> {
   target_minecraft_version?: string;
-  id: string;
-  metadata: RuntimeRecord;
-  settings: {
-    cooldown: string;
-    player: RuntimeRecord;
-  };
+  animation?: Pick<ConversionSequence["clip"], "duration" | "playback" | "events">;
   steps: RuntimeRecord[];
 }
 
-function convertSequenceInput(input: ImportInput): EmoteSequence | null {
-  let value: unknown;
-  try {
-    value = parseInputJson(input);
-  } catch {
-    return null;
-  }
-  if (!isRecord(value) || value.type !== "sequence") return null;
-  return value as unknown as EmoteSequence;
-}
-
-export function importSequence(input: ImportInput): ImportedSequence {
-  const sequence = convertSequenceInput(input);
-  if (!sequence) throw new Error("Input is not an Emote sequence.");
+export function importSequence(input: ImportInput, formatLabel: string): ImportedConversionDocument {
+  const inputValue = parseInputJson(input);
+  if (!isRecord(inputValue) || inputValue.type !== "sequence") throw new Error("Input is not an Emote sequence.");
+  const { id, metadata, settings, callbacks, animation, steps, target_minecraft_version } = structuredClone(inputValue) as unknown as EmoteSequence;
+  requireRecord(settings, "$.settings");
+  requireRecord(settings.player, "$.settings.player");
+  if (callbacks != null) requireArray(callbacks, "$.callbacks");
+  if (animation?.duration !== undefined) parseMinecraftTime(animation.duration, 1);
+  for (const event of animation?.events?.timeline ?? []) parseMinecraftTime(event.time);
   return {
-    kind: "sequence",
-    source: "emote_sequence",
-    sourceName: input.name,
-    id: sequence.id,
-    ...(sequence.target_minecraft_version ? { targetMinecraftVersion: sequence.target_minecraft_version } : {}),
-    metadata: { ...sequence.metadata } as EmoteMetadata,
-    cooldown: sequence.settings.cooldown,
-    player: { ...sequence.settings.player, stop_conditions: { ...(sequence.settings.player.stop_conditions as Record<string, unknown>) } } as EmotePlayerBehavior,
-    steps: sequence.steps.map(importStep),
-    callbacks: sequence.callbacks?.map((callback) => ({ ...callback })),
+    origin: { source: "emote_sequence", sourceName: input.name, formatLabel, metadata, namespace: id.split(":")[0] },
+    targetMinecraftVersion: target_minecraft_version,
+    nodes: {}, skinCandidates: {}, diagnostics: [], resources: new Map(),
+    entries: [{
+      type: "sequence",
+      id, metadata, settings, callbacks: callbacks ?? undefined,
+      nodeIds: [],
+      clip: { ...animation, tracks: [] },
+      steps: steps.map(importStep),
+      sourceName: metadata.name,
+      sourcePlayback: structuredClone(animation?.playback),
+      playbackMode: "source",
+    }],
   };
 }
 

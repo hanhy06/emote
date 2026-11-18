@@ -1,11 +1,14 @@
 import { expect, it } from "vitest";
 import { createConversionDocument, skinPartOrders } from "../domain/conversionDocument";
 import { evaluatePose } from "../domain/animationIRPose";
-import { exportAnimation, exportAnimations } from "../export/projectExporter";
+import { exportProject } from "../export/projectExporter";
 import { importFileBatch } from "../import/importBatch";
 import { createDefaultPlayerBehavior } from "../domain/emoteDefinition";
 import type { AnimationJson } from "../format/animation";
 import { detectInputFormat, readInput } from "../import/formats";
+import { INITIAL_WORKSPACE, workspaceReducer } from "../workspace";
+import { parseEventEdit } from "../components/EventPanel";
+import sequenceReference from "../../../docs/reference/sequence.json";
 
 const legacy = {
   type: "animation", schema_version: 4, id: "example:legacy", target_minecraft_version: "26.3",
@@ -46,7 +49,7 @@ it("imports schema 4 into editable IR and exports schema 5 with transforms, skin
   expect(document.nodes.arm.attachments!.display).toMatchObject({ type: "player_skin", part: "left_arm", region: { from: 0, to: 0.5 } });
   expect(document.nodes.duplicate.attachments!.display).toEqual(document.nodes.arm.attachments!.display);
   expect(document.nodes.lower.attachments!.display).toMatchObject({ region: { from: 0.5, to: 1 } });
-  const [output] = await exportAnimation(document, 0);
+  const [output] = await exportProject(document, 0);
   const actual: AnimationJson = JSON.parse(await output.blob.text());
   expect(actual).toMatchObject({ type: "animation", schema_version: 5, id: legacy.id, metadata: legacy.metadata, callbacks: legacy.callbacks,
     settings: { standalone: false, cooldown: "0.25s", rotation_deadzone: 25 },
@@ -72,7 +75,7 @@ it("imports schema 4 into editable IR and exports schema 5 with transforms, skin
   expect(half[1]).toBeCloseTo(Math.SQRT1_2);
   expect(evaluatePose(actual, 1, (value) => typeof value === "number" ? value : 1).prop.matrix.elements[12]).toBeCloseTo(4);
   const reopened = await readInput("emote_json", { name: "migrated.json", bytes: new TextEncoder().encode(JSON.stringify(actual)) });
-  const [reexported] = await exportAnimation(createConversionDocument(reopened, "Emote JSON"), 0);
+  const [reexported] = await exportProject(createConversionDocument(reopened, "Emote JSON"), 0);
   expect(JSON.parse(await reexported.blob.text())).toEqual(actual);
 });
 
@@ -88,7 +91,7 @@ it("keeps Molang Euler rotation and skips unsupported fields without losing the 
     ] } },
   };
   const project = await readInput("emote_json", { name: "partial.json", bytes: new TextEncoder().encode(JSON.stringify(source)) });
-  const [output] = await exportAnimation(createConversionDocument(project, "Emote JSON"), 0);
+  const [output] = await exportProject(createConversionDocument(project, "Emote JSON"), 0);
   const actual: AnimationJson = JSON.parse(await output.blob.text());
   expect(actual.nodes.prop.transform![1]).toMatchObject({ op: "rotate_euler", order: "XYZ" });
   expect(actual.nodes.unknown).toMatchObject({ parent: "root" });
@@ -116,11 +119,70 @@ it("imports a schema 4 sequence with animations and exports its steps and refere
   expect(await detectInputFormat(input)).toBe("emote_sequence");
   const document = await importFileBatch([legacy, sequence].map((value, index) => ({ name: `${index}.json`,
     arrayBuffer: async () => new TextEncoder().encode(JSON.stringify(value)).buffer })));
-  const outputs = await exportAnimations(document, true);
+  expect(document.entries.map(({ type, id }) => [type, id])).toEqual([["animation", "example:legacy"], ["sequence", "example:sequence"]]);
+  const outputs = await exportProject(document, "sequence");
   const actual = JSON.parse(await outputs.at(-1)!.blob.text());
   expect(actual).toEqual({ ...sequence, schema_version: 5 });
   const animation: AnimationJson = JSON.parse(await outputs[0].blob.text());
   expect(animation).toMatchObject({ id: "example:legacy", schema_version: 5 });
   const reopened = await readInput("emote_sequence", { name: "sequence.json", bytes: new TextEncoder().encode(JSON.stringify(actual)) });
-  expect(reopened.steps).toEqual(document.sequence.steps);
+  expect(reopened.entries).toEqual(document.entries.filter((entry) => entry.type === "sequence"));
+
+  let state = workspaceReducer(INITIAL_WORKSPACE, { type: "documents_open_succeeded", document });
+  state = workspaceReducer(state, { type: "entry_selected", index: 1 });
+  const selected = state.session!.document.entries[state.session!.selectedIndex];
+  if (selected.type !== "sequence") throw new Error("Expected to select the sequence in a mixed document.");
+  const player = { ...selected.settings.player, hidden: false };
+  state = workspaceReducer(state, { type: "entry_changed", index: 1, entry: {
+    ...selected, metadata: { ...selected.metadata, name: "Edited sequence" }, settings: { ...selected.settings, player },
+  } });
+  state = workspaceReducer(state, { type: "entry_selected", index: 0 });
+  const selectedAnimation = state.session!.document.entries[state.session!.selectedIndex];
+  expect(selectedAnimation).toBe(document.entries[0]);
+  state = workspaceReducer(state, { type: "entry_changed", index: 0, entry: {
+    ...selectedAnimation, metadata: { ...selectedAnimation.metadata, name: "Edited animation" },
+  } });
+  const edited = state.session!.document;
+  expect(edited.entries[0].metadata.name).toBe("Edited animation");
+  expect(edited.entries[0].clip).toBe(document.entries[0].clip);
+  expect(edited.entries[1]).toMatchObject({ metadata: { name: "Edited sequence" }, settings: { player } });
+});
+
+it("round-trips sequence playback and command events through the common clip without assigning a duration", async () => {
+  const command = {
+    source: { type: "player" }, origin: { type: "root" }, action: { type: "commands", commands: ["say sequence"] },
+  };
+  const animation = { playback: { mode: "loop" }, events: { start: [command], timeline: [{ ...command, time: "0t" }] } };
+  const source = { ...sequenceReference, animation };
+  const document = await importFileBatch([{
+    name: "sequence.json",
+    arrayBuffer: async () => new TextEncoder().encode(JSON.stringify(source)).buffer,
+  }]);
+  expect(document.entries[0]).toMatchObject({ type: "sequence", nodeIds: [], clip: { ...animation, tracks: [] } });
+  expect(document.entries[0].clip).not.toHaveProperty("duration");
+  const [output] = await exportProject(document, "sequence");
+  const bytes = new Uint8Array(await output.blob.arrayBuffer());
+  expect(JSON.parse(new TextDecoder().decode(bytes))).toEqual(source);
+  const reopened = await readInput("emote_sequence", { name: output.fileName, bytes });
+  expect(reopened.entries).toEqual(document.entries);
+
+  let state = workspaceReducer(INITIAL_WORKSPACE, { type: "documents_open_succeeded", document });
+  const callbacks = [{ name: "example:edited" }];
+  const lifecycle = { callbacks, start: [command], loop: [command], stop: [command] };
+  state = workspaceReducer(state, { type: "entry_changed", index: 0, entry: parseEventEdit(document.entries[0], null, JSON.stringify(lifecycle)) });
+  const tickCommand = { ...command, action: { ...command.action, commands: ["say frame"] } };
+  for (const tick of [0, 42]) {
+    state = workspaceReducer(state, { type: "frame_selected", frame: { type: "timeline", animationTick: tick } });
+    expect(state.session!.selectedFrame).toEqual({ type: "timeline", animationTick: tick });
+    const entry = parseEventEdit(state.session!.document.entries[0], tick, JSON.stringify([tickCommand]));
+    state = workspaceReducer(state, { type: "entry_changed", index: 0, entry });
+  }
+  const edited = state.session!.document;
+  const [editedOutput] = await exportProject(edited, "sequence");
+  const editedBytes = new Uint8Array(await editedOutput.blob.arrayBuffer());
+  expect(JSON.parse(new TextDecoder().decode(editedBytes))).toEqual({ ...source, callbacks, animation: {
+    playback: animation.playback,
+    events: { start: lifecycle.start, loop: lifecycle.loop, stop: lifecycle.stop, timeline: [0, 42].map((tick) => ({ ...tickCommand, time: `${tick}t` })) },
+  } });
+  expect((await readInput("emote_sequence", { name: editedOutput.fileName, bytes: editedBytes })).entries).toEqual(edited.entries);
 });

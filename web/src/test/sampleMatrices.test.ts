@@ -4,7 +4,7 @@ import { expect, it } from "vitest";
 import type { AnimationIR, ScalarIR } from "../domain/animationIR";
 import { evaluatePose } from "../domain/animationIRPose";
 import { createConversionDocument } from "../domain/conversionDocument";
-import { exportAnimation } from "../export/projectExporter";
+import { exportProject } from "../export/projectExporter";
 import { parseMinecraftTime } from "../format/time";
 import { readInput } from "../import/formats";
 
@@ -18,9 +18,9 @@ it("preserves the 11 documentation sample matrices with shared player render sca
     const project = await readInput(format, { name: path.split("/").at(-1)!, bytes: await readFile(new URL(`../../../${path}`, import.meta.url)) });
     const document = createConversionDocument(project, format);
     for (const name of names) {
-      const index = document.animations.findIndex((animation) => animation.sourceName === name);
+      const index = document.entries.findIndex((animation) => animation.sourceName === name);
       expect(index, `${path}: missing ${name}`).toBeGreaterThanOrEqual(0);
-      const [output] = await exportAnimation(document, index);
+      const [output] = await exportProject(document, index);
       converted.set(name, JSON.parse(await output.blob.text()));
     }
   }
