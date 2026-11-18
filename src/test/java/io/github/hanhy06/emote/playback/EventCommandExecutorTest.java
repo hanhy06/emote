@@ -95,7 +95,7 @@ class EventCommandExecutorTest {
             assertEquals(pitch, rotation.x, 1e-4);
             assertEquals(Mth.wrapDegrees((float) (135 - Math.toDegrees(parent) - localYaw)), rotation.y, 1e-4);
 
-            var forward = new LocalCoordinates(0, 0, 1).apply(point, rotation).subtract(point);
+            var forward = new LocalCoordinates.XYZ(0, 0, 1).apply(point, rotation).subtract(point);
             double worldYaw = facing + parent;
             assertEquals(-(Math.cos(worldYaw) * localX + Math.sin(worldYaw) * localZ), forward.x, 2e-4);
             assertEquals(-localY, forward.y, 2e-4);
