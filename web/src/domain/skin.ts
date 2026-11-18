@@ -34,7 +34,7 @@ export function encodeSkinPng(pixels: Uint8Array): string {
   return btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(""));
 }
 
-function decodeMask(base64: string): Uint8Array {
+export function decodeMask(base64: string): Uint8Array {
   const pixels = decodeSkinPng(base64);
   for (let i = 0; i < pixels.length; i += 4) {
     if (!pixels[i + 3]) continue;

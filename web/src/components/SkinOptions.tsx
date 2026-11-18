@@ -1,9 +1,8 @@
-import { useRef, useState } from "preact/hooks";
+import { useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { SkinIR } from "../domain/animationIR";
-import { createSkinOverride, decodeSkinPng, MAX_SKIN_PNG_BYTES } from "../domain/skin";
+import { createSkinOverride, decodeMask, decodeSkinPng, MAX_SKIN_PNG_BYTES } from "../domain/skin";
 
-type SkinField = "default" | "texture" | "mask";
-type Upload = { data?: string; error?: string };
+type SkinFile = keyof SkinIR | "mask";
 
 interface SkinOptionsProps {
   skin?: SkinIR;
@@ -11,104 +10,111 @@ interface SkinOptionsProps {
   onChange: (skin: SkinIR | undefined) => void;
 }
 
+async function readSkinPng(file: File): Promise<string> {
+  if (file.size > MAX_SKIN_PNG_BYTES) throw new Error("Skin PNG must not exceed 1 MiB.");
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  return btoa(Array.from(bytes, byte => String.fromCharCode(byte)).join(""));
+}
+
 export function SkinOptions({ skin, disabled, onChange }: SkinOptionsProps) {
-  const [uploads, setUploads] = useState<Partial<Record<SkinField, Upload>>>({});
-  const [errors, setErrors] = useState<{ default?: string; override?: string }>({});
-  const maskInput = useRef<HTMLInputElement>(null);
-
-  function selectFile(field: SkinField, file: File | undefined) {
-    const group = field === "default" ? "default" : "override";
-    setErrors(current => ({ ...current, [group]: undefined }));
-    if (!file) {
-      setUploads(current => ({ ...current, [field]: undefined }));
-      return;
-    }
-    if (file.size > MAX_SKIN_PNG_BYTES) {
-      setUploads(current => ({ ...current, [field]: { error: "Skin PNG must not exceed 1 MiB." } }));
-      return;
-    }
-
-    const pending: Upload = {};
-    setUploads(current => ({ ...current, [field]: pending }));
-    const reader = new FileReader();
-    const finish = (upload: Upload) => setUploads(current =>
-      current[field] === pending ? { ...current, [field]: upload } : current);
-    reader.onload = () => finish({ data: String(reader.result).split(",", 2)[1] ?? "" });
-    reader.onerror = () => finish({ error: "Could not read the PNG file." });
-    reader.readAsDataURL(file);
-  }
-
-  function addDefault() {
-    const data = uploads.default?.data;
-    if (data === undefined) return;
+  const [upload, setUpload] = useState<"reading" | { kind: SkinFile; data: string } | null>(null);
+  const [selectedMask, setSelectedMask] = useState<string>();
+  const [error, setError] = useState("");
+  const fileInput = useRef<HTMLInputElement>(null);
+  const fileKind = useRef<SkinFile>("default");
+  const unavailable = disabled || upload !== null;
+  const override = skin?.override;
+  const explicitMask = useMemo(() => {
+    if (!override || selectedMask === override.mask) return selectedMask;
     try {
-      decodeSkinPng(data);
-      onChange({ ...skin, default: data });
-      setUploads(current => ({ ...current, default: undefined }));
-    } catch (reason) {
-      setErrors(current => ({ ...current, default: reason instanceof Error ? reason.message : "Invalid default skin." }));
+      return createSkinOverride(override.texture).mask === override.mask ? undefined : override.mask;
+    } catch {
+      return override.mask;
     }
-  }
+  }, [override, selectedMask]);
 
-  function addOverride() {
-    const texture = uploads.texture?.data;
-    if (texture === undefined || (uploads.mask && uploads.mask.data === undefined)) return;
+  useLayoutEffect(() => {
+    if (!upload || upload === "reading") return;
+    setUpload(null);
     try {
-      onChange({ ...skin, override: createSkinOverride(texture, uploads.mask?.data) });
-      setUploads(current => ({ ...current, texture: undefined, mask: undefined }));
+      const { kind, data } = upload;
+      if (kind === "mask") {
+        if (override) onChange({ ...skin, override: createSkinOverride(override.texture, data) });
+        else decodeMask(data);
+        setSelectedMask(data);
+      } else if (kind === "default") {
+        decodeSkinPng(data);
+        onChange({ ...skin, default: data });
+      } else {
+        onChange({ ...skin, override: createSkinOverride(data, explicitMask) });
+      }
     } catch (reason) {
-      setErrors(current => ({ ...current, override: reason instanceof Error ? reason.message : "Invalid skin override." }));
+      setError(reason instanceof Error ? reason.message : "Could not read the skin PNG.");
+    }
+  }, [upload, skin, override, explicitMask, onChange]);
+
+  async function selectFile(input: HTMLInputElement) {
+    const file = input.files?.[0];
+    input.value = "";
+    if (!file) return;
+    const kind = fileKind.current;
+    setError("");
+    setUpload("reading");
+    try {
+      setUpload({ kind, data: await readSkinPng(file) });
+    } catch (reason) {
+      setUpload(null);
+      setError(reason instanceof Error ? reason.message : "Could not read the skin PNG.");
     }
   }
 
-  function fileField(field: SkinField, label: string) {
-    const upload = uploads[field];
+  function skinControl(image: string | undefined, kind: SkinFile, onRemove: () => void) {
+    const hasImage = image !== undefined;
+    const label = kind === "mask" ? "mask" : `${kind} skin`;
     return (
-      <div className="skin-file-field">
-        <label>{label}
-          <input type="file" accept=".png,image/png" disabled={disabled} ref={field === "mask" ? maskInput : undefined}
-            onChange={event => selectFile(field, event.currentTarget.files?.[0])} />
-          {upload?.error ? <span className="error" role="alert">{upload.error}</span>
-            : upload && upload.data === undefined && <span role="status">Reading PNG…</span>}
-        </label>
-        {field === "mask" && upload && <button type="button" disabled={disabled} onClick={() => {
-          if (maskInput.current) maskInput.current.value = "";
-          selectFile("mask", undefined);
-        }}>Clear selected mask</button>}
-      </div>
+      <button type="button" disabled={unavailable} className={hasImage ? "skin-thumbnail" : undefined}
+        aria-label={`${hasImage ? "Remove" : "Add"} ${label}`}
+        onClick={() => {
+          setError("");
+          if (hasImage) onRemove();
+          else {
+            fileKind.current = kind;
+            fileInput.current?.click();
+          }
+        }}>
+        {hasImage ? <>
+          <img src={`data:image/png;base64,${image}`} width={96} height={96} alt="" />
+          <span className="skin-thumbnail-remove" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5m4-5v5" />
+            </svg>
+          </span>
+        </> : kind === "mask" ? "Add mask" : <>Add {kind}<br />skin</>}
+      </button>
     );
   }
 
   return (
     <section className="skin-options" aria-labelledby="skin-options-heading">
       <h3 id="skin-options-heading">Skin</h3>
-      <p className="field-hint">Use 64×64 PNGs with classic (wide) arm UVs.</p>
-      <fieldset className="skin-option">
-        <legend>Default skin</legend>
-        {skin?.default !== undefined ? (
-          <button type="button" disabled={disabled} onClick={() => onChange(skin.override ? { override: skin.override } : undefined)}>Remove default skin</button>
-        ) : (
-          <div className="fields">
-            {fileField("default", "Skin PNG")}
-            <button type="button" disabled={disabled || uploads.default?.data === undefined} onClick={addDefault}>Add default skin</button>
-          </div>
-        )}
-        {errors.default && <p className="error" role="alert">{errors.default}</p>}
-      </fieldset>
-      <fieldset className="skin-option">
-        <legend>Skin override</legend>
-        {skin?.override ? (
-          <button type="button" disabled={disabled} onClick={() => onChange(skin.default !== undefined ? { default: skin.default } : undefined)}>Remove skin override</button>
-        ) : (
-          <div className="fields">
-            {fileField("texture", "Texture PNG")}
-            {fileField("mask", "Mask PNG (optional)")}
-            <button type="button" disabled={disabled || uploads.texture?.data === undefined || (uploads.mask !== undefined && uploads.mask.data === undefined)} onClick={addOverride}>Add skin override</button>
-            <p className="field-hint">If omitted, the mask is generated from texture transparency.</p>
-          </div>
-        )}
-        {errors.override && <p className="error" role="alert">{errors.override}</p>}
-      </fieldset>
+      <div className="skin-actions">
+        {skinControl(skin?.default, "default", () => onChange(override ? { override } : undefined))}
+        {skinControl(override?.texture, "override", () => {
+          setSelectedMask(explicitMask);
+          onChange(skin?.default !== undefined ? { default: skin.default } : undefined);
+        })}
+        {skinControl(explicitMask, "mask", () => {
+          try {
+            if (override) onChange({ ...skin, override: createSkinOverride(override.texture) });
+            setSelectedMask(undefined);
+          } catch (reason) {
+            setError(reason instanceof Error ? reason.message : "Could not generate the mask.");
+          }
+        })}
+      </div>
+      <input type="file" accept=".png,image/png" hidden ref={fileInput} onChange={event => void selectFile(event.currentTarget)} />
+      {upload === "reading" && <p className="field-hint" role="status">Reading PNG…</p>}
+      {error && <p className="error" role="alert">{error}</p>}
     </section>
   );
 }
