@@ -68,9 +68,8 @@ export function SettingsPanel({ animation, disabled, onChange, onValidityChange,
   const timeText = (field: string, value: TimeValueIR | undefined) => drafts[field]?.value ?? (typeof value === "object" ? JSON.stringify(value) : value ?? "0s");
 
   const errors = Object.entries(drafts).filter(([, draft]) => draft.error);
-  const metadataFields = (key: string) => ["namespace", "name", "description"].includes(key) || key.startsWith("metadata:");
-  const metadataErrors = errors.filter(([key]) => metadataFields(key));
-  const settingsErrors = errors.filter(([key]) => !metadataFields(key));
+  const optionsErrors = errors.filter(([key]) => key.startsWith("metadata:"));
+  const settingsErrors = errors.filter(([key]) => !key.startsWith("metadata:"));
   return (
     <section className="settings-panel" aria-label="Animation settings">
       <div className="settings-toolbar">
@@ -86,7 +85,7 @@ export function SettingsPanel({ animation, disabled, onChange, onValidityChange,
         }}>
           {[
             { id: "settings", label: "Settings", invalid: settingsErrors.length > 0 },
-            { id: "metadata", label: "Metadata", invalid: metadataErrors.length > 0 },
+            { id: "options", label: "Options", invalid: optionsErrors.length > 0 },
             { id: "events", label: "Events", invalid: !eventsValid },
           ].map(tab => <button key={tab.id} id={`settings-tab-${tab.id}`} type="button" role="tab"
             aria-selected={category === tab.id} aria-controls={`settings-panel-${tab.id}`}
@@ -98,13 +97,25 @@ export function SettingsPanel({ animation, disabled, onChange, onValidityChange,
       {(errors.length > 0 || !eventsValid) && <p className="settings-errors error" role="status">
         {[
           ...(settingsErrors.length ? ["Check settings."] : []),
-          ...(metadataErrors.length ? ["Check metadata."] : []),
+          ...(optionsErrors.length ? ["Check options."] : []),
           ...(!eventsValid ? ["Fix the event JSON before changing frames or exporting."] : []),
         ].join(" ")}
       </p>}
       <div id="settings-category">
         <section id="settings-panel-settings" role="tabpanel" aria-labelledby="settings-tab-settings" hidden={category !== "settings"}>
           <div className="fields">
+            <label>Namespace<input value={drafts.namespace?.value ?? namespace} disabled={disabled} onInput={(event) => editDraft("namespace", event.currentTarget.value)} onBlur={(event) => {
+              const value = event.currentTarget.value;
+              commit("namespace", value, () => ({ ...animation, id: `${value}:${animation.id.slice(animation.id.indexOf(":") + 1)}` }));
+            }} /></label>
+            <label>Display name<input value={drafts.name?.value ?? animation.metadata.name} disabled={disabled} onInput={(event) => editDraft("name", event.currentTarget.value)} onBlur={(event) => {
+              const value = event.currentTarget.value;
+              commit("name", value, () => ({ ...animation, metadata: { ...animation.metadata, name: value } }));
+            }} /></label>
+            <label>Description<input value={drafts.description?.value ?? animation.metadata.description} disabled={disabled} onInput={(event) => editDraft("description", event.currentTarget.value)} onBlur={(event) => {
+              const value = event.currentTarget.value;
+              commit("description", value, () => ({ ...animation, metadata: { ...animation.metadata, description: value } }));
+            }} /></label>
             <label>Playback mode<select value={animation.playbackMode} disabled={disabled} onChange={(event) => {
               const value = event.currentTarget.value;
               const nextDrafts = { ...drafts };
@@ -142,29 +153,13 @@ export function SettingsPanel({ animation, disabled, onChange, onValidityChange,
             }} /></label>
           </div>
           <p className="field-hint">Time accepts d, s, t, or bare ticks.</p>
-          <div className="settings-choices">
-            <div className="fields settings-toggles">
-              <label className="checkbox"><input type="checkbox" checked={settings.standalone ?? true} disabled={disabled} onChange={(event) => onChange({ ...animation, settings: { ...settings, standalone: event.currentTarget.checked } })} />Standalone animation</label>
-              <label className="checkbox"><input type="checkbox" checked={player.hidden} disabled={disabled} onChange={(event) => onChange({ ...animation, settings: { ...settings, player: { ...player, hidden: event.currentTarget.checked } } })} />Hide original player</label>
-              {STOP_CONDITION_OPTIONS.map(([condition, label]) => <label className="checkbox" key={condition}><input type="checkbox" checked={player.stop_conditions[condition]} disabled={disabled} onChange={(event) => updatePlayerStopCondition(condition, event.currentTarget.checked)} />{label}</label>)}
-            </div>
-          </div>
           {settingsErrors.map(([field, draft]) => <p className="error" role="alert" key={field}>{field}: {draft.error}</p>)}
         </section>
-        <section id="settings-panel-metadata" role="tabpanel" aria-labelledby="settings-tab-metadata" hidden={category !== "metadata"}>
-          <div className="fields">
-            <label>Namespace<input value={drafts.namespace?.value ?? namespace} disabled={disabled} onInput={(event) => editDraft("namespace", event.currentTarget.value)} onBlur={(event) => {
-              const value = event.currentTarget.value;
-              commit("namespace", value, () => ({ ...animation, id: `${value}:${animation.id.slice(animation.id.indexOf(":") + 1)}` }));
-            }} /></label>
-            <label>Display name<input value={drafts.name?.value ?? animation.metadata.name} disabled={disabled} onInput={(event) => editDraft("name", event.currentTarget.value)} onBlur={(event) => {
-              const value = event.currentTarget.value;
-              commit("name", value, () => ({ ...animation, metadata: { ...animation.metadata, name: value } }));
-            }} /></label>
-            <label>Description<input value={drafts.description?.value ?? animation.metadata.description} disabled={disabled} onInput={(event) => editDraft("description", event.currentTarget.value)} onBlur={(event) => {
-              const value = event.currentTarget.value;
-              commit("description", value, () => ({ ...animation, metadata: { ...animation.metadata, description: value } }));
-            }} /></label>
+        <section id="settings-panel-options" role="tabpanel" aria-labelledby="settings-tab-options" hidden={category !== "options"}>
+          <div className="fields settings-toggles">
+            <label className="checkbox"><input type="checkbox" checked={settings.standalone ?? true} disabled={disabled} onChange={(event) => onChange({ ...animation, settings: { ...settings, standalone: event.currentTarget.checked } })} />Standalone animation</label>
+            <label className="checkbox"><input type="checkbox" checked={player.hidden} disabled={disabled} onChange={(event) => onChange({ ...animation, settings: { ...settings, player: { ...player, hidden: event.currentTarget.checked } } })} />Hide original player</label>
+            {STOP_CONDITION_OPTIONS.map(([condition, label]) => <label className="checkbox" key={condition}><input type="checkbox" checked={player.stop_conditions[condition]} disabled={disabled} onChange={(event) => updatePlayerStopCondition(condition, event.currentTarget.checked)} />{label}</label>)}
           </div>
           <AdditionalMetadataEditor value={additionalMetadata} disabled={disabled} onFieldError={(key, error) => {
             const next = { ...drafts };
@@ -174,7 +169,6 @@ export function SettingsPanel({ animation, disabled, onChange, onValidityChange,
             setDrafts(next);
             onValidityChange(Object.values(next).every(draft => !draft.error));
           }} onChange={(metadata) => onChange({ ...animation, metadata: { ...metadata, name: animation.metadata.name, description: animation.metadata.description } })} />
-          {metadataErrors.filter(([field]) => !field.startsWith("metadata:")).map(([field, draft]) => <p className="error" role="alert" key={field}>{field}: {draft.error}</p>)}
         </section>
         <section id="settings-panel-events" role="tabpanel" aria-labelledby="settings-tab-events" hidden={category !== "events"}>{children}</section>
       </div>
