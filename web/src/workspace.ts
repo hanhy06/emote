@@ -1,5 +1,6 @@
 import { parseMinecraftTime } from "./format/time";
 import {
+  animationEntries,
   assignSkinOrder,
   assignSkinPart,
   skinPartAssignments,
@@ -81,13 +82,13 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
     case "page_selected":
       return { ...state, page: action.page };
     case "animation_selected":
-      return updateSession(state, (session) => session.document.animations[action.index]
+      return updateSession(state, (session) => animationEntries(session.document)[action.index]
         ? { ...session, animationIndex: action.index, selectedFrame: { type: "create" }, selectedCandidateIds: new Set() }
         : session);
     case "frame_selected":
       return updateSession(state, (session) => ({ ...session,
         selectedFrame: action.frame.type === "create" ? action.frame : { type: "timeline",
-          animationTick: Math.max(0, Math.min(action.frame.animationTick, parseMinecraftTime(session.document.animations[session.animationIndex].clip.duration, 1))) },
+          animationTick: Math.max(0, Math.min(action.frame.animationTick, parseMinecraftTime(animationEntries(session.document)[session.animationIndex].clip.duration, 1))) },
         selectedCandidateIds: new Set() }));
     case "candidate_selected":
       return updateSession(state, (session) => ({
@@ -143,10 +144,11 @@ export function assignmentSummary(document: ConversionDocument): string {
 }
 
 export function eventReviewSummary(document: ConversionDocument | null, animationIndex: number) {
-  const animation = document?.animations[animationIndex];
+  const animations = document ? animationEntries(document) : [];
+  const animation = animations[animationIndex];
   return {
-    hasCommands: document?.animations.some(animation => Object.values(animation.clip.events ?? {})
-      .some(events => events.some(event => event.action.type === "commands" && event.action.commands.length > 0))) ?? false,
+    hasCommands: animations.some(animation => Object.values(animation.clip.events ?? {})
+      .some(events => events.some(event => event.action.type === "commands" && event.action.commands.length > 0))),
     hasSelectedReview: Boolean(animation?.callbacks?.length) || Object.values(animation?.clip.events ?? {})
       .some(events => events.some(event => event.action.type === "commands" && event.action.commands.length > 0)),
     commandTicks: [...new Set(animation?.clip.events?.timeline?.filter(event => event.action.type === "commands" && event.action.commands.length > 0)
@@ -156,7 +158,7 @@ export function eventReviewSummary(document: ConversionDocument | null, animatio
 
 export function sequenceReferenceWarnings(document: ConversionDocument | null): ConversionIssue[] {
   if (!document) return [];
-  const references = animationReferenceTargets(document.animations);
+  const references = animationReferenceTargets(animationEntries(document));
   return (document.sequence.steps ?? []).flatMap((step, index) => {
     if ("wait" in step) return [];
     const ids = typeof step.emote === "string" ? [step.emote] : step.emote.map((choice) => choice.id);

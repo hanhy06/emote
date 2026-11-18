@@ -28,6 +28,7 @@ it("preserves sparse frame timing and commands without a generator comment or di
     expect(animation.animation.events?.timeline?.[0].action).toEqual({ type: "commands", commands: ["say first"] });
     if (!hasDisplay) {
       expect(animation.nodes).toEqual({});
+      expect(document.entries[0]).toMatchObject({ type: "animation", nodeIds: [], clip: { duration: "16t", tracks: [] } });
       continue;
     }
     for (const tick of [0, 4, 13, 14, 15]) {

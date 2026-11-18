@@ -2,10 +2,10 @@ import { ConversionError } from "../foundation/diagnostics";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
 import type { GeneratedResource } from "./generatedResource";
-import type { ConversionAnimation, ConversionDocument, SkinCandidate } from "./conversionDocument";
+import { animationEntries, type ConversionAnimation, type ConversionDocument, type SkinCandidate } from "./conversionDocument";
 import { attachmentTargetId, type NodeIR } from "./animationIR";
 import { remapClip } from "./animationIRConversion";
-import type { ImportedSequence } from "./emoteDefinition";
+import type { ImportedSequence } from "./conversionSeed";
 
 export function combineConversionDocuments(documents: readonly ConversionDocument[], importedSequences: readonly ImportedSequence[] = []): ConversionDocument {
   if (documents.length === 0) throw new ConversionError("empty_import", "No animation projects were imported.");
@@ -16,7 +16,7 @@ export function combineConversionDocuments(documents: readonly ConversionDocumen
   const skinCandidates: Record<string, SkinCandidate> = {};
   const animations: ConversionAnimation[] = [];
   const animationIds = new Set<string>();
-  const reservedAnimationIds = new Set(documents.flatMap((document) => document.animations.map((animation) => {
+  const reservedAnimationIds = new Set(documents.flatMap((document) => animationEntries(document).map((animation) => {
     const separator = animation.id.indexOf(":");
     return `${sanitizeNamespace(animation.id.slice(0, separator))}:${sanitizeResourcePath(animation.id.slice(separator + 1))}`;
   })));
@@ -36,7 +36,7 @@ export function combineConversionDocuments(documents: readonly ConversionDocumen
       const nodeId = prefixId(candidate.nodeId);
       skinCandidates[attachmentTargetId(nodeId, candidate.attachmentId)] = { ...candidate, nodeId, groupId: prefixId(candidate.groupId), sceneId: prefixId(candidate.sceneId) };
     }
-    animations.push(...document.animations.map((animation) => {
+    animations.push(...animationEntries(document).map((animation) => {
       const separator = animation.id.indexOf(":");
       const id = uniqueAnimationId(animation.id.slice(0, separator), animation.id.slice(separator + 1), animationIds, reservedAnimationIds);
       return {
@@ -59,7 +59,7 @@ export function combineConversionDocuments(documents: readonly ConversionDocumen
     },
     nodes,
     skinCandidates,
-    animations,
+    entries: animations,
     sequence: { ...first.sequence, namespace: "emote" },
     diagnostics: documents.flatMap((document) => document.diagnostics),
     resources,
@@ -68,21 +68,23 @@ export function combineConversionDocuments(documents: readonly ConversionDocumen
 
 function applyImportedSequence(document: ConversionDocument, sequence: ImportedSequence | undefined): ConversionDocument {
   if (!sequence) return document;
-  const separator = sequence.id.indexOf(":");
+  const { entry } = sequence;
+  const separator = entry.id.indexOf(":");
   return {
     ...document,
+    entries: [...document.entries, entry],
     targetMinecraftVersion: sequence.targetMinecraftVersion && Object.hasOwn(MINECRAFT_VERSION_PROFILES, sequence.targetMinecraftVersion)
       ? sequence.targetMinecraftVersion : document.targetMinecraftVersion,
     sequence: {
-      namespace: sequence.id.slice(0, separator),
-      idPath: sequence.id.slice(separator + 1),
-      name: sequence.metadata.name,
-      description: sequence.metadata.description,
-      additionalMetadata: Object.fromEntries(Object.entries(sequence.metadata).filter(([key]) => key !== "name" && key !== "description")),
-      cooldown: sequence.cooldown,
-      player: sequence.player,
-      steps: sequence.steps,
-      callbacks: sequence.callbacks?.map((callback) => ({ ...callback })),
+      namespace: entry.id.slice(0, separator),
+      idPath: entry.id.slice(separator + 1),
+      name: entry.metadata.name,
+      description: entry.metadata.description,
+      additionalMetadata: Object.fromEntries(Object.entries(entry.metadata).filter(([key]) => key !== "name" && key !== "description")),
+      cooldown: entry.settings.cooldown,
+      player: entry.settings.player,
+      steps: entry.steps,
+      callbacks: entry.callbacks,
     },
   };
 }

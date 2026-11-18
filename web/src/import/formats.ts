@@ -1,5 +1,4 @@
-import type { ImportedProject, InputFormat } from "../domain/conversionSeed";
-import type { ImportedSequence } from "../domain/emoteDefinition";
+import type { ImportedProject, ImportedSequence, InputFormat } from "../domain/conversionSeed";
 import type { ImportInput } from "./input";
 import { ConversionError } from "../foundation/diagnostics";
 import { isRecord } from "../format/runtimeValue";

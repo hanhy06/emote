@@ -6,8 +6,16 @@ import type { GeneratedResource } from "./generatedResource";
 import type { ConversionIssue } from "../foundation/diagnostics";
 import { normalizeResourceLocation } from "../format/resourceLocation";
 import type { AnimationIR } from "./animationIR";
+import type { ConversionSequence } from "./conversionDocument";
 
 export type InputFormat = "bd_datapack" | "animated_java_blueprint" | "geckolib_bbmodel" | "bedrock_animation_json" | "emotecraft_binary" | "emote_json" | "emote_sequence";
+
+export interface ImportedSequence {
+  kind: "sequence";
+  sourceName: string;
+  targetMinecraftVersion?: string;
+  entry: ConversionSequence;
+}
 
 export interface ImportedProject {
   source: InputFormat;

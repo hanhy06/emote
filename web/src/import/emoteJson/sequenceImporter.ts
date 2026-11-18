@@ -1,20 +1,16 @@
 import { EMOTE_SCHEMA_VERSION } from "../../format/emote";
-import type { EmoteCallback, EmoteMetadata, EmotePlayerBehavior, ImportedSequence, SequenceStep, SequenceWeightedChoice } from "../../domain/emoteDefinition";
-import { isRecord, type RuntimeRecord } from "../../format/runtimeValue";
+import type { ConversionSequence } from "../../domain/conversionDocument";
+import type { ImportedSequence } from "../../domain/conversionSeed";
+import type { SequenceStep, SequenceWeightedChoice } from "../../domain/emoteDefinition";
+import { isRecord, requireRecord, type RuntimeRecord } from "../../format/runtimeValue";
 import type { ImportInput } from "../input";
 import { parseInputJson } from "../common/inputCache";
 
-interface EmoteSequence {
-  callbacks?: EmoteCallback[];
+interface EmoteSequence extends Pick<ConversionSequence, "id" | "metadata" | "settings" | "callbacks"> {
   type: "sequence";
   schema_version: 4 | typeof EMOTE_SCHEMA_VERSION;
   target_minecraft_version?: string;
-  id: string;
-  metadata: RuntimeRecord;
-  settings: {
-    cooldown: string;
-    player: RuntimeRecord;
-  };
+  animation?: Pick<ConversionSequence["clip"], "duration" | "playback" | "events">;
   steps: RuntimeRecord[];
 }
 
@@ -32,17 +28,25 @@ function convertSequenceInput(input: ImportInput): EmoteSequence | null {
 export function importSequence(input: ImportInput): ImportedSequence {
   const sequence = convertSequenceInput(input);
   if (!sequence) throw new Error("Input is not an Emote sequence.");
+  requireRecord(sequence.settings, "$.settings");
+  requireRecord(sequence.settings.player, "$.settings.player");
   return {
     kind: "sequence",
-    source: "emote_sequence",
     sourceName: input.name,
-    id: sequence.id,
     ...(sequence.target_minecraft_version ? { targetMinecraftVersion: sequence.target_minecraft_version } : {}),
-    metadata: { ...sequence.metadata } as EmoteMetadata,
-    cooldown: sequence.settings.cooldown,
-    player: { ...sequence.settings.player, stop_conditions: { ...(sequence.settings.player.stop_conditions as Record<string, unknown>) } } as EmotePlayerBehavior,
-    steps: sequence.steps.map(importStep),
-    callbacks: sequence.callbacks?.map((callback) => ({ ...callback })),
+    entry: {
+      type: "sequence",
+      id: sequence.id,
+      metadata: structuredClone(sequence.metadata),
+      settings: structuredClone(sequence.settings),
+      callbacks: sequence.callbacks?.map((callback) => ({ ...callback })),
+      nodeIds: [],
+      clip: { ...structuredClone(sequence.animation), tracks: [] },
+      steps: sequence.steps.map(importStep),
+      sourceName: sequence.metadata.name,
+      sourcePlayback: structuredClone(sequence.animation?.playback),
+      playbackMode: "source",
+    },
   };
 }
 

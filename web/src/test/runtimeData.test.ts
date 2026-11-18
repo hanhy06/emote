@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { expect, it } from "vitest";
 import { combineConversionDocuments } from "../domain/conversionBatch";
-import { assignSkinPart, createConversionDocument, replaceTimelineEvents } from "../domain/conversionDocument";
+import { animationEntries, assignSkinPart, createConversionDocument, replaceTimelineEvents } from "../domain/conversionDocument";
 import { exportAnimation, exportAnimations } from "../export/projectExporter";
 import type { AnimationJson } from "../format/animation";
 import { readInput } from "../import/formats";
@@ -207,7 +207,7 @@ it("edits animation ticks independently of preview delays and keeps generated ev
     expect(state.session!.selectedFrame).toEqual({ type: "create" });
     state = workspaceReducer(state, { type: "frame_selected", frame: { type: "timeline", animationTick: 5 } });
     let session = state.session!;
-    const preview = createPreviewModel(session.document, session.document.animations[0], session.selectedFrame);
+    const preview = createPreviewModel(session.document, animationEntries(session.document)[0], session.selectedFrame);
     expect(preview.parts[0].matrix[3]).toBe(0.25);
     expect(preview.availability).toEqual({ status: "full" });
     const event = { source: { type: "server" as const }, origin: { type: "root" as const }, action: { type: "commands" as const, commands: ["say frame"] } };
@@ -376,7 +376,7 @@ it("reserves authored IDs and preserves ambiguous sequence references instead of
     return createConversionDocument(project, "Emote JSON");
   }));
   const document = combineConversionDocuments(documents);
-  expect(document.animations.map((entry) => entry.id)).toEqual(["probe:a", "probe:a_3", "probe:a_2", "probe:unique"]);
+  expect(document.entries.map((entry) => entry.id)).toEqual(["probe:a", "probe:a_3", "probe:a_2", "probe:unique"]);
   document.sequence.steps = [
     { emote: "probe:a" },
     { emote: [{ id: "probe:a_2", chance: 3 }, { id: "probe:a", chance: 1 }] },
@@ -389,9 +389,9 @@ it("reserves authored IDs and preserves ambiguous sequence references instead of
     { emote: "probe:unique" }, { emote: "external:unknown" }, { emote: "emote:break" }, { emote: "emote:empty" },
   ]);
   expect(sequenceReferenceWarnings(document).map((issue) => issue.code)).toEqual(["sequence_external_reference"]);
-  document.animations[0].id = "probe:first";
-  document.animations[1].id = "probe:second";
-  document.animations[3].id = "probe:renamed";
+  document.entries[0].id = "probe:first";
+  document.entries[1].id = "probe:second";
+  document.entries[3].id = "probe:renamed";
   const snapshot = structuredClone(document);
   outputs = await exportAnimations(document, true);
   exported = await Promise.all(outputs.map(async (output) => JSON.parse(await output.blob.text())));

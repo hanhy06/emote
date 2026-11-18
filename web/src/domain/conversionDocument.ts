@@ -1,6 +1,6 @@
 import type { ConversionIssue } from "../foundation/diagnostics";
 import type { PlayerSkinPart } from "./player";
-import { attachmentTargetId, orderedNodeIds, type AnimationEntryIR, type AnimationIR, type AttachmentIR, type AnimationSetIR, type ClipIR, type EventIR, type NodeIR, type TransformOperationIR } from "./animationIR";
+import { attachmentTargetId, orderedNodeIds, type AnimationEntryIR, type AnimationIR, type AttachmentIR, type ClipIR, type EventIR, type NodeIR, type TransformOperationIR } from "./animationIR";
 import { normalizeAnimationTimes, remapClip } from "./animationIRConversion";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
@@ -21,12 +21,21 @@ export interface SkinCandidate {
   order?: number;
 }
 
-export interface ConversionAnimation extends AnimationEntryIR {
+interface ConversionEntryFields extends Omit<AnimationEntryIR, "clip"> {
   sourceName: string;
   sourceReferenceId?: string;
   sourcePlayback: ClipIR["playback"];
   playbackMode: "source" | NonNullable<NonNullable<ClipIR["playback"]>["mode"]>;
 }
+
+export type ConversionAnimation = ConversionEntryFields & { type: "animation"; clip: ClipIR };
+export type ConversionSequence = ConversionEntryFields & {
+  type: "sequence";
+  settings: NonNullable<AnimationIR["settings"]> & { cooldown: string; player: EmotePlayerBehavior };
+  clip: Omit<ClipIR, "duration"> & { duration?: string };
+  steps: SequenceStep[];
+};
+export type ConversionEntry = ConversionAnimation | ConversionSequence;
 
 export type ConversionAnimationEvents = Required<NonNullable<AnimationIR["animation"]["events"]>>;
 
@@ -42,13 +51,19 @@ export interface SequenceOutputSettings {
   steps?: SequenceStep[];
 }
 
-export interface ConversionDocument extends AnimationSetIR {
+export interface ConversionDocument {
   origin: { source: InputFormat; sourceName: string; formatLabel: string };
-  animations: ConversionAnimation[];
+  entries: ConversionEntry[];
+  nodes: Record<string, NodeIR>;
+  targetMinecraftVersion: string;
   skinCandidates: Record<string, SkinCandidate>;
   sequence: SequenceOutputSettings;
   diagnostics: ConversionIssue[];
   resources: Map<string, GeneratedResource>;
+}
+
+export function animationEntries(document: ConversionDocument): ConversionAnimation[] {
+  return document.entries.filter((entry) => entry.type === "animation");
 }
 
 export function createConversionDocument(project: ImportedProject, formatLabel: string): ConversionDocument {
@@ -59,7 +74,7 @@ export function createConversionDocument(project: ImportedProject, formatLabel: 
   const reservedIds = new Set(project.animations.flatMap((animation) => Object.keys(animation.ir.nodes)));
   const additionalMetadata = Object.fromEntries(Object.entries(project.suggestedMetadata).filter(([key]) => key !== "name" && key !== "description"));
   const namespace = project.suggestedNamespace ?? "emote";
-  const animations = project.animations.map((animation): ConversionAnimation => {
+  const entries = project.animations.map((animation): ConversionAnimation => {
     const ir = structuredClone(animation.ir);
     if (project.source !== "emote_json") ir.id = `${sanitizeNamespace(namespace)}:${sanitizeResourcePath(animation.id)}`;
     if (project.source !== "emote_json") ir.metadata = animation.suggestedMetadata ?? { ...additionalMetadata, name: animation.name, description: `${animation.name} emote.` };
@@ -116,14 +131,14 @@ export function createConversionDocument(project: ImportedProject, formatLabel: 
     }
     const { nodes: _nodes, animation: sourceClip, target_minecraft_version: _version, ...fields } = ir;
     const clip = remapClip(sourceClip, (id) => ids.get(id) ?? id);
-    return { ...fields, clip, nodeIds: [...ids.values()], sourceName: animation.name, sourcePlayback: sourceClip.playback, playbackMode: "source",
+    return { ...fields, type: "animation", clip, nodeIds: [...ids.values()], sourceName: animation.name, sourcePlayback: sourceClip.playback, playbackMode: "source",
       sourceReferenceId: animation.sourceReferenceId };
   });
   let document: ConversionDocument = {
     origin: { source: project.source, sourceName: project.sourceName, formatLabel },
     targetMinecraftVersion: project.suggestedMinecraftVersion && Object.hasOwn(MINECRAFT_VERSION_PROFILES, project.suggestedMinecraftVersion)
       ? project.suggestedMinecraftVersion : DEFAULT_TARGET_MINECRAFT_VERSION,
-    nodes, skinCandidates, animations,
+    nodes, skinCandidates, entries,
     sequence: { namespace, name: project.suggestedMetadata.name, description: project.suggestedMetadata.description,
       additionalMetadata, cooldown: project.suggestedCooldown ?? "0t", player: project.suggestedPlayer },
     diagnostics: project.diagnostics, resources: project.resources,
@@ -234,7 +249,7 @@ function applySkinGroups(document: ConversionDocument, part: PlayerSkinPart, gro
 
 export function updateLifecycleEvents(document: ConversionDocument, animationIndex: number,
   events: Pick<ConversionAnimationEvents, "start" | "loop" | "stop"> & { callbacks: EmoteCallback[] }): ConversionDocument {
-  const animation = document.animations[animationIndex];
+  const animation = animationEntries(document)[animationIndex];
   if (!animation) return document;
   const { callbacks, ...commandEvents } = events;
   return updateAnimation(document, animationIndex, { ...animation, callbacks,
@@ -242,7 +257,7 @@ export function updateLifecycleEvents(document: ConversionDocument, animationInd
 }
 
 export function replaceTimelineEvents(document: ConversionDocument, animationIndex: number, animationTick: number, events: EventIR[]): ConversionDocument {
-  const animation = document.animations[animationIndex];
+  const animation = animationEntries(document)[animationIndex];
   if (!animation) return document;
   if (!Number.isInteger(animationTick) || animationTick < 0 || animationTick > parseMinecraftTime(animation.clip.duration, 1)) throw new Error("Event tick must be within the animation duration.");
   return updateAnimation(document, animationIndex, { ...animation,
@@ -253,8 +268,9 @@ export function replaceTimelineEvents(document: ConversionDocument, animationInd
 }
 
 export function updateAnimation(document: ConversionDocument, animationIndex: number, animation: AnimationEntryIR): ConversionDocument {
-  if (!document.animations[animationIndex]) return document;
+  const current = animationEntries(document)[animationIndex];
+  if (!current) return document;
   const normalized = structuredClone(animation);
   normalizeAnimationTimes(normalized);
-  return { ...document, animations: document.animations.map((entry, index) => index === animationIndex ? { ...entry, ...normalized } : entry) };
+  return { ...document, entries: document.entries.map((entry) => entry === current ? { ...entry, ...normalized } : entry) };
 }

@@ -18,7 +18,7 @@ it("preserves the 11 documentation sample matrices with shared player render sca
     const project = await readInput(format, { name: path.split("/").at(-1)!, bytes: await readFile(new URL(`../../../${path}`, import.meta.url)) });
     const document = createConversionDocument(project, format);
     for (const name of names) {
-      const index = document.animations.findIndex((animation) => animation.sourceName === name);
+      const index = document.entries.findIndex((animation) => animation.sourceName === name);
       expect(index, `${path}: missing ${name}`).toBeGreaterThanOrEqual(0);
       const [output] = await exportAnimation(document, index);
       converted.set(name, JSON.parse(await output.blob.text()));

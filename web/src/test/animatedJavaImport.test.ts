@@ -226,7 +226,7 @@ it("preserves single-command conditions and skips only animations with condition
     ],
   };
   const { input, document, output } = await importProject(project);
-  expect(document.animations.map((animation) => animation.sourceName)).toEqual(["Healthy"]);
+  expect(document.entries.map((animation) => animation.sourceName)).toEqual(["Healthy"]);
   expect(output.animation.events!.timeline!.map((event) => event.action)).toEqual([
     { type: "commands", commands: ["execute if entity @s[tag=private] run say conditional function"] },
     { type: "commands", commands: ["say first", "say second"] },

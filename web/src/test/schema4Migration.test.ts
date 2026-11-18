@@ -6,6 +6,7 @@ import { importFileBatch } from "../import/importBatch";
 import { createDefaultPlayerBehavior } from "../domain/emoteDefinition";
 import type { AnimationJson } from "../format/animation";
 import { detectInputFormat, readInput } from "../import/formats";
+import sequenceReference from "../../../docs/reference/sequence.json";
 
 const legacy = {
   type: "animation", schema_version: 4, id: "example:legacy", target_minecraft_version: "26.3",
@@ -116,11 +117,28 @@ it("imports a schema 4 sequence with animations and exports its steps and refere
   expect(await detectInputFormat(input)).toBe("emote_sequence");
   const document = await importFileBatch([legacy, sequence].map((value, index) => ({ name: `${index}.json`,
     arrayBuffer: async () => new TextEncoder().encode(JSON.stringify(value)).buffer })));
+  expect(document.entries.map(({ type, id }) => [type, id])).toEqual([["animation", "example:legacy"], ["sequence", "example:sequence"]]);
   const outputs = await exportAnimations(document, true);
   const actual = JSON.parse(await outputs.at(-1)!.blob.text());
   expect(actual).toEqual({ ...sequence, schema_version: 5 });
   const animation: AnimationJson = JSON.parse(await outputs[0].blob.text());
   expect(animation).toMatchObject({ id: "example:legacy", schema_version: 5 });
   const reopened = await readInput("emote_sequence", { name: "sequence.json", bytes: new TextEncoder().encode(JSON.stringify(actual)) });
-  expect(reopened.steps).toEqual(document.sequence.steps);
+  expect(reopened.entry.steps).toEqual(document.sequence.steps);
+});
+
+it("imports sequence playback and command events into the common clip without assigning a duration", async () => {
+  const command = {
+    source: { type: "player" }, origin: { type: "root" }, action: { type: "commands", commands: ["say sequence"] },
+  };
+  const animation = { playback: { mode: "loop" }, events: { start: [command], timeline: [{ ...command, time: "0t" }] } };
+  const document = await importFileBatch([{
+    name: "legacy.json",
+    arrayBuffer: async () => new TextEncoder().encode(JSON.stringify(legacy)).buffer,
+  }, {
+    name: "sequence.json",
+    arrayBuffer: async () => new TextEncoder().encode(JSON.stringify({ ...sequenceReference, animation })).buffer,
+  }]);
+  expect(document.entries[1]).toMatchObject({ type: "sequence", nodeIds: [], clip: { ...animation, tracks: [] } });
+  expect(document.entries[1].clip).not.toHaveProperty("duration");
 });

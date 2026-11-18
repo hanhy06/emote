@@ -1,7 +1,7 @@
 import type { ConversionDocument } from "../domain/conversionDocument";
 import { createConversionDocument } from "../domain/conversionDocument";
 import { combineConversionDocuments } from "../domain/conversionBatch";
-import type { ImportedSequence } from "../domain/emoteDefinition";
+import type { ImportedSequence } from "../domain/conversionSeed";
 import { ConversionError, conversionErrorMessage, type ConversionIssue } from "../foundation/diagnostics";
 import { detectInputFormat, readInput, INPUT_FORMATS } from "./formats";
 

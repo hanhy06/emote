@@ -111,7 +111,7 @@ it("excludes actual skin overlays while preserving skin assignment and restorati
   const path = "docs/reference/aj/sit.ajblueprint";
   const input = await readInput("animated_java_blueprint", { name: "sit.ajblueprint", bytes: await readFile(new URL(`../../../${path}`, import.meta.url)) });
   const document = createConversionDocument(input, "AJ");
-  const index = document.animations.findIndex((entry) => entry.sourceName === "sit_down");
+  const index = document.entries.findIndex((entry) => entry.sourceName === "sit_down");
   expect(index).toBeGreaterThanOrEqual(0);
   const output = compileAnimation(document, index);
   expect(output.generatedResourceReferences.size).toBe(0);

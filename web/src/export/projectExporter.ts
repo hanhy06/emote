@@ -1,5 +1,5 @@
 import { compileAnimation } from "../compiler/animationCompiler";
-import type { ConversionDocument } from "../domain/conversionDocument";
+import { animationEntries, type ConversionDocument } from "../domain/conversionDocument";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { EMOTE_SCHEMA_VERSION } from "../format/emote";
 import type { ExportResult } from "./types";
@@ -9,7 +9,7 @@ export async function exportAnimation(document: ConversionDocument, animationInd
   const compiled = compileAnimation(document, animationIndex);
   const files: ExportResult[] = [{
     blob: new Blob([JSON.stringify(compiled.animation)], { type: "application/json" }),
-    fileName: animationFileNames(document.animations.map((entry) => entry.id))[animationIndex],
+    fileName: animationFileNames(animationEntries(document).map((entry) => entry.id))[animationIndex],
   }];
   if (compiled.generatedResourceReferences.size > 0) {
     const { exportResourceBundle } = await import("./resourceBundleExporter");
@@ -19,8 +19,9 @@ export async function exportAnimation(document: ConversionDocument, animationInd
 }
 
 export async function exportAnimations(document: ConversionDocument, includeSequence: boolean): Promise<ExportResult[]> {
-  if (document.animations.length === 0) throw new Error("The project does not contain animations.");
-  const compiled = document.animations.map((_, index) => compileAnimation(
+  const entries = animationEntries(document);
+  if (entries.length === 0) throw new Error("The project does not contain animations.");
+  const compiled = entries.map((_, index) => compileAnimation(
     document,
     index,
     includeSequence ? false : undefined,
@@ -34,7 +35,7 @@ export async function exportAnimations(document: ConversionDocument, includeSequ
   }));
   if (includeSequence) {
     const sequenceOutput = structuredClone(document.sequence);
-    const references = animationReferenceTargets(document.animations);
+    const references = animationReferenceTargets(entries);
     const baseSequenceId = `${sanitizeNamespace(sequenceOutput.namespace)}:${sanitizeResourcePath(sequenceOutput.idPath ?? sequenceOutput.name)}`;
     let sequenceId = baseSequenceId;
     let suffix = 1;

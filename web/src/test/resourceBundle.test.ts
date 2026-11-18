@@ -13,9 +13,9 @@ it("packages the generated models and textures referenced by exported AJ and bbm
     const project = await readInput(format, { name: path.split("/").at(-1)!, bytes: await readFile(new URL(`../../../${path}`, import.meta.url)) });
     const imported = createConversionDocument(project, format);
     const document = assignSkinPart(imported, new Set(Object.keys(imported.skinCandidates)), null);
-    const index = document.animations.findIndex((animation) => animation.sourceName === name);
+    const index = document.entries.findIndex((animation) => animation.sourceName === name);
     expect(index, path).toBeGreaterThanOrEqual(0);
-    const entry = document.animations[index];
+    const entry = document.entries[index];
     const expectedReferences = itemReferences({ nodes: entry.nodeIds.map((id) => document.nodes[id]), animation: entry.clip });
     expect(expectedReferences.size, `${path}: native cubes must require generated models`).toBeGreaterThan(0);
     const outputs = await exportAnimation(document, index);

@@ -24,7 +24,7 @@ import { createPreviewModel } from "./preview/previewModel";
 import { parseMinecraftTime } from "./format/time";
 import { MINECRAFT_VERSION_PROFILES } from "./format/minecraftVersionProfiles";
 import type { EventIR } from "./domain/animationIR";
-import { skinPartAssignments, skinPartOrders } from "./domain/conversionDocument";
+import { animationEntries, skinPartAssignments, skinPartOrders } from "./domain/conversionDocument";
 const PartPreview = lazy(() => import("./components/PartPreview"));
 const ACCEPTED_EXTENSIONS = [...new Set(Object.values(INPUT_FORMATS).map((format) => format.extension))]
   .map((extension) => `.${extension}`)
@@ -64,15 +64,16 @@ export function App() {
   const busyMessage = operation.type === "idle" ? null : operation.message;
 
   const project = session?.document ?? null;
+  const animations = useMemo(() => project ? animationEntries(project) : [], [project]);
   const animationIndex = session?.animationIndex ?? 0;
-  const selectedAnimation = project?.animations[animationIndex];
+  const selectedAnimation = animations[animationIndex];
   const selectedAnimationTick = session?.selectedFrame.type === "timeline" ? session.selectedFrame.animationTick : null;
   const frameIndex = selectedAnimationTick === null ? 0 : selectedAnimationTick + 1;
   const durationTicks = selectedAnimation ? parseMinecraftTime(selectedAnimation.clip.duration, 1) : 0;
   const preview = useMemo(() => {
     if (!session) return null;
-    return createPreviewModel(session.document, session.document.animations[session.animationIndex], session.selectedFrame);
-  }, [session]);
+    return createPreviewModel(session.document, animations[session.animationIndex], session.selectedFrame);
+  }, [session, animations]);
   const candidateParts = preview?.candidateParts ?? [];
   const assignments = useMemo(() => project ? skinPartAssignments(project) : {}, [project]);
   const orders = useMemo(() => project ? skinPartOrders(project) : {}, [project]);
@@ -268,12 +269,12 @@ export function App() {
             <div className="project-selectors">
               <label className="project-animation">
                 <span>Animation</span>
-                <select value={animationIndex} disabled={project.animations.length === 1 || !eventJsonValid || !settingsValid} onChange={(event) => {
+                <select value={animationIndex} disabled={animations.length === 1 || !eventJsonValid || !settingsValid} onChange={(event) => {
                   const nextIndex = Number(event.currentTarget.value);
                   dispatch({ type: "animation_selected", index: nextIndex });
                   setSettingsCategory("settings");
                 }}>
-                  {project.animations.map((item, index) => <option value={index} key={index}>{item.metadata.name}</option>)}
+                  {animations.map((item, index) => <option value={index} key={index}>{item.metadata.name}</option>)}
                 </select>
               </label>
               <label className="project-version">
@@ -286,7 +287,7 @@ export function App() {
             <dl>
               <div><dt>Format</dt><dd>{project.origin.formatLabel}</dd></div>
               <div><dt>Nodes</dt><dd>{Object.keys(project.nodes).length}</dd></div>
-              <div><dt>Animations</dt><dd>{project.animations.length}</dd></div>
+              <div><dt>Animations</dt><dd>{animations.length}</dd></div>
             </dl>
           </section>
 
@@ -424,7 +425,7 @@ export function App() {
 
           {page === 1 && <ExportPanel
             assignmentSummary={assignmentSummary(project)}
-            animations={project.animations}
+            animations={animations}
             error={exportError}
             disabled={busy || !settingsValid}
             onDownloadAnimation={handleAnimationDownload}
