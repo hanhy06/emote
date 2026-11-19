@@ -34,8 +34,8 @@ public final class PreparedSequence implements PreparedEmote {
             .flatMap(step -> step.choices().stream()).filter(AnimationChoice.class::isInstance)
             .map(AnimationChoice.class::cast).map(AnimationChoice::animation).findFirst()
             .orElseThrow(() -> new IllegalArgumentException("Sequence must reference at least one animation"));
-        this.skinBindings = first.skinBindings();
         this.rotationDeadzone = first.rotationDeadzone();
+        Set<SkinBinding> skinBindings = new LinkedHashSet<>();
         Map<String, EmoteAnimation.Node> nodes = new LinkedHashMap<>();
         Map<String, Map<String, DisplayData>> contents = new LinkedHashMap<>();
         Map<String, Matrix4f> matrices = new LinkedHashMap<>();
@@ -44,7 +44,7 @@ public final class PreparedSequence implements PreparedEmote {
             for (Choice choice : animationStep.choices()) {
                 if (!(choice instanceof AnimationChoice selected)) continue;
                 PreparedAnimation animation = selected.animation();
-                if (!this.skinBindings.equals(animation.skinBindings())) throw new IllegalArgumentException("Sequence animations must use the same skin layout: " + first.id() + " and " + animation.id());
+                skinBindings.addAll(animation.skinBindings());
                 Map<String, Matrix4f> worldMatrices = new HashMap<>();
                 for (String id : animation.nodeOrder()) {
                     EmoteAnimation.Node node = animation.nodes().get(id);
@@ -62,6 +62,7 @@ public final class PreparedSequence implements PreparedEmote {
         this.displayContents = Map.copyOf(contents);
         this.defaultMatrices = Map.copyOf(matrices);
         this.nodeOrder = List.copyOf(nodes.keySet());
+        this.skinBindings = List.copyOf(skinBindings);
         this.durationTicks = fixedDurationTicks(steps);
     }
 

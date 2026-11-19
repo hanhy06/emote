@@ -1,8 +1,9 @@
 import { readFile } from "node:fs/promises";
 import { expect, it } from "vitest";
 import { combineConversionDocuments } from "../domain/conversionBatch";
-import { assignSkinPart, createConversionDocument, replaceTimelineEvents } from "../domain/conversionDocument";
-import { exportAnimation, exportAnimations } from "../export/projectExporter";
+import { animationEntries, assignSkinPart, createConversionDocument } from "../domain/conversionDocument";
+import { parseEventEdit } from "../components/EventPanel";
+import { exportProject } from "../export/projectExporter";
 import type { AnimationJson } from "../format/animation";
 import { readInput } from "../import/formats";
 import MolangParser from "molangjs/dist/molang.esm.js";
@@ -29,7 +30,7 @@ const animation: AnimationJson = {
       parent: "root", inherit: { rotation: "entity", scale: false, visibility: true },
       transform: [{ id: "position", op: "translate", value: [0, 1.5, 0] }, { id: "spin", op: "rotate_euler", order: "ZYX", value: [0, 0, 0] }],
       attachments: {
-        prop: { type: "item_display", item_stack_snbt: '{id:"minecraft:paper",count:1}', item_display: "fixed", entity_nbt: "{glowing:1b}" },
+        prop: { type: "item_display", item_stack_snbt: '{id:"minecraft:paper",count:1}', item_display: "fixed", entity_snbt: "{glowing:1b}" },
         custom: { type: "external", key: "example:accessory", data: { variant: "keep" } },
       },
     },
@@ -81,7 +82,7 @@ const nbtTrack = animation.animation.tracks.find((track): track is Extract<Track
 
 it("preserves authored v5 animation runtime data through import and export", async () => {
   const project = await readInput("emote_json", { name: "runtime.json", bytes: new TextEncoder().encode(JSON.stringify(animation)) });
-  const [output] = await exportAnimation(createConversionDocument(project, "Emote JSON"), 0);
+  const [output] = await exportProject(createConversionDocument(project, "Emote JSON"), 0);
   expect(JSON.parse(await output.blob.text())).toEqual(animation);
 });
 
@@ -108,7 +109,7 @@ it("prunes only proven static nodes in output while preserving curves, event ori
   const document = createConversionDocument(project, "Emote JSON");
   const snapshot = structuredClone(document);
   expect(document.nodes.tiny).toBeDefined();
-  const outputs = await exportAnimation(document, 0);
+  const outputs = await exportProject(document, 0);
   expect(outputs).toHaveLength(1);
   const actual: AnimationJson = JSON.parse(await outputs[0].blob.text());
   expect(actual.nodes.tiny).toBeUndefined();
@@ -154,7 +155,7 @@ it("prunes zero scales under animated ancestors while preserving inheritance bre
   const project = await readInput("emote_json", { name: "zero-scale.json", bytes: new TextEncoder().encode(JSON.stringify(authored)) });
   const document = createConversionDocument(project, "Emote JSON");
   const snapshot = structuredClone(document);
-  const [output] = await exportAnimation(document, 0);
+  const [output] = await exportProject(document, 0);
   const actual: AnimationJson = JSON.parse(await output.blob.text());
   const removed = ["zeroGroup", "inherited", "ownZero", "hiddenSibling", "independentZero"];
   for (const id of removed) expect(actual.nodes[id], id).toBeUndefined();
@@ -189,7 +190,7 @@ it("preserves scales that are only initially zero, uncertain, or tiny under anim
     { target: { node: "dynamic", operation: "scale" }, channel: "value", driver: { type: "expression", value: [{ molang: "q.anim_time" }, 0, 0] } },
   );
   const project = await readInput("emote_json", { name: "preserved-scales.json", bytes: new TextEncoder().encode(JSON.stringify(authored)) });
-  const [output] = await exportAnimation(createConversionDocument(project, "Emote JSON"), 0);
+  const [output] = await exportProject(createConversionDocument(project, "Emote JSON"), 0);
   const actual: AnimationJson = JSON.parse(await output.blob.text());
   for (const id of ["growing", "lateZero", "blended", "spline", "dynamic", "tiny"]) expect(actual.nodes[id], id).toEqual(authored.nodes[id]);
   expect(actual.animation.tracks).toEqual(authored.animation.tracks);
@@ -205,30 +206,31 @@ it("edits animation ticks independently of preview delays and keeps generated ev
     const project = await readInput("emote_json", { name: "delay.json", bytes: new TextEncoder().encode(JSON.stringify(authored)) });
     let state = workspaceReducer(INITIAL_WORKSPACE, { type: "documents_open_succeeded", document: createConversionDocument(project, "Emote JSON") });
     expect(state.session!.selectedFrame).toEqual({ type: "create" });
-    state = workspaceReducer(state, { type: "frame_selected", frame: { type: "timeline", tick: 5 } });
+    state = workspaceReducer(state, { type: "frame_selected", frame: { type: "timeline", animationTick: 5 } });
     let session = state.session!;
-    const preview = createPreviewModel(session.document, session.document.animations[0], session.selectedFrame);
+    const preview = createPreviewModel(session.document, animationEntries(session.document)[0], session.selectedFrame);
     expect(preview.parts[0].matrix[3]).toBe(0.25);
     expect(preview.availability).toEqual({ status: "full" });
     const event = { source: { type: "server" as const }, origin: { type: "root" as const }, action: { type: "commands" as const, commands: ["say frame"] } };
-    state = workspaceReducer(state, { type: "timeline_events_changed", tick: 5, events: [event] });
-    state = workspaceReducer(state, { type: "frame_selected", frame: { type: "timeline", tick: 30 } });
-    expect(state.session!.selectedFrame).toEqual({ type: "timeline", tick: 20 });
-    state = workspaceReducer(state, { type: "timeline_events_changed", tick: 20, events: [event] });
+    const eventJson = JSON.stringify([event]);
+    state = workspaceReducer(state, { type: "entry_changed", index: 0, entry: parseEventEdit(session.document.entries[0], 5, eventJson) });
+    state = workspaceReducer(state, { type: "frame_selected", frame: { type: "timeline", animationTick: 30 } });
+    expect(state.session!.selectedFrame).toEqual({ type: "timeline", animationTick: 20 });
+    state = workspaceReducer(state, { type: "entry_changed", index: 0, entry: parseEventEdit(state.session!.document.entries[0], 20, eventJson) });
     session = state.session!;
-    const [output] = await exportAnimation(session.document, 0);
+    const [output] = await exportProject(session.document, 0);
     const actual: AnimationJson = JSON.parse(await output.blob.text());
     expect(actual.animation.duration).toBe("20t");
     expect(actual.animation.playback!.start_delay).toEqual(startDelay);
     expect(actual.animation.events!.timeline).toEqual([{ ...event, time: "5t" }, { ...event, time: "20t" }]);
-    expect(() => replaceTimelineEvents(session.document, 0, 30, [event])).toThrow(/within the animation duration/);
+    expect(() => parseEventEdit(session.document.entries[0], 30, eventJson)).toThrow(/within the animation duration/);
   }
 });
 
 it("omits skin NBT only in output and restores original display data when unassigned", async () => {
   const authored = structuredClone(animation);
   authored.nodes.arm.attachments!.prop = {
-    type: "item_display", item_stack_snbt: '{id:"minecraft:player_head",count:1}', item_display: "none", visible: true, entity_nbt: "{Glowing:1b}",
+    type: "item_display", item_stack_snbt: '{id:"minecraft:player_head",count:1}', item_display: "none", visible: true, entity_snbt: "{Glowing:1b}",
   };
   authored.nodes.arm.attachments!.other = structuredClone(animation.nodes.arm.attachments!.prop);
   authored.animation.tracks.push({ ...structuredClone(nbtTrack), target: { node: "arm", attachment: "other" } });
@@ -240,19 +242,19 @@ it("omits skin NBT only in output and restores original display data when unassi
   const expected = structuredClone(authored);
   expected.nodes.arm.attachments!.prop = { type: "player_skin", part: "head", region: { from: 0, to: 1 }, visible: true };
   expected.animation.tracks.splice(3, 1);
-  for (const files of [await exportAnimation(document, 0), await exportAnimations(document, false)]) {
+  for (const files of [await exportProject(document, 0), await exportProject(document, "animations")]) {
     expect(files).toHaveLength(1);
     expect(JSON.parse(await files[0].blob.text())).toEqual(expected);
   }
   expect(document).toEqual(snapshot);
   const restored = assignSkinPart(document, new Set([attachmentTargetId("arm", "prop")]), null);
-  const [output] = await exportAnimation(restored, 0);
+  const [output] = await exportProject(restored, 0);
   expect(JSON.parse(await output.blob.text())).toEqual(authored);
 });
 
 it("fits attachments independently without duplicating node expressions and restores their authored tracks and data", async () => {
   const authored = structuredClone(animation);
-  authored.nodes.arm.attachments!.prop = { type: "item_display", item_stack_snbt: '{id:"minecraft:player_head",count:1}', item_display: "none", entity_nbt: "{Glowing:1b}" };
+  authored.nodes.arm.attachments!.prop = { type: "item_display", item_stack_snbt: '{id:"minecraft:player_head",count:1}', item_display: "none", entity_snbt: "{Glowing:1b}" };
   authored.nodes.arm.attachments!.other = structuredClone(authored.nodes.arm.attachments!.prop);
   authored.nodes.arm.attachments!.decoration = structuredClone(animation.nodes.arm.attachments!.prop);
   authored.nodes.locator = { parent: "arm", transform: [{ id: "position", op: "translate", value: [0, 1, 0] }] };
@@ -268,7 +270,7 @@ it("fits attachments independently without duplicating node expressions and rest
   const original = createConversionDocument(project, "Emote JSON");
   expect(Object.keys(original.skinCandidates)).toEqual([attachmentTargetId("arm", "prop"), attachmentTargetId("arm", "other")]);
   let document = assignSkinPart(original, new Set([attachmentTargetId("arm", "prop")]), "head");
-  const [output] = await exportAnimation(document, 0);
+  const [output] = await exportProject(document, 0);
   const actual: AnimationJson = JSON.parse(await output.blob.text());
   const childId = Object.keys(actual.nodes).find((id) => id !== "arm" && actual.nodes[id].attachments?.prop)!;
   expect(actual.nodes[childId].parent).toBe("arm");
@@ -293,11 +295,11 @@ it("fits attachments independently without duplicating node expressions and rest
   expect(poses[childId].matrix.elements[0]).toBe(2);
   expect(poses.locator.matrix.elements[13]).toBe(2.5);
   document = assignSkinPart(document, new Set([attachmentTargetId("arm", "other")]), "body");
-  const [both] = await exportAnimation(document, 0);
+  const [both] = await exportProject(document, 0);
   const bothOutput: AnimationJson = JSON.parse(await both.blob.text());
   expect(Object.values(bothOutput.nodes).flatMap((node) => Object.values(node.attachments ?? {})).filter((attachment) => attachment.type === "player_skin").map((attachment) => attachment.part).sort()).toEqual(["body", "head"]);
   const restored = assignSkinPart(document, new Set(Object.keys(document.skinCandidates)), null);
-  const [restoredOutput] = await exportAnimation(restored, 0);
+  const [restoredOutput] = await exportProject(restored, 0);
   expect(JSON.parse(await restoredOutput.blob.text())).toEqual(authored);
   const batch = combineConversionDocuments([original, original]);
   expect(batch.skinCandidates[attachmentTargetId("input_2__arm", "other")].nodeId).toBe("input_2__arm");
@@ -310,7 +312,7 @@ it("preserves and evaluates shared v5 curves, dynamic arguments and blend in tra
   const bytes = await readFile(new URL("../../../src/test/resources/common-curves.json", import.meta.url));
   const authored: AnimationJson = JSON.parse(bytes.toString("utf8"));
   const project = await readInput("emote_json", { name: "common-curves.json", bytes });
-  const [output] = await exportAnimation(createConversionDocument(project, "Emote JSON"), 0);
+  const [output] = await exportProject(createConversionDocument(project, "Emote JSON"), 0);
   const actual: AnimationJson = JSON.parse(await output.blob.text());
   expect(actual).toEqual(authored);
   const parser = new MolangParser();
@@ -354,7 +356,7 @@ it("preserves and evaluates shared v5 curves, dynamic arguments and blend in tra
   expect(evaluateEasing({ kernel: "blockbench_expo", direction: "in" }, 0)).toBe(1 / 1024);
   expect(evaluateEasing({ kernel: "blockbench_steps", direction: "in", count: 5 }, 1)).toBe(0.8);
   const preview = new PreviewMolangEvaluator();
-  expect(preview.evaluate("q.value('bend', 0) + q.key_frame_lerp_time", { animationTime: 0.75, keyframeLerpTime: 0.25, resolveValue: () => 1.5 })).toBe(1.75);
+  expect(preview.evaluate("q.value('bend', 0) + q.key_frame_lerp_time", { animationTimeSeconds: 0.75, keyframeLerpTime: 0.25, resolveValue: () => 1.5 })).toBe(1.75);
 });
 
 it("preserves sequence timing, choices, controls, callbacks and external references", async () => {
@@ -362,8 +364,8 @@ it("preserves sequence timing, choices, controls, callbacks and external referen
   const expected = JSON.parse(bytes.toString("utf8"));
   const sequence = await readInput("emote_sequence", { name: "sequence.json", bytes });
   const project = await readInput("emote_json", { name: "runtime.json", bytes: new TextEncoder().encode(JSON.stringify(animation)) });
-  const document = combineConversionDocuments([createConversionDocument(project, "Emote JSON")], [sequence]);
-  const outputs = await exportAnimations(document, true);
+  const document = combineConversionDocuments([createConversionDocument(project, "Emote JSON"), sequence]);
+  const outputs = await exportProject(document, "sequence");
   const exported = await Promise.all(outputs.filter((output) => output.fileName.endsWith(".json")).map(async (output) => JSON.parse(await output.blob.text())));
   expect(exported.find((output) => output.type === "sequence")).toEqual(expected);
   expect(exported.find((output) => output.type === "animation")).toEqual({ ...animation, settings: { ...animation.settings, standalone: false } });
@@ -375,25 +377,29 @@ it("reserves authored IDs and preserves ambiguous sequence references instead of
     const project = await readInput("emote_json", { name: `input_${index}.json`, bytes: new TextEncoder().encode(JSON.stringify(authored)) });
     return createConversionDocument(project, "Emote JSON");
   }));
-  const document = combineConversionDocuments(documents);
-  expect(document.animations.map((entry) => entry.id)).toEqual(["probe:a", "probe:a_3", "probe:a_2", "probe:unique"]);
-  document.sequence.steps = [
+  const steps = [
     { emote: "probe:a" },
-    { emote: [{ id: "probe:a_2", chance: 3 }, { id: "probe:a", chance: 1 }] },
+    { emote: ["probe:a_2", 3, "probe:a", 1] },
     { emote: "probe:unique" }, { emote: "external:unknown" }, { emote: "emote:break" }, { emote: "emote:empty" },
   ];
-  let outputs = await exportAnimations(document, true);
+  const sequence = await readInput("emote_sequence", { name: "sequence.json", bytes: new TextEncoder().encode(JSON.stringify({
+    type: "sequence", schema_version: 5, id: "example:sequence", metadata: animation.metadata,
+    settings: { cooldown: "0t", player: animation.settings!.player }, steps,
+  })) });
+  const document = combineConversionDocuments([...documents, sequence]);
+  expect(document.entries.map((entry) => entry.id)).toEqual(["probe:a", "probe:a_3", "probe:a_2", "probe:unique", "example:sequence"]);
+  let outputs = await exportProject(document, "sequence");
   let exported = await Promise.all(outputs.map(async (output) => JSON.parse(await output.blob.text())));
   expect(exported.find((entry) => entry.type === "sequence").steps).toEqual([
     { emote: "probe:a" }, { emote: ["probe:a_2", 3, "probe:a", 1] },
     { emote: "probe:unique" }, { emote: "external:unknown" }, { emote: "emote:break" }, { emote: "emote:empty" },
   ]);
   expect(sequenceReferenceWarnings(document).map((issue) => issue.code)).toEqual(["sequence_external_reference"]);
-  document.animations[0].id = "probe:first";
-  document.animations[1].id = "probe:second";
-  document.animations[3].id = "probe:renamed";
+  document.entries[0].id = "probe:first";
+  document.entries[1].id = "probe:second";
+  document.entries[3].id = "probe:renamed";
   const snapshot = structuredClone(document);
-  outputs = await exportAnimations(document, true);
+  outputs = await exportProject(document, "sequence");
   exported = await Promise.all(outputs.map(async (output) => JSON.parse(await output.blob.text())));
   expect(exported.find((entry) => entry.type === "sequence").steps).toEqual([
     { emote: "probe:a" }, { emote: ["probe:a_2", 3, "probe:a", 1] },
@@ -403,6 +409,45 @@ it("reserves authored IDs and preserves ambiguous sequence references instead of
     "sequence_ambiguous_reference", "sequence_ambiguous_reference", "sequence_external_reference",
   ]);
   expect(document).toEqual(snapshot);
+});
+
+it("rejects duplicate animation IDs in bundles and distinguishes filenames for different IDs", async () => {
+  const documents = await Promise.all(["probe:same.name", "other:same.name"].map(async (id) => {
+    const bytes = new TextEncoder().encode(JSON.stringify({ ...animation, id }));
+    return createConversionDocument(await readInput("emote_json", { name: `${id}.json`, bytes }), "Emote JSON");
+  }));
+  const document = combineConversionDocuments(documents);
+  const [first, second] = animationEntries(document);
+  second.id = first.id;
+  for (const selection of ["animations", "sequence"] as const) {
+    await expect(exportProject(document, selection)).rejects.toMatchObject({
+      code: "duplicate_animation_id", message: expect.stringContaining(first.id),
+    });
+  }
+  expect(await exportProject(document, 0)).toHaveLength(1);
+
+  second.id = "probe:same/name";
+  const outputs = await exportProject(document, "animations");
+  expect(outputs.map(output => output.fileName)).toEqual(["probe.same.name.json", "probe.same.name.1.json"]);
+  expect(await Promise.all(outputs.map(async output => JSON.parse(await output.blob.text()).id))).toEqual([first.id, second.id]);
+});
+
+it("generates a sequence from the final animation IDs and gives it a distinct filename", async () => {
+  const ids = ["emote:runtime_preservation", "example:second"];
+  const documents = await Promise.all(ids.map(async (id) => {
+    const bytes = new TextEncoder().encode(JSON.stringify({ ...animation, id }));
+    return createConversionDocument(await readInput("emote_json", { name: `${id}.json`, bytes }), "Emote JSON");
+  }));
+  const document = combineConversionDocuments(documents);
+  const outputs = await exportProject(document, "sequence");
+  const sequence = outputs.at(-1)!;
+  expect(sequence.fileName).toBe("emote.runtime_preservation.1.json");
+  expect(JSON.parse(await sequence.blob.text())).toEqual({
+    type: "sequence", schema_version: 5, target_minecraft_version: "26.3", id: "emote:runtime_preservation.1",
+    metadata: animation.metadata, settings: { cooldown: animation.settings!.cooldown, player: animation.settings!.player },
+    steps: ids.map((emote) => ({ emote })),
+  });
+  expect(document.entries.map((entry) => entry.type)).toEqual(["animation", "animation"]);
 });
 
 it("rejects invalid shared dependencies and dynamic curve parameters", async () => {

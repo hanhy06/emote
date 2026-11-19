@@ -82,7 +82,7 @@ public final class EntityFollowExample {
         Vec3 origin = context.getNodeWorldPosition(context.getPayload()).orElseThrow();
         allay.snapTo(
             origin.x, origin.y, origin.z,
-            context.getActor("actor").orElseThrow().getYRot(), 0.0F
+            context.getActor().orElseThrow().getYRot(), 0.0F
         );
         allay.setNoAi(true);
         allay.setPermanentlyInvulnerable(true);
@@ -115,7 +115,7 @@ public final class EntityFollowExample {
         Vec3 origin = context.getNodeWorldPosition(context.getPayload()).orElseThrow();
         bat.snapTo(
             origin.x, origin.y, origin.z,
-            context.getActor("actor").orElseThrow().getYRot(), 0.0F
+            context.getActor().orElseThrow().getYRot(), 0.0F
         );
         bat.setNoAi(true);
         bat.setNoGravity(true);

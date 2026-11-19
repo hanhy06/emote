@@ -1,17 +1,14 @@
 import type { AnimationIR, NbtPatchIR } from "../domain/animationIR";
-import type { ConversionDocument } from "../domain/conversionDocument";
+import type { ConversionAnimation, ConversionDocument } from "../domain/conversionDocument";
 import { referencedItemModelResources } from "../domain/generatedResource";
 import { minecraftVersionProfile } from "../format/minecraftVersionProfiles";
 import { readBlockState, readDisplayNbt, writeBlockState, writeDisplayNbt } from "../format/minecraftData";
 import { parseSnbtCompound } from "../format/snbt";
 import type { AnimationJson } from "../format/animation";
 import { EMOTE_SCHEMA_VERSION } from "../format/emote";
-import { ConversionError } from "../foundation/diagnostics";
 import { removeRedundantKeyframes, removeTinyStaticNodes } from "./animationOptimization";
 
-export function compileAnimation(document: ConversionDocument, index: number, standalone?: boolean): { animation: AnimationJson; generatedResourceReferences: ReadonlySet<string> } {
-  const entry = document.animations[index];
-  if (!entry) throw new ConversionError("unknown_animation", `Animation ${index + 1} does not exist.`);
+export function compileAnimation(document: ConversionDocument, entry: ConversionAnimation, standalone?: boolean): { animation: AnimationJson; generatedResourceReferences: ReadonlySet<string> } {
   const nodeIds = new Set(entry.nodeIds);
   for (const track of entry.clip.tracks) nodeIds.add(track.target.node);
   for (const phase of Object.values(entry.clip.events ?? {})) for (const event of phase ?? []) {
@@ -53,7 +50,7 @@ export function compileAnimation(document: ConversionDocument, index: number, st
     }
   }
   const profile = minecraftVersionProfile(document.targetMinecraftVersion);
-  function formatNbt(value: string): string {
+  function formatDisplaySnbt(value: string): string {
     try {
       const patch = readDisplayNbt(value);
       return patch.blockState ? writeDisplayNbt(patch, profile) : value;
@@ -63,7 +60,7 @@ export function compileAnimation(document: ConversionDocument, index: number, st
   }
   for (const node of Object.values(ir.nodes)) for (const attachment of Object.values(node.attachments ?? {})) {
     if (attachment.type === "player_skin") {
-      delete attachment.entity_nbt;
+      delete attachment.entity_snbt;
       continue;
     }
     if (attachment.type === "block_display" && typeof attachment.block_state_snbt === "string" && attachment.block_state_snbt.trim()) {
@@ -73,13 +70,13 @@ export function compileAnimation(document: ConversionDocument, index: number, st
         // Leave unparseable input for the mod loader.
       }
     }
-    if (attachment.entity_nbt) attachment.entity_nbt = formatNbt(attachment.entity_nbt);
+    if (attachment.entity_snbt) attachment.entity_snbt = formatDisplaySnbt(attachment.entity_snbt);
   }
   for (const track of ir.animation.tracks) {
     if (track.channel !== "nbt" || track.driver.type !== "state") continue;
     for (const key of track.driver.keys) {
       const patch = key.value as NbtPatchIR;
-      if (typeof patch.merge === "string") patch.merge = formatNbt(patch.merge);
+      if (typeof patch.merge === "string") patch.merge = formatDisplaySnbt(patch.merge);
     }
   }
   removeRedundantKeyframes(ir);

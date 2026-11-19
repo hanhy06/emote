@@ -1,13 +1,13 @@
 import { expect, it } from "vitest";
 import { readFile } from "node:fs/promises";
 import { Euler, Matrix4 } from "three";
-import { createConversionDocument } from "../domain/conversionDocument";
+import { animationEntries, createConversionDocument } from "../domain/conversionDocument";
 import { compileAnimation } from "../compiler/animationCompiler";
 import { evaluatePose } from "../domain/animationIRPose";
 import { readInput } from "../import/formats";
 import { parseSnbtCompound } from "../format/snbt";
 import { parseMinecraftTime } from "../format/time";
-import { exportAnimation } from "../export/projectExporter";
+import { exportProject } from "../export/projectExporter";
 import type { NbtPatchIR } from "../domain/animationIR";
 import type { AjProject, AjProjectDisplayElement, AjProjectGroup } from "../import/animatedJava/animatedJavaProjectSchema";
 
@@ -19,7 +19,7 @@ async function importProject(extra: Partial<AjProject> = {}) {
   };
   const input = await readInput("animated_java_blueprint", { name: "model.ajblueprint", bytes: new TextEncoder().encode(JSON.stringify(project)) });
   const document = createConversionDocument(input, "AJ");
-  return { input, document, output: compileAnimation(document, 0).animation };
+  return { input, document, output: compileAnimation(document, animationEntries(document)[0]).animation };
 }
 
 const group = (uuid: string): AjProjectGroup => ({ uuid, name: uuid, origin: [16, 32, 48], rotation: [0, 0, 0] });
@@ -45,10 +45,10 @@ it("applies player render scale with and without cube groups and keeps direct di
     const pose = evaluatePose(output, 0, (value) => { if (typeof value !== "number") throw new Error("Unexpected expression"); return value; });
     expect(pose.item.matrix.elements.every((value, axis) => Math.abs(value - expected.elements[axis]) < 1e-10)).toBe(true);
     expect(pose.item.visible).toBe(true);
-    expect(nbtFields(output.nodes.item.attachments?.display.entity_nbt)).toEqual({ billboard: '"fixed"', shadow_radius: "2" });
+    expect(nbtFields(output.nodes.item.attachments?.display.entity_snbt)).toEqual({ billboard: '"fixed"', shadow_radius: "2" });
     if (hasCube) {
       expect(output.nodes.bone.visible).toBe(false);
-      expect(nbtFields(output.nodes.bone.attachments?.display.entity_nbt)).toEqual({ billboard: '"center"', shadow_radius: "5" });
+      expect(nbtFields(output.nodes.bone.attachments?.display.entity_snbt)).toEqual({ billboard: '"center"', shadow_radius: "5" });
     }
   }
 });
@@ -62,7 +62,7 @@ it("imports independent sky and block brightness and only applies enabled bright
   ];
   const { input, output } = await importProject({ elements: cases.map(({ uuid, config }) => ({ ...display(uuid), configs: { default: config } })), outliner: cases.map(({ uuid }) => uuid) });
   expect(input.diagnostics).toEqual([]);
-  for (const { uuid, expected } of cases) expect(nbtFields(output.nodes[uuid].attachments?.display.entity_nbt)).toEqual(expected);
+  for (const { uuid, expected } of cases) expect(nbtFields(output.nodes[uuid].attachments?.display.entity_snbt)).toEqual(expected);
 
   const direct = display("item");
   const bright = await importProject({
@@ -113,7 +113,7 @@ it("skips excluded variant nodes, preserves partial patches and reapplies defaul
   const cubeNodes = Object.entries(output.nodes).filter(([, node]) => typeof node.source?.node_id === "string" && ["cube_a", "cube_b"].includes(node.source.node_id));
   expect(cubeNodes).toHaveLength(2);
   const stateAt = (id: string, tick: number) => {
-    const state = nbtFields(output.nodes[id].attachments?.display.entity_nbt);
+    const state = nbtFields(output.nodes[id].attachments?.display.entity_snbt);
     const track = output.animation.tracks.find((track) => track.target.node === id && track.channel === "nbt");
     if (track?.driver.type === "state") for (const key of track.driver.keys) {
       if (parseMinecraftTime(key.time) > tick) break;
@@ -143,7 +143,7 @@ it("skips excluded variant nodes, preserves partial patches and reapplies defaul
   expect(stateAt(cubeNodes[0][0], 16).shadow_strength).toBe("0.5");
   expect(stateAt("item", 16).billboard).toBe('"vertical"');
   expect(evaluatePose(output, 0.6, (value) => Number(value)).child.visible).toBe(false);
-  const [json] = await exportAnimation(document, 0);
+  const [json] = await exportProject(document, 0);
   expect(JSON.parse(await json.blob.text()).animation.tracks).toEqual(output.animation.tracks);
 
   const warnings = await importProject({
@@ -193,7 +193,7 @@ it("keeps variant config functions bound to their display entities including gen
     });
     expect(phaseEvents.at(-1)).toEqual({ time, source: { type: "player" }, origin: { type: "root" }, action: { type: "commands", commands: [`say root ${phase}`] } });
   }
-  const [json] = await exportAnimation(document, 0);
+  const [json] = await exportProject(document, 0);
   expect(JSON.parse(await json.blob.text()).animation.events.timeline).toEqual(events);
 });
 
@@ -226,7 +226,7 @@ it("preserves single-command conditions and skips only animations with condition
     ],
   };
   const { input, document, output } = await importProject(project);
-  expect(document.animations.map((animation) => animation.sourceName)).toEqual(["Healthy"]);
+  expect(document.entries.map((animation) => animation.sourceName)).toEqual(["Healthy"]);
   expect(output.animation.events!.timeline!.map((event) => event.action)).toEqual([
     { type: "commands", commands: ["execute if entity @s[tag=private] run say conditional function"] },
     { type: "commands", commands: ["say first", "say second"] },
@@ -237,7 +237,7 @@ it("preserves single-command conditions and skips only animations with condition
   expect(input.diagnostics[0].message).toContain("4t: conditional variant state changes");
   expect(input.diagnostics[1].message).toContain("one shared condition evaluation");
   expect(JSON.stringify(input.diagnostics)).not.toContain("private");
-  const [json] = await exportAnimation(document, 0);
+  const [json] = await exportProject(document, 0);
   expect(JSON.parse(await json.blob.text()).animation.events).toEqual(output.animation.events);
   await expect(importProject({ ...project, animations: project.animations!.slice(1, 2) })).rejects.toThrow("No Animated Java animations could be imported");
 });
@@ -245,10 +245,12 @@ it("preserves single-command conditions and skips only animations with condition
 it("exports locator functions with animated node origins and keeps the exact v5 artifact consumed by the mod test", async () => {
   const path = new URL("../../../src/test/resources/aj-function-source.ajblueprint", import.meta.url);
   const input = await readInput("animated_java_blueprint", { name: "aj-function-source.ajblueprint", bytes: await readFile(path) });
+  const expected = JSON.parse(await readFile(new URL("../../../src/test/resources/aj-function-export.json", import.meta.url), "utf8"));
   const document = createConversionDocument(input, "AJ");
-  const [json] = await exportAnimation(document, 0);
+  document.targetMinecraftVersion = expected.target_minecraft_version;
+  const [json] = await exportProject(document, 0);
   const output = JSON.parse(await json.blob.text());
-  expect(output).toEqual(JSON.parse(await readFile(new URL("../../../src/test/resources/aj-function-export.json", import.meta.url), "utf8")));
+  expect(output).toEqual(expected);
   expect(input.diagnostics).toEqual([]);
   const locatorEvents = output.animation.events.timeline.filter((event: { origin: { type: string } }) => event.origin.type === "node");
   expect(locatorEvents.map((event: { time: string; origin: unknown; action: unknown }) => [event.time, event.origin, event.action])).toEqual([

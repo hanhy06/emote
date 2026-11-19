@@ -1,11 +1,14 @@
 import { expect, it } from "vitest";
-import { createConversionDocument, skinPartOrders } from "../domain/conversionDocument";
+import { animationEntries, createConversionDocument, skinPartOrders } from "../domain/conversionDocument";
 import { evaluatePose } from "../domain/animationIRPose";
-import { exportAnimation, exportAnimations } from "../export/projectExporter";
+import { exportProject } from "../export/projectExporter";
 import { importFileBatch } from "../import/importBatch";
 import { createDefaultPlayerBehavior } from "../domain/emoteDefinition";
 import type { AnimationJson } from "../format/animation";
 import { detectInputFormat, readInput } from "../import/formats";
+import { INITIAL_WORKSPACE, workspaceReducer } from "../workspace";
+import { parseEventEdit } from "../components/EventPanel";
+import sequenceReference from "../../../docs/reference/sequence.json";
 
 const legacy = {
   type: "animation", schema_version: 4, id: "example:legacy", target_minecraft_version: "26.3",
@@ -46,7 +49,7 @@ it("imports schema 4 into editable IR and exports schema 5 with transforms, skin
   expect(document.nodes.arm.attachments!.display).toMatchObject({ type: "player_skin", part: "left_arm", region: { from: 0, to: 0.5 } });
   expect(document.nodes.duplicate.attachments!.display).toEqual(document.nodes.arm.attachments!.display);
   expect(document.nodes.lower.attachments!.display).toMatchObject({ region: { from: 0.5, to: 1 } });
-  const [output] = await exportAnimation(document, 0);
+  const [output] = await exportProject(document, 0);
   const actual: AnimationJson = JSON.parse(await output.blob.text());
   expect(actual).toMatchObject({ type: "animation", schema_version: 5, id: legacy.id, metadata: legacy.metadata, callbacks: legacy.callbacks,
     settings: { standalone: false, cooldown: "0.25s", rotation_deadzone: 25 },
@@ -54,7 +57,7 @@ it("imports schema 4 into editable IR and exports schema 5 with transforms, skin
   expect(actual).not.toHaveProperty("timeline");
   expect(actual.settings).not.toHaveProperty("playback");
   expect(actual.settings).not.toHaveProperty("display_interpolation");
-  expect(actual.nodes.prop).toMatchObject({ parent: "root", attachments: { display: { type: "item_display", visible: false, entity_nbt: "{glowing:1b}" } } });
+  expect(actual.nodes.prop).toMatchObject({ parent: "root", attachments: { display: { type: "item_display", visible: false, entity_snbt: "{glowing:1b}" } } });
   expect(actual.animation.tracks.find((track) => track.channel === "nbt")!.driver).toMatchObject({ keys: [
     { time: "0t", value: { merge: "{glowing:0b}" } }, { time: "1s", value: { merge: { molang: "v.patch" } } },
   ] });
@@ -72,7 +75,7 @@ it("imports schema 4 into editable IR and exports schema 5 with transforms, skin
   expect(half[1]).toBeCloseTo(Math.SQRT1_2);
   expect(evaluatePose(actual, 1, (value) => typeof value === "number" ? value : 1).prop.matrix.elements[12]).toBeCloseTo(4);
   const reopened = await readInput("emote_json", { name: "migrated.json", bytes: new TextEncoder().encode(JSON.stringify(actual)) });
-  const [reexported] = await exportAnimation(createConversionDocument(reopened, "Emote JSON"), 0);
+  const [reexported] = await exportProject(createConversionDocument(reopened, "Emote JSON"), 0);
   expect(JSON.parse(await reexported.blob.text())).toEqual(actual);
 });
 
@@ -88,7 +91,7 @@ it("keeps Molang Euler rotation and skips unsupported fields without losing the 
     ] } },
   };
   const project = await readInput("emote_json", { name: "partial.json", bytes: new TextEncoder().encode(JSON.stringify(source)) });
-  const [output] = await exportAnimation(createConversionDocument(project, "Emote JSON"), 0);
+  const [output] = await exportProject(createConversionDocument(project, "Emote JSON"), 0);
   const actual: AnimationJson = JSON.parse(await output.blob.text());
   expect(actual.nodes.prop.transform![1]).toMatchObject({ op: "rotate_euler", order: "XYZ" });
   expect(actual.nodes.unknown).toMatchObject({ parent: "root" });
@@ -116,11 +119,70 @@ it("imports a schema 4 sequence with animations and exports its steps and refere
   expect(await detectInputFormat(input)).toBe("emote_sequence");
   const document = await importFileBatch([legacy, sequence].map((value, index) => ({ name: `${index}.json`,
     arrayBuffer: async () => new TextEncoder().encode(JSON.stringify(value)).buffer })));
-  const outputs = await exportAnimations(document, true);
+  expect(document.entries.map(({ type, id }) => [type, id])).toEqual([["animation", "example:legacy"], ["sequence", "example:sequence"]]);
+  const outputs = await exportProject(document, "sequence");
   const actual = JSON.parse(await outputs.at(-1)!.blob.text());
   expect(actual).toEqual({ ...sequence, schema_version: 5 });
   const animation: AnimationJson = JSON.parse(await outputs[0].blob.text());
-  expect(animation).toMatchObject({ id: "example:legacy", schema_version: 5 });
+  expect(animation).toMatchObject({
+    id: "example:legacy", schema_version: 5,
+    animation: { playback: legacy.settings.playback, events: { start: [{ action: { type: "commands", commands: ["say original start"] } }] } },
+  });
   const reopened = await readInput("emote_sequence", { name: "sequence.json", bytes: new TextEncoder().encode(JSON.stringify(actual)) });
-  expect(reopened.steps).toEqual(document.sequence.steps);
+  expect(reopened.entries).toEqual(document.entries.filter((entry) => entry.type === "sequence"));
+
+  let state = workspaceReducer(INITIAL_WORKSPACE, { type: "documents_open_succeeded", document });
+  state = workspaceReducer(state, { type: "entry_selected", index: 1 });
+  const selected = state.session!.document.entries[state.session!.selectedIndex];
+  if (selected.type !== "sequence") throw new Error("Expected to select the sequence in a mixed document.");
+  const player = { ...selected.settings.player, hidden: false };
+  state = workspaceReducer(state, { type: "entry_changed", index: 1, entry: {
+    ...selected, metadata: { ...selected.metadata, name: "Edited sequence" }, settings: { ...selected.settings, player },
+  } });
+  state = workspaceReducer(state, { type: "entry_selected", index: 0 });
+  const selectedAnimation = state.session!.document.entries[state.session!.selectedIndex];
+  expect(selectedAnimation).toBe(document.entries[0]);
+  state = workspaceReducer(state, { type: "entry_changed", index: 0, entry: {
+    ...selectedAnimation, metadata: { ...selectedAnimation.metadata, name: "Edited animation" },
+  } });
+  const edited = state.session!.document;
+  expect(edited.entries[0].metadata.name).toBe("Edited animation");
+  expect(animationEntries(edited)[0].clip).toBe(animationEntries(document)[0].clip);
+  expect(edited.entries[1]).toMatchObject({ metadata: { name: "Edited sequence" }, settings: { player } });
+});
+
+it("edits and exports standalone sequence callbacks and reports unsupported animation data", async () => {
+  const command = {
+    source: { type: "player" }, origin: { type: "root" }, action: { type: "commands", commands: ["say sequence"] },
+  };
+  const animation = { playback: { mode: "loop" }, events: { start: [command], timeline: [{ ...command, time: "0t" }] } };
+  const source = { ...sequenceReference, animation };
+  const document = await importFileBatch([{
+    name: "sequence.json",
+    arrayBuffer: async () => new TextEncoder().encode(JSON.stringify(source)).buffer,
+  }]);
+  const [entry] = document.entries;
+  expect(entry.type).toBe("sequence");
+  expect(entry).not.toHaveProperty("clip");
+  expect(document.diagnostics).toEqual([
+    expect.objectContaining({ severity: "warning", code: "unsupported_sequence_animation", sourcePath: "$.animation" }),
+  ]);
+
+  let state = workspaceReducer(INITIAL_WORKSPACE, { type: "documents_open_succeeded", document });
+  const callbacks = [{ name: "example:edited" }];
+  expect(() => parseEventEdit(entry, null, JSON.stringify({ callbacks, start: [command] }))).toThrow(/only callbacks/);
+  expect(() => parseEventEdit(entry, 0, JSON.stringify([command]))).toThrow(/require an animation/);
+  state = workspaceReducer(state, { type: "frame_selected", frame: { type: "timeline", animationTick: 0 } });
+  expect(state.session!.selectedFrame).toEqual({ type: "create" });
+  state = workspaceReducer(state, { type: "entry_changed", index: 0, entry: parseEventEdit(entry, null, JSON.stringify({ callbacks })) });
+
+  const edited = state.session!.document;
+  const outputs = await exportProject(edited, "sequence");
+  expect(outputs).toHaveLength(1);
+  const [output] = outputs;
+  const bytes = new Uint8Array(await output.blob.arrayBuffer());
+  expect(JSON.parse(new TextDecoder().decode(bytes))).toEqual({ ...sequenceReference, callbacks });
+  const reopened = await readInput("emote_sequence", { name: output.fileName, bytes });
+  expect(reopened.entries).toEqual(edited.entries);
+  expect(reopened.diagnostics).toEqual([]);
 });

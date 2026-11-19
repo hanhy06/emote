@@ -3,7 +3,6 @@ package io.github.hanhy06.emote.playback.molang;
 import io.github.hanhy06.emote.molang.MolangEngine;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -69,7 +68,7 @@ public final class PlayerMolangQueries {
         if (queries.contains("max_health")) session.setQuery("max_health", player.getMaxHealth());
         if (queries.contains("is_alive")) session.setQuery("is_alive", player.isAlive() ? 1.0D : 0.0D);
         if (queries.contains("is_spectator")) session.setQuery("is_spectator", player.isSpectator() ? 1.0D : 0.0D);
-        if (queries.contains("head_is_in_water")) session.setQuery("head_is_in_water", player.isEyeInFluid(FluidTags.WATER) ? 1.0D : 0.0D);
+        if (queries.contains("head_is_in_water")) session.setQuery("head_is_in_water", player.isUnderWater() ? 1.0D : 0.0D);
         if (queries.contains("is_in_lava")) session.setQuery("is_in_lava", player.isInLava() ? 1.0D : 0.0D);
         if (queries.contains("is_in_water_or_rain")) session.setQuery("is_in_water_or_rain", player.isInWaterOrRain() ? 1.0D : 0.0D);
         if (queries.contains("hurt_time")) session.setQuery("hurt_time", player.hurtTime);

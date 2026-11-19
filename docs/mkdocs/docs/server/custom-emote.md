@@ -14,25 +14,27 @@ To use your own animation, convert the source project to Emote JSON with the [Em
 
 ## 1. Open files
 
-Select **Choose animation files** in the converter and open one or more source projects. Their formats and animations are detected automatically. If the imported files contain multiple animations, use the **Animation** menu at the top to select the animation you want to configure.
+Select **Choose animation files** in the converter and open one or more source projects. Their formats and animations are detected automatically. If the files contain multiple animations, use the **Emote** menu to choose one. Set **Minecraft version** to the version your server runs.
 
-<img src="../../assets/custom-emote/open.gif" alt="Opening an animation file in the converter">
+<img src="../../assets/custom-emote/open.gif" alt="Opening emote.bbmodel and selecting the clap animation in the Emote menu">
 
 !!! warning "Use files from trusted sources"
     Event commands in the source file may run with server operator permission. Review any command warning shown after import, and install animations only from sources you trust.
 
 ## 2. Configure and export
 
-In **Review**, select model parts and verify their player-skin assignments. You can reassign any parts that were detected incorrectly.
+On the **Edit** page, select a model part in the preview or the **Model parts** list. If its skin assignment is incorrect, choose the matching body part under **Skin parts**. Move the **Frame** slider to check the pose at another point in the animation.
 
-In **Settings**, configure the ID, name, description, and playback behavior. The ID must use the `namespace:path` format and must not duplicate another emote on the server.
+Under **Settings**, set the **Namespace**, **Display name**, **Description**, and **Playback mode**. The namespace and the imported animation path form the emote ID. For example, setting the namespace to `demo` for the `clap` animation gives it the ID `demo:clap`. Each emote on the server needs a unique ID.
+
+Use **Options** to choose when the emote stops, such as when the player jumps or takes damage. If the animation contains commands, use **Events** to review them at the selected frame.
 
 !!! info "[Skin overrides](../developers/animation.md#skin)"
     In `.ajblueprint` and `.bbmodel` projects, the `override` texture replaces the areas of the player's skin selected by `override_mask` during emote playback.
 
-When the configuration is complete, use **Export** to download the Animation JSON. To connect multiple animations as one emote, configure a Sequence and download it together with every Animation it references.
+Open **Export**, find the animation by name and ID, and select **Download JSON** on its row. To export every animation separately, select **Download all JSON**. To play them in order as one emote, select **Download sequence files** to download the Sequence and its animations together.
 
-<img src="../../assets/custom-emote/setting-and-export.gif" alt="Configuring and exporting an emote">
+<img src="../../assets/custom-emote/setting-and-export.gif" alt="Checking the head assignment, editing the clap animation settings, and downloading demo:clap as JSON">
 
 ## 3. Install on the server
 

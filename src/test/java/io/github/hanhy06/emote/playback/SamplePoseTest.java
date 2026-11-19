@@ -4,12 +4,12 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.math.Transformation;
+import io.github.hanhy06.emote.api.EmoteLoadException;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.api.sequence.EmoteSequence;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.content.loader.AnimationJsonParser;
-import io.github.hanhy06.emote.molang.MolangEngine;
 import io.github.hanhy06.emote.playback.molang.MolangQuerySource;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.HolderLookup;
@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import team.unnamed.mocha.runtime.value.NumberValue;
 
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -112,7 +113,7 @@ class SamplePoseTest {
                 String id = arguments.string(0);
                 int count = calls.merge(id, 1, Integer::sum);
                 if (id.equals("unused")) throw new IllegalStateException("Unused curve data was evaluated");
-                return MolangEngine.QueryValue.number(switch (id) {
+                return NumberValue.of(switch (id) {
                     case "weight" -> 0.5;
                     case "power" -> 2;
                     case "out_time" -> 1.0 / 3;
@@ -205,7 +206,7 @@ class SamplePoseTest {
             session.setQueryFunction("scoreboard", arguments -> {
                 String id = arguments.string(0);
                 calls.add(id);
-                return MolangEngine.QueryValue.number(switch (id) {
+                return NumberValue.of(switch (id) {
                     case "start", "start_y" -> 4;
                     case "end", "end_y" -> 8;
                     case "out" -> 2;
@@ -249,7 +250,7 @@ class SamplePoseTest {
                             yield (id.startsWith("cat_start") ? 0 : id.startsWith("post") ? 64 : id.startsWith("end") ? 32 : 16) * axis;
                         }
                     };
-                    return MolangEngine.QueryValue.number(value);
+                    return NumberValue.of(value);
                 });
             });
             evaluator.initialize(0, 0);
@@ -302,7 +303,7 @@ class SamplePoseTest {
                 session.setQueryFunction("scoreboard", arguments -> {
                     String id = arguments.string(0);
                     calls.add(id);
-                    return MolangEngine.QueryValue.number(Double.parseDouble(id.substring(id.lastIndexOf(':') + 1)));
+                    return NumberValue.of(Double.parseDouble(id.substring(id.lastIndexOf(':') + 1)));
                 });
             });
             evaluator.initialize(0, 0);
@@ -475,7 +476,7 @@ class SamplePoseTest {
                 var queryCount = queryThreads.size();
                 var calculation = worker.submit(advance::calculate);
                 assertEquals(previous, target.matrices);
-                assertThrows(IllegalStateException.class, () -> playback.prepareTick(10));
+                assertThrows(IllegalStateException.class, () -> playback.prepareSeekTimeline(10));
                 assertTrue(workerThread.get() != mainThread);
                 release.countDown();
                 calculation.get();
@@ -484,10 +485,10 @@ class SamplePoseTest {
                 assertEquals(previous, target.matrices);
                 advance.apply();
                 advance.dispatchEvents();
-                assertEquals(4, playback.currentTick());
+                assertEquals(4, playback.timelineTick());
                 assertThrows(IllegalStateException.class, advance::calculate);
 
-                var seek = playback.prepareTick(10);
+                var seek = playback.prepareSeekTimeline(10);
                 worker.submit(seek::calculate).get();
                 seek.apply();
                 seek.dispatchEvents();
@@ -497,7 +498,7 @@ class SamplePoseTest {
                 referenceInitial.calculate();
                 referenceInitial.apply();
                 referenceInitial.dispatchEvents();
-                var referenceSeek = reference.prepareTick(10);
+                var referenceSeek = reference.prepareSeekTimeline(10);
                 referenceSeek.calculate();
                 referenceSeek.apply();
                 referenceSeek.dispatchEvents();
@@ -545,10 +546,10 @@ class SamplePoseTest {
         playback.bindEvents(event -> effects.add("event:" + event.animationId() + ":" + event.animationTick() + ":" + event.pose().nodeMatrix("n").m30()));
         playback.bindLifecycleListener(new EmotePlayback.LifecycleListener() {
             public void onStart(PreparedAnimation animation) {
-                effects.add("start:" + animation.id() + ":" + playback.position().animationTick() + ":" + playback.currentTransformation("n").getMatrix().m30());
+                effects.add("start:" + animation.id() + ":" + playback.cursor().animationTick() + ":" + playback.currentTransformation("n").getMatrix().m30());
             }
             public void onTick(int tick) {
-                effects.add("tick:" + tick + ":" + playback.position().animationTick() + ":" + playback.currentTransformation("n").getMatrix().m30());
+                effects.add("tick:" + tick + ":" + playback.cursor().animationTick() + ":" + playback.currentTransformation("n").getMatrix().m30());
             }
             public void onClose(PlaybackStopReason reason) { effects.add("close:" + reason); }
         });
@@ -562,7 +563,7 @@ class SamplePoseTest {
         initial.dispatchEvents();
         effects.clear();
         var advance = playback.prepareAdvance(3);
-        assertEquals(io.github.hanhy06.emote.api.PlaybackTimeline.Phase.TRANSITION, playback.position().phase());
+        assertEquals(io.github.hanhy06.emote.api.PlaybackTimeline.Phase.TRANSITION, playback.cursor().phase());
         assertTrue(effects.isEmpty());
         assertEquals(0, target.matrices.get("n").m30(), 1e-6);
         advance.calculate();
@@ -574,7 +575,7 @@ class SamplePoseTest {
         advance.dispatchEvents();
         assertEquals(List.of("event:test:common_curves:2:2.0", "tick:2:2:2.0", "close:FINISHED"), effects);
         var next = playback.prepareAdvance(2);
-        assertEquals(1, playback.position().animationTick());
+        assertEquals(1, playback.cursor().animationTick());
         next.calculate();
         next.apply();
         assertEquals(11, target.matrices.get("n").m30(), 1e-6);
@@ -645,6 +646,105 @@ class SamplePoseTest {
         }
         assertEquals(0.0F, starts.get("hug_player1").get(player1).m30(), 1e-6);
         assertEquals(0.0F, starts.get("hug_player1").get(player1).m32(), 1e-6);
+    }
+
+    @Test
+    void compilesMolangControlFlowAndQueriesIntoPlaybackPoses() throws Exception {
+        JsonObject json = JsonParser.parseString("""
+            {"type":"animation","schema_version":5,"id":"test:molang_compiler","metadata":{"name":"Molang","description":""},
+             "nodes":{"n":{"transform":[{"id":"position","op":"translate","value":[0,0,0]}],
+                             "attachments":{"text":{"type":"text_display","text":"probe"}}}},
+             "animation":{"duration":"4t",
+                          "molang":{"initialize":"v.phase = q.anim_length > 0 ? 2 : q.life_time > 0 ? 3 : 4; q.is_on_ground ? { v.phase = v.phase + 5; } : { v.phase = v.phase + 7; }; loop(4, { v.phase = v.phase + 1; v.phase > 11 ? { return v.phase; }; }); v.after = 99;",
+                                    "tick":"v.phase = q.anim_time_ticks < 2 ? v.phase + 1 : q.anim_time_ticks < 3 ? v.phase + 2 : v.phase + 3;"},
+                          "values":{"offset":{"type":"expression","base":[3],"value":[3]}},
+                          "tracks":[{"target":{"node":"n","operation":"position"},"channel":"value",
+                                      "driver":{"type":"expression","value":[{"molang":"-math.abs(q.value('offset', 0)) + v.phase"},
+                                          {"molang":"q.any('hand', 'hand', 'other') ? { return 2; } : { return 8; };"},{"molang":"v.after"}]}}]}}
+            """).getAsJsonObject();
+        var animation = PreparedAnimation.prepare(new AnimationJsonParser().parse(Path.of("molang.json"),
+            json.toString().getBytes(StandardCharsets.UTF_8)), registries);
+        var playback = new EmotePlayback(animation);
+        var target = new PoseTarget();
+        float[] positions = {9, 10, 12, 15};
+        for (int tick = 0; tick < positions.length; tick++) {
+            var frame = tick == 0 ? playback.prepareStart(target) : playback.prepareAdvance();
+            frame.calculate();
+            frame.apply();
+            frame.dispatchEvents();
+            assertEquals(positions[tick], target.matrices.get("n").m30());
+            assertEquals(2, target.matrices.get("n").m31());
+            assertEquals(0, target.matrices.get("n").m32());
+        }
+        JsonObject component = json.getAsJsonObject("animation").getAsJsonArray("tracks").get(0).getAsJsonObject()
+            .getAsJsonObject("driver").getAsJsonArray("value").get(0).getAsJsonObject();
+        for (String expression : List.of("v.phase = q.anim_time > 0 ? 1 : 2;", "q.anim_time > 0 ? { v.phase = 1; } : 0;",
+                "q.anim_time = 0;", "q.no_such_query", "q.value('offset')")) {
+            component.addProperty("molang", expression);
+            assertThrows(EmoteLoadException.class, () -> PreparedAnimation.prepare(new AnimationJsonParser().parse(Path.of("molang.json"),
+                json.toString().getBytes(StandardCharsets.UTF_8)), registries), expression);
+        }
+    }
+
+    @Test
+    void evaluatesMolangQuaternionAndMatrixTracksIntoHierarchicalPoses() throws Exception {
+        JsonObject json = JsonParser.parseString("""
+            {"type":"animation","schema_version":5,"id":"test:dynamic_transforms","metadata":{"name":"Transforms","description":""},
+             "nodes":{"rotation":{"transform":[{"id":"r","op":"rotate_quaternion","value":[0,0,0,1]}]},
+                      "translation":{"parent":"rotation","transform":[{"id":"m","op":"matrix","value":[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]}]},
+                      "slerp":{"transform":[{"id":"r","op":"rotate_quaternion","value":[0,0,0,1]}]},
+                      "step":{"transform":[{"id":"m","op":"matrix","value":[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]}]}},
+             "animation":{"duration":"3t","molang":{"initialize":"v.magnitude = 2;"},
+                          "values":{"offset":{"base":[2],"type":"expression","value":[{"molang":"2 + q.anim_time_ticks"}]}},
+                          "tracks":[
+                 {"target":{"node":"rotation","operation":"r"},"channel":"value","driver":{"type":"expression",
+                  "value":[0,{"molang":"v.magnitude * math.sin(q.anim_time_ticks * 45)"},0,{"molang":"v.magnitude * math.cos(q.anim_time_ticks * 45)"}]}},
+                 {"target":{"node":"translation","operation":"m"},"channel":"value","driver":{"type":"expression",
+                  "value":[1,0,0,{"molang":"q.value('offset', 0)"},0,1,0,0,0,0,1,0,0,0,0,1]}},
+                 {"target":{"node":"slerp","operation":"r"},"channel":"value","driver":{"type":"curve","keys":[
+                     {"time":"0t","value":[0,0,0,{"molang":"v.magnitude"}]},
+                     {"time":"2t","pre":[0,{"molang":"v.magnitude"},0,0],"post":[0,0,0,1]}],"segments":[{"interpolation":"slerp"}]}},
+                 {"target":{"node":"step","operation":"m"},"channel":"value","driver":{"type":"curve","keys":[
+                     {"time":"0t","value":[1,0,0,{"molang":"7 + q.anim_time_ticks"},0,1,0,0,0,0,1,0,0,0,0,1]},
+                     {"time":"2t","value":[1,0,0,{"molang":"9 + q.anim_time_ticks"},0,1,0,0,0,0,1,0,0,0,0,1]}],"segments":[{"interpolation":"step"}]}}]}}
+            """).getAsJsonObject();
+        var animation = PreparedAnimation.prepare(new AnimationJsonParser().parse(Path.of("transforms.json"), json.toString().getBytes(StandardCharsets.UTF_8)), registries);
+        var playback = new EmotePlayback(animation);
+        var target = new PoseTarget();
+        for (int tick = 0; tick < 3; tick++) {
+            var frame = tick == 0 ? playback.prepareStart(target) : playback.prepareAdvance();
+            frame.calculate();
+            frame.apply();
+            frame.dispatchEvents();
+            Matrix4f rotation = new Matrix4f().rotateY((float) Math.toRadians(tick * 90));
+            assertTrue(rotation.equals(target.matrices.get("rotation"), 1e-5F));
+            assertTrue(new Matrix4f(rotation).translate(2 + tick, 0, 0).equals(target.matrices.get("translation"), 1e-5F));
+            assertTrue(new Matrix4f().rotateY(tick == 1 ? (float) (Math.PI / 2) : 0).equals(target.matrices.get("slerp"), 1e-5F));
+            assertEquals(tick < 2 ? 7 + tick : 9 + tick, target.matrices.get("step").m30());
+        }
+    }
+
+    @Test
+    void rejectsZeroQuaternionEndpointsAtLoadOrBeforeSlerp() throws Exception {
+        String json = """
+            {"type":"animation","schema_version":5,"id":"test:rotation","metadata":{"name":"Rotation","description":""},
+             "nodes":{"node":{"transform":[{"id":"r","op":"rotate_quaternion","value":[0,0,0,1]}]}},
+             "animation":{"duration":"2t","tracks":[
+                 {"target":{"node":"node","operation":"r"},"channel":"value","driver":{"type":"curve","keys":[
+                     {"time":"0t","value":[0,0,0,1]},
+                     {"time":"2t","pre":[0,0,0,%s],"post":[0,0,0,1]}],"segments":[{"interpolation":"slerp"}]}}]}}
+            """;
+        var parser = new AnimationJsonParser();
+        var path = Path.of("rotation.json");
+        var loadError = assertThrows(EmoteLoadException.class, () -> parser.parse(path, json.formatted("0").getBytes(StandardCharsets.UTF_8)));
+        assertEquals("$.animation.tracks[0].driver.keys[1].pre", loadError.fieldPath());
+
+        var loaded = parser.parse(path, json.formatted("{\"molang\":\"0\"}").getBytes(StandardCharsets.UTF_8));
+        var evaluator = new AnimationEvaluator(PreparedAnimation.prepare(loaded, registries), MolangQuerySource.EMPTY);
+        evaluator.initialize(0, 0);
+        evaluator.evaluateFrame(0, 0, 0, 0, false);
+        var sampleError = assertThrows(IllegalArgumentException.class, () -> evaluator.sampleFrame(1, 0, 1, 1, false, true));
+        assertEquals("Zero quaternion", sampleError.getMessage());
     }
 
     private static final class PoseTarget implements EmotePlayback.PoseTarget {

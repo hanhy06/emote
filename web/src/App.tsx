@@ -6,23 +6,25 @@ import { EventPanel } from "./components/EventPanel";
 import { ExportPanel } from "./components/ExportPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { downloadExports } from "./export/download";
-import type { ExportResult } from "./export/types";
+import type { ExportSelection } from "./export/projectExporter";
 import { INPUT_FORMATS } from "./import/formats";
 import { importFileBatch } from "./import/importBatch";
-import { conversionErrorMessage, groupConversionWarnings } from "./foundation/diagnostics";
+import { conversionErrorMessage } from "./foundation/diagnostics";
 import {
   assignmentSummary,
-  eventReviewLocations,
+  eventReviewSummary,
   sequenceReferenceWarnings,
   EMPTY_SELECTION,
   INITIAL_WORKSPACE,
   workspaceReducer,
   type WorkspacePage,
+  type SelectedFrame,
 } from "./workspace";
 import { createPreviewModel } from "./preview/previewModel";
-import { parseMinecraftTime } from "./format/time";
+import { formatMinecraftTime, parseMinecraftTime } from "./format/time";
 import { MINECRAFT_VERSION_PROFILES } from "./format/minecraftVersionProfiles";
-import { skinPartAssignments, skinPartOrders } from "./domain/conversionDocument";
+import type { EventIR } from "./domain/animationIR";
+import { animationEntries, skinPartAssignments, skinPartOrders, type ConversionEntry } from "./domain/conversionDocument";
 const PartPreview = lazy(() => import("./components/PartPreview"));
 const ACCEPTED_EXTENSIONS = [...new Set(Object.values(INPUT_FORMATS).map((format) => format.extension))]
   .map((extension) => `.${extension}`)
@@ -53,36 +55,90 @@ const IMPORT_FORMATS = [
 export function App() {
   const [workspace, dispatch] = useReducer(workspaceReducer, INITIAL_WORKSPACE);
   const [eventJsonValid, setEventJsonValid] = useState(true);
+  const [settingsCategory, setSettingsCategory] = useState("settings");
   const [settingsValid, setSettingsValid] = useState(true);
   const [eventEditorRevision, setEventEditorRevision] = useState(0);
+  const [commandSourceRevision, setCommandSourceRevision] = useState(0);
   const { session, page, openError, exportError, operation } = workspace;
   const busy = operation.type !== "idle";
   const busyMessage = operation.type === "idle" ? null : operation.message;
 
   const project = session?.document ?? null;
-  const animationIndex = session?.animationIndex ?? 0;
-  const selectedAnimation = project?.animations[animationIndex];
-  const selectedTick = session?.selectedFrame.type === "timeline" ? session.selectedFrame.tick : null;
-  const frameIndex = selectedTick === null ? 0 : selectedTick + 1;
-  const durationTicks = selectedAnimation ? parseMinecraftTime(selectedAnimation.clip.duration, 1) : 0;
+  const animations = useMemo(() => project ? animationEntries(project) : [], [project]);
+  const selectedIndex = session?.selectedIndex ?? 0;
+  const selectedEntry = project?.entries.at(selectedIndex);
+  const changeEntry = (entry: ConversionEntry) => dispatch({ type: "entry_changed", index: selectedIndex, entry });
+  const selectedAnimation = selectedEntry?.type === "animation" ? selectedEntry : undefined;
+  const selectedAnimationTick = session?.selectedFrame.type === "timeline" ? session.selectedFrame.animationTick : null;
+  const frameIndex = selectedAnimationTick === null ? 0 : selectedAnimationTick + 1;
+  const duration = selectedAnimation?.clip.duration;
+  const durationTicks = duration === undefined ? undefined : parseMinecraftTime(duration, 1);
+  const initialFrameLabel = "Create pose";
   const preview = useMemo(() => {
-    if (!session) return null;
-    const selectedAnimation = session.document.animations[session.animationIndex];
+    if (!session || !selectedAnimation) return null;
     return createPreviewModel(session.document, selectedAnimation, session.selectedFrame);
-  }, [session]);
+  }, [session, selectedAnimation]);
   const candidateParts = preview?.candidateParts ?? [];
   const assignments = useMemo(() => project ? skinPartAssignments(project) : {}, [project]);
   const orders = useMemo(() => project ? skinPartOrders(project) : {}, [project]);
   const selectedCandidateIds = session?.selectedCandidateIds ?? EMPTY_SELECTION;
   const availability = preview?.availability ?? null;
-  const eventReview = useMemo(() => eventReviewLocations(project), [project]);
-  const eventReviewTypes = [
-    ...(eventReview.some((entry) => entry.locations.some((location) => location !== "callbacks")) ? ["commands"] : []),
-    ...(eventReview.some((entry) => entry.locations.includes("callbacks")) ? ["callbacks"] : []),
-  ];
-  const warningGroups = useMemo(() => groupConversionWarnings([...(project?.diagnostics ?? []), ...sequenceReferenceWarnings(project)]), [project]);
+  const eventReview = useMemo(() => eventReviewSummary(project, selectedIndex), [project, selectedIndex]);
+  const reviewTicks = eventReview.commandTicks;
+  const reviewFrameIndex = selectedAnimationTick === null || reviewTicks.length === 0 ? 0
+    : reviewTicks.reduce((nearest, tick, index) => Math.abs(tick - selectedAnimationTick) < Math.abs(reviewTicks[nearest] - selectedAnimationTick) ? index : nearest, 0) + 1;
+  const conversionIssues = useMemo(() => [...(project?.diagnostics ?? []), ...sequenceReferenceWarnings(project)], [project]);
   const previewParts = preview?.parts ?? [];
   const hasReviewNodes = candidateParts.length > 0;
+
+  const commandSources = useMemo(() => {
+    const options = new Map<string, { label: string; source: EventIR["source"] }>([
+      ["player", { label: "Player", source: { type: "player" } }],
+      ["server", { label: "Server", source: { type: "server" } }],
+    ]);
+    for (const nodeId of selectedAnimation?.nodeIds ?? []) {
+      const node = project?.nodes[nodeId];
+      for (const attachment of Object.keys(node?.attachments ?? {})) {
+        options.set(JSON.stringify([nodeId, attachment]), {
+          label: `Node · ${node?.name ?? nodeId} · ${attachment}`,
+          source: { type: "node", node: nodeId, attachment },
+        });
+      }
+    }
+    const current = new Set<string>();
+    for (const events of Object.values(selectedAnimation?.clip.events ?? {})) {
+      for (const event of events) {
+        if (event.action.type !== "commands") continue;
+        const source = event.source;
+        const value = source.type === "node" ? JSON.stringify([source.node, source.attachment]) : source.type;
+        current.add(value);
+        if (!options.has(value) && source.type === "node") options.set(value, {
+          label: `Node · ${project?.nodes[source.node]?.name ?? source.node} · ${source.attachment}`, source,
+        });
+      }
+    }
+    return { options, value: current.size === 1 ? current.values().next().value ?? "" : "", hasCommands: current.size > 0 };
+  }, [selectedAnimation, project?.nodes]);
+
+  function handleCommandSourceChange(value: string) {
+    const option = commandSources.options.get(value);
+    if (!option || !selectedAnimation?.clip.events || busy || !eventJsonValid) return;
+    const events = structuredClone(selectedAnimation.clip.events);
+    for (const phase of Object.values(events)) {
+      for (const event of phase) {
+        if (event.action.type === "commands") event.source = { ...option.source };
+      }
+    }
+    changeEntry({ ...selectedAnimation, clip: { ...selectedAnimation.clip, events } });
+    setCommandSourceRevision(revision => revision + 1);
+  }
+
+  function handleReviewLocation(frame: SelectedFrame) {
+    if (busy || !eventJsonValid || !settingsValid) return;
+    dispatch({ type: "frame_selected", frame });
+    dispatch({ type: "page_selected", page: 0 });
+    setSettingsCategory("events");
+  }
 
   async function handleFileChange(event: TargetedEvent<HTMLInputElement>) {
     const inputElement = event.currentTarget;
@@ -98,6 +154,7 @@ export function App() {
       const document = await importFileBatch(files);
       setEventJsonValid(true);
       setSettingsValid(true);
+      setSettingsCategory("settings");
       setEventEditorRevision((revision) => revision + 1);
       dispatch({ type: "documents_open_succeeded", document });
     } catch (reason) {
@@ -108,35 +165,26 @@ export function App() {
     }
   }
 
-  async function runExport(action: () => Promise<readonly ExportResult[]>, fallbackMessage: string, progressMessage: string) {
-    if (busy) return;
-    dispatch({ type: "export_started", message: progressMessage });
+  async function handleDownload(selection: ExportSelection) {
+    if (!session || busy) return;
+    const singleAnimation = typeof selection === "number";
+    let message: string;
+    if (selection === "sequence") {
+      message = animations.length ? "Creating sequence files" : "Creating sequence file";
+    } else {
+      message = singleAnimation ? "Creating animation file" : "Creating animation files";
+    }
+    dispatch({ type: "export_started", message });
 
     try {
       await showLoadingScreen();
-      downloadExports(await action());
+      const { exportProject } = await import("./export/projectExporter");
+      downloadExports(await exportProject(session.document, selection));
     } catch (reason) {
-      dispatch({ type: "export_failed", message: conversionErrorMessage(reason, fallbackMessage) });
+      dispatch({ type: "export_failed", message: conversionErrorMessage(reason, singleAnimation ? "Conversion failed." : "File export failed.") });
     } finally {
       dispatch({ type: "operation_finished" });
     }
-  }
-
-  async function handleAnimationDownload(index: number) {
-    if (!session) return;
-
-    await runExport(async () => {
-      const { exportAnimation } = await import("./export/projectExporter");
-      return exportAnimation(session.document, index);
-    }, "Conversion failed.", "Creating animation file");
-  }
-
-  async function handleAnimationBundle(includeSequence: boolean) {
-    if (!session) return;
-    await runExport(async () => {
-      const { exportAnimations } = await import("./export/projectExporter");
-      return exportAnimations(session.document, includeSequence);
-    }, "File export failed.", includeSequence ? "Creating sequence files" : "Creating animation files");
   }
 
   const handleCandidateSelect = useCallback((candidateId: string, additive: boolean) => {
@@ -176,7 +224,7 @@ export function App() {
         {session && filePicker}
       </header>
 
-      {openError && <p className="message error" role="alert"><strong>Could not open the file.</strong><span>{openError}</span></p>}
+      {openError && <p className="message error" role="alert"><strong>Error · Could not open the file.</strong><span>{openError}</span></p>}
 
       {!session && (
         <section className="start-panel" aria-labelledby="start-title">
@@ -199,14 +247,14 @@ export function App() {
             <h3>Workflow</h3>
             <ol className="workflow-list">
               <li><span>1</span><p><strong>Open files</strong><small>Choose one or more files. Each format is detected automatically.</small></p></li>
-              <li><span>2</span><p><strong>Review skin parts</strong><small>Assign player skin parts when the project contains them.</small></p></li>
+              <li><span>2</span><p><strong>Edit animation</strong><small>Assign skin parts and edit playback, metadata, and events.</small></p></li>
               <li><span>3</span><p><strong>Download the result</strong><small>Export Emote JSON and any generated resources.</small></p></li>
             </ol>
           </div>
         </section>
       )}
 
-      {session && project && selectedAnimation && (
+      {session && project && (
         <>
           <section className="project-summary" aria-label="Imported project">
             <div className="project-file">
@@ -215,12 +263,12 @@ export function App() {
             </div>
             <div className="project-selectors">
               <label className="project-animation">
-                <span>Animation</span>
-                <select value={animationIndex} disabled={project.animations.length === 1 || !eventJsonValid || !settingsValid} onChange={(event) => {
-                  const nextIndex = Number(event.currentTarget.value);
-                  dispatch({ type: "animation_selected", index: nextIndex });
+                <span>Emote</span>
+                <select value={selectedIndex} disabled={busy || project.entries.length === 1 || !eventJsonValid || !settingsValid} onChange={(event) => {
+                  dispatch({ type: "entry_selected", index: Number(event.currentTarget.value) });
+                  setSettingsCategory("settings");
                 }}>
-                  {project.animations.map((item, index) => <option value={index} key={index}>{item.metadata.name}</option>)}
+                  {project.entries.map((entry, index) => <option value={index} key={index}>{entry.metadata.name}{entry.type === "sequence" && " (Sequence)"}</option>)}
                 </select>
               </label>
               <label className="project-version">
@@ -233,104 +281,71 @@ export function App() {
             <dl>
               <div><dt>Format</dt><dd>{project.origin.formatLabel}</dd></div>
               <div><dt>Nodes</dt><dd>{Object.keys(project.nodes).length}</dd></div>
-              <div><dt>Animations</dt><dd>{project.animations.length}</dd></div>
+              <div><dt>Animations</dt><dd>{animations.length}</dd></div>
             </dl>
           </section>
 
           <nav className="workflow-pages" aria-label="Conversion pages">
-            {(["Review", "Settings", "Export"] as const).map((label, index) => (
-              <button className={page === index ? "active" : ""} type="button" disabled={(!eventJsonValid || !settingsValid) && page !== index} onClick={() => dispatch({ type: "page_selected", page: index as WorkspacePage })} key={label}>
+            {(["Edit", "Export"] as const).map((label, index) => (
+              <button aria-current={page === index ? "step" : undefined} className={page === index ? "active" : ""} type="button" disabled={(!eventJsonValid || !settingsValid) && page !== index} onClick={() => dispatch({ type: "page_selected", page: index as WorkspacePage })} key={label}>
                 <span>{index + 1}</span>{label}
               </button>
             ))}
           </nav>
 
-          {warningGroups.map((group) => group.issues.length === 1 ? (
-            <p className="message warning" key={group.code}>{group.issues[0].message}</p>
-          ) : (
-            <details className="message warning warning-group" key={group.code}>
-              <summary>{group.label} ({group.issues.length})</summary>
-              <ul>
-                {group.issues.map((diagnostic, index) => (
-                  <li key={`${diagnostic.sourcePath ?? "warning"}:${index}`}>
-                    <span>{diagnostic.message}</span>
-                    {diagnostic.sourcePath && <code>{diagnostic.sourcePath}</code>}
-                  </li>
-                ))}
-              </ul>
-            </details>
-          ))}
+          {(["error", "warning"] as const).map(severity => {
+            const issues = conversionIssues.filter(issue => issue.severity === severity);
+            const showSkinWarning = severity === "warning" && (selectedAnimation?.skin?.default || selectedAnimation?.skin?.override);
+            const showCommandWarning = severity === "warning" && eventReview.hasCommands;
+            const showReview = severity === "warning" && selectedAnimation && eventReview.hasSelectedReview;
+            if (!issues.length && !showSkinWarning && !showCommandWarning && !showReview) return null;
+            return <details className={`message diagnostic-group ${severity}`} key={`${eventEditorRevision}:${severity}`}
+              open={showCommandWarning || issues.some(issue => issue.code === "unsupported_sequence_animation")}>
+              <summary>{severity === "error" ? "Error" : "Warn"}</summary>
+              <div className="diagnostic-body">
+                {(issues.length > 0 || showSkinWarning || showCommandWarning) && <ul className="diagnostic-messages">
+                  {issues.map((issue, index) => <li key={`${issue.code}:${index}`}>
+                    <p>{issue.message}</p>
+                    {issue.sourcePath && <code>{issue.sourcePath}</code>}
+                  </li>)}
+                  {showSkinWarning && <li>Animation {selectedAnimation?.metadata.name} uses custom skin settings. Skin changes are applied in game and are not shown in the preview.</li>}
+                  {showCommandWarning && <li><strong>Commands run with server operator permission.</strong> They can modify or delete world data. Review every command before installing this emote, and only use files you trust.</li>}
+                </ul>}
+                {showReview && <div className="command-frame-control">
+                  <input id="command-frame" type="range" aria-label="Command frame" min="0" max={reviewTicks.length} step="1" value={reviewFrameIndex}
+                    disabled={busy || !eventJsonValid || !settingsValid || reviewTicks.length === 0}
+                    aria-valuetext={selectedAnimationTick === null ? initialFrameLabel : `${selectedAnimationTick}t`}
+                    onInput={event => {
+                      const index = Number(event.currentTarget.value);
+                      handleReviewLocation(index === 0 ? { type: "create" } : { type: "timeline", animationTick: reviewTicks[index - 1] });
+                    }} />
+                  <output htmlFor="command-frame">{selectedAnimationTick === null ? initialFrameLabel : `${selectedAnimationTick}t`}</output>
+                </div>}
+              </div>
+            </details>;
+          })}
 
-          {(selectedAnimation?.skin?.default || selectedAnimation?.skin?.override) && (
-            <p className="message warning" role="status">Animation {selectedAnimation.metadata.name} uses custom skin settings. Skin changes are applied in game and are not shown in the preview.</p>
-          )}
-
-          {eventReviewTypes.includes("commands") && (
-            <p className="message warning" role="alert">
-              <strong>Commands run with server operator permission.</strong>
-              <span>They can modify or delete world data. Review every command before installing this emote, and only use files you trust.</span>
-            </p>
-          )}
-
-          {eventReview.length > 0 && (
-            <details className="message warning warning-group" role="alert">
-              <summary>Review {eventReviewTypes.join(" and ")} at these locations ({eventReview.length})</summary>
-              <ul>
-                {eventReview.map((entry) => (
-                  <li key={entry.owner}><strong>{entry.owner}</strong><span>{entry.locations.join(" · ")}</span></li>
-                ))}
-              </ul>
-            </details>
-          )}
-
-          {page === 0 && <section className="workspace page-panel" aria-labelledby="workspace-title">
+          {page === 0 && selectedEntry && <section className="workspace page-panel" aria-labelledby="workspace-title">
             <div className="section-heading">
               <div>
-                <span className="step-label">Page 1</span>
-                <h2 id="workspace-title">{hasReviewNodes ? "Review model assignments" : "Review imported animation"}</h2>
-                <p>{hasReviewNodes
-                  ? "Select model parts, then assign their player role."
-                  : "This file does not contain assignable model parts."}</p>
+                <h2 id="workspace-title">Edit emote</h2>
               </div>
-              <div className="preview-controls">
-                {availability?.status === "approximate" && <output title={availability.reason}>Approximate preview</output>}
-                <div className="frame-slider">
-                  <span id="animation-frame-label">Animation frame</span>
-                  <input type="range" aria-labelledby="animation-frame-label" min="0" max={durationTicks + 1} step="1" value={frameIndex} disabled={!eventJsonValid} onChange={(event) => {
-                    const index = Number(event.currentTarget.value);
-                    dispatch({ type: "frame_selected", frame: index === 0 ? { type: "create" } : { type: "timeline", tick: index - 1 } });
-                  }} />
-                  {selectedTick === null ? <output>Create pose</output> : <label className="frame-tick">
-                    <input key={`${eventEditorRevision}:${animationIndex}:${selectedTick}`} type="number" aria-label="Animation tick"
-                      min="0" max={durationTicks} step="1" defaultValue={selectedTick} disabled={!eventJsonValid} onBlur={(event) => {
-                        const input = event.currentTarget;
-                        const tick = Number(input.value);
-                        if (!input.validity.valid || !Number.isInteger(tick) || tick < 0 || tick > durationTicks) {
-                          input.value = String(selectedTick);
-                          return;
-                        }
-                        input.value = String(tick);
-                        if (tick !== selectedTick) dispatch({ type: "frame_selected", frame: { type: "timeline", tick } });
-                      }} />
-                    tick
-                  </label>}
-                </div>
-              </div>
+              {availability?.status === "approximate" && <output title={availability.reason}>Approximate preview</output>}
             </div>
-            {hasReviewNodes ? (
-              <div className="editor">
-                {availability?.status === "unavailable" ? (
-                  <div className="no-skin-parts"><strong>3D preview unavailable</strong><span>{availability.reason}</span></div>
-                ) : <Suspense fallback={<div className="preview-loading" role="status">Loading 3D preview…</div>}>
-                  <PartPreview
-                    key={project.origin.sourceName}
-                    parts={previewParts}
-                    assignments={assignments}
-                    selectedCandidateIds={selectedCandidateIds}
-                    onSelectCandidate={handleCandidateSelect}
-                    onSelectCandidates={handleCandidatesSelect}
-                  />
-                </Suspense>}
+            {hasReviewNodes && <div className="editor">
+              {availability?.status === "unavailable" ? (
+                <div className="no-skin-parts"><strong>3D preview unavailable</strong><span>{availability.reason}</span></div>
+              ) : <Suspense fallback={<div className="preview-loading" role="status">Loading 3D preview…</div>}>
+                <PartPreview
+                  key={project.origin.sourceName}
+                  parts={previewParts}
+                  assignments={assignments}
+                  selectedCandidateIds={selectedCandidateIds}
+                  onSelectCandidate={handleCandidateSelect}
+                  onSelectCandidates={handleCandidatesSelect}
+                />
+              </Suspense>}
+              <aside className="inspector" aria-label="Skin assignments">
                 <AssignmentPanel
                   parts={candidateParts}
                   assignments={assignments}
@@ -343,43 +358,69 @@ export function App() {
                   onAssignOrder={(order) => dispatch({ type: "skin_order_assigned", order })}
                   onSelectCandidate={handleCandidateSelect}
                 />
-              </div>
-            ) : (
-              <div className="no-skin-parts"><strong>Ready to export</strong><span>No player skin assignments are required.</span></div>
-            )}
-            <EventPanel
-              key={`${eventEditorRevision}:${animationIndex}:${selectedTick === null ? "lifecycle" : selectedTick}`}
-              events={{
-                start: selectedAnimation.clip.events?.start ?? [],
-                timeline: selectedAnimation.clip.events?.timeline ?? [],
-                loop: selectedAnimation.clip.events?.loop ?? [],
-                stop: selectedAnimation.clip.events?.stop ?? [],
-              }}
-              callbacks={selectedAnimation.callbacks}
-              tick={selectedTick}
+              </aside>
+            </div>}
+            <SettingsPanel
+              key={`${eventEditorRevision}:${selectedIndex}`}
+              entry={selectedEntry}
+              onChange={changeEntry}
+              category={settingsCategory}
+              onCategoryChange={setSettingsCategory}
               disabled={busy}
-              onLifecycleChange={(events) => dispatch({ type: "lifecycle_events_changed", events })}
-              onTimelineChange={(tick, events) => dispatch({ type: "timeline_events_changed", tick, events })}
-              onValidityChange={setEventJsonValid}
-            />
+              onValidityChange={setSettingsValid}
+              frameControls={durationTicks !== undefined && (
+                <div className="frame-slider">
+                  <span id="event-frame-label">Frame</span>
+                  <input type="range" aria-labelledby="event-frame-label" min="0" max={durationTicks + 1} step="1" value={frameIndex} disabled={busy || !eventJsonValid} onChange={(event) => {
+                    const index = Number(event.currentTarget.value);
+                    dispatch({ type: "frame_selected", frame: index === 0 ? { type: "create" } : { type: "timeline", animationTick: index - 1 } });
+                  }} />
+                  {selectedAnimationTick === null ? <output>{initialFrameLabel}</output> : <label className="frame-tick">
+                    <input key={`${eventEditorRevision}:${selectedIndex}:${selectedAnimationTick}`} type="number" aria-label="Event tick"
+                      min="0" max={durationTicks} step="1" placeholder="0" defaultValue={selectedAnimationTick} disabled={busy || !eventJsonValid}
+                      onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} onBlur={(event) => {
+                        const input = event.currentTarget;
+                        try {
+                          const tick = input.validity.valid ? input.valueAsNumber : NaN;
+                          const animationTick = parseMinecraftTime(formatMinecraftTime(tick));
+                          input.value = String(animationTick);
+                          if (animationTick !== selectedAnimationTick) dispatch({ type: "frame_selected", frame: { type: "timeline", animationTick } });
+                        } catch {
+                          input.value = String(selectedAnimationTick);
+                        }
+                      }} />
+                    tick
+                  </label>}
+                </div>
+              )}
+              eventsValid={eventJsonValid}
+            >
+              <EventPanel
+                key={`${eventEditorRevision}:${commandSourceRevision}:${selectedIndex}:${selectedAnimationTick === null ? "lifecycle" : selectedAnimationTick}`}
+                entry={selectedEntry}
+                animationTick={selectedAnimationTick}
+                onChange={changeEntry}
+                commandSourceControl={selectedAnimation && <label className="event-command-source">Command source
+                  <select value={commandSources.value} disabled={busy || !eventJsonValid || !commandSources.hasCommands}
+                    onChange={event => handleCommandSourceChange(event.currentTarget.value)}>
+                    {!commandSources.value && <option value="" disabled>{commandSources.hasCommands ? "Mixed" : "No commands"}</option>}
+                    {[...commandSources.options].map(([value, option]) => <option key={value} value={value}>{option.label}</option>)}
+                  </select>
+                </label>}
+                disabled={busy}
+                onValidityChange={setEventJsonValid}
+              />
+            </SettingsPanel>
           </section>}
 
-          {page === 1 && selectedAnimation && <SettingsPanel
-            key={`${eventEditorRevision}:${animationIndex}`}
-            animation={selectedAnimation}
-            disabled={busy}
-            onChange={(ir) => dispatch({ type: "animation_changed", ir })}
-            onValidityChange={setSettingsValid}
-          />}
-
-          {page === 2 && <ExportPanel
-            assignmentSummary={assignmentSummary(project)}
-            animations={project.animations}
+          {page === 1 && <ExportPanel
+            assignmentSummary={animations.length > 0 ? assignmentSummary(project) : undefined}
+            animations={animations}
             error={exportError}
             disabled={busy || !settingsValid}
-            onDownloadAnimation={handleAnimationDownload}
-            onDownloadAllAnimations={() => handleAnimationBundle(false)}
-            onDownloadSequence={() => handleAnimationBundle(true)}
+            onDownloadAnimation={handleDownload}
+            onDownloadAllAnimations={() => handleDownload("animations")}
+            onDownloadSequence={() => handleDownload("sequence")}
           />}
         </>
       )}

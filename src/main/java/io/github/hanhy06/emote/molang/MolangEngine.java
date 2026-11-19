@@ -23,9 +23,7 @@ public final class MolangEngine {
             throw new MolangCompileException("expression exceeds " + MAX_SOURCE_LENGTH + " characters");
         }
         try {
-            List<Expression> expressions = MolangAstNormalizer.normalize(MochaEngine.create().parse(source));
-            MolangExpressionInspector.Inspection inspection = MolangExpressionInspector.inspect(expressions);
-            return new CompiledExpression(source, expressions, inspection.queryUses(), inspection.assignsPersistentVariables());
+            return new MolangCompiler().compile(MochaEngine.create().parse(source));
         } catch (ParseException exception) {
             throw new MolangCompileException(exception.getMessage(), exception);
         }
@@ -36,25 +34,14 @@ public final class MolangEngine {
     }
 
     public static final class CompiledExpression {
-        private final String source;
         private final List<Expression> expressions;
         private final List<QueryUse> queryUses;
         private final boolean assignsPersistentVariables;
 
-        private CompiledExpression(
-            String source,
-            List<Expression> expressions,
-            List<QueryUse> queryUses,
-            boolean assignsPersistentVariables
-        ) {
-            this.source = Objects.requireNonNull(source, "source");
+        CompiledExpression(List<Expression> expressions, List<QueryUse> queryUses, boolean assignsPersistentVariables) {
             this.expressions = List.copyOf(expressions);
             this.queryUses = List.copyOf(queryUses);
             this.assignsPersistentVariables = assignsPersistentVariables;
-        }
-
-        public String source() {
-            return this.source;
         }
 
         public List<QueryUse> queryUses() {
@@ -88,12 +75,12 @@ public final class MolangEngine {
             this.evaluator.scope().set("math", MolangMath.INSTANCE);
             this.evaluator.scope().set("query", this.query);
             this.evaluator.scope().set("q", this.query);
-            setQueryFunction("any", arguments -> QueryValue.bool(arguments.anyMatchesFirst()));
-            setQueryFunction("all", arguments -> QueryValue.bool(arguments.allMatchFirst()));
-            setQueryFunction("in_range", arguments -> QueryValue.bool(
+            setQueryFunction("any", arguments -> Value.of(arguments.anyMatchesFirst()));
+            setQueryFunction("all", arguments -> Value.of(arguments.allMatchFirst()));
+            setQueryFunction("in_range", arguments -> Value.of(
                 arguments.number(0) >= arguments.number(1) && arguments.number(0) <= arguments.number(2)
             ));
-            setQueryFunction("approx_eq", arguments -> QueryValue.bool(arguments.allApproximatelyEqual()));
+            setQueryFunction("approx_eq", arguments -> Value.of(arguments.allApproximatelyEqual()));
         }
 
         public void setQuery(String name, double value) {
@@ -102,14 +89,10 @@ public final class MolangEngine {
         }
 
         public void setQueryFunction(String name, QueryFunction function) {
-            setQueryFunction(name, null, function);
+            setQueryFunction(name, 0.0D, function);
         }
 
         public void setQueryFunction(String name, double value, QueryFunction function) {
-            setQueryFunction(name, Double.valueOf(value), function);
-        }
-
-        private void setQueryFunction(String name, Double value, QueryFunction function) {
             Objects.requireNonNull(name, "name");
             Objects.requireNonNull(function, "function");
             this.query.set(name.toLowerCase(Locale.ROOT), new Function<>() {
@@ -120,17 +103,17 @@ public final class MolangEngine {
                         Value argument = arguments.next().eval();
                         values.add(argument == null ? NumberValue.zero() : argument);
                     }
-                    return runtimeValue(Objects.requireNonNull(function.evaluate(new QueryArguments(values)), "query result"));
+                    return Objects.requireNonNull(function.evaluate(new QueryArguments(values)), "query result");
                 }
 
                 @Override
                 public double getAsNumber() {
-                    return value == null ? 0.0D : value;
+                    return value;
                 }
 
                 @Override
                 public boolean getAsBoolean() {
-                    return value != null && value != 0.0D;
+                    return value != 0.0D;
                 }
             });
         }
@@ -146,18 +129,11 @@ public final class MolangEngine {
             if (result instanceof StringValue string) return string.value();
             throw new IllegalStateException("Molang expression must evaluate to a string");
         }
-
-        private static Value runtimeValue(QueryValue value) {
-            return switch (value) {
-                case NumberQueryValue number -> NumberValue.of(number.value());
-                case StringQueryValue string -> StringValue.of(string.value());
-            };
-        }
     }
 
     @FunctionalInterface
     public interface QueryFunction {
-        QueryValue evaluate(QueryArguments arguments);
+        Value evaluate(QueryArguments arguments);
     }
 
     public static final class QueryArguments {
@@ -186,10 +162,6 @@ public final class MolangEngine {
         public String string(int index) {
             Value value = value(index);
             return value instanceof StringValue string ? string.value() : "";
-        }
-
-        public boolean bool(int index) {
-            return value(index).getAsBoolean();
         }
 
         public boolean anyMatchesFirst() {
@@ -232,26 +204,6 @@ public final class MolangEngine {
         private Value value(int index) {
             return index >= 0 && index < this.values.size() ? this.values.get(index) : NumberValue.zero();
         }
-    }
-
-    public sealed interface QueryValue permits NumberQueryValue, StringQueryValue {
-        static QueryValue number(double value) {
-            return new NumberQueryValue(value);
-        }
-
-        static QueryValue bool(boolean value) {
-            return new NumberQueryValue(value ? 1.0D : 0.0D);
-        }
-
-        static QueryValue string(String value) {
-            return new StringQueryValue(Objects.requireNonNull(value, "value"));
-        }
-    }
-
-    private record NumberQueryValue(double value) implements QueryValue {
-    }
-
-    private record StringQueryValue(String value) implements QueryValue {
     }
 
     public static final class MolangCompileException extends Exception {

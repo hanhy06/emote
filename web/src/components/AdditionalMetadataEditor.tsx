@@ -1,14 +1,15 @@
-import { useEffect, useState } from "preact/hooks";
+import { useState } from "preact/hooks";
 
 const RESERVED_KEYS = new Set(["name", "description"]);
 
 interface AdditionalMetadataEditorProps {
   value: Record<string, unknown>;
   disabled: boolean;
+  onFieldError: (key: string, error: string) => void;
   onChange: (value: Record<string, unknown>) => void;
 }
 
-export function AdditionalMetadataEditor({ value, disabled, onChange }: AdditionalMetadataEditorProps) {
+export function AdditionalMetadataEditor({ value, disabled, onChange, onFieldError }: AdditionalMetadataEditorProps) {
   return (
     <section className="additional-metadata" aria-labelledby="additional-metadata-heading">
       <div className="additional-metadata-heading">
@@ -26,6 +27,7 @@ export function AdditionalMetadataEditor({ value, disabled, onChange }: Addition
               metadata={value}
               disabled={disabled}
               onChange={onChange}
+              onFieldError={onFieldError}
             />
           ))}
         </div>}
@@ -38,41 +40,37 @@ interface MetadataRowProps {
   fieldKey: string;
   value: unknown;
   metadata: Record<string, unknown>;
+  onFieldError: (key: string, error: string) => void;
   disabled: boolean;
   onChange: (value: Record<string, unknown>) => void;
 }
 
-function MetadataRow({ fieldKey, value, metadata, disabled, onChange }: MetadataRowProps) {
+function MetadataRow({ fieldKey, value, metadata, disabled, onChange, onFieldError }: MetadataRowProps) {
   const [keyDraft, setKeyDraft] = useState(fieldKey);
   const [valueDraft, setValueDraft] = useState(JSON.stringify(value));
   const [error, setError] = useState("");
 
-  useEffect(() => setKeyDraft(fieldKey), [fieldKey]);
-  useEffect(() => setValueDraft(JSON.stringify(value)), [value]);
-
-  function commitKey() {
+  function commitRow() {
     try {
-      onChange(renameMetadataEntry(metadata, fieldKey, keyDraft));
+      const next = renameMetadataEntry(metadata, fieldKey, keyDraft);
+      onChange({ ...next, [keyDraft]: parseMetadataJson(valueDraft) });
+      onFieldError(fieldKey, "");
       setError("");
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Invalid metadata key.");
-    }
-  }
-
-  function commitValue() {
-    try {
-      onChange({ ...metadata, [fieldKey]: parseMetadataJson(valueDraft) });
-      setError("");
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Invalid metadata value.");
+      const message = reason instanceof Error ? reason.message : "Invalid metadata.";
+      setError(message);
+      onFieldError(fieldKey, message);
     }
   }
 
   return (
     <div className="metadata-editor-row">
-      <label>Key<input value={keyDraft} disabled={disabled} onInput={(event) => setKeyDraft(event.currentTarget.value)} onBlur={commitKey} /></label>
-      <label>JSON value<input className="metadata-json-value" value={valueDraft} disabled={disabled} onInput={(event) => setValueDraft(event.currentTarget.value)} onBlur={commitValue} /></label>
-      <button type="button" disabled={disabled} onClick={() => onChange(Object.fromEntries(Object.entries(metadata).filter(([key]) => key !== fieldKey)))}>Remove</button>
+      <label>Key<input value={keyDraft} disabled={disabled} onInput={(event) => setKeyDraft(event.currentTarget.value)} onBlur={commitRow} /></label>
+      <label>JSON value<input className="metadata-json-value" value={valueDraft} disabled={disabled} onInput={(event) => setValueDraft(event.currentTarget.value)} onBlur={commitRow} /></label>
+      <button type="button" disabled={disabled} onClick={() => {
+        onChange(Object.fromEntries(Object.entries(metadata).filter(([key]) => key !== fieldKey)));
+        onFieldError(fieldKey, "");
+      }}>Remove</button>
       {error && <p className="error" role="alert">{error}</p>}
     </div>
   );

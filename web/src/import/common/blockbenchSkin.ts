@@ -2,8 +2,9 @@ import type { SkinIR } from "../../domain/animationIR";
 import { createSkinOverride } from "../../domain/skin";
 import { ConversionError } from "../../foundation/diagnostics";
 
-export function readBlockbenchSkin(textures: readonly { name?: string; source?: string }[]): SkinIR | undefined {
-  const named = (name: string) => textures.filter((texture) => texture.name?.trim().toLowerCase().replace(/\.png$/, "") === name);
+export function readBlockbenchSkin(textures: readonly { name?: string; source?: string }[], animationName?: string): SkinIR | undefined {
+  const suffix = animationName ? `.${animationName.toLowerCase()}` : "";
+  const named = (name: string) => textures.filter((texture) => texture.name?.trim().toLowerCase().replace(/\.png$/, "") === `${name}${suffix}`);
   const overrides = named("override"), masks = named("override_mask");
   if (overrides.length > 1 || masks.length > 1) throw new ConversionError("duplicate_skin_texture", "Use at most one override texture and one override_mask texture.");
   if (!overrides.length) {

@@ -1,9 +1,11 @@
 import { convertIndexedToRgb, decode, encode } from "fast-png";
 import type { SkinIR } from "./animationIR";
 
+export const MAX_SKIN_PNG_BYTES = 1_048_576;
+
 export function decodeSkinPng(base64: string): Uint8Array {
   const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
-  if (bytes.length > 1_048_576) throw new Error("Skin PNG must not exceed 1 MiB.");
+  if (bytes.length > MAX_SKIN_PNG_BYTES) throw new Error("Skin PNG must not exceed 1 MiB.");
   const image = decode(bytes);
   if (image.width !== 64 || image.height !== 64) throw new Error("Skin PNG must be 64×64 with wide UVs.");
   const samples = image.palette ? convertIndexedToRgb(image) : image.data;
@@ -32,7 +34,7 @@ export function encodeSkinPng(pixels: Uint8Array): string {
   return btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(""));
 }
 
-function decodeMask(base64: string): Uint8Array {
+export function decodeMask(base64: string): Uint8Array {
   const pixels = decodeSkinPng(base64);
   for (let i = 0; i < pixels.length; i += 4) {
     if (!pixels[i + 3]) continue;

@@ -2,7 +2,6 @@ package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.loader.AnimationJsonParser;
-import io.github.hanhy06.emote.molang.MolangEngine;
 import io.github.hanhy06.emote.playback.molang.MolangQuerySource;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.HolderLookup;
@@ -13,6 +12,7 @@ import net.minecraft.server.Bootstrap;
 import org.joml.Matrix4f;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import team.unnamed.mocha.runtime.value.NumberValue;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -88,7 +88,7 @@ class EmotecraftBoundaryTest {
             MolangQuerySource.EMPTY.apply(session);
             session.setQueryFunction("scoreboard", arguments -> {
                 calls.add(arguments.string(0));
-                return MolangEngine.QueryValue.number(0);
+                return NumberValue.of(0);
             });
         });
         evaluator.initialize(0, 0);

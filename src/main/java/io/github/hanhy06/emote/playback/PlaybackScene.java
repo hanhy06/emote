@@ -376,12 +376,12 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
         DisplayData preparedData
     ) {
         return switch (preparedData) {
-            case DisplayData.Item(ItemStack itemStack, var itemDisplay) -> {
+            case DisplayData.Item(ItemStack itemStack, var displayContext) -> {
                 ItemDisplayAccessor accessor = (ItemDisplayAccessor) entity;
                 ItemStack instanceStack = itemStack.copy();
                 accessor.emote$setItemStack(instanceStack);
-                accessor.emote$setItemTransform(itemDisplay);
-                yield new DisplayData.Item(instanceStack, itemDisplay);
+                accessor.emote$setItemTransform(displayContext);
+                yield new DisplayData.Item(instanceStack, displayContext);
             }
             case DisplayData.Block(var blockState) -> {
                 ((BlockDisplayAccessor) entity).emote$setBlockState(blockState);
@@ -471,7 +471,7 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
             if (!(this.displayContent instanceof DisplayData.Item item)) {
                 throw new IllegalStateException("Attachment is not an item display: " + this.id);
             }
-            this.displayContent = new DisplayData.Item(Objects.requireNonNull(itemStack, "itemStack"), item.itemDisplay());
+            this.displayContent = new DisplayData.Item(Objects.requireNonNull(itemStack, "itemStack"), item.displayContext());
         }
 
         void setDisplayContent(DisplayData displayContent) {

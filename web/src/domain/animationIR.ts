@@ -17,7 +17,7 @@ export type TransformOperationIR = { id: string } & (
 
 export type AttachmentIR = {
   visible?: boolean;
-  entity_nbt?: string;
+  entity_snbt?: string;
 } & (
   | { type: "item_display"; item_stack_snbt: string; item_display: string }
   | { type: "block_display"; block_state_snbt: string }
@@ -131,17 +131,6 @@ export interface AnimationIR {
 export interface SkinIR {
   default?: string;
   override?: { texture: string; mask: string };
-}
-
-export interface AnimationEntryIR extends Omit<AnimationIR, "nodes" | "animation" | "target_minecraft_version"> {
-  nodeIds: string[];
-  clip: ClipIR;
-}
-
-export interface AnimationSetIR {
-  nodes: Record<string, NodeIR>;
-  animations: AnimationEntryIR[];
-  targetMinecraftVersion: string;
 }
 
 export function attachmentTargetId(nodeId: string, attachmentId: string): string {

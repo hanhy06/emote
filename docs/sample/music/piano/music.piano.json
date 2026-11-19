@@ -3,8 +3,8 @@
   "schema_version": 5,
   "id": "music:idle.piano",
   "metadata": {
-    "name": "Piano",
-    "description": "Play a piano."
+    "name": "Piano - Melody",
+    "description": "Piano performance featuring a melodic passage"
   },
   "settings": {
     "cooldown": "0t",

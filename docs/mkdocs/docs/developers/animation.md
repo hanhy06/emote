@@ -88,7 +88,7 @@ Delays can also use Molang; see [Animation time and delays](molang.md#animation-
 
 ### Nodes and attachments
 
-Each entry in `nodes` is a transform node. Its optional `parent` places it in a hierarchy, and its `transform` array applies operations in the listed order. An operation has its own `id`, an `op`, and an initial `value`.
+Each entry in `nodes` is a transform node. Its optional `parent` places it in a hierarchy, and its `transform` array applies operations in the listed order. An operation has its own `id`, an `op`, and an initial `value`. Event-only Animations can use an empty `nodes` object.
 
 Operations include `translate`, `rotate_euler`, `rotate_quaternion`, `scale`, and `matrix`. Euler rotations also specify an axis `order`, such as `XYZ`.
 
@@ -166,7 +166,7 @@ Each image is a Base64-encoded 64×64 PNG with classic (wide) arm UVs. When usin
 
 A white mask also replaces transparent texture pixels, allowing the override to erase the skin's outer layer. The inner layer remains opaque.
 
-For an Animated Java project with a skin override, see [cheer.ajblueprint](https://github.com/hanhy06/emote/blob/HEAD/docs/reference/aj/cheer.ajblueprint).
+For an Animated Java project with a skin override, see [christmas.ajblueprint](https://github.com/hanhy06/emote/blob/HEAD/docs/reference/aj/christmas.ajblueprint).
 
 ## Callbacks {#callbacks}
 

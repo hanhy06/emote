@@ -74,7 +74,7 @@ Place JSON exported by the converter under `emote/`. Subdirectories are loaded a
   "mineskin_poll_interval_seconds": 3,
   "mineskin_cache_retention_days": 30,
   "mineskin_cache_max_mib": 256,
-  "max_active_display_entities": 768,
+  "max_active_display_entities": 1024,
   "default_skin": ""
 }
 ```
