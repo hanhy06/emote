@@ -88,7 +88,7 @@ A `wait` step holds the previous pose for the specified duration.
 ]
 ```
 
-Waits can appear at the start or end of a Sequence and can be consecutive. The `repeat` field applies only to Animation steps.
+Waits can appear at the start or end of a Sequence and can be consecutive. The loader rejects `repeat` on a wait step.
 
 ## Random selection
 

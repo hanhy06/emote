@@ -94,8 +94,6 @@ Operations include `translate`, `rotate_euler`, `rotate_quaternion`, `scale`, an
 
 A node's `attachments` object defines what appears at that transform. Rendered attachment types are `item_display`, `block_display`, `text_display`, and `player_skin`. A node may have multiple attachments or none. A node without an entity attachment still provides a position for events and callbacks.
 
-Display attachments can set initial entity properties with `entity_snbt`, a compound SNBT string.
-
 Player-skin attachments use `part` and a `region` with `from` and `to` values.
 
 ### Track targets and drivers
