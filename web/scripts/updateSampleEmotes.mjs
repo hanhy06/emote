@@ -1,6 +1,7 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 import { createServer } from "vite";
 
@@ -13,7 +14,10 @@ const sourceIds = new Map([
 ]);
 
 const [referenceDir, sampleDir] = process.argv.slice(2);
-const vite = await createServer({ configFile: false, server: { middlewareMode: true, watch: null } });
+const baselineFile = fileURLToPath(new URL("./sampleAnimationBaseline.json", import.meta.url));
+const baseline = JSON.parse(await readFile(baselineFile, "utf8"));
+const nextBaseline = { ...baseline };
+const vite = await createServer({ configFile: false, server: { middlewareMode: true, watch: null, ws: false } });
 try {
   const [
     { detectInputFormat, readInput, INPUT_FORMATS },
@@ -75,6 +79,15 @@ try {
       if (!Object.keys(nodes.butterfly.attachments).length) delete nodes.butterfly.attachments;
       tracks = tracks.filter(({ target }) => target.node !== "butterfly" || target.attachment !== "display");
     }
+    // Compare with the last generated data so unchanged sources keep any manual sample edits.
+    const generatedData = JSON.stringify({ nodes, duration, tracks }, (_, value) =>
+      value !== null && typeof value === "object" && !Array.isArray(value)
+        ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, value[key]]))
+        : value);
+    const fingerprint = createHash("sha256").update(generatedData).digest("hex");
+    if (fingerprint === baseline[sourceId]) continue;
+    nextBaseline[sourceId] = fingerprint;
+
     const updated = { ...previous, nodes, animation: { ...previous.animation, duration, tracks } };
     if (generatedResourceReferences.size) {
       const resources = [...referencedItemModelResources(updated)].filter((resource) => generatedResourceReferences.has(resource));
@@ -104,6 +117,11 @@ try {
   }
 
   if (!matched.size) throw new Error("No sample animations matched the Blockbench projects.");
+  const updatedCount = updates.length;
+  if (!isDeepStrictEqual(baseline, nextBaseline)) {
+    const sortedBaseline = Object.fromEntries(Object.entries(nextBaseline).sort(([a], [b]) => a.localeCompare(b, "en")));
+    updates.push({ file: baselineFile, output: JSON.stringify(sortedBaseline, null, 2) });
+  }
   for (const { file, output } of updates) {
     const temporary = `${file}.${randomUUID()}.tmp`;
     try {
@@ -114,7 +132,7 @@ try {
     }
   }
   if (unmatched.length) console.log(`Skipped samples without a matching source: ${unmatched.join(", ")}`);
-  console.log(`Checked ${matched.size} source-backed sample animations, updated ${updates.length}.`);
+  console.log(`Checked ${matched.size} source-backed sample animations, updated ${updatedCount}.`);
 } finally {
   await vite.close();
 }
