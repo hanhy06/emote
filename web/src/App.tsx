@@ -168,8 +168,12 @@ export function App() {
   async function handleDownload(selection: ExportSelection) {
     if (!session || busy) return;
     const singleAnimation = typeof selection === "number";
-    const message = selection === "sequence" ? (animations.length ? "Creating sequence files" : "Creating sequence file")
-      : singleAnimation ? "Creating animation file" : "Creating animation files";
+    let message: string;
+    if (selection === "sequence") {
+      message = animations.length ? "Creating sequence files" : "Creating sequence file";
+    } else {
+      message = singleAnimation ? "Creating animation file" : "Creating animation files";
+    }
     dispatch({ type: "export_started", message });
 
     try {
@@ -295,7 +299,7 @@ export function App() {
             const showCommandWarning = severity === "warning" && eventReview.hasCommands;
             const showReview = severity === "warning" && selectedAnimation && eventReview.hasSelectedReview;
             if (!issues.length && !showSkinWarning && !showCommandWarning && !showReview) return null;
-            return <details className={`message diagnostic-group ${severity === "error" ? "error" : "warning"}`} key={`${eventEditorRevision}:${severity}`}
+            return <details className={`message diagnostic-group ${severity}`} key={`${eventEditorRevision}:${severity}`}
               open={showCommandWarning || issues.some(issue => issue.code === "unsupported_sequence_animation")}>
               <summary>{severity === "error" ? "Error" : "Warn"}</summary>
               <div className="diagnostic-body">
@@ -373,7 +377,7 @@ export function App() {
                   }} />
                   {selectedAnimationTick === null ? <output>{initialFrameLabel}</output> : <label className="frame-tick">
                     <input key={`${eventEditorRevision}:${selectedIndex}:${selectedAnimationTick}`} type="number" aria-label="Event tick"
-                      min="0" max={durationTicks} step="1" placeholder="0" defaultValue={selectedAnimationTick ?? ""} disabled={busy || !eventJsonValid}
+                      min="0" max={durationTicks} step="1" placeholder="0" defaultValue={selectedAnimationTick} disabled={busy || !eventJsonValid}
                       onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} onBlur={(event) => {
                         const input = event.currentTarget;
                         try {
@@ -382,7 +386,7 @@ export function App() {
                           input.value = String(animationTick);
                           if (animationTick !== selectedAnimationTick) dispatch({ type: "frame_selected", frame: { type: "timeline", animationTick } });
                         } catch {
-                          input.value = selectedAnimationTick === null ? "" : String(selectedAnimationTick);
+                          input.value = String(selectedAnimationTick);
                         }
                       }} />
                     tick

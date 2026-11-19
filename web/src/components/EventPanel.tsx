@@ -19,15 +19,29 @@ interface EventPanelProps {
 export function EventPanel({ entry, animationTick, disabled, onChange, onValidityChange, commandSourceControl }: EventPanelProps) {
   const [error, setError] = useState("");
   const isSequence = entry.type === "sequence";
-  const events = isSequence ? undefined : entry.clip.events;
   const callbacks = entry.callbacks ?? [];
-  const initialValue = JSON.stringify(isSequence ? { callbacks } : animationTick !== null
-    ? (events?.timeline ?? []).flatMap((event) => {
+  let initialEvents;
+  let label: string;
+  let description: string;
+  if (isSequence) {
+    initialEvents = { callbacks };
+    label = "Sequence callbacks JSON";
+    description = "Edit the sequence callbacks as JSON.";
+  } else if (animationTick === null) {
+    const events = entry.clip.events;
+    initialEvents = { callbacks, start: events?.start ?? [], loop: events?.loop ?? [], stop: events?.stop ?? [] };
+    label = "Lifecycle events JSON";
+    description = "Edit callbacks and start, loop, and stop events as JSON.";
+  } else {
+    initialEvents = (entry.clip.events?.timeline ?? []).flatMap((event) => {
       if (parseMinecraftTime(event.time) !== animationTick) return [];
       const { time: _time, ...body } = event;
       return [body];
-    })
-    : { callbacks, start: events?.start ?? [], loop: events?.loop ?? [], stop: events?.stop ?? [] }, null, 2);
+    });
+    label = `Timeline events JSON at tick ${animationTick}`;
+    description = "Edit the events at this tick as a JSON array. The selected tick supplies the event time automatically.";
+  }
+
   function handleInput(value: string) {
     try {
       onChange(parseEventEdit(entry, animationTick, value));
@@ -44,16 +58,13 @@ export function EventPanel({ entry, animationTick, disabled, onChange, onValidit
       <div className="event-editor-heading">
         <div>
           <h3 id="event-editor-heading">{isSequence ? "Callbacks" : "Events"}</h3>
-          <p>{isSequence ? "Edit the sequence callbacks as JSON. Changes are saved as soon as the JSON is valid."
-            : animationTick === null
-            ? "Edit callbacks and start, loop, and stop events as JSON. Changes are saved as soon as the JSON is valid."
-            : "Edit the events at this tick as a JSON array. The selected tick supplies the event time automatically. Changes are saved as soon as the JSON is valid."}</p>
+          <p>{description} Changes are saved as soon as the JSON is valid.</p>
         </div>
         {commandSourceControl}
       </div>
       <div className="event-editor-body">
-        <textarea className="event-json" defaultValue={initialValue} disabled={disabled} spellcheck={false}
-          aria-label={isSequence ? "Sequence callbacks JSON" : animationTick === null ? "Lifecycle events JSON" : `Timeline events JSON at tick ${animationTick}`}
+        <textarea className="event-json" defaultValue={JSON.stringify(initialEvents, null, 2)} disabled={disabled} spellcheck={false}
+          aria-label={label}
           aria-invalid={error ? true : undefined}
           onInput={(event) => handleInput(event.currentTarget.value)} />
         {error && <p className="event-json-error" role="alert">{error} Fix the JSON or press Ctrl+Z before leaving this event scope.</p>}

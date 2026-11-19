@@ -29,7 +29,6 @@ export function AssignmentPanel({
 }: AssignmentPanelProps) {
   const hasSelectedSkinPart = parts.some((part) => selectedCandidateIds.has(part.candidateId));
   const hasSelectedAssignment = [...selectedCandidateIds].some((candidateId) => assignments[candidateId] != null);
-  const selectableItems = parts.map((part) => ({ candidateId: part.candidateId, label: `#${part.partIndex}`, detail: assignmentLabel(assignments[part.candidateId], orders[part.candidateId]) }));
   const partItems = useRef(new Map<string, HTMLLIElement>());
   const partList = useRef<HTMLUListElement>(null);
   const selectedOrders = [...selectedCandidateIds]
@@ -37,7 +36,7 @@ export function AssignmentPanel({
     .map((candidateId) => orders[candidateId]!);
   const selectedOrder = selectedOrders.length > 0 && selectedOrders.every((order) => order === selectedOrders[0])
     ? String(selectedOrders[0])
-    : "";
+    : "0";
 
   function revealPart(id: string) {
     const item = partItems.current.get(id);
@@ -54,16 +53,13 @@ export function AssignmentPanel({
     if (last) revealPart(last);
   }, [selectedCandidateIds]);
 
-  function assignOrderAndScroll(order: number) {
+  function handleOrderChange(event: TargetedEvent<HTMLInputElement>) {
+    const order = Number(event.currentTarget.value);
+    if (!Number.isInteger(order)) return;
     onAssignOrder(order);
     const last = parts.reduce((index, part, i) => selectedCandidateIds.has(part.candidateId) ? i : index, -1);
     const next = parts[last + 1];
     if (next) requestAnimationFrame(() => revealPart(next.candidateId));
-  }
-
-  function handleOrderChange(event: TargetedEvent<HTMLInputElement>) {
-    const order = Number(event.currentTarget.value);
-    if (Number.isInteger(order)) assignOrderAndScroll(order);
   }
 
   return (
@@ -86,29 +82,29 @@ export function AssignmentPanel({
             min="0"
             max="9"
             step="1"
-            value={selectedOrder || "0"}
+            value={selectedOrder}
             disabled={!hasSelectedAssignment}
             onChange={handleOrderChange}
           />
-          <output>{selectedOrder || "0"}</output>
+          <output>{selectedOrder}</output>
         </label>
         <details className="part-picker"><summary>Model parts ({parts.length})</summary>
           <ul className="part-list" ref={partList}>
-            {selectableItems.map((item) => (
+            {parts.map((part) => (
               <li
-                key={item.candidateId}
+                key={part.candidateId}
                 ref={(element) => {
-                  if (element) partItems.current.set(item.candidateId, element);
-                  else partItems.current.delete(item.candidateId);
+                  if (element) partItems.current.set(part.candidateId, element);
+                  else partItems.current.delete(part.candidateId);
                 }}
               >
                 <button
                   type="button"
-                  className={selectedCandidateIds.has(item.candidateId) ? "selected" : ""}
-                  onClick={(event) => onSelectCandidate(item.candidateId, event.ctrlKey || event.metaKey || event.shiftKey)}
+                  className={selectedCandidateIds.has(part.candidateId) ? "selected" : ""}
+                  onClick={(event) => onSelectCandidate(part.candidateId, event.ctrlKey || event.metaKey || event.shiftKey)}
                 >
-                  <span>{item.label}</span>
-                  <span>{item.detail}</span>
+                  <span>#{part.partIndex}</span>
+                  <span>{assignmentLabel(assignments[part.candidateId], orders[part.candidateId])}</span>
                 </button>
               </li>
             ))}

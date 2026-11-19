@@ -1,4 +1,5 @@
 import { parseMinecraftTime } from "./format/time";
+import type { EventIR } from "./domain/animationIR";
 import {
   animationEntries,
   assignSkinOrder,
@@ -137,12 +138,11 @@ export function eventReviewSummary(document: ConversionDocument | null, selected
   const animations = document ? animationEntries(document) : [];
   const selected = document?.entries[selectedIndex];
   const events = selected?.type === "animation" ? selected.clip.events : undefined;
+  const hasCommands = (event: EventIR) => event.action.type === "commands" && event.action.commands.length > 0;
   return {
-    hasCommands: animations.some(animation => Object.values(animation.clip.events ?? {})
-      .some(events => events.some(event => event.action.type === "commands" && event.action.commands.length > 0))),
-    hasSelectedReview: Boolean(selected?.callbacks?.length) || Object.values(events ?? {})
-      .some(events => events.some(event => event.action.type === "commands" && event.action.commands.length > 0)),
-    commandTicks: [...new Set(events?.timeline?.filter(event => event.action.type === "commands" && event.action.commands.length > 0)
+    hasCommands: animations.some(animation => Object.values(animation.clip.events ?? {}).some(events => events.some(hasCommands))),
+    hasSelectedReview: Boolean(selected?.callbacks?.length) || Object.values(events ?? {}).some(events => events.some(hasCommands)),
+    commandTicks: [...new Set(events?.timeline?.filter(hasCommands)
       .map(event => parseMinecraftTime(event.time)) ?? [])].sort((first, second) => first - second),
   };
 }

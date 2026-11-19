@@ -14,8 +14,8 @@ export async function exportProject(document: ConversionDocument, selection: Exp
   const importedSequence = includeSequence ? document.entries.find((entry) => entry.type === "sequence") : undefined;
   if (typeof selection !== "number" && !entries.length && !importedSequence) throw new Error("The project does not contain animations.");
   const animationIds = entries.map((entry) => entry.id);
+  const seenIds = new Set<string>();
   if (typeof selection !== "number") {
-    const seenIds = new Set<string>();
     for (const id of animationIds) {
       if (seenIds.has(id)) {
         throw new ConversionError("duplicate_animation_id", `Multiple animations use the ID ${id}. Give each animation a unique ID before downloading the bundle.`);
@@ -42,7 +42,7 @@ export async function exportProject(document: ConversionDocument, selection: Exp
       : `${sanitizeNamespace(id.slice(0, separator))}:${sanitizeResourcePath(id.slice(separator + 1))}`;
     let sequenceId = baseSequenceId;
     let suffix = 1;
-    while (entries.some((entry) => entry.id === sequenceId)) sequenceId = `${baseSequenceId}.${suffix++}`;
+    while (seenIds.has(sequenceId)) sequenceId = `${baseSequenceId}.${suffix++}`;
     const sequence = {
       type: "sequence",
       schema_version: EMOTE_SCHEMA_VERSION,
