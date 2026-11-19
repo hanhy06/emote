@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.github.hanhy06.emote.util.MinecraftTime;
+import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,7 +36,8 @@ final class ConfigJsonCodec {
         JsonArray permissionsJson = new JsonArray();
         for (AccessConfig.PermissionEntry entry : config.permissions()) {
             JsonObject entryJson = new JsonObject();
-            entryJson.addProperty("permission", entry.permission());
+            Identifier permission = entry.permission();
+            entryJson.addProperty("permission", permission.getNamespace() + "." + permission.getPath());
             JsonArray idsJson = new JsonArray();
             entry.emotes().forEach(idsJson::add);
             entryJson.add("emotes", idsJson);
@@ -123,10 +125,21 @@ final class ConfigJsonCodec {
                     return null;
                 }
                 JsonObject entryJson = entryElement.getAsJsonObject();
-                String permission = readRequiredString(entryJson.get("permission"));
+                String permissionName = readRequiredString(entryJson.get("permission"));
                 List<String> ids = readRequiredStringList(entryJson.get("emotes"));
-                if (permission == null || ids == null) {
+                if (permissionName == null || ids == null) {
                     return null;
+                }
+                permissionName = permissionName.trim();
+                if (permissionName.isBlank()) {
+                    throw new IllegalArgumentException("permission must not be blank");
+                }
+                int separator = permissionName.indexOf('.');
+                Identifier permission = separator > 0 && separator < permissionName.length() - 1
+                    ? Identifier.tryBuild(permissionName.substring(0, separator), permissionName.substring(separator + 1))
+                    : null;
+                if (permission == null) {
+                    throw new IllegalArgumentException("permission must use namespace.node format: " + permissionName);
                 }
 
                 Optional<AccessConfig.CooldownModifier> cooldown = Optional.empty();
