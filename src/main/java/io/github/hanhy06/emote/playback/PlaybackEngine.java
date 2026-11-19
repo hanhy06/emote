@@ -58,9 +58,6 @@ public final class PlaybackEngine implements ConfigListener {
             Objects.requireNonNull(lifecycle, "lifecycle");
             Objects.requireNonNull(placementMode, "placementMode");
         }
-        public Request(ServerLevel level, RootTransform root, PreparedEmote emote) {
-            this(level, root, emote, Map.of(), MolangQuerySource.EMPTY, null, null, Lifecycle.NONE, PlaybackPlacement.Mode.EXTERNAL);
-        }
     }
 
     public sealed interface StartResult {
@@ -139,11 +136,6 @@ public final class PlaybackEngine implements ConfigListener {
     }
     public boolean contains(PlaybackSession session) { return findSession(session.sessionId()) == session; }
 
-    public @Nullable PlaybackSession stop(UUID sessionId, PlaybackStopReason reason) {
-        PlaybackSession session = findSession(sessionId);
-        return session == null ? null : stop(session, reason);
-    }
-
     public void beginTick() {
         if (this.frameTask != null || !this.framePlaybacks.isEmpty()) throw new IllegalStateException("Previous emote tick has not finished");
         List<PlaybackSession> frames = new ArrayList<>();
@@ -216,7 +208,6 @@ public final class PlaybackEngine implements ConfigListener {
         }
     }
 
-    public void stopAll() { stopAll(PlaybackStopReason.MANUAL); }
     public void stopAll(PlaybackStopReason reason) {
         this.stressTest.stop();
         for (PlaybackSession session : List.copyOf(this.activePlaybacks.values())) stop(session, reason);

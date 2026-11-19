@@ -79,8 +79,6 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
         return this.state;
     }
 
-    public PlaybackStopReason stopReason() { return Objects.requireNonNull(this.stopReason); }
-
     public Playback view() { return this.view; }
 
     private PlaybackPlacement placement(EmotePlayback.@Nullable PoseView pose) {
@@ -160,10 +158,14 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
             PlaybackPlacement requested = this.pendingPlacement;
             this.pendingPlacement = null;
             if (requested != null) this.placementMode = requested.mode();
-            RootTransform placement = this.placementMode == PlaybackPlacement.Mode.ACTOR
-                ? this.lifecycle.resolveActorPlacement(this)
-                : requested == null ? RootTransform.create(this.scene.root().position(), this.scene.viewYaw())
-                    : RootTransform.create(requested.position(), requested.yaw());
+            RootTransform placement;
+            if (this.placementMode == PlaybackPlacement.Mode.ACTOR) {
+                placement = this.lifecycle.resolveActorPlacement(this);
+            } else if (requested != null) {
+                placement = RootTransform.create(requested.position(), requested.yaw());
+            } else {
+                placement = RootTransform.create(this.scene.root().position(), this.scene.viewYaw());
+            }
             if (placement == null) throw new IllegalArgumentException("Playback has no actor placement");
             float deadzone = requested == null && this.placementMode == PlaybackPlacement.Mode.ACTOR ? this.lifecycle.rotationDeadzone(this) : 0;
             this.scene.preparePlacement(placement, deadzone);
@@ -340,7 +342,7 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
     }
 
     void finishClose() {
-        PlaybackStopReason reason = stopReason();
+        PlaybackStopReason reason = Objects.requireNonNull(this.stopReason);
         try {
             discardFrame();
             try { stopPlayback(reason); }
@@ -379,7 +381,7 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
         public PlaybackState getState() { requireServerThread(); return PlaybackSession.this.state; }
         public boolean isActive() { requireServerThread(); return PlaybackSession.this.isActive(); }
         public long getElapsedTicks() { requireServerThread(); return PlaybackSession.this.elapsedTicks; }
-        public @Nullable Integer getTimelineTick() { requireServerThread(); var pose = pose(); return pose == null ? null : Integer.valueOf(pose.timelineTick()); }
+        public @Nullable Integer getTimelineTick() { requireServerThread(); var pose = pose(); return pose == null ? null : pose.timelineTick(); }
         public @Nullable PlaybackCursor getCursor() { requireServerThread(); var pose = pose(); return pose == null ? null : pose.cursor(); }
         public @Nullable Integer getAnimationTick() { var cursor = getCursor(); return cursor == null ? null : cursor.animationTick(); }
         public @Nullable PlaybackTimeline getTimeline() { requireServerThread(); var pose = pose(); return pose == null ? null : pose.timeline(); }
@@ -430,7 +432,7 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
             var pose = pose();
             UUID playerUuid = PlaybackSession.this.actors.get("actor") instanceof ServerPlayer player ? player.getUUID() : null;
             return new PlaybackInfo(getSessionId(), playerUuid, getEmoteId(), PlaybackSession.this.state, PlaybackSession.this.elapsedTicks,
-                pose == null ? null : Integer.valueOf(pose.timelineTick()), pose == null ? null : pose.cursor(), placement(pose));
+                pose == null ? null : pose.timelineTick(), pose == null ? null : pose.cursor(), placement(pose));
         }
     }
 

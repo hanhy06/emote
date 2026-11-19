@@ -89,14 +89,10 @@ public final class MolangEngine {
         }
 
         public void setQueryFunction(String name, QueryFunction function) {
-            setQueryFunction(name, null, function);
+            setQueryFunction(name, 0.0D, function);
         }
 
         public void setQueryFunction(String name, double value, QueryFunction function) {
-            setQueryFunction(name, Double.valueOf(value), function);
-        }
-
-        private void setQueryFunction(String name, Double value, QueryFunction function) {
             Objects.requireNonNull(name, "name");
             Objects.requireNonNull(function, "function");
             this.query.set(name.toLowerCase(Locale.ROOT), new Function<>() {
@@ -112,12 +108,12 @@ public final class MolangEngine {
 
                 @Override
                 public double getAsNumber() {
-                    return value == null ? 0.0D : value;
+                    return value;
                 }
 
                 @Override
                 public boolean getAsBoolean() {
-                    return value != null && value != 0.0D;
+                    return value != 0.0D;
                 }
             });
         }

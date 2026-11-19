@@ -375,9 +375,9 @@ public final class PreparedAnimation implements PreparedEmote {
     @Override
     public @Nullable Integer durationTicks() {
         var playback = this.model.settings().playback();
-        return playback.mode() == EmoteAnimation.PlaybackMode.ONCE && this.model.clip().clock() == null
-            && playback.startDelay() instanceof EmoteAnimation.ConstantValue delay
-            ? Math.addExact((int) delay.value(), this.model.clip().durationTicks()) : null;
+        if (playback.mode() != EmoteAnimation.PlaybackMode.ONCE || this.model.clip().clock() != null
+            || !(playback.startDelay() instanceof EmoteAnimation.ConstantValue delay)) return null;
+        return Math.addExact((int) delay.value(), this.model.clip().durationTicks());
     }
 
     @Override

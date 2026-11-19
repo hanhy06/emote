@@ -282,7 +282,7 @@ public final class EmotePlayback {
             throw new IllegalStateException("Events already started");
         }
         this.eventsStarted = true;
-        if ((this.emote instanceof PreparedSequence)) {
+        if (this.emote instanceof PreparedSequence) {
             startChildEvents(true);
             return;
         }
@@ -299,7 +299,7 @@ public final class EmotePlayback {
 
     private AdvanceResult advance(int elapsedTicks, boolean continueAfterLoopBoundary) {
         if (elapsedTicks < 0) throw new IllegalArgumentException("Elapsed ticks must be non-negative");
-        if ((this.emote instanceof PreparedSequence)) return advanceSequence(elapsedTicks);
+        if (this.emote instanceof PreparedSequence) return advanceSequence(elapsedTicks);
         if (this.phase == PlaybackPhase.NOT_STARTED) throw new IllegalStateException("Timeline has not started");
         if (this.phase == PlaybackPhase.FINISHED || this.eventsStopped) return AdvanceResult.FINISHED;
         if (this.phase == PlaybackPhase.LOOP_BOUNDARY) throw new IllegalStateException("Loop boundary must be continued before advancing");
@@ -701,7 +701,7 @@ public final class EmotePlayback {
 
     private void seekTimeline(int timelineTick) {
         if (!canSeekTimeline(timelineTick)) return;
-        if ((this.emote instanceof PreparedSequence)) {
+        if (this.emote instanceof PreparedSequence) {
             seekSequence(locateSequence(timelineTick), timelineTick, null);
             return;
         }
@@ -762,7 +762,7 @@ public final class EmotePlayback {
     }
 
     public boolean canSeekAnimation(int animationTick) {
-        EmotePlayback animation = (this.emote instanceof PreparedSequence) ? this.child : this;
+        EmotePlayback animation = this.emote instanceof PreparedSequence ? this.child : this;
         if (animationTick < 0 || (animation != null && animationTick > animation.model.clip().durationTicks())) throw new IllegalArgumentException("Tick is outside the animation");
         return canSeek() && cursor().phase() == PlaybackTimeline.Phase.ANIMATION;
     }
@@ -861,7 +861,8 @@ public final class EmotePlayback {
         if (this.eventsStopped) return;
         int local = animationTick != null ? animationTick : location - Objects.requireNonNull(segment.startTick());
         boolean dynamicClock = segment.phase() == PlaybackTimeline.Phase.ANIMATION && selectedAnimation(segment).animation().model().clip().clock() != null;
-        int elapsed = dynamicClock ? sameExecution ? this.segmentTick : 0 : local;
+        int elapsed = local;
+        if (dynamicClock) elapsed = sameExecution ? this.segmentTick : 0;
         if (destination > this.sequenceSegment && this.sequenceSegments.get(this.sequenceSegment).phase() == PlaybackTimeline.Phase.EMPTY) {
             this.segmentLengths.put(this.sequenceSegment, this.segmentTick);
         }
@@ -947,7 +948,7 @@ public final class EmotePlayback {
         if (this.notificationView != null) return this.notificationView.cursor;
         if (this.stoppedCursor != null) return this.stoppedCursor;
         var segments = (timeline == null ? timeline() : timeline).segments();
-        if ((this.emote instanceof PreparedSequence)) {
+        if (this.emote instanceof PreparedSequence) {
             var selected = segments.get(Math.min(this.sequenceSegment, segments.size() - 1));
             return new PlaybackCursor(selected.segmentIndex(), selected.stepIndex(), selected.repeatIndex(), selected.phase(), this.segmentTick,
                 selected.animationId(), selected.phase() == PlaybackTimeline.Phase.ANIMATION ? this.child.animationTick : null);
@@ -994,7 +995,7 @@ public final class EmotePlayback {
     public Transformation currentTransformation(String nodeId) {
         if (this.notificationView != null) return new Transformation(this.notificationView.nodeMatrix(nodeId));
         if (this.appliedPose != null) return new Transformation(this.appliedPose.nodeMatrix(nodeId));
-        if ((this.emote instanceof PreparedSequence) && this.child != null && cursor().phase() == PlaybackTimeline.Phase.ANIMATION && this.child.model.nodes().containsKey(nodeId)) return this.child.currentTransformation(nodeId);
+        if (this.emote instanceof PreparedSequence && this.child != null && cursor().phase() == PlaybackTimeline.Phase.ANIMATION && this.child.model.nodes().containsKey(nodeId)) return this.child.currentTransformation(nodeId);
         Matrix4fc matrix = this.appliedTransforms.get(nodeId);
         if (matrix == null) return this.target.createTransformation(nodeId, this.emote.defaultMatrix(nodeId));
         return this.target.createTransformation(nodeId, matrix);
@@ -1400,20 +1401,25 @@ public final class EmotePlayback {
 
     private PlaybackTimeline animationTimeline() {
         var playback = this.model.settings().playback();
-        Integer loopDelay = this.phase == PlaybackPhase.LOOP_DELAY ? Integer.valueOf(this.loopDelayTicks)
-            : playback.loopDelay() instanceof EmoteAnimation.ConstantValue constant ? (int) constant.value() : null;
+        var mode = playback.mode();
+        boolean loops = mode == EmoteAnimation.PlaybackMode.LOOP || mode == EmoteAnimation.PlaybackMode.SERVER_SYNC;
+        Integer loopDelay = null;
+        if (this.phase == PlaybackPhase.LOOP_DELAY) {
+            loopDelay = this.loopDelayTicks;
+        } else if (playback.loopDelay() instanceof EmoteAnimation.ConstantValue constant) {
+            loopDelay = (int) constant.value();
+        }
         List<PlaybackTimeline.Segment> segments = new ArrayList<>();
         if (this.startDelayTicks > 0) segments.add(new PlaybackTimeline.Segment(0, null, null, PlaybackTimeline.Phase.START_DELAY, 0, this.startDelayTicks, null));
         Integer end = this.animationEndTick;
         segments.add(new PlaybackTimeline.Segment(segments.size(), null, null, PlaybackTimeline.Phase.ANIMATION, this.animationStartTick, end, this.model.id()));
-        if ((playback.mode() == EmoteAnimation.PlaybackMode.LOOP || playback.mode() == EmoteAnimation.PlaybackMode.SERVER_SYNC) && (loopDelay == null || loopDelay > 0)) {
+        if (loops && (loopDelay == null || loopDelay > 0)) {
             segments.add(new PlaybackTimeline.Segment(segments.size(), null, null, PlaybackTimeline.Phase.LOOP_DELAY, end, end == null || loopDelay == null ? null : end + loopDelay, null));
-        } else if (playback.mode() == EmoteAnimation.PlaybackMode.HOLD) {
+        } else if (mode == EmoteAnimation.PlaybackMode.HOLD) {
             segments.add(new PlaybackTimeline.Segment(segments.size(), null, null, PlaybackTimeline.Phase.HOLD, end, null, this.model.id()));
         }
-        return new PlaybackTimeline(this.model.id(), playback.mode() == EmoteAnimation.PlaybackMode.ONCE ? end : null, playback.mode(),
-            playback.mode() == EmoteAnimation.PlaybackMode.LOOP || playback.mode() == EmoteAnimation.PlaybackMode.SERVER_SYNC
-                ? Math.addExact(this.startDelayTicks, playback.loopStartTick()) : 0, segments);
+        return new PlaybackTimeline(this.model.id(), mode == EmoteAnimation.PlaybackMode.ONCE ? end : null, mode,
+            loops ? Math.addExact(this.startDelayTicks, playback.loopStartTick()) : 0, segments);
     }
 
     private List<EventOccurrence> timelineEvents(int previousAnimationTick, int animationTick) {
