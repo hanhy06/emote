@@ -64,7 +64,12 @@ public class WheelScreen extends Screen {
 
     @Override
     protected void init() {
-        closeWheelTexture();
+        if (this.wheelTexture != null) {
+            this.wheelTexture.close();
+            this.wheelTexture = null;
+            this.wheelPixels.close();
+            this.wheelPixels = null;
+        }
         this.textureSlotColors = new int[0];
         this.metrics = WheelGeometry.createMetrics(this.width, this.height);
         List<SlotGeometry> slots = new ArrayList<>(WheelGeometry.SLOT_COUNT);
@@ -86,16 +91,13 @@ public class WheelScreen extends Screen {
 
     @Override
     public void removed() {
-        closeWheelTexture();
+        if (this.wheelTexture != null) {
+            this.wheelTexture.close();
+            this.wheelTexture = null;
+            this.wheelPixels.close();
+            this.wheelPixels = null;
+        }
         super.removed();
-    }
-
-    private void closeWheelTexture() {
-        if (this.wheelTexture == null) return;
-        this.wheelTexture.close();
-        this.wheelTexture = null;
-        this.wheelPixels.close();
-        this.wheelPixels = null;
     }
 
     @Override
