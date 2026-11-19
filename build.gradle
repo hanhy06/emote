@@ -97,6 +97,19 @@ processResources {
 tasks.register("prodClient", ClientProductionRunTask)
 tasks.register("prodServer", ServerProductionRunTask)
 
+tasks.register("updateSampleEmotes", Exec) {
+    group = "build setup"
+    description = "Regenerates bundled sample animation data from the Blockbench projects."
+    workingDir "web"
+    commandLine "node", "scripts/updateSampleEmotes.mjs", file("docs/reference"), file("docs/sample")
+
+    doFirst {
+        if (!file("web/node_modules/vite/package.json").isFile()) {
+            throw new GradleException("Run npm ci --prefix web to install the converter dependencies.")
+        }
+    }
+}
+
 test {
     useJUnitPlatform()
 }
