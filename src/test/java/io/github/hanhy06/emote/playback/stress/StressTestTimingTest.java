@@ -6,8 +6,10 @@ import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static io.github.hanhy06.emote.playback.stress.StressTestTiming.Phase.*;
-import static io.github.hanhy06.emote.playback.stress.StressTestTiming.ThreadRole.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static io.github.hanhy06.emote.playback.stress.StressTestTiming.ThreadRole.MAIN;
+import static io.github.hanhy06.emote.playback.stress.StressTestTiming.ThreadRole.WORKER;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class StressTestTimingTest {
     @Test

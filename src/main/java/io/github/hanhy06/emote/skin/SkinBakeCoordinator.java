@@ -11,10 +11,10 @@ import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
 
-import java.awt.image.BufferedImage;
-import java.io.IOException;
-import java.io.ByteArrayInputStream;
 import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
 

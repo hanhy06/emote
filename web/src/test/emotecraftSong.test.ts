@@ -1,6 +1,6 @@
-import { createTestDocument } from "./testProject";
 import { expect, it } from "vitest";
-import { exportAnimation } from "../export/projectExporter";
+import { createConversionDocument } from "../domain/conversionDocument";
+import { exportProject } from "../export/projectExporter";
 import { readInput } from "../import/formats";
 
 const animationPacket = Uint8Array.from([0,0,0,8,16,1,153,6,0,0,0,47,0,0,0,0,4,65,160,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,4,98,111,100,121,1,1,1,63,201,15,219,65,160,0,0,0,0,0,0,0]);
@@ -13,7 +13,7 @@ async function exportSong(version: number, song: Uint8Array) {
   new DataView(bytes.buffer).setInt32(animationPacket.length + 2, song.length);
   bytes.set(song, animationPacket.length + 6);
   const project = await readInput("emotecraft_binary", { name: "music.emotecraft", bytes });
-  const [output] = await exportAnimation(createTestDocument(project, "Emotecraft"), 0);
+  const [output] = await exportProject(createConversionDocument(project, "Emotecraft"), 0);
   return { project, animation: JSON.parse(await output.blob.text()) };
 }
 
@@ -55,7 +55,7 @@ it.each([
   [2, Uint8Array.of(0), "emotecraft_song_invalid"],
 ])("exports the complete animation when optional music version %i cannot be converted", async (version, song, warning) => {
   const baseline = await readInput("emotecraft_binary", { name: "music.emotecraft", bytes: animationPacket });
-  const [baselineOutput] = await exportAnimation(createTestDocument(baseline, "Emotecraft"), 0);
+  const [baselineOutput] = await exportProject(createConversionDocument(baseline, "Emotecraft"), 0);
   const result = await exportSong(version, song);
   expect(result.animation).toEqual(JSON.parse(await baselineOutput.blob.text()));
   expect(result.project.diagnostics.map((issue) => issue.code)).toContain(warning);

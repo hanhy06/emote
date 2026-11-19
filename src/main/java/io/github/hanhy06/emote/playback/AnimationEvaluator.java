@@ -10,6 +10,7 @@ import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 import org.joml.Quaterniond;
 import org.joml.Quaternionf;
+import team.unnamed.mocha.runtime.value.NumberValue;
 
 import java.util.*;
 
@@ -44,7 +45,7 @@ final class AnimationEvaluator {
     private MolangEngine.Session session;
     private final Map<String, double[]> sharedValues = new HashMap<>();
     private final Set<String> evaluatingValues = new HashSet<>();
-    private int sampleTick, sampleLoop;
+    private int sampleAnimationTick, sampleLoop;
     private double sampleProgress;
 
     AnimationEvaluator(PreparedAnimation animation, MolangQuerySource querySource) {
@@ -69,11 +70,15 @@ final class AnimationEvaluator {
     }
 
     void initialize(int loopCount, long lifetimeTicks) {
+        initialize(loopCount, lifetimeTicks, MolangEngine.INSTANCE.createSession());
+    }
+
+    void initialize(int loopCount, long lifetimeTicks, MolangEngine.Session session) {
         if (this.session != null) return;
-        this.session = MolangEngine.INSTANCE.createSession();
+        this.session = session;
         this.session.setQueryFunction("value", arguments -> {
             if (!arguments.isString(0) || !arguments.isNumber(1)) throw new IllegalStateException("q.value requires a value id and component index");
-            return MolangEngine.QueryValue.number(sharedValue(arguments.string(0), arguments.number(1)));
+            return NumberValue.of(sharedValue(arguments.string(0), arguments.number(1)));
         });
         this.nbtCycle = loopCount;
         prepareFrame(0, loopCount, 0, lifetimeTicks);
@@ -82,21 +87,21 @@ final class AnimationEvaluator {
         }
     }
 
-    void prepareFrame(int tick, int loopCount, int deltaTicks, long lifetimeTicks) {
-        setFrameQueries(tick, loopCount, deltaTicks, lifetimeTicks);
+    void prepareFrame(int animationTick, int loopCount, int deltaTicks, long lifetimeTicks) {
+        setFrameQueries(animationTick, loopCount, deltaTicks, lifetimeTicks);
         this.querySource.apply(this.session, this.animation.queryNames());
     }
 
-    int nextTick(int previousTick, int loopCount, int deltaTicks, long lifetimeTicks) {
-        prepareFrame(previousTick, loopCount, deltaTicks, lifetimeTicks);
-        if (this.animation.model().clip().clock() == null) return Math.addExact(previousTick, deltaTicks);
-        double tick = this.session.evaluate(this.animation.expression("$.animation.clock.expression")) * 20;
-        if (!Double.isFinite(tick) || tick > Integer.MAX_VALUE) throw new IllegalStateException("$.animation.clock.expression produced an invalid tick count");
-        return (int) Math.round(Math.max(0, tick));
+    int nextAnimationTick(int previousAnimationTick, int loopCount, int deltaTicks, long lifetimeTicks) {
+        prepareFrame(previousAnimationTick, loopCount, deltaTicks, lifetimeTicks);
+        if (this.animation.model().clip().clock() == null) return Math.addExact(previousAnimationTick, deltaTicks);
+        double animationTick = this.session.evaluate(this.animation.expression("$.animation.clock.expression")) * 20;
+        if (!Double.isFinite(animationTick) || animationTick > Integer.MAX_VALUE) throw new IllegalStateException("$.animation.clock.expression produced an invalid tick count");
+        return (int) Math.round(Math.max(0, animationTick));
     }
 
-    int delay(ScalarValue delay, int tick, int loopCount, int deltaTicks, long lifetimeTicks) {
-        setFrameQueries(tick, loopCount, deltaTicks, lifetimeTicks);
+    int delay(ScalarValue delay, int animationTick, int loopCount, int deltaTicks, long lifetimeTicks) {
+        setFrameQueries(animationTick, loopCount, deltaTicks, lifetimeTicks);
         double value = switch (delay) {
             case ConstantValue constant -> constant.value();
             case MolangValue molang -> this.session.evaluate(this.animation.expression(molang.path())) * 20;
@@ -118,13 +123,13 @@ final class AnimationEvaluator {
     Map<String, CompoundTag> nbt(int index) { return this.nbt.getOrDefault(nodeId(index), Map.of()); }
     Set<String> nbtRemoved(int index, String attachmentId) { return this.nbtRemoved.get(nodeId(index)).get(attachmentId); }
 
-    private void setFrameQueries(int tick, int loopCount, int deltaTicks, long lifetimeTicks) {
-        if (tick != this.sampleTick || loopCount != this.sampleLoop) this.sharedValues.clear();
-        this.sampleTick = tick;
+    private void setFrameQueries(int animationTick, int loopCount, int deltaTicks, long lifetimeTicks) {
+        if (animationTick != this.sampleAnimationTick || loopCount != this.sampleLoop) this.sharedValues.clear();
+        this.sampleAnimationTick = animationTick;
         this.sampleLoop = loopCount;
         this.sampleProgress = 0;
-        this.session.setQuery("anim_time", tick / 20.0);
-        this.session.setQuery("anim_time_ticks", tick);
+        this.session.setQuery("anim_time", animationTick / 20.0);
+        this.session.setQuery("anim_time_ticks", animationTick);
         this.session.setQuery("anim_length", this.animation.model().clip().durationTicks() / 20.0);
         this.session.setQuery("delta_time", deltaTicks / 20.0);
         this.session.setQuery("loop_count", loopCount);
@@ -132,17 +137,17 @@ final class AnimationEvaluator {
         this.session.setQuery("life_time", lifetimeTicks / 20.0);
     }
 
-    void evaluateFrame(int tick, int loopCount, int deltaTicks, long lifetimeTicks, boolean runMolangTick) {
-        sampleFrame(tick, loopCount, deltaTicks, lifetimeTicks, runMolangTick, true);
+    void evaluateFrame(int animationTick, int loopCount, int deltaTicks, long lifetimeTicks, boolean runMolangTick) {
+        sampleFrame(animationTick, loopCount, deltaTicks, lifetimeTicks, runMolangTick, true);
         finishFrame();
         calculatePose(capturePose(), new Matrix4f(), null, 0);
     }
 
-    void sampleFrame(int tick, int loopCount, int deltaTicks, long lifetimeTicks, boolean runMolangTick, boolean captureNbt) {
+    void sampleFrame(int animationTick, int loopCount, int deltaTicks, long lifetimeTicks, boolean runMolangTick, boolean captureNbt) {
         this.sampleGeneration++;
-        tick = Math.min(tick, this.animation.model().clip().durationTicks());
+        animationTick = Math.min(animationTick, this.animation.model().clip().durationTicks());
         this.sharedValues.clear();
-        setFrameQueries(tick, loopCount, deltaTicks, lifetimeTicks);
+        setFrameQueries(animationTick, loopCount, deltaTicks, lifetimeTicks);
         if (runMolangTick && this.animation.model().molang().tick() != null) {
             this.session.evaluate(this.animation.expression("$.animation.molang.tick"));
         }
@@ -156,7 +161,7 @@ final class AnimationEvaluator {
             setFrameQueries(this.animation.model().settings().playback().loopStartTick(), this.nbtCycle, deltaTicks, lifetimeTicks);
             evaluateNbt(this.animation.model().settings().playback().loopStartTick());
         }
-        setFrameQueries(tick, loopCount, deltaTicks, lifetimeTicks);
+        setFrameQueries(animationTick, loopCount, deltaTicks, lifetimeTicks);
         if (frameValues != null) {
             this.sharedValues.clear();
             this.sharedValues.putAll(frameValues);
@@ -167,7 +172,7 @@ final class AnimationEvaluator {
             if (track.channel() == Channel.VALUE) {
                 Operation operation = this.animation.operation(track);
                 double weight = track.blend() == null ? 1 : scalar(track.blend().weight(), 0);
-                double[] value = sample(track.driver(), tick, operation.value());
+                double[] value = sample(track.driver(), animationTick, operation.value());
                 if (track.blend() != null) {
                     double[] blended = this.blendedValues.get(track);
                     for (int componentIndex = 0; componentIndex < value.length; componentIndex++) {
@@ -178,7 +183,7 @@ final class AnimationEvaluator {
                 }
                 this.sampledValues.put(track, value);
             } else if (track.channel() == Channel.VISIBLE) {
-                this.sampledVisibility.put(track, sampleVisibility(track, tick, this.animation.defaultVisibility(track)));
+                this.sampledVisibility.put(track, sampleVisibility(track, animationTick, this.animation.defaultVisibility(track)));
             }
         }
     }
@@ -300,7 +305,7 @@ final class AnimationEvaluator {
     }
 
     void finishFrame() {
-        evaluateNbt(this.sampleTick);
+        evaluateNbt(this.sampleAnimationTick);
     }
 
     private void evaluateNbt(double tick) {
@@ -388,8 +393,8 @@ final class AnimationEvaluator {
         if (segment.interpolation() == Interpolation.STEP || driver.atKey() == KeyPolicy.SEGMENT && segment.interpolation() == Interpolation.BEZIER && progress == 0) return component ? vector(startValues, progress) : start;
         double eased = component ? progress : easing(segment.easing(), progress);
         if (segment.interpolation() == Interpolation.SLERP) {
-            Quaterniond rotation = this.slerpStart.set(start[0], start[1], start[2], start[3]).normalize()
-                .slerp(this.slerpEnd.set(end[0], end[1], end[2], end[3]).normalize(), eased).normalize();
+            Quaterniond rotation = PreparedAnimation.normalizeQuaternion(start, this.slerpStart)
+                .slerp(PreparedAnimation.normalizeQuaternion(end, this.slerpEnd), eased).normalize();
             return new double[]{rotation.x, rotation.y, rotation.z, rotation.w};
         }
         double[] previous = !component && segment.interpolation() == Interpolation.CATMULL_ROM && segment.previous() != null ? vector(segment.previous(), progress) : start;
@@ -550,7 +555,7 @@ final class AnimationEvaluator {
             if (!this.evaluatingValues.add(id)) throw new IllegalStateException("Cyclic shared value " + id);
             double progress = this.sampleProgress;
             try {
-                value = sample(definition.driver(), Math.addExact(this.sampleTick, definition.timeOffsetTicks()), definition.base());
+                value = sample(definition.driver(), Math.addExact(this.sampleAnimationTick, definition.timeOffsetTicks()), definition.base());
                 this.sharedValues.put(id, value);
             } finally {
                 this.evaluatingValues.remove(id);

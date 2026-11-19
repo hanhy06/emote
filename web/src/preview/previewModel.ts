@@ -36,13 +36,13 @@ export function createPreviewModel(document: ConversionDocument, animation: Conv
   const evaluator = new PreviewMolangEvaluator();
   const evaluate: ScalarEvaluatorIR = (value, progress, base = 0, resolveValue): number => {
     try {
-      return evaluator.evaluate(typeof value === "number" ? value : value.molang, { animationTime: time, keyframeLerpTime: progress, lifeTime: time, resolveValue });
+      return evaluator.evaluate(typeof value === "number" ? value : value.molang, { animationTimeSeconds, keyframeLerpTime: progress, lifeTime: animationTimeSeconds, resolveValue });
     } catch (reason) {
       approximate(reason instanceof Error ? reason.message : String(reason));
       return base;
     }
   };
-  const time = frame.type === "timeline" ? frame.tick / 20 : 0;
+  const animationTimeSeconds = frame.type === "timeline" ? frame.animationTick / 20 : 0;
   const parts: PreviewPart[] = [];
   let availability: PreviewAvailability | null = animation ? { status: "full" } : null;
   if (animation) {
@@ -50,7 +50,7 @@ export function createPreviewModel(document: ConversionDocument, animation: Conv
     if (animation.clip.molang?.initialize || animation.clip.molang?.tick) approximate("Runtime Molang is preserved; dependent expressions use their base components.");
     try {
       const poses = evaluatePose({ ...animation, nodes: Object.fromEntries(animation.nodeIds.map((id) => [id, document.nodes[id]])),
-        animation: frame.type === "create" ? { ...animation.clip, tracks: [] } : animation.clip }, time, evaluate, approximate);
+        animation: frame.type === "create" ? { ...animation.clip, tracks: [] } : animation.clip }, animationTimeSeconds, evaluate, approximate);
       for (const { candidateId, partIndex } of candidateParts) {
         const candidate = document.skinCandidates[candidateId];
         const pose = poses[candidate.nodeId];

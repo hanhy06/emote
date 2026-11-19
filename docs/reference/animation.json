@@ -2,7 +2,7 @@
   "type": "animation",
   "schema_version": 5,
   "id": "example:animation",
-  "target_minecraft_version": "26.3",
+  "target_minecraft_version": "26.2",
   "metadata": {
     "name": "Animation Format Reference",
     "description": "A rotating display with curves, shared values, Molang ticks, visibility, NBT patches, and a command event.",

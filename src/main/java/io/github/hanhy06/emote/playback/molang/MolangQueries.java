@@ -4,6 +4,8 @@ import io.github.hanhy06.emote.molang.MolangEngine;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
+import team.unnamed.mocha.runtime.value.NumberValue;
+import team.unnamed.mocha.runtime.value.Value;
 
 import java.util.Set;
 import java.util.function.ToDoubleFunction;
@@ -54,7 +56,7 @@ public final class MolangQueries {
     }
 
     static void setScoreboardQuery(MolangEngine.Session session, ToDoubleFunction<String> scoreLookup) {
-        session.setQueryFunction("scoreboard", arguments -> MolangEngine.QueryValue.number(scoreLookup.applyAsDouble(arguments.string(0))));
+        session.setQueryFunction("scoreboard", arguments -> NumberValue.of(scoreLookup.applyAsDouble(arguments.string(0))));
     }
 
     static void setItemQueries(
@@ -69,20 +71,20 @@ public final class MolangQueries {
     ) {
         ItemQueryValue[] equipment = {mainHand, offHand, head, chest, legs, feet};
         if (queries.contains("is_item_equipped")) session.setQueryFunction("is_item_equipped", mainHand.empty() ? 0.0D : 1.0D, arguments ->
-            MolangEngine.QueryValue.bool(!itemInSlot(arguments, 0, equipment).empty())
+            Value.of(!itemInSlot(arguments, 0, equipment).empty())
         );
         if (queries.contains("item_is_charged")) session.setQueryFunction("item_is_charged", mainHand.charged() ? 1.0D : 0.0D, arguments ->
-            MolangEngine.QueryValue.bool(itemInSlot(arguments, 0, equipment).charged())
+            Value.of(itemInSlot(arguments, 0, equipment).charged())
         );
         if (queries.contains("is_item_name_any")) session.setQueryFunction("is_item_name_any", arguments -> {
             ItemQueryValue item = itemInSlot(arguments, 0, equipment);
             int firstName = arguments.size() > 1 && arguments.isNumber(1) ? 2 : 1;
             for (int i = firstName; i < arguments.size(); i++) {
                 if (arguments.isString(i) && item.name().equals(arguments.string(i))) {
-                    return MolangEngine.QueryValue.bool(true);
+                    return Value.of(true);
                 }
             }
-            return MolangEngine.QueryValue.bool(false);
+            return Value.of(false);
         });
     }
 
@@ -113,11 +115,11 @@ public final class MolangQueries {
     }
 
     static void setSpatialQueries(MolangEngine.Session session, Vec3 position, Vec3 movement, Set<String> queries) {
-        if (queries.contains("position")) session.setQueryFunction("position", arguments -> MolangEngine.QueryValue.number(axis(position, arguments.number(0))));
-        if (queries.contains("position_delta")) session.setQueryFunction("position_delta", arguments -> MolangEngine.QueryValue.number(axis(movement, arguments.number(0))));
+        if (queries.contains("position")) session.setQueryFunction("position", arguments -> NumberValue.of(axis(position, arguments.number(0))));
+        if (queries.contains("position_delta")) session.setQueryFunction("position_delta", arguments -> NumberValue.of(axis(movement, arguments.number(0))));
         if (queries.contains("movement_direction")) {
             Vec3 direction = movement.lengthSqr() > MOVEMENT_EPSILON_SQUARED ? movement.normalize() : Vec3.ZERO;
-            session.setQueryFunction("movement_direction", arguments -> MolangEngine.QueryValue.number(axis(direction, arguments.number(0))));
+            session.setQueryFunction("movement_direction", arguments -> NumberValue.of(axis(direction, arguments.number(0))));
         }
     }
 

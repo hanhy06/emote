@@ -9,6 +9,7 @@ import java.util.regex.PatternSyntaxException;
 public record AccessConfig(List<String> disabled, List<PermissionEntry> permissions) {
     public static final int CURRENT_SCHEMA_VERSION = 3;
     public static final int LEGACY_SCHEMA_VERSION = 2;
+    public static final Identifier DEFAULT_PERMISSION = Identifier.fromNamespaceAndPath("emote", "default");
 
     public AccessConfig {
         disabled = normalizeIds(disabled, "disabled", "disabled emote id must not be blank");
@@ -19,7 +20,7 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
         return new AccessConfig(
             List.of(),
             List.of(new PermissionEntry(
-                "emote.default",
+                DEFAULT_PERMISSION,
                 List.of("*"),
                 Optional.empty(),
                 Optional.of(new IdleSettings(3 * 60 * 20, List.of(".*:idle\\..*")))
@@ -34,7 +35,7 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
     public static final class PermissionEntry {
         private static final String ALL_EMOTES = "*";
 
-        private final String permission;
+        private final Identifier permission;
         private final List<String> emotes;
         private final Optional<CooldownModifier> cooldown;
         private final Optional<IdleSettings> idle;
@@ -42,16 +43,12 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
         private final List<Pattern> emotePatterns;
 
         public PermissionEntry(
-            String permission,
+            Identifier permission,
             List<String> emotes,
             Optional<CooldownModifier> cooldown,
             Optional<IdleSettings> idle
         ) {
-            permission = permission == null ? null : permission.trim();
-            if (permission == null || permission.isBlank()) {
-                throw new IllegalArgumentException("permission must not be blank");
-            }
-            this.permission = permission;
+            this.permission = Objects.requireNonNull(permission, "permission");
 
             this.emotes = normalizeIds(
                 emotes,
@@ -67,7 +64,7 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
                 .toList();
         }
 
-        public String permission() {
+        public Identifier permission() {
             return this.permission;
         }
 

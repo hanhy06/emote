@@ -5,8 +5,8 @@ import com.mojang.authlib.minecraft.MinecraftProfileTexture;
 import com.mojang.authlib.minecraft.MinecraftProfileTextures;
 import com.mojang.authlib.minecraft.MinecraftSessionService;
 import com.mojang.authlib.properties.Property;
-import org.jspecify.annotations.Nullable;
 import io.github.hanhy06.emote.util.Sha256;
+import org.jspecify.annotations.Nullable;
 
 import javax.imageio.ImageIO;
 import javax.imageio.stream.MemoryCacheImageInputStream;
@@ -15,7 +15,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HexFormat;
-
 import java.util.Objects;
 import java.util.UUID;
 

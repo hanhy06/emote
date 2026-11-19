@@ -1,11 +1,11 @@
-import { createTestDocument } from "./testProject";
 import { readFile } from "node:fs/promises";
 import { Euler, Matrix4 } from "three";
 import MolangParser from "molangjs/dist/molang.esm.js";
 import { expect, it } from "vitest";
 import { evaluatePose } from "../domain/animationIRPose";
 import type { ScalarEvaluatorIR } from "../domain/animationIRCurves";
-import { exportAnimation } from "../export/projectExporter";
+import { createConversionDocument } from "../domain/conversionDocument";
+import { exportProject } from "../export/projectExporter";
 import { readInput } from "../import/formats";
 import { createBedrockAnimationIR } from "../import/bedrockAnimation/bedrockAnimationIR";
 import type { BedrockAnimationDocument } from "../import/bedrockAnimation/bedrockAnimationSchema";
@@ -14,11 +14,13 @@ import source from "./fixtures/bedrock-curves.json";
 it("preserves Bedrock coordinates, pre/post, Catmull boundaries and playback through export", async () => {
   const bytes = new TextEncoder().encode(JSON.stringify(source));
   const project = await readInput("bedrock_animation_json", { name: "curves.animation.json", bytes });
-  const document = createTestDocument(project, "Bedrock");
+  const document = createConversionDocument(project, "Bedrock");
   for (const [index, name] of ["reference", "dynamic"].entries()) {
-    const [output] = await exportAnimation(document, index);
+    const expected = JSON.parse(await readFile(new URL(`../../../src/test/resources/bedrock-${name}.json`, import.meta.url), "utf8"));
+    document.targetMinecraftVersion = expected.target_minecraft_version;
+    const [output] = await exportProject(document, index);
     const exported = JSON.parse(await output.blob.text());
-    expect(exported).toEqual(JSON.parse(await readFile(new URL(`../../../src/test/resources/bedrock-${name}.json`, import.meta.url), "utf8")));
+    expect(exported).toEqual(expected);
     expect(exported.schema_version).toBe(5);
   }
   const animation = project.animations[0].ir;

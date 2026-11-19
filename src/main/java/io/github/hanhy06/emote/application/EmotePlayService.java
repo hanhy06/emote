@@ -15,7 +15,6 @@ import net.minecraft.server.level.ServerPlayer;
 import java.util.*;
 
 public class EmotePlayService implements AccessConfigListener {
-    private static final String DEFAULT_PERMISSION = "emote.default";
     private static final Rules COMMAND_RULES = new Rules(true, true, true, true);
     private static final Rules IDLE_RULES = new Rules(true, true, true, false);
     private static final Rules UNRESTRICTED_RULES = new Rules(false, false, false, false);
@@ -57,7 +56,7 @@ public class EmotePlayService implements AccessConfigListener {
         if (!decision.isAllowed()) {
             return decision.rejection();
         }
-        Component cancellationMessage = this.apiEvents.beforePlay(player, emote, source);
+        Component cancellationMessage = this.apiEvents.onStarting(player, emote, source);
         if (cancellationMessage != null) {
             return PlayResult.failure(cancellationMessage);
         }
@@ -164,7 +163,7 @@ public class EmotePlayService implements AccessConfigListener {
             if (entry.idle().isEmpty()) {
                 continue;
             }
-            if (PermissionService.has(player, entry.permission(), entry.permission().equals(DEFAULT_PERMISSION))) {
+            if (player.checkPermission(entry.permission(), entry.permission().equals(AccessConfig.DEFAULT_PERMISSION))) {
                 return entry.idle();
             }
         }
@@ -175,7 +174,7 @@ public class EmotePlayService implements AccessConfigListener {
         if (source == PlaySource.API) {
             return UNRESTRICTED_RULES;
         }
-        if (PermissionService.has(player, PermissionService.BYPASS_PERMISSION, false)) {
+        if (player.checkPermission(PermissionService.BYPASS_PERMISSION, false)) {
             return UNRESTRICTED_RULES;
         }
         return source == PlaySource.IDLE ? IDLE_RULES : COMMAND_RULES;
@@ -184,7 +183,7 @@ public class EmotePlayService implements AccessConfigListener {
     private PermissionResolution resolvePermission(ServerPlayer player, String emoteId) {
         boolean allowed = false;
         for (AccessConfig.PermissionEntry entry : this.permissionEntriesByEmoteId.getOrDefault(emoteId, this.wildcardPermissionEntries)) {
-            if (PermissionService.has(player, entry.permission(), entry.permission().equals(DEFAULT_PERMISSION))) {
+            if (player.checkPermission(entry.permission(), entry.permission().equals(AccessConfig.DEFAULT_PERMISSION))) {
                 allowed = true;
                 if (entry.cooldown().isPresent()) {
                     return new PermissionResolution(true, entry.cooldown());

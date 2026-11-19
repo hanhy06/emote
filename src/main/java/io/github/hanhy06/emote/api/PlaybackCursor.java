@@ -5,10 +5,10 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.Objects;
 
-public record PlaybackPosition(int segmentIndex, @Nullable Integer stepIndex, @Nullable Integer repeatIndex,
-                               PlaybackTimeline.Phase phase, int phaseTick,
+public record PlaybackCursor(int segmentIndex, @Nullable Integer stepIndex, @Nullable Integer repeatIndex,
+                               PlaybackTimeline.Phase phase, int segmentTick,
                                @Nullable Identifier animationId, @Nullable Integer animationTick) {
-    public PlaybackPosition {
+    public PlaybackCursor {
         Objects.requireNonNull(phase, "phase");
     }
 }

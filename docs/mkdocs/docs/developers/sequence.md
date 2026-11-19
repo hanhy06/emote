@@ -38,7 +38,7 @@ This example plays sit down → idle action three times → stand up. Each refer
 }
 ```
 
-See the [Sequence example JSON](https://github.com/hanhy06/emote/blob/main/docs/reference/sequence.json) for the complete format. Sequence files use schema version `5` and are limited to 8 MiB.
+See the [Sequence example JSON](https://github.com/hanhy06/emote/blob/HEAD/docs/reference/sequence.json) for the complete format. Sequence files use schema version `5` and are limited to 8 MiB.
 
 !!! tip "Time units"
     Time settings use Minecraft time format. `1s` equals `20t`.
@@ -88,7 +88,7 @@ A `wait` step holds the previous pose for the specified duration.
 ]
 ```
 
-Waits cannot be the first or last step, cannot be consecutive, and cannot use `repeat`.
+Waits can appear at the start or end of a Sequence and can be consecutive. The loader rejects `repeat` on a wait step.
 
 ## Random selection
 
@@ -148,7 +148,7 @@ Use these IDs as an `emote` value or include them in random selection to control
 
 `emote:continue` may be selected consecutively. A Sequence must have at least one real Animation candidate.
 
-Use [`setStep`](api.md#playback-position-control) to move to another step, or target `emote:empty` with local tick `0`. The next Animation after `emote:empty` skips its `transition`.
+Use [`seekStep`](api.md#playback-position-control) to move to another step, or target `emote:empty` with local tick `0`. The next Animation after `emote:empty` skips its `transition`.
 
 ## Common settings
 
@@ -181,8 +181,6 @@ For a node ID reused by multiple Animations:
 | Attachment IDs and types | Position, rotation, and scale |
 | Item, item display context, block state, text, entity NBT, and initial attachment visibility | Initial node visibility |
 | Player skin binding | Timeline tracks |
-
-All Animations must also have the same compiled player-skin layout. Skin node IDs, attachment IDs, and each region's `part`, `from`, and `to` must match, even when other node IDs differ.
 
 ## Events and callbacks
 

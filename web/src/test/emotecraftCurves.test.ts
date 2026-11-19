@@ -1,4 +1,3 @@
-import { createTestDocument } from "./testProject";
 import { readFile } from "node:fs/promises";
 import { Euler, Matrix4 } from "three";
 import MolangParser from "molangjs/dist/molang.esm.js";
@@ -6,7 +5,8 @@ import { expect, it } from "vitest";
 import type { AnimationIR, CurveIR } from "../domain/animationIR";
 import { evaluatePose } from "../domain/animationIRPose";
 import type { ScalarEvaluatorIR } from "../domain/animationIRCurves";
-import { exportAnimation } from "../export/projectExporter";
+import { createConversionDocument } from "../domain/conversionDocument";
+import { exportProject } from "../export/projectExporter";
 import { readInput } from "../import/formats";
 import { createEmotecraftAnimationIR } from "../import/emotecraft/emotecraftAnimationIR";
 import { importEmotecraftFile } from "../import/emotecraft/emotecraftImporter";
@@ -60,9 +60,12 @@ it("preserves independent axes and reuses one bend sample for joint translation,
   const parser = new MolangParser();
   for (const [name, animation] of [["reference", reference], ["dynamic", dynamic]] as const) {
     const project = importEmotecraftFile({ animation, metadata: { name, badges: [] } }, `${name}.emotecraft`);
-    const [output] = await exportAnimation(createTestDocument(project, "Emotecraft"), 0);
+    const expected = JSON.parse(await readFile(new URL(`../../../src/test/resources/emotecraft-${name}.json`, import.meta.url), "utf8"));
+    const document = createConversionDocument(project, "Emotecraft");
+    document.targetMinecraftVersion = expected.target_minecraft_version;
+    const [output] = await exportProject(document, 0);
     const exported: AnimationIR = JSON.parse(await output.blob.text());
-    expect(exported).toEqual(JSON.parse(await readFile(new URL(`../../../src/test/resources/emotecraft-${name}.json`, import.meta.url), "utf8")));
+    expect(exported).toEqual(expected);
     for (const tick of [0, 5, 10, 20, 40]) {
       const calls: string[] = [];
       const evaluate: ScalarEvaluatorIR = (value, u, _base, resolveValue) => typeof value === "number" ? value : parser.parse(value.molang, {
