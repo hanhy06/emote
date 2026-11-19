@@ -71,7 +71,7 @@ Use the optional `animation.molang` object when an Animation needs to initialize
 - `t.*` variables exist only for one expression evaluation.
 - `q.*` values are read-only. Assigning a query is rejected.
 
-Persistent variables are retained across loops. Each Animation segment in a Sequence has separate persistent variables.
+Persistent variables are retained across loops and shared by all Animation segments within one Sequence playback. Each segment runs its own `initialize` expression, which can update the shared variables.
 
 Track expressions, clock expressions, delays, and curve parameters can read persistent variables but cannot assign them. Use `initialize` and `tick` for those assignments. An Animation that only needs formulas in its tracks can omit `animation.molang`.
 

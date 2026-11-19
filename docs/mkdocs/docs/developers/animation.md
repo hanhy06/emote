@@ -90,9 +90,13 @@ Delays can also use Molang; see [Animation time and delays](molang.md#animation-
 
 Each entry in `nodes` is a transform node. Its optional `parent` places it in a hierarchy, and its `transform` array applies operations in the listed order. An operation has its own `id`, an `op`, and an initial `value`.
 
+An event-only Animation can use `"nodes": {}` and an empty `animation.tracks` array. Use the playback root as the command origin for these events.
+
 Operations include `translate`, `rotate_euler`, `rotate_quaternion`, `scale`, and `matrix`. Euler rotations also specify an axis `order`, such as `XYZ`.
 
 A node's `attachments` object defines what appears at that transform. Rendered attachment types are `item_display`, `block_display`, `text_display`, and `player_skin`. A node may have multiple attachments or none. A node without an entity attachment still provides a position for events and callbacks.
+
+Item, block, and text display attachments can set initial entity properties with `entity_snbt`, a compound SNBT string. For example, `"entity_snbt": "{billboard:\"fixed\"}"` sets the billboard mode.
 
 Player-skin attachments use `part` and a `region` with `from` and `to` values.
 
@@ -119,6 +123,8 @@ A property without a track uses the node, operation, or attachment's initial val
 A curve has one `segments` entry between each pair of keys. A key uses either `value`, or separate `pre` and `post` values for the incoming and outgoing sides of the key. By default, sampling exactly at a key uses its `post` value; `driver.at_key` can change that policy.
 
 Segment interpolation supports `step`, `linear`, `catmull_rom`, `hermite`, and `bezier` for three-component values. Quaternion values use `step` or `slerp`; matrix values use `step`. Segment `easing` controls progress through the interpolation and can preserve the source format's easing behavior.
+
+Quaternion and matrix track components can use Molang. A quaternion must have nonzero length when sampled.
 
 ### NBT patches
 

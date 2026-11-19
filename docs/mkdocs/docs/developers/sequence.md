@@ -78,7 +78,7 @@ Visibility, display data, timeline events, and Molang time change when the trans
 
 ## Waits
 
-A `wait` step holds the previous pose for the specified duration.
+A `wait` step holds the previous pose for the specified duration. Display attachments stay hidden during waits before the first Animation.
 
 ```json
 "steps": [
@@ -88,7 +88,7 @@ A `wait` step holds the previous pose for the specified duration.
 ]
 ```
 
-Waits cannot be the first or last step, cannot be consecutive, and cannot use `repeat`.
+Waits can appear at the start or end of a Sequence and can be consecutive. Specify each wait as a separate step. The `repeat` field applies only to Animation steps.
 
 ## Random selection
 
@@ -182,7 +182,7 @@ For a node ID reused by multiple Animations:
 | Item, item display context, block state, text, entity NBT, and initial attachment visibility | Initial node visibility |
 | Player skin binding | Timeline tracks |
 
-All Animations must also have the same compiled player-skin layout. Skin node IDs, attachment IDs, and each region's `part`, `from`, and `to` must match, even when other node IDs differ.
+Each Animation can supply its own skin nodes and regions. When Animations reuse a node ID, its skin attachments must follow the shared-node rules above.
 
 ## Events and callbacks
 
