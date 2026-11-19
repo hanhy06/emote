@@ -1,6 +1,7 @@
 {
   "type": "sequence",
   "schema_version": 5,
+  "target_minecraft_version": "26.3",
   "id": "music:idle.piano",
   "metadata": {
     "name": "Piano - Melody",
