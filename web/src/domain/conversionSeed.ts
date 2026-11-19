@@ -26,16 +26,16 @@ export interface ImportedProject {
 }
 
 export interface ImportedNodeBase {
-  binding: { sourceNodeId: string; skinGroupId?: string };
+  binding: { sourceNodeId: string; skinGroupId?: string; skinSceneId?: string };
   visible: boolean;
-  entityNbt?: string;
+  entitySnbt?: string;
 }
 
 export type ImportedNode =
   | (ImportedNodeBase & {
     type: "item_display";
     itemStack: ItemStackData;
-    itemDisplay: string;
+    displayContext: string;
     skin?: ImportedSkinPart;
     suggestedSkin?: ImportedSkinPart;
     playerHeadConversionMatrix?: Matrix16;
@@ -43,7 +43,7 @@ export type ImportedNode =
   })
   | (ImportedNodeBase & { type: "block_display"; blockState: BlockStateData })
   | (ImportedNodeBase & { type: "text_display"; text: unknown })
-  | (Omit<ImportedNodeBase, "visible" | "entityNbt"> & { type: "anchor" });
+  | (Omit<ImportedNodeBase, "visible" | "entitySnbt"> & { type: "anchor" });
 
 export interface ImportedSkinPart {
   part: PlayerSkinPart;
@@ -62,6 +62,7 @@ export interface ImportedNodeHint {
   sourceNodeId: string;
   skinCandidates?: Record<string, {
     groupId: string;
+    sceneId?: string;
     fittingMatrix?: Matrix16;
     suggestion?: ImportedSkinPart;
   }>;
@@ -73,6 +74,7 @@ export function importedNodeHints(nodes: Record<string, ImportedNode>): Record<s
     ...(node.type === "item_display" && (node.skin || node.suggestedSkin || node.playerHeadConversionMatrix || normalizeResourceLocation(node.itemStack.id) === "minecraft:player_head") ? {
       skinCandidates: { display: {
         groupId: node.binding.skinGroupId ?? id,
+        ...(node.binding.skinSceneId ? { sceneId: node.binding.skinSceneId } : {}),
         ...(node.playerHeadConversionMatrix ? { fittingMatrix: node.playerHeadConversionMatrix } : {}),
         ...(node.suggestedSkin ?? node.skin ? { suggestion: node.suggestedSkin ?? node.skin } : {}),
       } },

@@ -136,7 +136,7 @@ public final class AnimationJsonParser {
                 JsonObject definition = document.requireObject(a.getValue(), p);
                 String type = nonempty(definition, "type", p, document);
                 boolean visible = bool(definition, "visible", true, p, document);
-                CompoundTag nbt = definition.has("entity_nbt") ? compound(document.requireString(definition, "entity_nbt", p), p + ".entity_nbt", true, document) : new CompoundTag();
+                CompoundTag nbt = definition.has("entity_snbt") ? compound(document.requireString(definition, "entity_snbt", p), p + ".entity_snbt", true, document) : new CompoundTag();
                 Attachment attachment = switch (type) {
                     case "item_display" -> new ItemAttachment(visible, nbt, compound(document.requireString(definition, "item_stack_snbt", p), p + ".item_stack_snbt", false, document), nonempty(definition, "item_display", p, document));
                     case "block_display" -> new BlockAttachment(visible, nbt, compound(document.requireString(definition, "block_state_snbt", p), p + ".block_state_snbt", false, document));
@@ -151,24 +151,12 @@ public final class AnimationJsonParser {
                     case "external" -> new ExternalAttachment(visible, document.requireIdentifier(nonempty(definition, "key", p, document), p + ".key"), document.requireElement(definition, "data", p));
                     default -> throw document.error(p + ".type", "unknown attachment");
                 };
-                if (!(attachment instanceof ItemAttachment || attachment instanceof BlockAttachment || attachment instanceof TextAttachment) && definition.has("entity_nbt")) throw document.error(p + ".entity_nbt", "requires a display attachment");
+                if (!(attachment instanceof ItemAttachment || attachment instanceof BlockAttachment || attachment instanceof TextAttachment) && definition.has("entity_snbt")) throw document.error(p + ".entity_snbt", "requires a display attachment");
                 attachments.put(a.getKey(), attachment);
             }
             nodes.put(entry.getKey(), new Node(n.has("name") ? document.requireString(n, "name", path) : null,
                 n.has("parent") ? nonempty(n, "parent", path, document) : null, inheritance, bool(n, "visible", true, path, document),
                 operations, attachments, object(n, "source", path, document)));
-        }
-        Set<String> pending = new TreeSet<>(nodes.keySet());
-        Set<String> ready = new HashSet<>();
-        while (!pending.isEmpty()) {
-            List<String> batch = new ArrayList<>();
-            for (String id : pending) {
-                String parent = nodes.get(id).parentId();
-                if (parent != null && !nodes.containsKey(parent)) throw document.error("$.nodes." + id + ".parent", "unknown parent");
-                if (parent == null || ready.contains(parent)) batch.add(id);
-            }
-            if (batch.isEmpty()) throw document.error("$.nodes." + pending.iterator().next() + ".parent", "parent cycle");
-            pending.removeAll(batch); ready.addAll(batch);
         }
         return nodes;
     }
@@ -238,7 +226,7 @@ public final class AnimationJsonParser {
         List<Keyframe> keys = new ArrayList<>();
         List<Segment> segments = new ArrayList<>();
         if (driverType == DriverType.EXPRESSION) {
-            if (channel == Channel.NBT || componentCount == 16) throw document.error(p, "requires a state or step curve");
+            if (channel == Channel.NBT) throw document.error(p, "requires a state curve");
             expression = value(document.requireElement(driver, "value", p), channel, componentCount, p + ".value", document);
         } else {
             if (driverType == DriverType.CURVE && channel != Channel.VALUE || driverType == DriverType.STATE && channel == Channel.VALUE) throw document.error(p + ".type", "driver does not match channel");
@@ -329,7 +317,13 @@ public final class AnimationJsonParser {
     }
 
     private Value value(JsonElement raw, Channel channel, int componentCount, String path, EmoteJsonDocument document) throws EmoteLoadException {
-        if (channel == Channel.VALUE) return vector(raw, componentCount, componentCount == 4 || componentCount == 16, path, document);
+        if (channel == Channel.VALUE) {
+            VectorValue vector = vector(raw, componentCount, false, path, document);
+            if (componentCount == 4 && vector.components().stream().allMatch(component -> component instanceof ConstantValue constant && constant.value() == 0)) {
+                throw document.error(path, "quaternion must not be zero");
+            }
+            return vector;
+        }
         if (channel == Channel.VISIBLE) {
             if (raw.isJsonPrimitive() && raw.getAsJsonPrimitive().isBoolean()) return new ConstantVisibility(raw.getAsBoolean());
             ScalarValue expression = scalar(raw, path, document);
@@ -350,7 +344,6 @@ public final class AnimationJsonParser {
         if (!raw.isJsonArray() || raw.getAsJsonArray().size() != componentCount) throw document.error(path, "must contain " + componentCount + " values");
         List<ScalarValue> values = new ArrayList<>();
         for (int i = 0; i < componentCount; i++) values.add(literal ? new ConstantValue(document.requireFiniteDouble(raw.getAsJsonArray().get(i), path + "[" + i + "]")) : scalar(raw.getAsJsonArray().get(i), path + "[" + i + "]", document));
-        if (componentCount == 4 && values.stream().allMatch(v -> ((ConstantValue) v).value() == 0)) throw document.error(path, "quaternion must not be zero");
         return new VectorValue(values);
     }
 
@@ -433,7 +426,7 @@ public final class AnimationJsonParser {
         }
         return result;
     }
-    private VectorValue optionalVector(JsonObject raw, String key, int componentCount, String path, EmoteJsonDocument document) throws EmoteLoadException { return raw.has(key) ? vector(raw.get(key), componentCount, componentCount != 1 && componentCount != 3, path + "." + key, document) : null; }
+    private VectorValue optionalVector(JsonObject raw, String key, int componentCount, String path, EmoteJsonDocument document) throws EmoteLoadException { return raw.has(key) ? vector(raw.get(key), componentCount, false, path + "." + key, document) : null; }
     private JsonObject object(JsonObject raw, String key, String path, EmoteJsonDocument document) throws EmoteLoadException { JsonObject o = document.optionalObject(raw, key, path); return o == null ? new JsonObject() : o; }
     private String text(JsonObject raw, String key, String fallback, String path, EmoteJsonDocument document) throws EmoteLoadException { return raw.has(key) ? document.requireString(raw, key, path) : fallback; }
     private String nonempty(JsonObject raw, String key, String path, EmoteJsonDocument document) throws EmoteLoadException { String s = document.requireString(raw, key, path); if (s.isBlank()) throw document.error(path + "." + key, "must not be blank"); return s; }

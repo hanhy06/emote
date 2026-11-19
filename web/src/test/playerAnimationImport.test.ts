@@ -1,10 +1,10 @@
-import { createTestDocument } from "./testProject";
 import { expect, it } from "vitest";
 import MolangParser from "molangjs/dist/molang.esm.js";
 import type { ImportedProject } from "../domain/conversionSeed";
 import type { AnimationJson } from "../format/animation";
 import { evaluatePose } from "../domain/animationIRPose";
-import { exportAnimation } from "../export/projectExporter";
+import { createConversionDocument } from "../domain/conversionDocument";
+import { exportProject } from "../export/projectExporter";
 import { readInput } from "../import/formats";
 import type { BedrockAnimation } from "../import/bedrockAnimation/bedrockAnimationSchema";
 import type { PalAnimation } from "../import/emotecraft/emotecraftBinary";
@@ -19,7 +19,7 @@ function bedrock(animations: Record<string, BedrockAnimation>) {
 }
 
 async function exported(project: ImportedProject, index = 0): Promise<AnimationJson> {
-  const [file] = await exportAnimation(createTestDocument(project, "Player animation"), index);
+  const [file] = await exportProject(createConversionDocument(project, "Player animation"), index);
   return JSON.parse(await file.blob.text());
 }
 

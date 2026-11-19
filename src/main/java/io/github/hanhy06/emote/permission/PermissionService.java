@@ -1,22 +1,16 @@
 package io.github.hanhy06.emote.permission;
 
-import me.lucko.fabric.api.permissions.v0.Permissions;
+import net.fabricmc.fabric.api.permission.v1.PermissionPredicates;
 import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.permissions.PermissionLevel;
 
+import java.util.function.Predicate;
+
 public final class PermissionService {
-    public static final String MANAGE_PERMISSION = "emote.manage";
-    public static final String BYPASS_PERMISSION = "emote.bypass";
+    public static final Identifier MANAGE_PERMISSION = Identifier.fromNamespaceAndPath("emote", "manage");
+    public static final Identifier BYPASS_PERMISSION = Identifier.fromNamespaceAndPath("emote", "bypass");
+    public static final Predicate<CommandSourceStack> CAN_MANAGE = PermissionPredicates.require(MANAGE_PERMISSION, PermissionLevel.GAMEMASTERS);
 
     private PermissionService() {}
-
-    public static boolean canManage(CommandSourceStack source) {
-        return Permissions.check(source, MANAGE_PERMISSION, PermissionLevel.GAMEMASTERS);
-    }
-
-    public static boolean has(ServerPlayer player, String permission, boolean defaultValue) {
-        return Permissions.check(player, permission, defaultValue);
-    }
-
 }

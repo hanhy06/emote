@@ -1,15 +1,14 @@
 import type { ConversionIssue } from "../foundation/diagnostics";
 import type { PlayerSkinPart } from "./player";
-import { attachmentTargetId, orderedNodeIds, type AnimationEntryIR, type AnimationIR, type AttachmentIR, type AnimationSetIR, type ClipIR, type EventIR, type NodeIR, type TransformOperationIR } from "./animationIR";
+import { attachmentTargetId, orderedNodeIds, type AnimationIR, type AttachmentIR, type ClipIR, type NodeIR, type TransformOperationIR } from "./animationIR";
 import { normalizeAnimationTimes, remapClip } from "./animationIRConversion";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
-import { parseAnimationSeconds, parseMinecraftTime } from "../format/time";
 import type { GeneratedResource } from "./generatedResource";
-import type { EmoteCallback, EmotePlayerBehavior, SequenceStep } from "./emoteDefinition";
+import type { EmoteMetadata, EmotePlayerBehavior, SequenceStep } from "./emoteDefinition";
 import type { ImportedProject, ImportedSkinPart, InputFormat } from "./conversionSeed";
 
-export const DEFAULT_TARGET_MINECRAFT_VERSION = "26.3";
+export const DEFAULT_TARGET_MINECRAFT_VERSION = "26.1";
 
 export interface SkinCandidate {
   nodeId: string;
@@ -21,34 +20,37 @@ export interface SkinCandidate {
   order?: number;
 }
 
-export interface ConversionAnimation extends AnimationEntryIR {
+export interface ConversionAnimation extends Omit<AnimationIR, "nodes" | "animation" | "target_minecraft_version"> {
+  type: "animation";
+  clip: ClipIR;
+  nodeIds: string[];
   sourceName: string;
   sourceReferenceId?: string;
   sourcePlayback: ClipIR["playback"];
   playbackMode: "source" | NonNullable<NonNullable<ClipIR["playback"]>["mode"]>;
 }
 
-export type ConversionAnimationEvents = Required<NonNullable<AnimationIR["animation"]["events"]>>;
+export type ConversionSequence = Pick<ConversionAnimation, "id" | "metadata" | "callbacks" | "sourceName"> & {
+  type: "sequence";
+  settings: { cooldown: string; player: EmotePlayerBehavior };
+  steps: SequenceStep[];
+};
+export type ConversionEntry = ConversionAnimation | ConversionSequence;
 
-export interface SequenceOutputSettings {
-  callbacks?: EmoteCallback[];
-  namespace: string;
-  idPath?: string;
-  name: string;
-  description: string;
-  additionalMetadata: Record<string, unknown>;
-  cooldown: string;
-  player: EmotePlayerBehavior;
-  steps?: SequenceStep[];
-}
-
-export interface ConversionDocument extends AnimationSetIR {
-  origin: { source: InputFormat; sourceName: string; formatLabel: string };
-  animations: ConversionAnimation[];
+export interface ConversionDocument {
+  origin: { source: InputFormat; sourceName: string; formatLabel: string; metadata: EmoteMetadata; namespace: string };
+  entries: ConversionEntry[];
+  nodes: Record<string, NodeIR>;
+  targetMinecraftVersion: string;
   skinCandidates: Record<string, SkinCandidate>;
-  sequence: SequenceOutputSettings;
   diagnostics: ConversionIssue[];
   resources: Map<string, GeneratedResource>;
+}
+
+export type ImportedConversionDocument = Omit<ConversionDocument, "targetMinecraftVersion"> & { targetMinecraftVersion?: string };
+
+export function animationEntries(document: Pick<ConversionDocument, "entries">): ConversionAnimation[] {
+  return document.entries.filter((entry) => entry.type === "animation");
 }
 
 export function createConversionDocument(project: ImportedProject, formatLabel: string): ConversionDocument {
@@ -59,7 +61,7 @@ export function createConversionDocument(project: ImportedProject, formatLabel: 
   const reservedIds = new Set(project.animations.flatMap((animation) => Object.keys(animation.ir.nodes)));
   const additionalMetadata = Object.fromEntries(Object.entries(project.suggestedMetadata).filter(([key]) => key !== "name" && key !== "description"));
   const namespace = project.suggestedNamespace ?? "emote";
-  const animations = project.animations.map((animation): ConversionAnimation => {
+  const entries = project.animations.map((animation): ConversionAnimation => {
     const ir = structuredClone(animation.ir);
     if (project.source !== "emote_json") ir.id = `${sanitizeNamespace(namespace)}:${sanitizeResourcePath(animation.id)}`;
     if (project.source !== "emote_json") ir.metadata = animation.suggestedMetadata ?? { ...additionalMetadata, name: animation.name, description: `${animation.name} emote.` };
@@ -76,7 +78,7 @@ export function createConversionDocument(project: ImportedProject, formatLabel: 
       loop: ir.animation.events?.loop ?? [],
       stop: ir.animation.events?.stop ?? [],
     };
-    normalizeAnimationTimes(ir, project.source !== "emote_json");
+    normalizeAnimationTimes(ir.animation, project.source !== "emote_json");
     const ids = new Map<string, string>();
     for (const sourceId of orderedNodeIds(ir.nodes)) {
       const sourceNode = ir.nodes[sourceId];
@@ -101,7 +103,7 @@ export function createConversionDocument(project: ImportedProject, formatLabel: 
           while (node.transform?.some((operation) => operation.id === operationId)) operationId = `skin_conversion_${operationSuffix++}`;
           const candidateId = attachmentTargetId(id, attachmentId);
           skinCandidates[candidateId] = {
-            nodeId: id, groupId: candidate.groupId, sceneId: "input", attachmentId,
+            nodeId: id, groupId: candidate.groupId, sceneId: candidate.sceneId ?? "input", attachmentId,
             originalAttachment: structuredClone(node.attachments[attachmentId]),
             ...(candidate.fittingMatrix ? { fittingOperation: { id: operationId, op: "matrix", value: candidate.fittingMatrix } } : {}),
           };
@@ -116,22 +118,20 @@ export function createConversionDocument(project: ImportedProject, formatLabel: 
     }
     const { nodes: _nodes, animation: sourceClip, target_minecraft_version: _version, ...fields } = ir;
     const clip = remapClip(sourceClip, (id) => ids.get(id) ?? id);
-    return { ...fields, clip, nodeIds: [...ids.values()], sourceName: animation.name, sourcePlayback: sourceClip.playback, playbackMode: "source",
+    return { ...fields, type: "animation", clip, nodeIds: [...ids.values()], sourceName: animation.name, sourcePlayback: sourceClip.playback, playbackMode: "source",
       sourceReferenceId: animation.sourceReferenceId };
   });
   let document: ConversionDocument = {
-    origin: { source: project.source, sourceName: project.sourceName, formatLabel },
+    origin: { source: project.source, sourceName: project.sourceName, formatLabel, metadata: project.suggestedMetadata, namespace },
     targetMinecraftVersion: project.suggestedMinecraftVersion && Object.hasOwn(MINECRAFT_VERSION_PROFILES, project.suggestedMinecraftVersion)
       ? project.suggestedMinecraftVersion : DEFAULT_TARGET_MINECRAFT_VERSION,
-    nodes, skinCandidates, animations,
-    sequence: { namespace, name: project.suggestedMetadata.name, description: project.suggestedMetadata.description,
-      additionalMetadata, cooldown: project.suggestedCooldown ?? "0t", player: project.suggestedPlayer },
+    nodes, skinCandidates, entries,
     diagnostics: project.diagnostics, resources: project.resources,
   };
-  for (const part of [...new Set(Object.values(suggestions).map((suggestion) => suggestion.part))]) {
-    const groups = new Map(Object.entries(suggestions).filter(([, suggestion]) => suggestion.part === part)
+  for (const scene of new Set(Object.values(skinCandidates).map((candidate) => candidate.sceneId))) for (const part of [...new Set(Object.values(suggestions).map((suggestion) => suggestion.part))]) {
+    const groups = new Map(Object.entries(suggestions).filter(([id, suggestion]) => suggestion.part === part && skinCandidates[id].sceneId === scene)
       .map(([id, suggestion]) => [skinCandidates[id].groupId, suggestion.order]));
-    document = applySkinGroups(document, part, groups, "input");
+    document = applySkinGroups(document, part, groups, scene);
   }
   return document;
 }
@@ -167,8 +167,8 @@ export function assignSkinPart(document: ConversionDocument, selectedCandidateId
     const restored = structuredClone(candidate.originalAttachment);
     if (attachment.visible === undefined) delete restored.visible;
     else restored.visible = attachment.visible;
-    if (attachment.entity_nbt === undefined) delete restored.entity_nbt;
-    else restored.entity_nbt = attachment.entity_nbt;
+    if (attachment.entity_snbt === undefined) delete restored.entity_snbt;
+    else restored.entity_snbt = attachment.entity_snbt;
     nodes[candidate.nodeId] = { ...node, attachments: { ...node.attachments, [candidate.attachmentId]: restored } };
   }
   let result = { ...document, nodes };
@@ -225,36 +225,16 @@ function applySkinGroups(document: ConversionDocument, part: PlayerSkinPart, gro
     const attachment = node.attachments?.[candidate.attachmentId] ?? candidate.originalAttachment;
     nodes[candidate.nodeId] = { ...node,
       attachments: { ...node.attachments, [candidate.attachmentId]: { type: "player_skin", part, region: { from: index / orders.length, to: (index + 1) / orders.length },
-        ...(attachment.visible === undefined ? {} : { visible: attachment.visible }), ...(attachment.entity_nbt === undefined ? {} : { entity_nbt: attachment.entity_nbt }) } },
+        ...(attachment.visible === undefined ? {} : { visible: attachment.visible }), ...(attachment.entity_snbt === undefined ? {} : { entity_snbt: attachment.entity_snbt }) } },
     };
     skinCandidates[id] = { ...candidate, order };
   }
   return { ...document, nodes, skinCandidates };
 }
 
-export function updateLifecycleEvents(document: ConversionDocument, animationIndex: number,
-  events: Pick<ConversionAnimationEvents, "start" | "loop" | "stop"> & { callbacks: EmoteCallback[] }): ConversionDocument {
-  const animation = document.animations[animationIndex];
-  if (!animation) return document;
-  const { callbacks, ...commandEvents } = events;
-  return updateAnimation(document, animationIndex, { ...animation, callbacks: structuredClone(callbacks),
-    clip: { ...animation.clip, events: { ...structuredClone(commandEvents), timeline: structuredClone(animation.clip.events?.timeline ?? []) } } });
-}
-
-export function replaceTimelineEvents(document: ConversionDocument, animationIndex: number, tick: number, events: EventIR[]): ConversionDocument {
-  const animation = document.animations[animationIndex];
-  if (!animation) return document;
-  if (!Number.isInteger(tick) || tick < 0 || tick > parseMinecraftTime(animation.clip.duration, 1)) throw new Error("Event tick must be within the animation duration.");
-  return updateAnimation(document, animationIndex, { ...animation,
-    clip: { ...animation.clip, events: { ...animation.clip.events, timeline: [
-      ...(animation.clip.events?.timeline ?? []).filter((event) => parseMinecraftTime(event.time) !== tick),
-      ...structuredClone(events).map((event) => ({ ...event, time: `${tick}t` })),
-    ].sort((first, second) => parseAnimationSeconds(first.time) - parseAnimationSeconds(second.time)) } } });
-}
-
-export function updateAnimation(document: ConversionDocument, animationIndex: number, animation: AnimationEntryIR): ConversionDocument {
-  if (!document.animations[animationIndex]) return document;
-  const normalized = structuredClone(animation);
-  normalizeAnimationTimes(normalized);
-  return { ...document, animations: document.animations.map((entry, index) => index === animationIndex ? { ...entry, ...normalized } : entry) };
+export function replaceEntry(document: ConversionDocument, index: number, entry: ConversionEntry): ConversionDocument {
+  if (document.entries[index]?.type !== entry.type) return document;
+  const entries = [...document.entries];
+  entries[index] = entry;
+  return { ...document, entries };
 }

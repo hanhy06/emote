@@ -1,7 +1,7 @@
 {
     "type": "sequence",
     "schema_version": 5,
-    "target_minecraft_version": "26.3",
+    "target_minecraft_version": "26.1",
     "id": "example:sequence",
     "metadata": {
         "name": "Sequence Format Reference",

@@ -17,7 +17,7 @@ function importCurves(frames: BbKeyframe[], blend: number | string = 1): { bb: A
   const group = { uuid: "bone", name: "Bone", origin: [16, 32, 48], rotation: [13, -17, 29] };
   const animation = { name: "curves", length: 2, loop: "once", blend_weight: blend, animators: { bone: { keyframes: frames }, item: { keyframes: frames }, block: { keyframes: frames }, text: { keyframes: frames } } };
   const imported: Record<string, ImportedNode> = {
-    item: { type: "item_display", binding: { sourceNodeId: "item" }, visible: true, itemStack: { id: "minecraft:paper" }, itemDisplay: "fixed" },
+    item: { type: "item_display", binding: { sourceNodeId: "item" }, visible: true, itemStack: { id: "minecraft:paper" }, displayContext: "fixed" },
     block: { type: "block_display", binding: { sourceNodeId: "block" }, visible: true, blockState: { id: "minecraft:stone" } },
     text: { type: "text_display", binding: { sourceNodeId: "text" }, visible: true, text: "test" },
   };

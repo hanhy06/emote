@@ -1,13 +1,12 @@
-import { createTestDocument } from "./testProject";
 import { readFile } from "node:fs/promises";
 import { expect, it } from "vitest";
-import { assignSkinPart } from "../domain/conversionDocument";
+import { animationEntries, createConversionDocument, assignSkinPart, assignSkinOrder } from "../domain/conversionDocument";
 import { compileAnimation } from "../compiler/animationCompiler";
 import { readInput } from "../import/formats";
 import type { BbCube } from "../import/common/blockbenchCubeSchema";
 import { attachmentTargetId, orderedNodeIds } from "../domain/animationIR";
 import { evaluatePose } from "../domain/animationIRPose";
-import { exportAnimation } from "../export/projectExporter";
+import { exportProject } from "../export/projectExporter";
 import { strFromU8, unzipSync } from "fflate";
 import { Euler, Matrix4, Vector3 } from "three";
 
@@ -46,8 +45,8 @@ it("preserves root cube pivots and locator coordinates beside unnamed groups and
       outliner: [{ uuid: "root", children: ["nested"] }, "loose", "tip"],
       textures: [{ uuid: "unused", source: "file:///unused.png" }, { uuid: "used", source: `data:image/png;base64,${texture}` }],
     });
-    const document = createTestDocument(project, format);
-    const output = compileAnimation(document, 0).animation;
+    const document = createConversionDocument(project, format);
+    const output = compileAnimation(document, animationEntries(document)[0]).animation;
     expect(output.nodes["group:root"].name).toBe("");
     expect(orderedNodeIds(output.nodes)).toHaveLength(Object.keys(output.nodes).length);
     const pose = evaluatePose(output, 0, (value) => { if (typeof value !== "number") throw new Error("Unexpected expression"); return value; });
@@ -62,7 +61,7 @@ it("preserves root cube pivots and locator coordinates beside unnamed groups and
     }
     const locatorId = Object.keys(output.nodes).find((id) => output.nodes[id].source?.node_id === "tip")!;
     expect(new Vector3().setFromMatrixPosition(pose[locatorId].matrix).toArray()).toEqual([2.8125, 3.75, 4.6875]);
-    const files = await exportAnimation(document, 0);
+    const files = await exportProject(document, 0);
     const archive = unzipSync(new Uint8Array(await files.find((file) => file.fileName.endsWith(".zip"))!.blob.arrayBuffer()));
     expect(Object.keys(archive).filter((path) => path.endsWith(".png"))).toEqual(["textures/model]textures]item]model]texture_1.png"]);
     expect(archive["textures/model]textures]item]model]texture_1.png"]).toEqual(Uint8Array.from(atob(texture), (character) => character.charCodeAt(0)));
@@ -76,8 +75,8 @@ it("preserves decorations and unaligned limb geometry through both model input p
     ["left_arm", [cube("low", [0, 0, 0], [4, 7, 4]), cube("high", [0, 7, 0], [4, 12, 4])]],
   ] as const) {
     const input = await importModel(format, name, [...cubes]);
-    const document = createTestDocument(input, format);
-    const output = compileAnimation(document, 0);
+    const document = createConversionDocument(input, format);
+    const output = compileAnimation(document, animationEntries(document)[0]);
     const displays = Object.values(output.animation.nodes).flatMap((node) => Object.values(node.attachments ?? {}));
     expect(displays).toHaveLength(2);
     expect(displays.every((attachment) => attachment.type === "item_display")).toBe(true);
@@ -102,7 +101,7 @@ it("excludes actual skin overlays while preserving skin assignment and restorati
       cube("headwear", [0, 0, 0], [8, 8, 8], { inflate: 0.5, faces: { north: { uv: [40, 8, 48, 16], texture: 0 } } }),
       cube("decoration", [0, 0, 0], [8, 8, 8], { inflate: 0.2, faces: { north: { uv: [8, 8, 16, 16], texture: 0 } } }),
     ]);
-    const document = createTestDocument(input, format);
+    const document = createConversionDocument(input, format);
     const attachments = Object.values(document.nodes).flatMap((node) => Object.values(node.attachments ?? {}));
     expect(attachments.filter((attachment) => attachment.type === "player_skin")).toHaveLength(1);
     expect(attachments.filter((attachment) => attachment.type === "item_display")).toHaveLength(1);
@@ -111,10 +110,10 @@ it("excludes actual skin overlays while preserving skin assignment and restorati
   }
   const path = "docs/reference/aj/sit.ajblueprint";
   const input = await readInput("animated_java_blueprint", { name: "sit.ajblueprint", bytes: await readFile(new URL(`../../../${path}`, import.meta.url)) });
-  const document = createTestDocument(input, "AJ");
-  const index = document.animations.findIndex((entry) => entry.sourceName === "sit_down");
+  const document = createConversionDocument(input, "AJ");
+  const index = document.entries.findIndex((entry) => entry.sourceName === "sit_down");
   expect(index).toBeGreaterThanOrEqual(0);
-  const output = compileAnimation(document, index);
+  const output = compileAnimation(document, animationEntries(document)[index]);
   expect(output.generatedResourceReferences.size).toBe(0);
   expect(Object.values(output.animation.nodes).flatMap((node) => Object.values(node.attachments ?? {})).filter((attachment) => attachment.type === "player_skin")).toHaveLength(27);
 });
@@ -122,8 +121,8 @@ it("excludes actual skin overlays while preserving skin assignment and restorati
 it("keeps reserved IDs distinct and routes source cube state to every generated slice", async () => {
   for (const format of formats) {
     const input = await importModel(format, "scene", [cube("cube", [0, 0, 0], [2, 2, 2])]);
-    const document = createTestDocument(input, format);
-    const output = compileAnimation(document, 0).animation;
+    const document = createConversionDocument(input, format);
+    const output = compileAnimation(document, animationEntries(document)[0]).animation;
     expect(orderedNodeIds(output.nodes)).toHaveLength(3);
     expect(output.nodes.scene.parent).toBeUndefined();
     expect(output.nodes["group:bone"].parent).toBe("scene");
@@ -141,8 +140,8 @@ it("keeps reserved IDs distinct and routes source cube state to every generated 
       limb: { keyframes: [{ channel: "visibility", time: 0.5, data_points: [{ x: 0 }] }] },
     } }],
   });
-  const document = createTestDocument(input, "AJ");
-  const output = compileAnimation(document, 0).animation;
+  const document = createConversionDocument(input, "AJ");
+  const output = compileAnimation(document, animationEntries(document)[0]).animation;
   expect(output.nodes.left_arm.attachments?.display).toMatchObject({ type: "item_display", item_stack_snbt: '{id:"minecraft:stone",count:1}' });
   const slices = Object.entries(output.nodes).filter(([, node]) => node.source?.node_id === "limb");
   expect(slices).toHaveLength(2);
@@ -168,8 +167,8 @@ it("normalizes oversized or displaced models without changing their animated geo
         { channel: "position", time: 1, data_points: [{ x: 16, y: 8, z: -16 }] },
       ] } } }],
     });
-    const document = createTestDocument(input, format);
-    const original = compileAnimation(document, 0).animation;
+    const document = createConversionDocument(input, format);
+    const original = compileAnimation(document, animationEntries(document)[0]).animation;
     const nodeId = Object.keys(original.nodes).find((id) => original.nodes[id].attachments?.display)!;
     expect(original.nodes[nodeId].transform?.some((operation) => operation.id === "model_geometry")).toBe(true);
     const model = [...document.resources.values()].find((resource) => !(resource instanceof Uint8Array) && resource.kind === "cuboid_model");
@@ -182,7 +181,8 @@ it("normalizes oversized or displaced models without changing their animated geo
     const cubeRotation = new Matrix4().makeTranslation(...pivot as [number, number, number])
       .multiply(new Matrix4().makeRotationFromEuler(new Euler(...rotation.map(radians) as [number, number, number], "ZYX")))
       .multiply(new Matrix4().makeTranslation(-pivot[0], -pivot[1], -pivot[2]));
-    const skinned = compileAnimation(assignSkinPart(document, new Set([attachmentTargetId(nodeId, "display")]), "head"), 0).animation;
+    const skinnedDocument = assignSkinPart(document, new Set([attachmentTargetId(nodeId, "display")]), "head");
+    const skinned = compileAnimation(skinnedDocument, animationEntries(skinnedDocument)[0]).animation;
     for (const time of [0, 0.5, 1]) {
       const sceneScale = 0.9375;
       const expected = new Matrix4().makeScale(sceneScale, sceneScale, sceneScale)
@@ -204,12 +204,58 @@ it("normalizes oversized or displaced models without changing their animated geo
       expect(skinPose.elements.every((value, axis) => Math.abs(value - fitting.elements[axis]) < 1e-8)).toBe(true);
     }
     const restored = assignSkinPart(assignSkinPart(document, new Set([attachmentTargetId(nodeId, "display")]), "head"), new Set([attachmentTargetId(nodeId, "display")]), null);
-    expect(compileAnimation(restored, 0).animation).toEqual(original);
-    const outputs = await exportAnimation(restored, 0);
+    expect(compileAnimation(restored, animationEntries(restored)[0]).animation).toEqual(original);
+    const outputs = await exportProject(restored, 0);
     const zip = outputs.find((output) => output.fileName.endsWith(".zip"));
     expect(zip).toBeDefined();
     const files = unzipSync(new Uint8Array(await zip!.blob.arrayBuffer()));
     const modelPath = Object.keys(files).find((path) => path.includes("]models]item]"))!;
     expect(JSON.parse(strFromU8(files[modelPath])).elements).toEqual(model.elements);
+  }
+});
+
+for (const format of formats) it(`${format}: isolates automatic and manual skin assignment between rigid and jointed player rigs`, async () => {
+  const project = await importModel(format, "unused", [
+    cube("rigid_arm", [-8, 12, -2], [-4, 24, 2]),
+    cube("jointed_arm", [-8, 18, -2], [-4, 24, 2]),
+    cube("jointed_forearm", [-8, 12, -2], [-4, 18, 2]),
+  ], {
+    groups: [
+      { uuid: "rigid", name: "player_rigid", origin: [0, 0, 0] },
+      { uuid: "rigid_bone", name: "left_arm", origin: [-5, 22, 0] },
+      { uuid: "jointed", name: "player_jointed", origin: [0, 0, 0] },
+      { uuid: "upper_bone", name: "left_arm", origin: [-5, 22, 0] },
+      { uuid: "lower_bone", name: "left_forearm", origin: [-5, 18, 0] },
+    ],
+    outliner: [
+      { uuid: "rigid", children: [{ uuid: "rigid_bone", children: ["rigid_arm"] }] },
+      { uuid: "jointed", children: [{ uuid: "upper_bone", children: ["jointed_arm", { uuid: "lower_bone", children: ["jointed_forearm"] }] }] },
+    ],
+  });
+  const document = createConversionDocument(project, format);
+  const rigid = Object.entries(document.skinCandidates).filter(([, candidate]) => candidate.sceneId === "rigid");
+  const jointed = Object.entries(document.skinCandidates).filter(([, candidate]) => candidate.sceneId === "jointed");
+  const regions = (ids: typeof rigid, current = document) => ids.map(([, candidate]) => {
+    const attachment = current.nodes[candidate.nodeId].attachments![candidate.attachmentId];
+    expect(attachment.type).toBe("player_skin");
+    return attachment.type === "player_skin" ? attachment.region : null;
+  });
+  expect(regions(rigid)).toEqual([{ from: 0, to: 0.5 }, { from: 0.5, to: 1 }]);
+  expect(regions(jointed)).toEqual([
+    { from: 0, to: 0.25 }, { from: 0.25, to: 0.5 }, { from: 0.25, to: 0.5 },
+    { from: 0.5, to: 0.75 }, { from: 0.5, to: 0.75 }, { from: 0.75, to: 1 },
+  ]);
+  const selected = new Set([rigid[0][0]]);
+  const reordered = assignSkinOrder(document, selected, 7);
+  expect(reordered.skinCandidates[rigid[0][0]].order).toBe(7);
+  expect(regions(rigid, reordered)).toEqual([{ from: 0.5, to: 1 }, { from: 0, to: 0.5 }]);
+  expect(regions(jointed, reordered)).toEqual(regions(jointed));
+  const reassigned = assignSkinPart(document, selected, "right_arm");
+  const attachment = reassigned.nodes[rigid[0][1].nodeId].attachments![rigid[0][1].attachmentId];
+  expect(attachment).toMatchObject({ type: "player_skin", part: "right_arm", region: { from: 0, to: 1 } });
+  expect(regions(jointed, reassigned)).toEqual(regions(jointed));
+  const output = compileAnimation(document, animationEntries(document)[0]).animation;
+  for (const [, candidate] of [...rigid, ...jointed]) {
+    expect(output.nodes[candidate.nodeId].attachments![candidate.attachmentId]).toEqual(document.nodes[candidate.nodeId].attachments![candidate.attachmentId]);
   }
 });

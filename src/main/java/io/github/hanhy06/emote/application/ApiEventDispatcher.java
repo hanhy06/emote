@@ -25,11 +25,11 @@ public final class ApiEventDispatcher implements PlaybackEngine.Lifecycle {
         return register(this.playbackListeners, Objects.requireNonNull(listener, "listener"));
     }
 
-    public Component beforePlay(ServerPlayer player, PreparedEmote emote, PlaySource source) {
+    public Component onStarting(ServerPlayer player, PreparedEmote emote, PlaySource source) {
         EmotePlayEvent event = new EmotePlayEvent(player, emote.info(), source);
         for (EmotePlayListener listener : this.playListeners) {
             try {
-                listener.beforePlay(event);
+                listener.onStarting(event);
             } catch (RuntimeException exception) {
                 EmoteMod.LOGGER.warn("Emote play listener {} failed", listener.getClass().getName(), exception);
                 event.cancel(Component.literal("Something went wrong while checking this emote."));
@@ -43,7 +43,7 @@ public final class ApiEventDispatcher implements PlaybackEngine.Lifecycle {
 
     @Override
     public void onStarted(PlaybackSession session) {
-        PlaybackInfo playback = session.info();
+        Playback playback = session.view();
         List<EmotePlaybackListener> notified = new ArrayList<>();
         if (this.startedPlaybacks.putIfAbsent(session.sessionId(), notified) != null) {
             throw new IllegalStateException("Playback start is already being dispatched: " + session.sessionId());
@@ -64,7 +64,7 @@ public final class ApiEventDispatcher implements PlaybackEngine.Lifecycle {
         PlaybackSession session,
         PlaybackStopReason reason
     ) {
-        PlaybackInfo playback = session.info();
+        Playback playback = session.view();
         List<EmotePlaybackListener> listeners = this.startedPlaybacks.remove(session.sessionId());
         if (listeners == null) return;
         for (EmotePlaybackListener listener : listeners) {

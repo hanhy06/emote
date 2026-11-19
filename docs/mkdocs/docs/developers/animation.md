@@ -2,7 +2,7 @@
 
 An Animation file contains the model, movement, playback settings, and command events for one action. Animation files use schema version `5`.
 
-For file creation and installation, see [Adding Custom Emotes](../server/custom-emote.md). For direct JSON editing, see the [Animation example](https://github.com/hanhy06/emote/blob/main/docs/reference/animation.json).
+For file creation and installation, see [Adding Custom Emotes](../server/custom-emote.md). For direct JSON editing, see the [Animation example](https://github.com/hanhy06/emote/blob/HEAD/docs/reference/animation.json).
 
 The root `nodes` object defines the model. The `animation` object contains its duration, playback mode, Molang, tracks, and events. Root `settings` controls direct selection, cooldown, rotation tracking, and player behavior; root `callbacks` selects registered lifecycle callbacks.
 
@@ -88,7 +88,7 @@ Delays can also use Molang; see [Animation time and delays](molang.md#animation-
 
 ### Nodes and attachments
 
-Each entry in `nodes` is a transform node. Its optional `parent` places it in a hierarchy, and its `transform` array applies operations in the listed order. An operation has its own `id`, an `op`, and an initial `value`.
+Each entry in `nodes` is a transform node. Its optional `parent` places it in a hierarchy, and its `transform` array applies operations in the listed order. An operation has its own `id`, an `op`, and an initial `value`. Event-only Animations can use an empty `nodes` object.
 
 Operations include `translate`, `rotate_euler`, `rotate_quaternion`, `scale`, and `matrix`. Euler rotations also specify an axis `order`, such as `XYZ`.
 
@@ -166,7 +166,7 @@ Each image is a Base64-encoded 64×64 PNG with classic (wide) arm UVs. When usin
 
 A white mask also replaces transparent texture pixels, allowing the override to erase the skin's outer layer. The inner layer remains opaque.
 
-For an Animated Java project with a skin override, see [cheer.ajblueprint](https://github.com/hanhy06/emote/blob/main/docs/reference/aj/cheer.ajblueprint).
+For an Animated Java project with a skin override, see [christmas.ajblueprint](https://github.com/hanhy06/emote/blob/HEAD/docs/reference/aj/christmas.ajblueprint).
 
 ## Callbacks {#callbacks}
 

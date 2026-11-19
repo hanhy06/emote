@@ -4,11 +4,7 @@ import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.skin.account.*;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinClient;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinProvider;
-import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
-import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
-import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
-import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
-import io.github.hanhy06.emote.skin.model.SkinOverride;
+import io.github.hanhy06.emote.skin.model.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

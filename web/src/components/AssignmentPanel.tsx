@@ -29,7 +29,6 @@ export function AssignmentPanel({
 }: AssignmentPanelProps) {
   const hasSelectedSkinPart = parts.some((part) => selectedCandidateIds.has(part.candidateId));
   const hasSelectedAssignment = [...selectedCandidateIds].some((candidateId) => assignments[candidateId] != null);
-  const selectableItems = parts.map((part) => ({ candidateId: part.candidateId, label: `#${part.partIndex}`, detail: assignmentLabel(assignments[part.candidateId], orders[part.candidateId]) }));
   const partItems = useRef(new Map<string, HTMLLIElement>());
   const partList = useRef<HTMLUListElement>(null);
   const selectedOrders = [...selectedCandidateIds]
@@ -37,103 +36,82 @@ export function AssignmentPanel({
     .map((candidateId) => orders[candidateId]!);
   const selectedOrder = selectedOrders.length > 0 && selectedOrders.every((order) => order === selectedOrders[0])
     ? String(selectedOrders[0])
-    : "";
+    : "0";
+
+  function revealPart(id: string) {
+    const item = partItems.current.get(id);
+    const panel = partList.current?.closest(".inspector");
+    if (!item?.getClientRects().length || !panel) return;
+    const bounds = item.getBoundingClientRect();
+    const viewport = panel.getBoundingClientRect();
+    if (bounds.top < viewport.top) panel.scrollTop += bounds.top - viewport.top;
+    else if (bounds.bottom > viewport.bottom) panel.scrollTop += bounds.bottom - viewport.bottom;
+  }
 
   useEffect(() => {
-    const list = partList.current;
-    const selectedItems = selectableItems
-      .filter((item) => selectedCandidateIds.has(item.candidateId))
-      .map((item) => partItems.current.get(item.candidateId))
-      .filter((item): item is HTMLLIElement => item != null);
-    if (!list || selectedItems.length === 0) return;
-    const firstItem = selectedItems[0];
-    const lastItem = selectedItems[selectedItems.length - 1];
-    const visibleTop = list.scrollTop;
-    const visibleBottom = visibleTop + list.clientHeight;
-    if (firstItem.offsetTop < visibleTop) {
-      list.scrollTo({ top: firstItem.offsetTop, behavior: "smooth" });
-    } else if (lastItem.offsetTop + lastItem.offsetHeight > visibleBottom) {
-      list.scrollTo({
-        top: lastItem.offsetTop + lastItem.offsetHeight - list.clientHeight,
-        behavior: "smooth",
-      });
-    }
-  }, [parts, selectedCandidateIds]);
-
-  function assignOrderAndScroll(order: number) {
-    onAssignOrder(order);
-    const lastSelectedPosition = parts.reduce(
-      (last, part, index) => selectedCandidateIds.has(part.candidateId) ? index : last,
-      -1,
-    );
-    const nextPart = parts[lastSelectedPosition + 1];
-    if (nextPart) {
-      requestAnimationFrame(() => {
-        const list = partList.current;
-        const item = partItems.current.get(nextPart.candidateId);
-        if (!list || !item) return;
-        const itemBottom = item.offsetTop + item.offsetHeight;
-        if (itemBottom > list.scrollTop + list.clientHeight) {
-          list.scrollTo({ top: itemBottom - list.clientHeight, behavior: "smooth" });
-        } else if (item.offsetTop < list.scrollTop) {
-          list.scrollTo({ top: item.offsetTop, behavior: "smooth" });
-        }
-      });
-    }
-  }
+    const last = [...selectedCandidateIds].at(-1);
+    if (last) revealPart(last);
+  }, [selectedCandidateIds]);
 
   function handleOrderChange(event: TargetedEvent<HTMLInputElement>) {
     const order = Number(event.currentTarget.value);
-    if (Number.isInteger(order)) assignOrderAndScroll(order);
+    if (!Number.isInteger(order)) return;
+    onAssignOrder(order);
+    const last = parts.reduce((index, part, i) => selectedCandidateIds.has(part.candidateId) ? i : index, -1);
+    const next = parts[last + 1];
+    if (next) requestAnimationFrame(() => revealPart(next.candidateId));
   }
 
   return (
-    <aside className="assignment-panel">
-      <p><strong>Left/right reference:</strong> Directions are shown from behind the character. They appear reversed from the front.</p>
-      <p>Click a model to select it, or click it again to clear the selection. Hold Ctrl, Shift, or Command to select multiple models. Hold Ctrl and drag in the preview to select a range.</p>
-      <p><strong>Skin</strong></p>
-      <div className="assignment-buttons">
-        {SKIN_PARTS.map((part) => (
-          <button type="button" key={part.id} disabled={!hasSelectedSkinPart} onClick={() => onAssignPart(part.id)}>
-            <i style={{ backgroundColor: part.color }} />{part.label}
-          </button>
-        ))}
-        <button type="button" disabled={!hasSelectedSkinPart} onClick={() => onAssignPart(null)}>Unassigned</button>
-      </div>
-      <label className="order-control">
-        <strong>Skin order</strong>
-        <input
-          type="range"
-          min="0"
-          max="9"
-          step="1"
-          value={selectedOrder || "0"}
-          disabled={!hasSelectedAssignment}
-          onChange={handleOrderChange}
-        />
-        <output>{selectedOrder || "0"}</output>
-      </label>
-      <ul className="part-list" ref={partList}>
-        {selectableItems.map((item) => (
-          <li
-            key={item.candidateId}
-            ref={(element) => {
-              if (element) partItems.current.set(item.candidateId, element);
-              else partItems.current.delete(item.candidateId);
-            }}
-          >
-            <button
-              type="button"
-              className={selectedCandidateIds.has(item.candidateId) ? "selected" : ""}
-              onClick={(event) => onSelectCandidate(item.candidateId, event.ctrlKey || event.metaKey || event.shiftKey)}
-            >
-              <span>{item.label}</span>
-              <span>{item.detail}</span>
+    <details className="property-section" open>
+      <summary><strong>Skin parts</strong><small>{selectedCandidateIds.size ? `${selectedCandidateIds.size} selected` : `${parts.filter(part => assignments[part.candidateId]).length} / ${parts.length} assigned`}</small></summary>
+      <div className="property-body">
+        <p className="field-hint">Select parts in the preview or list. Ctrl, Shift, or ⌘ adds to the selection. Ctrl-drag selects an area. Left and right are the character’s own.</p>
+        <div className="assignment-buttons">
+          {SKIN_PARTS.map((part) => (
+            <button type="button" key={part.id} disabled={!hasSelectedSkinPart} onClick={() => onAssignPart(part.id)}>
+              <i style={{ backgroundColor: part.color }} />{part.label}
             </button>
-          </li>
-        ))}
-      </ul>
-    </aside>
+          ))}
+          <button type="button" disabled={!hasSelectedSkinPart} onClick={() => onAssignPart(null)}>Unassigned</button>
+        </div>
+        <label className="order-control">
+          <strong>Skin order</strong>
+          <input
+            type="range"
+            min="0"
+            max="9"
+            step="1"
+            value={selectedOrder}
+            disabled={!hasSelectedAssignment}
+            onChange={handleOrderChange}
+          />
+          <output>{selectedOrder}</output>
+        </label>
+        <details className="part-picker"><summary>Model parts ({parts.length})</summary>
+          <ul className="part-list" ref={partList}>
+            {parts.map((part) => (
+              <li
+                key={part.candidateId}
+                ref={(element) => {
+                  if (element) partItems.current.set(part.candidateId, element);
+                  else partItems.current.delete(part.candidateId);
+                }}
+              >
+                <button
+                  type="button"
+                  className={selectedCandidateIds.has(part.candidateId) ? "selected" : ""}
+                  onClick={(event) => onSelectCandidate(part.candidateId, event.ctrlKey || event.metaKey || event.shiftKey)}
+                >
+                  <span>#{part.partIndex}</span>
+                  <span>{assignmentLabel(assignments[part.candidateId], orders[part.candidateId])}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </details>
+      </div>
+    </details>
   );
 }
 

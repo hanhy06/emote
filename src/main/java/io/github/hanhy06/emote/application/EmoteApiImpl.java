@@ -8,15 +8,16 @@ import io.github.hanhy06.emote.content.*;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.PlaybackSession;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
+import io.github.hanhy06.emote.playback.RootTransform;
+import io.github.hanhy06.emote.playback.molang.MolangQuerySource;
+import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
 
 import java.nio.file.Path;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -25,6 +26,7 @@ public final class EmoteApiImpl extends EmoteApi {
     private final EmotePlayService playService;
     private final PlayerPlaybackManager playerPlaybackManager;
     private final PlaybackEngine engine;
+    private final PlayerSkinManager skins;
     private final ApiEventDispatcher events;
     private final Runnable changeNotifier;
 
@@ -33,6 +35,7 @@ public final class EmoteApiImpl extends EmoteApi {
         EmotePlayService playService,
         PlayerPlaybackManager playerPlaybackManager,
         PlaybackEngine engine,
+        PlayerSkinManager skins,
         ApiEventDispatcher events,
         Runnable changeNotifier
     ) {
@@ -40,6 +43,7 @@ public final class EmoteApiImpl extends EmoteApi {
         this.playService = Objects.requireNonNull(playService, "playService");
         this.playerPlaybackManager = Objects.requireNonNull(playerPlaybackManager, "playerPlaybackManager");
         this.engine = Objects.requireNonNull(engine, "engine");
+        this.skins = Objects.requireNonNull(skins, "skins");
         this.events = Objects.requireNonNull(events, "events");
         this.changeNotifier = Objects.requireNonNull(changeNotifier, "changeNotifier");
     }
@@ -59,61 +63,29 @@ public final class EmoteApiImpl extends EmoteApi {
     }
 
     @Override
+    public PlayResult play(ServerLevel world, Identifier emoteId, Vec3 position, float yaw) {
+        Objects.requireNonNull(world, "world");
+        Objects.requireNonNull(emoteId, "emoteId");
+        requireServerThread();
+        PlaybackPlacement placement = PlaybackPlacement.external(position, yaw);
+        PreparedEmote emote = this.emoteCatalog.find(emoteId.toString());
+        if (emote == null) return PlayResult.failure("That emote does not exist.");
+        var preparation = this.skins.prepareNamedSkin("", emote);
+        if (!preparation.ready()) return PlayResult.failure(preparation.preparing()
+            ? "Preparing the default skin… " + preparation.progressPercent() + "%" : "No complete default skin is available.");
+        var result = this.engine.start(new PlaybackEngine.Request(world, RootTransform.create(placement.position(), placement.yaw()),
+            emote, Map.of(), MolangQuerySource.EMPTY, null, preparation.textures(), PlaybackEngine.Lifecycle.NONE, placement.mode()), null);
+        return switch (result) {
+            case PlaybackEngine.StartResult.Success success -> new PlayResult.Success(success.session().view());
+            case PlaybackEngine.StartResult.Failure failure -> PlayResult.failure(failure.message());
+        };
+    }
+
+    @Override
     public boolean stop(ServerPlayer player) {
         Objects.requireNonNull(player, "player");
         requireServerThread();
         return this.playerPlaybackManager.stop(player, PlaybackStopReason.MANUAL) != null;
-    }
-
-    @Override
-    public boolean stop(UUID sessionId) {
-        Objects.requireNonNull(sessionId, "sessionId");
-        requireServerThread();
-        return this.engine.stop(sessionId, PlaybackStopReason.MANUAL) != null;
-    }
-
-    @Override
-    public boolean setPlacement(UUID sessionId, PlaybackPlacement placement) {
-        Objects.requireNonNull(sessionId, "sessionId");
-        Objects.requireNonNull(placement, "placement");
-        requireServerThread();
-        return this.engine.setPlacement(sessionId, placement);
-    }
-
-    @Override
-    public boolean setTick(UUID sessionId, int tick) {
-        Objects.requireNonNull(sessionId, "sessionId");
-        requireServerThread();
-        if (tick < 0) throw new IllegalArgumentException("Tick must be non-negative");
-        PlaybackSession session = this.engine.findSession(sessionId);
-        return session != null && session.setTick(tick);
-    }
-
-    @Override
-    public boolean setAnimationTick(UUID sessionId, int tick) {
-        Objects.requireNonNull(sessionId, "sessionId");
-        requireServerThread();
-        if (tick < 0) throw new IllegalArgumentException("Tick must be non-negative");
-        PlaybackSession session = this.engine.findSession(sessionId);
-        return session != null && session.setAnimationTick(tick);
-    }
-
-    @Override
-    public boolean setStep(UUID sessionId, int stepIndex, int repeatIndex, int tick) {
-        Objects.requireNonNull(sessionId, "sessionId");
-        requireServerThread();
-        if (stepIndex < 0 || repeatIndex < 0 || tick < 0) throw new IllegalArgumentException("Step, repeat and tick must not be negative");
-        PlaybackSession session = this.engine.findSession(sessionId);
-        return session != null && session.setStep(stepIndex, repeatIndex, tick);
-    }
-
-    @Override
-    public Optional<Vec3> getNodeWorldPosition(UUID sessionId, String nodeId) {
-        Objects.requireNonNull(sessionId, "sessionId");
-        Objects.requireNonNull(nodeId, "nodeId");
-        requireServerThread();
-        return Optional.ofNullable(this.engine.findSession(sessionId))
-            .flatMap(session -> session.nodeWorldPosition(nodeId));
     }
 
     @Override
@@ -154,10 +126,10 @@ public final class EmoteApiImpl extends EmoteApi {
     }
 
     @Override
-    public Optional<PlaybackInfo> getPlayback(ServerPlayer player) {
+    public Optional<Playback> getPlayback(ServerPlayer player) {
         Objects.requireNonNull(player, "player");
         requireServerThread();
-        return Optional.ofNullable(this.playerPlaybackManager.findActive(player.getUUID())).map(PlaybackSession::info);
+        return Optional.ofNullable(this.playerPlaybackManager.findActive(player.getUUID())).map(PlaybackSession::view);
     }
 
     @Override
@@ -166,18 +138,10 @@ public final class EmoteApiImpl extends EmoteApi {
     }
 
     @Override
-    public Optional<PlaybackInfo> getPlayback(UUID sessionId) {
+    public Optional<Playback> getPlayback(UUID sessionId) {
         Objects.requireNonNull(sessionId, "sessionId");
         requireServerThread();
-        return Optional.ofNullable(this.engine.findSession(sessionId)).map(PlaybackSession::info);
-    }
-
-    @Override
-    public Optional<PlaybackTimeline> getTimeline(UUID sessionId) {
-        Objects.requireNonNull(sessionId, "sessionId");
-        requireServerThread();
-        return Optional.ofNullable(this.engine.findSession(sessionId))
-            .map(PlaybackSession::timeline);
+        return Optional.ofNullable(this.engine.findSession(sessionId)).map(PlaybackSession::view);
     }
 
     @Override

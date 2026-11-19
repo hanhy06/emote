@@ -36,16 +36,16 @@ interface BdDatapackArchive {
 interface BdSourceDisplayBase {
   id: string;
   tag: string;
-  originalNbt: string;
+  originalSnbt: string;
   defaultMatrix: Matrix16;
-  interpolationDuration?: number;
-  interpolationDelay?: number;
-  entityNbt?: string;
+  interpolationDurationTicks?: number;
+  interpolationDelayTicks?: number;
+  entitySnbt?: string;
 }
 
 export type BdSourceDisplay =
   | (BdSourceDisplayBase & { type: "anchor" })
-  | (BdSourceDisplayBase & { type: "item_display"; initialPayload: string; itemStack: ItemStackData; itemDisplay: string })
+  | (BdSourceDisplayBase & { type: "item_display"; initialPayload: string; itemStack: ItemStackData; displayContext: string })
   | (BdSourceDisplayBase & { type: "block_display"; initialPayload: string; blockState: BlockStateData })
   | (BdSourceDisplayBase & { type: "text_display"; initialPayload: string; text: unknown });
 
@@ -148,9 +148,9 @@ function readDisplay(id: string, tag: string, type: string, compound: string): B
   const transformation = readSnbtRawField(compound, "transformation");
   const unknownType = !["item_display", "block_display", "text_display"].includes(type);
   const defaultMatrix = unknownType && !transformation ? IDENTITY_MATRIX : readMatrix(transformation, `${id} create transformation`);
-  const entityNbt = omitSnbtFields(compound, OWNED_DISPLAY_FIELDS);
-  const common = { id, tag, originalNbt: compound, defaultMatrix, interpolationDuration: readIntegerField(compound, "interpolation_duration", 0),
-    interpolationDelay: readIntegerField(compound, "start_interpolation", 0), ...(entityNbt ? { entityNbt } : {}) };
+  const entitySnbt = omitSnbtFields(compound, OWNED_DISPLAY_FIELDS);
+  const common = { id, tag, originalSnbt: compound, defaultMatrix, interpolationDurationTicks: readIntegerField(compound, "interpolation_duration", 0),
+    interpolationDelayTicks: readIntegerField(compound, "start_interpolation", 0), ...(entitySnbt ? { entitySnbt } : {}) };
   if (unknownType) return { ...common, type: "anchor" };
   if (type === "item_display") {
     const item = readSnbtRawField(compound, "item");
@@ -160,7 +160,7 @@ function readDisplay(id: string, tag: string, type: string, compound: string): B
       type: "item_display",
       initialPayload: item,
       itemStack: readItemStack(item),
-      itemDisplay: readSnbtStringField(compound, "item_display") ?? readBareField(compound, "item_display") ?? "none",
+      displayContext: readSnbtStringField(compound, "item_display") ?? readBareField(compound, "item_display") ?? "none",
     };
   }
   if (type === "block_display") {
@@ -197,7 +197,7 @@ function readAnimations(
       const nbt = Object.fromEntries(displays.map((display) => [display.id, [] as BdSourceNbtFrame[]]));
       const currentPayloadByTag = new Map(displays.flatMap((display) => display.type === "anchor" ? [] : [[display.tag, display.initialPayload] as const]));
       const currentTransformByTag = new Map(displays.map((display) => [display.tag, display.defaultMatrix]));
-      const durationByTag = new Map(displays.map((display) => [display.tag, display.interpolationDuration ?? 0]));
+      const durationByTag = new Map(displays.map((display) => [display.tag, display.interpolationDurationTicks ?? 0]));
       const unresolvedCommands: BdSourceAnimation["unresolvedCommands"] = [];
       for (const frame of frames) {
         const lines = frame.content.split(/\r?\n/).map((value) => value.trim()).filter(Boolean);

@@ -2,27 +2,42 @@ import { ConversionError } from "../foundation/diagnostics";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
 import type { GeneratedResource } from "./generatedResource";
-import type { ConversionAnimation, ConversionDocument, SkinCandidate } from "./conversionDocument";
+import { animationEntries, DEFAULT_TARGET_MINECRAFT_VERSION, type ConversionAnimation, type ConversionDocument, type ImportedConversionDocument, type SkinCandidate } from "./conversionDocument";
 import { attachmentTargetId, type NodeIR } from "./animationIR";
 import { remapClip } from "./animationIRConversion";
-import type { ImportedSequence } from "./emoteDefinition";
 
-export function combineConversionDocuments(documents: readonly ConversionDocument[], importedSequences: readonly ImportedSequence[] = []): ConversionDocument {
-  if (documents.length === 0) throw new ConversionError("empty_import", "No animation projects were imported.");
-  if (importedSequences.length > 1) throw new ConversionError("multiple_sequences", "Open at most one sequence at a time.");
-  if (documents.length === 1) return applyImportedSequence(documents[0], importedSequences[0]);
+export function combineConversionDocuments(documents: readonly ImportedConversionDocument[]): ConversionDocument {
+  if (!documents.length) throw new ConversionError("empty_import", "No Emote files were imported.");
+  const sequences = documents.flatMap((document) => document.entries.filter((entry) => entry.type === "sequence"));
+  if (sequences.length > 1) throw new ConversionError("multiple_sequences", "Open at most one sequence at a time.");
+
+  const animationDocuments = documents.filter((document) => document.origin.source !== "emote_sequence");
+  const first = animationDocuments[0] ?? documents[0];
+  const sequenceVersion = documents.find((document) => document.entries.some((entry) => entry.type === "sequence"))?.targetMinecraftVersion;
+  const targetMinecraftVersion = sequenceVersion && Object.hasOwn(MINECRAFT_VERSION_PROFILES, sequenceVersion)
+    ? sequenceVersion : animationDocuments[0]?.targetMinecraftVersion ?? DEFAULT_TARGET_MINECRAFT_VERSION;
+  const origin = {
+    ...first.origin,
+    sourceName: documents.map((document) => document.origin.sourceName).join(", "),
+    formatLabel: [...new Set(documents.map((document) => document.origin.formatLabel))].join(", "),
+    namespace: animationDocuments.length > 1 ? "emote" : first.origin.namespace,
+  };
+  const diagnostics = documents.flatMap((document) => document.diagnostics);
+  if (animationDocuments.length <= 1) {
+    return { ...first, origin, diagnostics, targetMinecraftVersion, entries: [...animationEntries(first), ...sequences] };
+  }
 
   const nodes: Record<string, NodeIR> = {};
   const skinCandidates: Record<string, SkinCandidate> = {};
   const animations: ConversionAnimation[] = [];
   const animationIds = new Set<string>();
-  const reservedAnimationIds = new Set(documents.flatMap((document) => document.animations.map((animation) => {
+  const reservedAnimationIds = new Set(animationDocuments.flatMap((document) => animationEntries(document).map((animation) => {
     const separator = animation.id.indexOf(":");
     return `${sanitizeNamespace(animation.id.slice(0, separator))}:${sanitizeResourcePath(animation.id.slice(separator + 1))}`;
   })));
-  const resources = new Map(documents[0].resources);
+  const resources = new Map(first.resources);
 
-  documents.forEach((document, index) => {
+  animationDocuments.forEach((document, index) => {
     const prefix = `input_${index + 1}__`;
     const prefixId = (id: string) => `${prefix}${id}`;
 
@@ -36,12 +51,13 @@ export function combineConversionDocuments(documents: readonly ConversionDocumen
       const nodeId = prefixId(candidate.nodeId);
       skinCandidates[attachmentTargetId(nodeId, candidate.attachmentId)] = { ...candidate, nodeId, groupId: prefixId(candidate.groupId), sceneId: prefixId(candidate.sceneId) };
     }
-    animations.push(...document.animations.map((animation) => {
+    animations.push(...animationEntries(document).map((animation) => {
       const separator = animation.id.indexOf(":");
-      const id = uniqueAnimationId(animation.id.slice(0, separator), animation.id.slice(separator + 1), animationIds, reservedAnimationIds);
+      const namespace = animation.id.slice(0, separator);
+      const path = uniqueAnimationId(namespace, animation.id.slice(separator + 1), animationIds, reservedAnimationIds);
       return {
         ...animation,
-        id: `${animation.id.slice(0, separator)}:${id}`,
+        id: `${namespace}:${path}`,
         nodeIds: animation.nodeIds.map(prefixId),
         clip: remapClip(animation.clip, prefixId),
       };
@@ -49,42 +65,7 @@ export function combineConversionDocuments(documents: readonly ConversionDocumen
     if (index > 0) mergeResources(resources, document.resources);
   });
 
-  const first = documents[0];
-  return applyImportedSequence({
-    ...first,
-    origin: {
-      ...first.origin,
-      sourceName: documents.map((document) => document.origin.sourceName).join(", "),
-      formatLabel: [...new Set(documents.map((document) => document.origin.formatLabel))].join(", "),
-    },
-    nodes,
-    skinCandidates,
-    animations,
-    sequence: { ...first.sequence, namespace: "emote" },
-    diagnostics: documents.flatMap((document) => document.diagnostics),
-    resources,
-  }, importedSequences[0]);
-}
-
-function applyImportedSequence(document: ConversionDocument, sequence: ImportedSequence | undefined): ConversionDocument {
-  if (!sequence) return document;
-  const separator = sequence.id.indexOf(":");
-  return {
-    ...document,
-    targetMinecraftVersion: sequence.targetMinecraftVersion && Object.hasOwn(MINECRAFT_VERSION_PROFILES, sequence.targetMinecraftVersion)
-      ? sequence.targetMinecraftVersion : document.targetMinecraftVersion,
-    sequence: {
-      namespace: sequence.id.slice(0, separator),
-      idPath: sequence.id.slice(separator + 1),
-      name: sequence.metadata.name,
-      description: sequence.metadata.description,
-      additionalMetadata: Object.fromEntries(Object.entries(sequence.metadata).filter(([key]) => key !== "name" && key !== "description")),
-      cooldown: sequence.cooldown,
-      player: sequence.player,
-      steps: sequence.steps,
-      callbacks: sequence.callbacks?.map((callback) => ({ ...callback })),
-    },
-  };
+  return { origin, targetMinecraftVersion, nodes, skinCandidates, entries: [...animations, ...sequences], diagnostics, resources };
 }
 
 function uniqueAnimationId(namespace: string, sourceId: string, usedIds: Set<string>, reservedIds: ReadonlySet<string>): string {

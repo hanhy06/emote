@@ -1,12 +1,12 @@
 package io.github.hanhy06.emote.content.loader;
 
-import io.github.hanhy06.emote.EmoteMod;
-import io.github.hanhy06.emote.api.EmoteLoadException;
-import io.github.hanhy06.emote.content.LoadedAnimation;
-import io.github.hanhy06.emote.content.LoadedSequence;
-import io.github.hanhy06.emote.config.JsonFileStore;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
+import io.github.hanhy06.emote.EmoteMod;
+import io.github.hanhy06.emote.api.EmoteLoadException;
+import io.github.hanhy06.emote.config.JsonFileStore;
+import io.github.hanhy06.emote.content.LoadedAnimation;
+import io.github.hanhy06.emote.content.LoadedSequence;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;

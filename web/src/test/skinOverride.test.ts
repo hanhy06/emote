@@ -1,11 +1,10 @@
-import { createTestDocument } from "./testProject";
 import { expect, it } from "vitest";
 import { encode } from "fast-png";
 import { readInput } from "../import/formats";
-import { skinPartOrders } from "../domain/conversionDocument";
+import { animationEntries, createConversionDocument, skinPartOrders } from "../domain/conversionDocument";
 import { compileAnimation } from "../compiler/animationCompiler";
 import { composeSkin, createSkinOverride, decodeSkinPng, encodeSkinPng } from "../domain/skin";
-import { exportAnimation } from "../export/projectExporter";
+import { exportProject } from "../export/projectExporter";
 import { createPreviewModel } from "../preview/previewModel";
 import { createPlayerHeadGeometry } from "../components/playerHeadGeometry";
 import { Matrix4, Vector3 } from "three";
@@ -47,15 +46,17 @@ for (const format of formats) it(`${format}: extracts unreferenced named texture
   expect([...mask.slice(offset(8, 8), offset(8, 8) + 4)]).toEqual([255, 255, 255, 255]);
   expect([...mask.slice(offset(40, 8), offset(40, 8) + 4)]).toEqual([0, 0, 0, 255]);
   expect(mask[offset(41, 8)]).toBe(255);
-  const document = createTestDocument(imported, format);
-  document.animations[0].skin = { ...skin, default: base };
-  const files = await exportAnimation(document, 0);
+  const document = createConversionDocument(imported, format);
+  const entry = animationEntries(document)[0];
+  entry.skin = { ...skin, default: base };
+  const files = await exportProject(document, 0);
   expect(files).toHaveLength(1);
   const bytes = new Uint8Array(await files[0].blob.arrayBuffer());
-  const reopened = createTestDocument(await readInput("emote_json", { name: "skin.json", bytes }), "Emote");
-  expect(compileAnimation(reopened, 0).animation.skin).toEqual(document.animations[0].skin);
-  expect(reopened.animations[0].skin).not.toBe(document.animations[0].skin);
-  const preview = createPreviewModel(reopened, reopened.animations[0], { type: "create" });
+  const reopened = createConversionDocument(await readInput("emote_json", { name: "skin.json", bytes }), "Emote");
+  const reopenedEntry = animationEntries(reopened)[0];
+  expect(compileAnimation(reopened, reopenedEntry).animation.skin).toEqual(entry.skin);
+  expect(reopenedEntry.skin).not.toBe(entry.skin);
+  const preview = createPreviewModel(reopened, reopenedEntry, { type: "create" });
   expect(preview.availability).toEqual({ status: "full" });
   expect(preview.parts).toHaveLength(1);
   const candidate = reopened.skinCandidates[preview.parts[0].candidateId];
@@ -107,8 +108,8 @@ for (const format of formats) it(`${format}: preserves automatic orders and equa
   source.elements[0] = { ...source.elements[0], from: [-0.1, 0, -2], to: [3.9, 12, 2] };
   source.outliner = [{ uuid: "leg", children: ["cube"] }];
   const input = await readInput(format, { name: "leg", bytes: new TextEncoder().encode(JSON.stringify(source)) });
-  const document = createTestDocument(input, format);
-  const preview = createPreviewModel(document, document.animations[0], { type: "create" });
+  const document = createConversionDocument(input, format);
+  const preview = createPreviewModel(document, animationEntries(document)[0], { type: "create" });
   const orders = skinPartOrders(document);
   expect(preview.parts.map((part) => orders[part.candidateId])).toEqual([0, 1]);
   const attachments = preview.parts.map((part) => {
@@ -116,7 +117,7 @@ for (const format of formats) it(`${format}: preserves automatic orders and equa
     return document.nodes[candidate.nodeId].attachments![candidate.attachmentId];
   });
   expect(attachments.map((attachment) => attachment.type === "player_skin" ? attachment.region : null)).toEqual([{ from: 0, to: 0.5 }, { from: 0.5, to: 1 }]);
-  const output = compileAnimation(document, 0).animation;
+  const output = compileAnimation(document, animationEntries(document)[0]).animation;
   const poses = evaluatePose(output, 0, (value) => { if (typeof value !== "number") throw new Error("Unexpected expression"); return value; });
   const geometry = createPlayerHeadGeometry();
   geometry.computeBoundingBox();

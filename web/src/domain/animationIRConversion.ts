@@ -1,4 +1,4 @@
-import type { AnimationEntryIR, AnimationIR, ClipIR, CurveIR, ScalarIR, TimeValueIR, VectorValueIR } from "./animationIR";
+import type { ClipIR, CurveIR, ScalarIR, TimeValueIR, VectorValueIR } from "./animationIR";
 import { formatMinecraftTime, parseAnimationSeconds, parseMinecraftTime, sourceSecondsTime } from "../format/time";
 import { mapMolangResult } from "../format/molang/sourceTransformer";
 export function scalarIR(value: number | string): ScalarIR {
@@ -39,8 +39,7 @@ export function sourceDelayIR(value: number | string): TimeValueIR {
   return typeof scalar === "number" ? formatMinecraftTime(parseMinecraftTime(sourceSecondsTime(scalar))) : scalar;
 }
 
-export function normalizeAnimationTimes(animation: AnimationIR | AnimationEntryIR, generatedTimes = false): void {
-  const clip = "clip" in animation ? animation.clip : animation.animation;
+export function normalizeAnimationTimes(clip: ClipIR, generatedTimes: boolean): void {
   if (generatedTimes) clip.duration = formatMinecraftTime(parseMinecraftTime(clip.duration, 1));
   if (generatedTimes && clip.playback) {
     if (clip.playback.loop_start !== undefined) clip.playback.loop_start = formatMinecraftTime(parseMinecraftTime(clip.playback.loop_start));

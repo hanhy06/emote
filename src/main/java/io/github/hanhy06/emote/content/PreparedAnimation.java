@@ -159,7 +159,7 @@ public final class PreparedAnimation implements PreparedEmote {
                 try {
                     DisplayData data = switch (value) {
                         case ItemAttachment item -> new DisplayData.Item(ItemStack.CODEC.parse(registries.createSerializationContext(NbtOps.INSTANCE), item.itemStackNbt()).getOrThrow(),
-                            ItemDisplayContext.CODEC.parse(JsonOps.INSTANCE, new JsonPrimitive(item.itemDisplay())).getOrThrow());
+                            ItemDisplayContext.CODEC.parse(JsonOps.INSTANCE, new JsonPrimitive(item.displayContext())).getOrThrow());
                         case BlockAttachment block -> new DisplayData.Block(BlockState.CODEC.parse(registries.createSerializationContext(NbtOps.INSTANCE), block.blockStateNbt()).getOrThrow());
                         case TextAttachment text -> new DisplayData.Text(ComponentSerialization.CODEC.parse(registries.createSerializationContext(JsonOps.INSTANCE), text.text()).getOrThrow());
                         case SkinAttachment ignored -> new DisplayData.Item(new ItemStack(Items.PLAYER_HEAD), ItemDisplayContext.NONE);
@@ -331,9 +331,7 @@ public final class PreparedAnimation implements PreparedEmote {
 
     public static Quaternionf operationRotation(EmoteAnimation.Operation operation, double[] value, Quaternionf rotation, Quaterniond quaternion) {
         if (operation.op() == EmoteAnimation.OperationType.ROTATE_QUATERNION) {
-            quaternion.set(value[0], value[1], value[2], value[3]);
-            if (quaternion.lengthSquared() == 0) throw new IllegalArgumentException("Zero quaternion");
-            return rotation.set(quaternion.normalize());
+            return rotation.set(normalizeQuaternion(value, quaternion));
         }
         rotation.identity();
         for (char axis : operation.order().name().toCharArray()) {
@@ -343,6 +341,14 @@ public final class PreparedAnimation implements PreparedEmote {
             else rotation.rotateZ(radians);
         }
         return rotation.normalize();
+    }
+
+    public static Quaterniond normalizeQuaternion(double[] value, Quaterniond quaternion) {
+        quaternion.set(value[0], value[1], value[2], value[3]);
+        double lengthSquared = quaternion.lengthSquared();
+        if (lengthSquared == 0) throw new IllegalArgumentException("Zero quaternion");
+        if (!Double.isFinite(lengthSquared)) throw new IllegalArgumentException("Non-finite quaternion length");
+        return quaternion.normalize();
     }
 
     public String id() {
@@ -368,7 +374,10 @@ public final class PreparedAnimation implements PreparedEmote {
 
     @Override
     public @Nullable Integer durationTicks() {
-        return this.model.clip().clock() == null ? this.model.clip().durationTicks() : null;
+        var playback = this.model.settings().playback();
+        if (playback.mode() != EmoteAnimation.PlaybackMode.ONCE || this.model.clip().clock() != null
+            || !(playback.startDelay() instanceof EmoteAnimation.ConstantValue delay)) return null;
+        return Math.addExact((int) delay.value(), this.model.clip().durationTicks());
     }
 
     @Override

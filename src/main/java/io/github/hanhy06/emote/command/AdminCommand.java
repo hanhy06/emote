@@ -9,6 +9,7 @@ import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.permission.PermissionService;
+import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.server.ReloadResult;
 import io.github.hanhy06.emote.server.ReloadService;
@@ -31,6 +32,7 @@ import java.util.Map;
 public final class AdminCommand {
     private final EmoteCatalog emoteCatalog;
     private final PlayerPlaybackManager playerPlaybackManager;
+    private final PlaybackEngine playbackEngine;
     private final ReloadService reloadService;
     private final ConfigManager configManager;
     private final PlayerSkinManager playerSkinManager;
@@ -39,16 +41,18 @@ public final class AdminCommand {
     public AdminCommand(
         EmoteCatalog emoteCatalog,
         PlayerPlaybackManager playerPlaybackManager,
+        PlaybackEngine playbackEngine,
         ReloadService reloadService,
         ConfigManager configManager,
         PlayerSkinManager playerSkinManager
     ) {
         this.emoteCatalog = emoteCatalog;
         this.playerPlaybackManager = playerPlaybackManager;
+        this.playbackEngine = playbackEngine;
         this.reloadService = reloadService;
         this.configManager = configManager;
         this.playerSkinManager = playerSkinManager;
-        this.stressTestCommand = new StressTestCommand(emoteCatalog, playerPlaybackManager);
+        this.stressTestCommand = new StressTestCommand(emoteCatalog, playbackEngine, playerSkinManager);
     }
 
     public void attachTo(LiteralArgumentBuilder<CommandSourceStack> root) {
@@ -63,15 +67,15 @@ public final class AdminCommand {
 
     LiteralArgumentBuilder<CommandSourceStack> createInfoCommand() {
         return Commands.literal("info")
-            .requires(PermissionService::canManage)
+            .requires(PermissionService.CAN_MANAGE)
             .executes(context -> info(context.getSource()));
     }
 
     private int info(CommandSourceStack source) {
         SkinProcessingStats skin = this.playerSkinManager.processingStats();
-        int activeSessions = this.playerPlaybackManager.engine().activeSessionCount();
+        int activeSessions = this.playbackEngine.activeSessionCount();
         int activePlayers = this.playerPlaybackManager.activePlayerCount();
-        int activeDisplays = this.playerPlaybackManager.engine().activeDisplayEntityCount();
+        int activeDisplays = this.playbackEngine.activeDisplayEntityCount();
         int displayLimit = this.configManager.getConfig().maxActiveDisplayEntities();
         int loadedEmotes = this.emoteCatalog.size();
         int disableRules = this.configManager.getAccessConfig().disabled().size();
@@ -117,26 +121,26 @@ public final class AdminCommand {
 
     LiteralArgumentBuilder<CommandSourceStack> createReloadCommand() {
         return Commands.literal("reload")
-            .requires(PermissionService::canManage)
+            .requires(PermissionService.CAN_MANAGE)
             .executes(context -> reload(context.getSource()));
     }
 
     LiteralArgumentBuilder<CommandSourceStack> createListCommand() {
         return Commands.literal("list")
-            .requires(PermissionService::canManage)
+            .requires(PermissionService.CAN_MANAGE)
             .executes(context -> list(context.getSource()));
     }
 
     LiteralArgumentBuilder<CommandSourceStack> createStopPlayerCommand() {
         return Commands.literal("stop")
             .then(Commands.argument("player", EntityArgument.players())
-                .requires(PermissionService::canManage)
+                .requires(PermissionService.CAN_MANAGE)
                 .executes(this::stopPlayer));
     }
 
     LiteralArgumentBuilder<CommandSourceStack> createEnableCommand() {
         return Commands.literal("enable")
-            .requires(PermissionService::canManage)
+            .requires(PermissionService.CAN_MANAGE)
             .then(Commands.argument("id", IdentifierArgument.id())
                 .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
                     this.configManager.getAccessConfig().disabled(),
@@ -151,7 +155,7 @@ public final class AdminCommand {
 
     LiteralArgumentBuilder<CommandSourceStack> createDisableCommand() {
         return Commands.literal("disable")
-            .requires(PermissionService::canManage)
+            .requires(PermissionService.CAN_MANAGE)
             .then(Commands.argument("id", IdentifierArgument.id())
                 .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
                     this.emoteCatalog.fileEmotes().stream().map(PreparedEmote::id),
@@ -321,7 +325,7 @@ public final class AdminCommand {
             return 0;
         }
         if (!enabled) {
-            this.playerPlaybackManager.engine().stopById(id);
+            this.playbackEngine.stopById(id);
         }
 
         this.reloadService.reload();
