@@ -1,143 +1,106 @@
 package io.github.hanhy06.emote.client;
 
-import java.awt.*;
-import java.awt.geom.Arc2D;
-import java.awt.geom.Ellipse2D;
-import java.awt.geom.Line2D;
-import java.awt.image.BufferedImage;
-
 final class WheelGeometry {
-    static final int SLOT_COUNT = 6;
-    private static final int ARC_SEGMENTS = 24;
-    private static final double SLOT_ANGLE = Math.PI * 2.0D / SLOT_COUNT;
+    static final int SLOT_COUNT = 5;
+    static final int TITLE_BOTTOM = 44;
+    static final int PAGE_TOP_FROM_BOTTOM = 44;
+    static final double SLOT_ANGLE = 2 * Math.PI / SLOT_COUNT;
+    static final float LABEL_RADIUS = 70.0F;
 
-    private WheelGeometry() {
+    private static final int OPEN_DURATION_MS = 155;
+    private static final int OPEN_STAGGER_MS = 12;
+    private static final long SELECTION_DURATION_NS = 145_000_000L;
+    private static final long INDICATOR_DURATION_NS = 205_000_000L;
+
+    final int centerX;
+    final int centerY;
+    final int outerRadius;
+    final float scale;
+    final int textWidth;
+    final float lift;
+
+    private final long openedAt;
+    private final float[] startWeights = new float[SLOT_COUNT];
+    private long changedAt;
+    private double startAngle;
+    private double travelAngle;
+    private float startOpacity;
+    private int selected = -1;
+
+    WheelGeometry(int width, int height, long now) {
+        int wheelHeight = height - TITLE_BOTTOM - 52;
+        centerX = width / 2;
+        centerY = TITLE_BOTTOM + wheelHeight / 2 - 3;
+        int limit = Math.min(width / 2 - 8, wheelHeight / 2);
+        outerRadius = Math.max(12, Math.min(Math.min(width, height) * 9 / 25, limit - 4));
+        scale = outerRadius / 100.0F;
+        lift = Math.min(4, outerRadius * 0.045F);
+        textWidth = Math.max(8, (int) (outerRadius * 0.61F));
+        openedAt = now;
+        changedAt = now;
     }
 
-    static WheelMetrics createMetrics(int width, int height) {
-        int centerX = width / 2;
-        int centerY = Math.max(32, height / 2 - 18);
-        int outerRadius = Math.max(16, Math.min(164, Math.min(width / 2 - 12, Math.min(centerY - 32, height - centerY - 80))));
-        int centerRadius = Math.max(8, outerRadius / 3);
-        int ringRadius = (centerRadius + outerRadius) / 2;
-        int textWidth = Math.max(8, outerRadius - centerRadius - 12);
-        return new WheelMetrics(centerX, centerY, outerRadius, ringRadius, centerRadius, textWidth, Math.max(16, Math.min(280, width - 48)));
+    int selected() {
+        return selected;
     }
 
-    static SlotGeometry createSlot(int slotIndex, WheelMetrics metrics) {
-        if (slotIndex < 0 || slotIndex >= SLOT_COUNT) {
-            throw new IllegalArgumentException("slot index must be between 0 and " + (SLOT_COUNT - 1));
+    int slotAt(double mouseX, double mouseY, int count) {
+        double x = mouseX - centerX;
+        double y = mouseY - centerY;
+        double radius = Math.hypot(x, y);
+        if (radius < 41 * scale) {
+            return -1;
         }
-        double angle = -Math.PI / 2.0D + slotIndex * SLOT_ANGLE;
-        double startAngle = angle - SLOT_ANGLE / 2.0D;
-        double endAngle = angle + SLOT_ANGLE / 2.0D;
-        int[] xPoints = new int[(ARC_SEGMENTS + 1) * 2];
-        int[] yPoints = new int[xPoints.length];
-        for (int index = 0; index <= ARC_SEGMENTS; index++) {
-            double outerAngle = startAngle + (endAngle - startAngle) * index / ARC_SEGMENTS;
-            double innerAngle = endAngle - (endAngle - startAngle) * index / ARC_SEGMENTS;
-            xPoints[index] = metrics.centerX() + (int) Math.round(Math.cos(outerAngle) * metrics.outerRadius());
-            yPoints[index] = metrics.centerY() + (int) Math.round(Math.sin(outerAngle) * metrics.outerRadius());
-            xPoints[ARC_SEGMENTS + 1 + index] = metrics.centerX() + (int) Math.round(Math.cos(innerAngle) * metrics.centerRadius());
-            yPoints[ARC_SEGMENTS + 1 + index] = metrics.centerY() + (int) Math.round(Math.sin(innerAngle) * metrics.centerRadius());
+        int slot = Math.floorMod((int) Math.floor(Math.atan2(x, -y) / SLOT_ANGLE + 0.5), SLOT_COUNT);
+        float hitRadius = outerRadius + (slot == selected ? lift : 0);
+        return slot < count && radius <= hitRadius ? slot : -1;
+    }
+
+    boolean select(int next, long now) {
+        if (next == selected) {
+            return false;
         }
-        int centerX = metrics.centerX() + (int) Math.round(Math.cos(angle) * metrics.ringRadius());
-        int centerY = metrics.centerY() + (int) Math.round(Math.sin(angle) * metrics.ringRadius());
-        return new SlotGeometry(
-            centerX,
-            centerY,
-            xPoints,
-            yPoints,
-            metrics.textWidth()
-        );
-    }
-
-    static boolean containsPoint(int[] xPoints, int[] yPoints, double pointX, double pointY) {
-        boolean inside = false;
-        for (int currentIndex = 0, previousIndex = xPoints.length - 1; currentIndex < xPoints.length; previousIndex = currentIndex++) {
-            boolean intersects = (yPoints[currentIndex] > pointY) != (yPoints[previousIndex] > pointY)
-                && pointX < (double) (xPoints[previousIndex] - xPoints[currentIndex]) * (pointY - yPoints[currentIndex])
-                / (double) (yPoints[previousIndex] - yPoints[currentIndex]) + xPoints[currentIndex];
-            if (intersects) {
-                inside = !inside;
-            }
+        float progress = selectionProgress(now);
+        for (int i = 0; i < SLOT_COUNT; i++) {
+            startWeights[i] = weight(i, progress);
         }
-        return inside;
-    }
-
-    static BufferedImage createWheelImage(WheelMetrics metrics, int scale, int[] slotColors, int centerColor) {
-        int radius = metrics.outerRadius();
-        int imageSize = (radius + 1) * 2;
-        BufferedImage image = new BufferedImage(imageSize * scale, imageSize * scale, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D graphics = image.createGraphics();
-        try {
-            graphics.setComposite(AlphaComposite.Src);
-            graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            graphics.scale(scale, scale);
-            double center = radius + 1;
-            // Fill a continuous disk first; separators are strokes, not angular gaps.
-            int baseColor = slotColors[0];
-            int mostFrequentColorCount = 0;
-            for (int color : slotColors) {
-                int matchingColorCount = 0;
-                for (int other : slotColors) {
-                    if (color == other) {
-                        matchingColorCount++;
-                    }
-                }
-                if (matchingColorCount > mostFrequentColorCount) {
-                    baseColor = color;
-                    mostFrequentColorCount = matchingColorCount;
-                }
-            }
-            graphics.setColor(new Color(baseColor, true));
-            graphics.fill(new Ellipse2D.Double(center - radius, center - radius, radius * 2, radius * 2));
-            for (int slotIndex = 0; slotIndex < SLOT_COUNT; slotIndex++) {
-                if (slotColors[slotIndex] == baseColor) {
-                    continue;
-                }
-                double angle = -Math.PI / 2.0D + slotIndex * SLOT_ANGLE;
-                double startAngle = -Math.toDegrees(angle - SLOT_ANGLE / 2.0D);
-                graphics.setColor(new Color(slotColors[slotIndex], true));
-                graphics.fill(new Arc2D.Double(center - radius, center - radius, radius * 2, radius * 2, startAngle, -Math.toDegrees(SLOT_ANGLE), Arc2D.PIE));
-            }
-            int centerRadius = metrics.centerRadius();
-            Ellipse2D.Double centerCircle = new Ellipse2D.Double(center - centerRadius, center - centerRadius, centerRadius * 2, centerRadius * 2);
-            graphics.setColor(new Color(centerColor, true));
-            graphics.fill(centerCircle);
-            graphics.setComposite(AlphaComposite.SrcOver);
-            graphics.setColor(new Color(0xB0FFFFFF, true));
-            graphics.setStroke(new BasicStroke(1.0F, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND));
-            for (int index = 0; index < SLOT_COUNT; index++) {
-                double angle = -Math.PI / 2.0D - SLOT_ANGLE / 2.0D + index * SLOT_ANGLE;
-                double cos = Math.cos(angle);
-                double sin = Math.sin(angle);
-                graphics.draw(new Line2D.Double(center + cos * centerRadius, center + sin * centerRadius, center + cos * radius, center + sin * radius));
-            }
-            graphics.draw(centerCircle);
-        } finally {
-            graphics.dispose();
+        startOpacity = indicatorOpacity(progress);
+        startAngle = indicatorAngle(now);
+        if (next >= 0 && startOpacity == 0) {
+            startAngle = next * SLOT_ANGLE;
         }
-        return image;
+        travelAngle = next < 0 ? 0 : Math.IEEEremainder(next * SLOT_ANGLE - startAngle, 2 * Math.PI);
+        selected = next;
+        changedAt = now;
+        return true;
     }
 
-    record WheelMetrics(
-        int centerX,
-        int centerY,
-        int outerRadius,
-        int ringRadius,
-        int centerRadius,
-        int textWidth,
-        int descriptionWidth
-    ) {
+    float entrance(int slot, long now) {
+        float elapsedMs = (now - openedAt) / 1_000_000.0F - slot * OPEN_STAGGER_MS;
+        return easeOutCubic(elapsedMs / OPEN_DURATION_MS);
     }
 
-    record SlotGeometry(
-        int centerX,
-        int centerY,
-        int[] xPoints,
-        int[] yPoints,
-        int textWidth
-    ) {
+    float selectionProgress(long now) {
+        return easeOutCubic((float) (now - changedAt) / SELECTION_DURATION_NS);
+    }
+
+    private static float easeOutCubic(float progress) {
+        float remaining = 1 - Math.clamp(progress, 0, 1);
+        return 1 - remaining * remaining * remaining;
+    }
+
+    float weight(int slot, float progress) {
+        return startWeights[slot] * (1 - progress) + (slot == selected ? progress : 0);
+    }
+
+    float indicatorOpacity(float progress) {
+        return startOpacity * (1 - progress) + (selected >= 0 ? progress : 0);
+    }
+
+    double indicatorAngle(long now) {
+        // A small overshoot lets the marker settle on the notch, even after a quick reversal.
+        float remaining = 1 - Math.clamp((float) (now - changedAt) / INDICATOR_DURATION_NS, 0, 1);
+        double eased = 1 + remaining * remaining * (0.8 - 1.8 * remaining);
+        return startAngle + travelAngle * eased;
     }
 }
