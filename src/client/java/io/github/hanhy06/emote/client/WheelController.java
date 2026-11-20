@@ -45,7 +45,8 @@ public class WheelController {
             return;
         }
 
-        client.gui.setScreen(new WheelScreen(this, this.shortcutSettings.selectedEmotes(), findInitialPageIndex(), keyMapping));
+        List<EmoteSummary> shortcuts = this.shortcutSettings.selectedEmotes();
+        client.gui.setScreen(new WheelScreen(this, shortcuts, findInitialPageIndex(shortcuts), keyMapping));
     }
 
     public void play(EmoteSummary emoteSummary) {
@@ -76,9 +77,8 @@ public class WheelController {
         }
     }
 
-    private int findInitialPageIndex() {
-        List<EmoteSummary> shortcuts = this.shortcutSettings.selectedEmotes();
-        if (this.lastSelectedId.isEmpty() || shortcuts.isEmpty()) {
+    private int findInitialPageIndex(List<EmoteSummary> shortcuts) {
+        if (this.lastSelectedId.isEmpty()) {
             return 0;
         }
 
