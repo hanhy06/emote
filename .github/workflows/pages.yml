@@ -2,8 +2,11 @@ name: Deploy website to GitHub Pages
 
 on:
   push:
+    branches: ["**"]
+    tags: ["[0-9]*", "v[0-9]*"]
     paths:
       - "web/**"
+      - "shared/**"
       - "docs/mkdocs/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
@@ -12,16 +15,19 @@ permissions:
   contents: read
 
 concurrency:
-  group: pages-${{ github.ref }}
-  cancel-in-progress: true
+  group: pages-${{ (github.ref_type == 'tag' || github.ref_name == 'dev' || github.ref_name == github.event.repository.default_branch) && 'site' || github.ref }}
 
 jobs:
   build:
-    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    if: github.ref_type == 'tag' || github.ref == 'refs/heads/dev' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          ref: refs/heads/${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -37,32 +43,47 @@ jobs:
           cache: pip
           cache-dependency-path: docs/mkdocs/requirements.txt
 
-      - name: Install web dependencies
-        working-directory: web
-        run: npm ci
-
       - name: Install documentation dependencies
         run: python -m pip install -r docs/mkdocs/requirements.txt
 
-      - name: Build website
+      - name: Build documentation
+        env:
+          EMOTE_SKIP_CONVERTER: "1"
         run: python -m mkdocs build --strict --config-file docs/mkdocs/mkdocs.yml
 
-      - name: Checkout legacy v4 converter
-        uses: actions/checkout@v6
-        with:
-          ref: 5f8d915d36b6726c3f34a6a10592e66114a0dfe7
-          path: .legacy-converter
-          sparse-checkout: |
-            web
-            shared
+      - name: Build converters
+        shell: bash
+        env:
+          PAGES_CONVERTER_REF: ${{ vars.PAGES_CONVERTER_REF }}
+        run: |
+          mapfile -t tags < <(git tag --sort=refname --sort=-creatordate --list '[0-9]*' 'v[0-9]*')
+          if (( ${#tags[@]} < 2 )); then
+            echo '::error::Two version tags are required to build the public and legacy converters.'
+            exit 1
+          fi
 
-      - name: Install legacy converter dependencies
-        working-directory: .legacy-converter/web
-        run: npm ci
+          site_dir="$GITHUB_WORKSPACE/docs/mkdocs/site"
+          build_converter() {
+            local ref="$1" path="$2"
+            local checkout="$RUNNER_TEMP/emote-${path//\//-}"
+            echo "Building /$path from $ref"
+            git worktree add --detach -- "$checkout" "$ref"
+            (
+              cd "$checkout/web"
+              npm ci
+              npm run build -- --outDir "$site_dir/$path" --emptyOutDir --base ./
+            )
+          }
 
-      - name: Build legacy converter
-        working-directory: .legacy-converter/web
-        run: npm run build -- --outDir "${{ github.workspace }}/docs/mkdocs/site/legacy/converter" --emptyOutDir --base ./
+          public_ref="${PAGES_CONVERTER_REF:-refs/tags/${tags[0]}}"
+          if [[ "$public_ref" == refs/heads/* ]]; then
+            public_ref="refs/remotes/origin/${public_ref#refs/heads/}"
+          elif ! git rev-parse --verify --end-of-options "$public_ref^{commit}" >/dev/null 2>&1; then
+            public_ref="refs/remotes/origin/$public_ref"
+          fi
+          build_converter "$public_ref" converter
+          build_converter "refs/tags/${tags[1]}" legacy/converter
+          build_converter refs/remotes/origin/dev dev/converter
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
