@@ -1,6 +1,6 @@
 # Emote
 
-<a href="https://youtu.be/miEEutsojFw">
+<a href="https://www.youtube.com/watch?v=miEEutsojFw&list=PLXqBJ1wZw7O0">
   <img src="https://img.youtube.com/vi/miEEutsojFw/maxresdefault.jpg" alt="Emote 3.1 Demo" width="640">
 </a>
 
@@ -117,9 +117,7 @@ Use the 3D preview to assign skin parts, then configure metadata, playback behav
 
 ![Open a project](https://cdn.modrinth.com/data/qUF0jygw/images/69f77ef2095909af8e7dd5830e452c3b9c4d61b2.png)
 
-![Review](https://cdn.modrinth.com/data/qUF0jygw/images/8f099b4088dca06f6f5f2eb92a77a1d83267c8bb.png)
-
-![Settings](https://cdn.modrinth.com/data/qUF0jygw/images/7b83454fe2ddff3e73abe2fc7f858cceb33ebff6.png)
+![Edit](https://cdn.modrinth.com/data/qUF0jygw/images/dbb1f803e310690b9b97e0c88ebd83341fd93eec.png)
 
 ### Animation conversion
 
