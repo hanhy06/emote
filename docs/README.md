@@ -1,10 +1,8 @@
 # Emote
 
-![Emote demo](https://cdn.modrinth.com/data/qUF0jygw/images/15c895aea280b546764a0b7f2db2a4cb1f9628c8.gif)
-
-> Thanks to [Popular Vibe](https://block-display.com/bd/77774) for allowing us to use their animation!
-
-[▶ Watch the full emote demo on YouTube](https://youtu.be/iJI04gY8A6c?si=h71TccN11jvLIFa3)
+<a href="https://youtu.be/miEEutsojFw">
+  <img src="https://img.youtube.com/vi/miEEutsojFw/maxresdefault.jpg" alt="Emote 3.1 Demo" width="640">
+</a>
 
 [![Web converter](https://img.shields.io/badge/Web_converter-0067C0?style=flat-square&logo=githubpages&logoColor=white)](https://docs.hanhy06.kr/emote/converter/)
 [![Wiki](https://img.shields.io/badge/Wiki-9d4edd?style=flat-square&logo=materialformkdocs&logoColor=white)](https://docs.hanhy06.kr/emote/)
