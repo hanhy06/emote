@@ -219,7 +219,7 @@ class SkinCachePipelineTest {
     private static Config defaultConfig(String name) {
         var config = Config.createDefault();
         return new Config(config.schemaVersion(), config.menuPageSize(), config.mineSkinApiKey(), config.mineSkinPollIntervalSeconds(),
-            config.mineSkinCacheRetentionDays(), config.mineSkinCacheMaxMiB(), config.maxActiveDisplayEntities(), name);
+            config.mineSkinCacheRetentionDays(), config.mineSkinCacheMaxMiB(), config.maxActiveDisplayEntities(), config.countMarkerDisplays(), name);
     }
 
     private static Object field(SkinBakeCoordinator coordinator, String name) throws Exception {

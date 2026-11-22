@@ -74,7 +74,7 @@ public final class EmoteApiImpl extends EmoteApi {
         if (!preparation.ready()) return PlayResult.failure(preparation.preparing()
             ? "Preparing the default skin… " + preparation.progressPercent() + "%" : "No complete default skin is available.");
         var result = this.engine.start(new PlaybackEngine.Request(world, RootTransform.create(placement.position(), placement.yaw()),
-            emote, Map.of(), MolangQuerySource.EMPTY, null, preparation.textures(), PlaybackEngine.Lifecycle.NONE, placement.mode()), null);
+            emote, Map.of(), MolangQuerySource.EMPTY, null, preparation.textures(), PlaybackEngine.Lifecycle.NONE, placement.mode(), false), null);
         return switch (result) {
             case PlaybackEngine.StartResult.Success success -> new PlayResult.Success(success.session().view());
             case PlaybackEngine.StartResult.Failure failure -> PlayResult.failure(failure.message());

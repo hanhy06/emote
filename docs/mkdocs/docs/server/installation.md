@@ -43,6 +43,7 @@ File names are only for organization. The mod identifies emotes by `id` and reje
   "mineskin_cache_retention_days": 30,
   "mineskin_cache_max_mib": 256,
   "max_active_display_entities": 1024,
+  "count_marker_displays": true,
   "default_skin": ""
 }
 ```
@@ -55,4 +56,5 @@ File names are only for organization. The mod identifies emotes by `id` and reje
 | `mineskin_cache_retention_days`  | Skin-cache retention period. Range: `1`–`3650` days.                                                                                |
 | `mineskin_cache_max_mib`         | Maximum skin-cache size in MiB.                                                                                                     |
 | `max_active_display_entities`    | A value of 0 allows an unlimited number of active display entities.                                                                 |
+| `count_marker_displays`          | Defaults to `true`. Set to `false` to exclude marker mannequin displays from the playback limit and display usage shown by `/emote info`. Run `/emote reload` to apply the change. |
 | `default_skin`                   | Minecraft player name used for the fallback skin. Leave empty to keep existing defaults. |
