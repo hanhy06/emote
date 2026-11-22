@@ -80,8 +80,6 @@ Place JSON exported by the converter under `emote/`. Subdirectories are loaded a
 
 Set `mineskin_api_key` to generate player skin textures when no bake accounts are registered. Completed cached textures remain usable without either credential.
 
-Set `count_marker_displays` to `false` to exclude marker mannequin displays from `max_active_display_entities` and the display usage shown by `/emote info`. Run `/emote reload` to apply the change.
-
 ### `emotes.json`
 
 ```json
