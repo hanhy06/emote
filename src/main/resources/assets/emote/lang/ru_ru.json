@@ -10,6 +10,7 @@
     "screen.emote.wheel.center.selected": "выбрано",
     "screen.emote.wheel.footer.no_shortcuts": "В колесе нет эмоций. Используйте «Настроить колесо», чтобы добавить эмоцию.",
     "screen.emote.wheel.edit": "Настроить колесо",
+    "screen.emote.wheel.search": "Поиск",
     "screen.emote.shortcuts.title": "Настройка колеса эмоций",
     "screen.emote.shortcuts.selected": "В колесе",
     "screen.emote.shortcuts.available": "Доступные",

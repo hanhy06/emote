@@ -63,6 +63,10 @@ public class WheelController {
         Minecraft.getInstance().gui.setScreen(new WheelShortcutScreen(this));
     }
 
+    void openSearch(KeyMapping keyMapping) {
+        Minecraft.getInstance().gui.setScreen(new WheelSearchScreen(this, this.shortcutSettings.allEmotes(), keyMapping));
+    }
+
     public WheelShortcutSettings shortcuts() {
         return this.shortcutSettings;
     }

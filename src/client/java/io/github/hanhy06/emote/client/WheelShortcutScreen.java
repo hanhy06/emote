@@ -84,7 +84,7 @@ public class WheelShortcutScreen extends Screen {
             listWidth,
             listHeight
         ));
-        this.searchBox.setResponder(ignoredValue -> refreshLists());
+        this.searchBox.setResponder(this::refreshAvailableList);
         refreshLists();
 
         this.addRenderableWidget(Button.builder(
@@ -155,9 +155,13 @@ public class WheelShortcutScreen extends Screen {
 
     void refreshLists() {
         this.selectedList.updateEntries(this.controller.shortcuts().selectedEmotes());
+        refreshAvailableList(this.searchBox.getValue());
+    }
+
+    private void refreshAvailableList(String query) {
         this.availableList.updateEntries(EmoteQueryService.filterPreservingOrder(
             this.controller.shortcuts().availableEmotes(),
-            this.searchBox == null ? "" : this.searchBox.getValue()
+            query
         ));
     }
 

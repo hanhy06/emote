@@ -33,7 +33,9 @@ import java.util.List;
 
 @Environment(EnvType.CLIENT)
 public class WheelScreen extends Screen {
-    private static final int EDIT_BUTTON_WIDTH = 50;
+    private static final int ACTION_BUTTON_WIDTH = 50;
+    private static final int ACTION_BUTTON_GAP = 4;
+    private static final int ACTION_BUTTONS_WIDTH = 2 * (ACTION_BUTTON_WIDTH + ACTION_BUTTON_GAP);
     private static final int TITLE_TOP = 8;
     private static final Identifier SLOT = Identifier.parse("emote:textures/gui/wheel/slot.png");
     private static final Identifier HUB = Identifier.parse("emote:textures/gui/wheel/hub.png");
@@ -86,10 +88,16 @@ public class WheelScreen extends Screen {
     @Override
     protected void init() {
         this.wheel = new WheelGeometry(this.width, this.height, System.nanoTime());
+        int searchX = Math.max(ACTION_BUTTON_GAP, this.width - ACTION_BUTTONS_WIDTH);
+        int editX = searchX + ACTION_BUTTON_WIDTH + ACTION_BUTTON_GAP;
+        this.addRenderableWidget(Button.builder(
+            Component.translatable("screen.emote.wheel.search"),
+            ignoredButton -> this.controller.openSearch(this.keyMapping)
+        ).bounds(searchX, this.height - 24, ACTION_BUTTON_WIDTH, 20).build());
         this.addRenderableWidget(Button.builder(
             Component.translatable("screen.emote.wheel.edit"),
             ignoredButton -> this.controller.openShortcutEditor()
-        ).bounds(Math.max(4, this.width - EDIT_BUTTON_WIDTH - 4), this.height - 24, EDIT_BUTTON_WIDTH, 20).build());
+        ).bounds(editX, this.height - 24, ACTION_BUTTON_WIDTH, 20).build());
     }
 
     @Override
@@ -314,7 +322,7 @@ public class WheelScreen extends Screen {
             this.wheel.centerY + this.wheel.outerRadius + 9);
         graphics.centeredText(this.font, (this.pageIndex + 1) + " / " + this.pageCount, this.wheel.centerX, pageY, MUTED_COLOR);
         int footerTop = pageY + 12;
-        int footerWidth = Math.max(8, this.width - 2 * (EDIT_BUTTON_WIDTH + 8));
+        int footerWidth = Math.max(8, this.width - 2 * (ACTION_BUTTONS_WIDTH + ACTION_BUTTON_GAP));
 
         if (hoveredEmote != null && !hoveredEmote.description().isBlank()) {
             int descriptionWidth = Math.min(280, footerWidth);

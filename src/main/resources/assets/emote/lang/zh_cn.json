@@ -10,6 +10,7 @@
     "screen.emote.wheel.center.selected": "",
     "screen.emote.wheel.footer.no_shortcuts": "轮盘中没有表情。使用“编辑轮盘”添加表情。",
     "screen.emote.wheel.edit": "编辑轮盘",
+    "screen.emote.wheel.search": "搜索",
     "screen.emote.shortcuts.title": "自定义表情轮盘",
     "screen.emote.shortcuts.selected": "轮盘中的表情",
     "screen.emote.shortcuts.available": "可用表情",

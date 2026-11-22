@@ -92,6 +92,10 @@ public class WheelShortcutSettings {
         return List.copyOf(selected);
     }
 
+    List<EmoteSummary> allEmotes() {
+        return List.copyOf(this.availableById.values());
+    }
+
     public List<EmoteSummary> availableEmotes() {
         LinkedHashSet<String> selected = new LinkedHashSet<>(this.selectedIds);
         return this.availableById.values().stream()
