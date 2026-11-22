@@ -14,6 +14,8 @@
     "screen.emote.shortcuts.selected": "휠에 표시",
     "screen.emote.shortcuts.available": "추가 가능한 이모트",
     "screen.emote.shortcuts.search": "이모트 또는 #태그 검색",
+    "screen.emote.shortcuts.sort_name": "이름순 정렬",
+    "screen.emote.shortcuts.sort_tags": "태그별 묶기",
     "screen.emote.shortcuts.empty_search": "검색 결과가 없습니다.",
     "screen.emote.shortcuts.selected_help": "드래그해서 순서를 바꾸세요.",
     "screen.emote.shortcuts.empty_selected": "휠에 표시할 이모트가 없습니다.",

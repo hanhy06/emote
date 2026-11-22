@@ -14,6 +14,8 @@
     "screen.emote.shortcuts.selected": "ホイールに表示",
     "screen.emote.shortcuts.available": "利用可能なエモート",
     "screen.emote.shortcuts.search": "エモートまたは #タグを検索",
+    "screen.emote.shortcuts.sort_name": "名前順",
+    "screen.emote.shortcuts.sort_tags": "タグ別に整理",
     "screen.emote.shortcuts.empty_search": "一致するエモートがありません。",
     "screen.emote.shortcuts.selected_help": "ドラッグして並べ替えます。",
     "screen.emote.shortcuts.empty_selected": "ホイールにエモートがありません。",

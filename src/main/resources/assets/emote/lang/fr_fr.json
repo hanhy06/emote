@@ -14,6 +14,8 @@
     "screen.emote.shortcuts.selected": "Dans la roue",
     "screen.emote.shortcuts.available": "Disponibles",
     "screen.emote.shortcuts.search": "Rechercher des emotes ou #tags",
+    "screen.emote.shortcuts.sort_name": "Par nom",
+    "screen.emote.shortcuts.sort_tags": "Par tag",
     "screen.emote.shortcuts.empty_search": "Aucune emote correspondante.",
     "screen.emote.shortcuts.selected_help": "Faites glisser pour réorganiser.",
     "screen.emote.shortcuts.empty_selected": "Aucune emote dans la roue.",

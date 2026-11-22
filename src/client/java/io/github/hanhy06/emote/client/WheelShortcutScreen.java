@@ -16,7 +16,8 @@ import java.util.List;
 public class WheelShortcutScreen extends Screen {
     private static final int LIST_MAX_WIDTH = 200;
     private static final int LIST_GAP = 8;
-    private static final int SEARCH_TOP = 22;
+    private static final int TOOLBAR_TOP = 22;
+    private static final int TOOLBAR_HEIGHT = 20;
     private static final int LIST_LABEL_TOP = 48;
     private static final int LIST_TOP = 62;
     private static final int FOOTER_HEIGHT = 32;
@@ -41,13 +42,22 @@ public class WheelShortcutScreen extends Screen {
         int listWidth = Math.clamp((this.width - LIST_GAP) / 2, 100, LIST_MAX_WIDTH);
         int listHeight = EmoteShortcutList.fitHeight(Math.max(40, this.height - LIST_TOP - FOOTER_HEIGHT));
         int centerX = this.width / 2;
+        int selectedListX = centerX - LIST_GAP / 2 - listWidth;
+        int sortButtonWidth = (listWidth - BUTTON_GAP) / 2;
+
+        this.addRenderableWidget(Button.builder(
+            Component.translatable("screen.emote.shortcuts.sort_name"), ignoredButton -> sortShortcuts(false)
+        ).bounds(selectedListX, TOOLBAR_TOP, sortButtonWidth, TOOLBAR_HEIGHT).build());
+        this.addRenderableWidget(Button.builder(
+            Component.translatable("screen.emote.shortcuts.sort_tags"), ignoredButton -> sortShortcuts(true)
+        ).bounds(selectedListX + sortButtonWidth + BUTTON_GAP, TOOLBAR_TOP, listWidth - sortButtonWidth - BUTTON_GAP, TOOLBAR_HEIGHT).build());
 
         this.searchBox = this.addRenderableWidget(new EditBox(
             this.font,
             centerX + LIST_GAP / 2,
-            SEARCH_TOP,
+            TOOLBAR_TOP,
             listWidth,
-            20,
+            TOOLBAR_HEIGHT,
             this.searchBox,
             Component.translatable("screen.emote.shortcuts.search")
         ));
@@ -59,7 +69,7 @@ public class WheelShortcutScreen extends Screen {
             this,
             this.controller,
             true,
-            centerX - LIST_GAP / 2 - listWidth,
+            selectedListX,
             LIST_TOP,
             listWidth,
             listHeight
@@ -149,6 +159,12 @@ public class WheelShortcutScreen extends Screen {
             this.controller.shortcuts().availableEmotes(),
             this.searchBox == null ? "" : this.searchBox.getValue()
         ));
+    }
+
+    private void sortShortcuts(boolean groupByTag) {
+        this.controller.shortcuts().sortSelected(groupByTag);
+        this.selectedList.updateEntries(this.controller.shortcuts().selectedEmotes());
+        this.selectedList.setScrollAmount(0);
     }
 
     private Component fitText(Component text, int maxWidth) {

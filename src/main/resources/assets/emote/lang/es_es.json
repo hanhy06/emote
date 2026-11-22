@@ -14,6 +14,8 @@
     "screen.emote.shortcuts.selected": "En la rueda",
     "screen.emote.shortcuts.available": "Disponibles",
     "screen.emote.shortcuts.search": "Buscar gestos o #etiquetas",
+    "screen.emote.shortcuts.sort_name": "Por nombre",
+    "screen.emote.shortcuts.sort_tags": "Por etiqueta",
     "screen.emote.shortcuts.empty_search": "No hay gestos coincidentes.",
     "screen.emote.shortcuts.selected_help": "Arrastra para reordenar.",
     "screen.emote.shortcuts.empty_selected": "No hay gestos en la rueda.",

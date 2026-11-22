@@ -12,6 +12,7 @@ import java.util.*;
 
 public class WheelShortcutSettings {
     private static final int CURRENT_SCHEMA_VERSION = 1;
+    private static final Comparator<EmoteSummary> BY_NAME = Comparator.comparing(EmoteSummary::name).thenComparing(EmoteSummary::id);
 
     private final Path filePath;
     private final Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
@@ -120,6 +121,41 @@ public class WheelShortcutSettings {
         List<String> nextIds = new ArrayList<>(this.selectedIds);
         nextIds.remove(id);
         updateSelectedIds(nextIds);
+    }
+
+    void sortSelected(boolean groupByTag) {
+        List<EmoteSummary> selected = new ArrayList<>(selectedEmotes());
+        if (selected.size() < 2) {
+            return;
+        }
+
+        Comparator<EmoteSummary> order = BY_NAME;
+        if (groupByTag) {
+            Map<String, Integer> tagCounts = new HashMap<>();
+            for (EmoteSummary emote : selected) {
+                emote.tags().stream().distinct().forEach(tag -> tagCounts.merge(tag, 1, Integer::sum));
+            }
+            Comparator<String> preferredTag = Comparator.<String>comparingInt(tagCounts::get).reversed().thenComparing(Comparator.naturalOrder());
+            Map<String, String> groupById = new HashMap<>();
+            for (EmoteSummary emote : selected) {
+                emote.tags().stream().min(preferredTag).ifPresent(tag -> groupById.put(emote.id(), tag));
+            }
+            order = Comparator.comparing((EmoteSummary emote) -> groupById.get(emote.id()), Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(BY_NAME);
+        }
+        selected.sort(order);
+
+        // Unavailable shortcuts keep their slots when the server hides them.
+        List<String> nextIds = new ArrayList<>(this.selectedIds);
+        Iterator<EmoteSummary> sorted = selected.iterator();
+        for (int i = 0; i < nextIds.size(); i++) {
+            if (this.availableById.containsKey(nextIds.get(i))) {
+                nextIds.set(i, sorted.next().id());
+            }
+        }
+        if (!nextIds.equals(this.selectedIds)) {
+            updateSelectedIds(nextIds);
+        }
     }
 
     public void moveToIndex(String id, int targetVisibleIndex) {
