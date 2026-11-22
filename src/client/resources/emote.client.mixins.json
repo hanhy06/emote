@@ -3,7 +3,8 @@
     "package": "io.github.hanhy06.emote.mixin",
     "compatibilityLevel": "JAVA_25",
     "client": [
-        "AvatarRendererMixin"
+        "AvatarRendererMixin",
+        "HudMixin"
     ],
     "injectors": {
         "defaultRequire": 1

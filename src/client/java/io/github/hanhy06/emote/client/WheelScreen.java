@@ -52,7 +52,7 @@ public class WheelScreen extends Screen {
     private static final String ELLIPSIS = "…";
     private static final int LEFT_MOUSE_BUTTON = InputConstants.MOUSE_BUTTON_LEFT;
     private static final int RIGHT_MOUSE_BUTTON = InputConstants.MOUSE_BUTTON_RIGHT;
-    private static final int BACKGROUND_COLOR = 0x30101010;
+    private static final int BACKGROUND_COLOR = 0x40101010;
     private static final int SLOT_FILL_COLOR = 0xF33B4752;
     private static final int SLOT_HIGHLIGHT_FILL_COLOR = 0xFF265B83;
     private static final int SLOT_EMPTY_FILL_COLOR = 0xC21C242B;
