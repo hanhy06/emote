@@ -48,7 +48,7 @@ public final class ApiEventDispatcher implements PlaybackEngine.Lifecycle {
         if (this.startedPlaybacks.putIfAbsent(session.sessionId(), notified) != null) {
             throw new IllegalStateException("Playback start is already being dispatched: " + session.sessionId());
         }
-        for (EmotePlaybackListener listener : List.copyOf(this.playbackListeners)) {
+        for (EmotePlaybackListener listener : this.playbackListeners) {
             notified.add(listener);
             try {
                 listener.onStarted(playback);

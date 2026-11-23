@@ -106,13 +106,10 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
         }
 
         this.controller.shortcuts().moveToIndex(entry.emote.id(), targetIndex);
-        while (currentIndex < targetIndex) {
-            swap(currentIndex, currentIndex + 1);
-            currentIndex++;
-        }
-        while (currentIndex > targetIndex) {
-            swap(currentIndex, currentIndex - 1);
-            currentIndex--;
+        int direction = Integer.compare(targetIndex, currentIndex);
+        while (currentIndex != targetIndex) {
+            swap(currentIndex, currentIndex + direction);
+            currentIndex += direction;
         }
     }
 

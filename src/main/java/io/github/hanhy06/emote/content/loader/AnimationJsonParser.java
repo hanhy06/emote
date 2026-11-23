@@ -151,7 +151,7 @@ public final class AnimationJsonParser {
                     case "external" -> new ExternalAttachment(visible, document.requireIdentifier(nonempty(definition, "key", p, document), p + ".key"), document.requireElement(definition, "data", p));
                     default -> throw document.error(p + ".type", "unknown attachment");
                 };
-                if (!(attachment instanceof ItemAttachment || attachment instanceof BlockAttachment || attachment instanceof TextAttachment) && definition.has("entity_snbt")) throw document.error(p + ".entity_snbt", "requires a display attachment");
+                if (!isDisplayAttachment(attachment) && definition.has("entity_snbt")) throw document.error(p + ".entity_snbt", "requires a display attachment");
                 attachments.put(a.getKey(), attachment);
             }
             nodes.put(entry.getKey(), new Node(n.has("name") ? document.requireString(n, "name", path) : null,
@@ -159,6 +159,10 @@ public final class AnimationJsonParser {
                 operations, attachments, object(n, "source", path, document)));
         }
         return nodes;
+    }
+
+    private static boolean isDisplayAttachment(Attachment attachment) {
+        return attachment instanceof ItemAttachment || attachment instanceof BlockAttachment || attachment instanceof TextAttachment;
     }
 
     private List<Track> tracks(JsonArray input, Map<String, Node> nodes, int durationTicks, EmoteJsonDocument document) throws EmoteLoadException {
@@ -177,10 +181,11 @@ public final class AnimationJsonParser {
                 for (Operation candidate : node.transform()) if (candidate.id().equals(operationId)) op = candidate;
                 if (op == null) throw document.error(path + ".target.operation", "unknown operation");
             }
-            if (attachmentId != null && !node.attachments().containsKey(attachmentId)) throw document.error(path + ".target.attachment", "unknown attachment");
+            Attachment attachment = attachmentId == null ? null : node.attachments().get(attachmentId);
+            if (attachmentId != null && attachment == null) throw document.error(path + ".target.attachment", "unknown attachment");
             Channel channel = enumeration(Channel.class, nonempty(raw, "channel", path, document), path + ".channel", document);
             if (channel == Channel.VALUE && op == null || channel != Channel.VALUE && op != null) throw document.error(path + ".target", "channel does not match target");
-            if (channel == Channel.NBT && (attachmentId == null || !(node.attachments().get(attachmentId) instanceof ItemAttachment || node.attachments().get(attachmentId) instanceof BlockAttachment || node.attachments().get(attachmentId) instanceof TextAttachment))) throw document.error(path + ".target", "NBT requires a display attachment");
+            if (channel == Channel.NBT && !isDisplayAttachment(attachment)) throw document.error(path + ".target", "NBT requires a display attachment");
             Target destination = new Target(nodeId, operationId, attachmentId);
             List<String> key = List.of(nodeId, Objects.toString(operationId, ""), Objects.toString(attachmentId, ""), channel.name());
             if (!signatures.add(key)) throw document.error(path + ".target", "duplicate target/channel");
@@ -364,7 +369,7 @@ public final class AnimationJsonParser {
                 String attachment = sourceType == SourceType.NODE ? nonempty(source, "attachment", p + ".source", document) : null;
                 if (sourceNode != null) {
                     Attachment a = document.requireNode(nodes, sourceNode, p + ".source.node").attachments().get(attachment);
-                    if (!(a instanceof ItemAttachment || a instanceof BlockAttachment || a instanceof TextAttachment || a instanceof SkinAttachment)) throw document.error(p + ".source.attachment", "requires an entity attachment");
+                    if (!isDisplayAttachment(a) && !(a instanceof SkinAttachment)) throw document.error(p + ".source.attachment", "requires an entity attachment");
                 }
                 OriginType originType = enumeration(OriginType.class, nonempty(origin, "type", p + ".origin", document), p + ".origin.type", document);
                 String originNode = originType == OriginType.NODE ? nonempty(origin, "node", p + ".origin", document) : null;
