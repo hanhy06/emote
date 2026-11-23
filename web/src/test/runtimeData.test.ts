@@ -19,7 +19,7 @@ const animation: AnimationJson = {
   metadata: { name: "Runtime preservation", description: "Fixed authored v5 runtime contract", author: "test", license: "Apache-2.0" },
   settings: {
     standalone: true, cooldown: "0.25s", rotation_deadzone: 13,
-    player: { hidden: false, stop_conditions: { movement_distance: 0.1, jump: false, submerge: true, ride: false, damage: true, attack: false, game_mode_change: true } },
+    player: { hidden: false, auto_third_person: false, stop_conditions: { movement_distance: 0.1, jump: false, submerge: true, ride: false, damage: true, attack: false, game_mode_change: true } },
   },
   callbacks: [{ name: "example:finish", payload: "keep this payload" }],
   source: { format: "authored", custom: { value: 7 } },
@@ -360,8 +360,10 @@ it("preserves and evaluates shared v5 curves, dynamic arguments and blend in tra
 });
 
 it("preserves sequence timing, choices, controls, callbacks and external references", async () => {
-  const bytes = await readFile(new URL("../../../docs/reference/sequence.json", import.meta.url));
-  const expected = JSON.parse(bytes.toString("utf8"));
+  const reference = await readFile(new URL("../../../docs/reference/sequence.json", import.meta.url), "utf8");
+  const expected = JSON.parse(reference);
+  expected.settings.player.auto_third_person = false;
+  const bytes = new TextEncoder().encode(JSON.stringify(expected));
   const sequence = await readInput("emote_sequence", { name: "sequence.json", bytes });
   const project = await readInput("emote_json", { name: "runtime.json", bytes: new TextEncoder().encode(JSON.stringify(animation)) });
   const document = combineConversionDocuments([createConversionDocument(project, "Emote JSON"), sequence]);

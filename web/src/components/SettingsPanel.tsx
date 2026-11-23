@@ -30,7 +30,9 @@ export function SettingsPanel({ entry, onChange, disabled, onValidityChange, fra
   const animation = entry.type === "animation" ? entry : undefined;
   const settings = entry.settings ?? {};
   const playback = animation?.clip.playback ?? {};
-  const player = settings.player ?? createDefaultPlayerBehavior();
+  const defaultPlayer = createDefaultPlayerBehavior();
+  const player = settings.player ?? defaultPlayer;
+  const stopConditions = { ...defaultPlayer.stop_conditions, ...player.stop_conditions };
   const cooldown = settings.cooldown;
   const mode = playback.mode ?? "once";
   const separator = entry.id.indexOf(":");
@@ -160,12 +162,12 @@ export function SettingsPanel({ entry, onChange, disabled, onValidityChange, fra
               <label>Loop delay<input value={timeText("loop_delay", playback.loop_delay)} disabled={disabled || mode === "once" || mode === "hold"} onInput={(event) => editDraft("loop_delay", event.currentTarget.value)} onBlur={(event) => updateTime("loop_delay", event.currentTarget.value)} /></label>
             </>}
             <label>Cooldown<input value={timeText("cooldown", cooldown)} disabled={disabled} onInput={(event) => editDraft("cooldown", event.currentTarget.value)} onBlur={(event) => updateTime("cooldown", event.currentTarget.value)} /></label>
-            <label>Movement distance<input type="number" min="0" step="any" value={drafts.movement_distance?.value ?? player.stop_conditions.movement_distance} disabled={disabled} onInput={(event) => editDraft("movement_distance", event.currentTarget.value)} onBlur={(event) => {
+            <label>Movement distance<input type="number" min="0" step="any" value={drafts.movement_distance?.value ?? stopConditions.movement_distance} disabled={disabled} onInput={(event) => editDraft("movement_distance", event.currentTarget.value)} onBlur={(event) => {
               const text = event.currentTarget.value;
               commit("movement_distance", text, () => {
                 const value = Number(text);
                 if (!text.trim() || !Number.isFinite(value) || value < 0) throw new Error("must be a non-negative distance");
-                updateSettings({ player: { ...player, stop_conditions: { ...player.stop_conditions, movement_distance: value } } });
+                updateSettings({ player: { ...player, stop_conditions: { ...stopConditions, movement_distance: value } } });
               });
             }} /></label>
             {animation && <label>Rotation deadzone<input type="number" min="0" max="180" step="1" value={drafts.rotation_deadzone?.value ?? animation.settings?.rotation_deadzone ?? 50} disabled={disabled} onInput={(event) => editDraft("rotation_deadzone", event.currentTarget.value)} onBlur={(event) => {
@@ -179,8 +181,9 @@ export function SettingsPanel({ entry, onChange, disabled, onValidityChange, fra
         <section id="settings-panel-options" role="tabpanel" aria-labelledby="settings-tab-options" hidden={category !== "options"}>
           <div className="fields settings-toggles">
             {animation && <label className="checkbox"><input type="checkbox" checked={animation.settings?.standalone ?? true} disabled={disabled} onChange={(event) => updateSettings({ standalone: event.currentTarget.checked })} />Standalone animation</label>}
-            <label className="checkbox"><input type="checkbox" checked={player.hidden} disabled={disabled} onChange={(event) => updateSettings({ player: { ...player, hidden: event.currentTarget.checked } })} />Hide original player</label>
-            {STOP_CONDITION_OPTIONS.map(([condition, label]) => <label className="checkbox" key={condition}><input type="checkbox" checked={player.stop_conditions[condition]} disabled={disabled} onChange={(event) => updateSettings({ player: { ...player, stop_conditions: { ...player.stop_conditions, [condition]: event.currentTarget.checked } } })} />{label}</label>)}
+            <label className="checkbox"><input type="checkbox" checked={player.hidden ?? defaultPlayer.hidden} disabled={disabled} onChange={(event) => updateSettings({ player: { ...player, hidden: event.currentTarget.checked } })} />Hide original player</label>
+            <label className="checkbox"><input type="checkbox" checked={player.auto_third_person ?? true} disabled={disabled} onChange={(event) => updateSettings({ player: { ...player, auto_third_person: event.currentTarget.checked } })} />Auto third-person</label>
+            {STOP_CONDITION_OPTIONS.map(([condition, label]) => <label className="checkbox" key={condition}><input type="checkbox" checked={stopConditions[condition]} disabled={disabled} onChange={(event) => updateSettings({ player: { ...player, stop_conditions: { ...stopConditions, [condition]: event.currentTarget.checked } } })} />{label}</label>)}
           </div>
           <AdditionalMetadataEditor value={additionalMetadata} disabled={disabled} onFieldError={(key, error) => {
             const next = { ...drafts };

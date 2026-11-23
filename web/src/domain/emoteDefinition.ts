@@ -11,6 +11,7 @@ export interface EmoteMetadata {
 
 export interface EmotePlayerBehavior {
   hidden: boolean;
+  auto_third_person?: boolean;
   stop_conditions: {
     movement_distance: number;
     jump: boolean;

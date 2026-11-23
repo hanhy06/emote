@@ -103,6 +103,7 @@ final class EmoteJsonDocument {
 
     EmotePlayerBehavior parsePlayerBehavior(JsonObject object, String path) throws EmoteLoadException {
         boolean hidden = requireBoolean(object, "hidden", path);
+        boolean autoThirdPerson = !object.has("auto_third_person") || requireBoolean(object, "auto_third_person", path);
         JsonObject stopObject = requireObject(object, "stop_conditions", path);
         String stopPath = path + ".stop_conditions";
         double movementDistance = requireFiniteDouble(
@@ -112,7 +113,7 @@ final class EmoteJsonDocument {
         if (movementDistance < 0.0D) {
             throw error(stopPath + ".movement_distance", "must not be negative");
         }
-        return new EmotePlayerBehavior(hidden, new EmotePlayerBehavior.StopConditions(
+        return new EmotePlayerBehavior(hidden, autoThirdPerson, new EmotePlayerBehavior.StopConditions(
             movementDistance,
             requireBoolean(stopObject, "jump", stopPath),
             requireBoolean(stopObject, "submerge", stopPath),

@@ -90,13 +90,15 @@ public final class AnimationJsonParser {
     }
 
     private EmotePlayerBehavior parsePlayerBehavior(JsonObject player, EmoteJsonDocument document) throws EmoteLoadException {
-        JsonObject stop = object(player, "stop_conditions", "$.settings.player", document);
-        double distance = number(stop, "movement_distance", 0.3, "$.settings.player.stop_conditions", document);
-        if (distance < 0) throw document.error("$.settings.player.stop_conditions.movement_distance", "must not be negative");
-        String p = "$.settings.player.stop_conditions";
-        return new EmotePlayerBehavior(bool(player, "hidden", true, "$.settings.player", document),
-            new EmotePlayerBehavior.StopConditions(distance, bool(stop, "jump", true, p, document), bool(stop, "submerge", true, p, document),
-                bool(stop, "ride", true, p, document), bool(stop, "damage", true, p, document), bool(stop, "attack", true, p, document), bool(stop, "game_mode_change", true, p, document)));
+        String path = "$.settings.player";
+        String stopPath = path + ".stop_conditions";
+        JsonObject stop = object(player, "stop_conditions", path, document);
+        double distance = number(stop, "movement_distance", 0.3, stopPath, document);
+        if (distance < 0) throw document.error(stopPath + ".movement_distance", "must not be negative");
+        return new EmotePlayerBehavior(bool(player, "hidden", true, path, document), bool(player, "auto_third_person", true, path, document),
+            new EmotePlayerBehavior.StopConditions(distance, bool(stop, "jump", true, stopPath, document), bool(stop, "submerge", true, stopPath, document),
+                bool(stop, "ride", true, stopPath, document), bool(stop, "damage", true, stopPath, document),
+                bool(stop, "attack", true, stopPath, document), bool(stop, "game_mode_change", true, stopPath, document)));
     }
 
     private Map<String, Node> nodes(JsonObject input, EmoteJsonDocument document) throws EmoteLoadException {
