@@ -79,7 +79,8 @@ function uniqueAnimationId(namespace: string, sourceId: string, usedIds: Set<str
 
 function mergeResources(target: Map<string, GeneratedResource>, source: ReadonlyMap<string, GeneratedResource>): void {
   for (const [path, resource] of source) {
-    if (target.has(path) && !sameResource(target.get(path)!, resource)) {
+    const previous = target.get(path);
+    if (previous !== undefined && !sameResource(previous, resource)) {
       throw new ConversionError("conflicting_import_resource", `Multiple inputs generate the same resource path: ${path}`, path);
     }
     target.set(path, resource);

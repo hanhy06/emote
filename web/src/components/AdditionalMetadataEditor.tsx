@@ -10,16 +10,17 @@ interface AdditionalMetadataEditorProps {
 }
 
 export function AdditionalMetadataEditor({ value, disabled, onChange, onFieldError }: AdditionalMetadataEditorProps) {
+  const entries = Object.entries(value);
   return (
     <section className="additional-metadata" aria-labelledby="additional-metadata-heading">
       <div className="additional-metadata-heading">
         <h3 id="additional-metadata-heading">Additional metadata</h3>
         <p>Custom fields are preserved as JSON and can be added, renamed, changed, or removed.</p>
       </div>
-      {Object.entries(value).length === 0
+      {entries.length === 0
         ? <p className="empty-metadata">No additional metadata.</p>
         : <div className="metadata-editor-list">
-          {Object.entries(value).map(([key, fieldValue]) => (
+          {entries.map(([key, fieldValue]) => (
             <MetadataRow
               key={key}
               fieldKey={key}
