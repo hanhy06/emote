@@ -183,6 +183,8 @@ export function SettingsPanel({ entry, onChange, disabled, onValidityChange, fra
             {animation && <label className="checkbox"><input type="checkbox" checked={animation.settings?.standalone ?? true} disabled={disabled} onChange={(event) => updateSettings({ standalone: event.currentTarget.checked })} />Standalone animation</label>}
             <label className="checkbox"><input type="checkbox" checked={player.hidden ?? defaultPlayer.hidden} disabled={disabled} onChange={(event) => updateSettings({ player: { ...player, hidden: event.currentTarget.checked } })} />Hide original player</label>
             <label className="checkbox"><input type="checkbox" checked={player.auto_third_person ?? true} disabled={disabled} onChange={(event) => updateSettings({ player: { ...player, auto_third_person: event.currentTarget.checked } })} />Auto third-person</label>
+          </div>
+          <div className="fields settings-toggles">
             {STOP_CONDITION_OPTIONS.map(([condition, label]) => <label className="checkbox" key={condition}><input type="checkbox" checked={stopConditions[condition]} disabled={disabled} onChange={(event) => updateSettings({ player: { ...player, stop_conditions: { ...stopConditions, [condition]: event.currentTarget.checked } } })} />{label}</label>)}
           </div>
           <AdditionalMetadataEditor value={additionalMetadata} disabled={disabled} onFieldError={(key, error) => {
