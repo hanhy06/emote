@@ -23,6 +23,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentUtils;
 import net.minecraft.network.chat.ResolutionContext;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
 import net.minecraft.util.Mth;
 import net.minecraft.util.ProblemReporter;
@@ -37,6 +38,7 @@ import net.minecraft.world.item.component.TypedEntityData;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4fc;
 import org.jspecify.annotations.Nullable;
 
@@ -46,58 +48,61 @@ import java.util.*;
 public final class PlaybackScene implements EmotePlayback.PoseTarget {
     private final ServerLevel level;
     private final PreparedEmote emote;
+    private final VirtualDisplayTracker displays;
     private RootTransform root;
     private final Map<String, NodeInstance> nodes;
-    private final List<AttachmentInstance> attachments;
-    private final int displayEntityCount;
+    private final List<AttachmentInstance> displayAttachments;
     private Map<String, Map<PlayerSkinRegion, String>> skins = Map.of();
     private @Nullable Map<PlayerSkinRegion, String> appliedSkin;
     private @Nullable String skinAnimationId;
     private float viewYaw;
     private RootTransform preparedRoot;
-    private float preparedViewYaw, preparedRotationDeadzone;
+    private float preparedViewYaw;
+    private Placement preparedPlacement;
 
-    private PlaybackScene(ServerLevel level, RootTransform root, PreparedEmote emote, Map<String, NodeInstance> nodes) {
+    private PlaybackScene(ServerLevel level, RootTransform root, PreparedEmote emote, VirtualDisplayTracker displays,
+                          Map<String, NodeInstance> nodes) {
         this.level = Objects.requireNonNull(level, "level");
         this.root = Objects.requireNonNull(root, "root");
         this.emote = Objects.requireNonNull(emote, "emote");
+        this.displays = displays;
         this.nodes = Map.copyOf(nodes);
-        this.attachments = this.nodes.values().stream().flatMap(node -> node.attachments().values().stream()).toList();
-        this.displayEntityCount = (int) this.attachments.stream().filter(attachment -> attachment.entity() != null).count();
+        this.displayAttachments = this.nodes.values().stream().flatMap(node -> node.attachments().values().stream())
+            .filter(attachment -> !attachment.isAnchor()).toList();
         this.viewYaw = root.yaw();
     }
 
     public RootTransform root() { return this.root; }
     public Map<String, NodeInstance> nodes() { return this.nodes; }
-    public int displayEntityCount() { return this.displayEntityCount; }
-    public List<AttachmentInstance> attachments() { return this.attachments; }
+    public int displayEntityCount() { return this.displayAttachments.size(); }
     public float viewYaw() { return this.viewYaw; }
+    ServerLevel level() { return this.level; }
+    List<AttachmentInstance> displayAttachments() { return this.displayAttachments; }
 
     public void preparePlacement(RootTransform placement, float rotationDeadzone) {
         this.preparedRoot = new RootTransform(placement.position(), this.root.yaw(), this.root.rotationMatrix());
         float difference = Mth.wrapDegrees(placement.yaw() - this.viewYaw);
         this.preparedViewYaw = Math.abs(difference) > rotationDeadzone
             ? Mth.wrapDegrees(this.viewYaw + difference - Math.copySign(rotationDeadzone, difference)) : this.viewYaw;
-        this.preparedRotationDeadzone = rotationDeadzone;
+        float previousRelativeYaw = this.root.relativeYaw(this.viewYaw);
+        float relativeYaw = this.preparedRoot.relativeYaw(this.preparedViewYaw);
+        this.preparedPlacement = new Placement(
+            this.preparedRoot.position().equals(this.root.position()) ? null : this.preparedRoot.position(),
+            Mth.packDegrees(previousRelativeYaw) == Mth.packDegrees(relativeYaw) ? null : relativeYaw,
+            positionRotationInterpolationTicks(rotationDeadzone));
     }
 
     @Override public RootTransform frameRoot() { return this.preparedRoot; }
     @Override public float frameOrientationYaw() { return this.preparedViewYaw; }
 
     public void applyPlacement() {
-        boolean positionChanged = !this.preparedRoot.position().equals(this.root.position());
         this.root = this.preparedRoot;
-        float previousRelativeYaw = this.root.relativeYaw(this.viewYaw);
         this.viewYaw = this.preparedViewYaw;
-        float relativeYaw = this.root.relativeYaw(this.viewYaw);
-        boolean rotationChanged = Mth.packDegrees(previousRelativeYaw) != Mth.packDegrees(relativeYaw);
-        int interpolationTicks = positionRotationInterpolationTicks(this.preparedRotationDeadzone);
-        for (AttachmentInstance attachment : this.attachments) {
-            if (!attachment.isAnchor()) {
-                if (positionChanged) attachment.entity().setPos(this.root.position());
-                ((DisplayAccessor) attachment.entity()).emote$setPosRotInterpolationDuration(interpolationTicks);
-                if (rotationChanged) attachment.entity().setYRot(relativeYaw);
-            }
+        for (AttachmentInstance attachment : this.displayAttachments) {
+            Display display = attachment.entity();
+            if (this.preparedPlacement.position() != null) display.setPos(this.preparedPlacement.position());
+            ((DisplayAccessor) display).emote$setPosRotInterpolationDuration(this.preparedPlacement.interpolationTicks());
+            if (this.preparedPlacement.yaw() != null) display.setYRot(this.preparedPlacement.yaw());
         }
     }
 
@@ -207,13 +212,12 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
         return ResolvableProfile.createResolved(new GameProfile(profileId, SKIN_PROFILE_NAME, properties));
     }
 
-    public static final String RUNTIME_TAG = "emote.runtime";
     private static final String SKIN_PROFILE_NAME = "emote";
     private static final int RESPONSIVE_INTERPOLATION_TICKS = 1;
     private static final int VIEW_ROTATION_INTERPOLATION_TICKS = 3;
     private static final float TRANSFORM_UPDATE_EPSILON = 1e-5F;
 
-    public static PlaybackScene create(ServerLevel level, RootTransform root, PreparedEmote emote) {
+    public static PlaybackScene create(ServerLevel level, RootTransform root, PreparedEmote emote, VirtualDisplayTracker displays) {
         LinkedHashMap<String, NodeInstance> instances = new LinkedHashMap<>();
         for (String nodeId : emote.nodeOrder()) {
             EmoteAnimation.Node node = emote.nodes().get(nodeId);
@@ -224,25 +228,17 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
                     entry.getValue(), preparedData.get(entry.getKey()), emote.rotationDeadzone())));
             instances.put(nodeId, new NodeInstance(nodeId, node, attachments));
         }
-        return new PlaybackScene(level, root, emote, instances);
+        return new PlaybackScene(level, root, emote, displays, instances);
     }
 
     public void add() {
-        try {
-            for (AttachmentInstance node : this.attachments) {
-                if (!node.isAnchor() && !this.level.addFreshEntity(node.entity())) {
-                    throw new IllegalStateException("Failed to add display entity for attachment " + node.id());
-                }
-            }
-        } catch (RuntimeException exception) {
-            close();
-            throw exception;
-        }
+        this.displays.add(this);
     }
 
     public void close() {
-        for (AttachmentInstance attachment : this.attachments) {
-            if (attachment.entity() != null && !attachment.entity().isRemoved()) attachment.entity().kill(this.level);
+        this.displays.remove(this);
+        for (AttachmentInstance attachment : this.displayAttachments) {
+            if (!attachment.entity().isRemoved()) attachment.entity().discard();
         }
     }
 
@@ -341,7 +337,6 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
         entity.setDeltaMovement(0.0D, 0.0D, 0.0D);
         entity.setYRot(0.0F);
         entity.setXRot(0.0F);
-        entity.addTag(RUNTIME_TAG);
 
         if (preparedData == null) {
             throw new IllegalStateException("Display node was not prepared during reload: " + nodeId + "/" + attachmentId);
@@ -436,6 +431,8 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
         public boolean isAnchor() { return this.attachments.values().stream().noneMatch(a -> a.entity() != null); }
     }
 
+    private record Placement(@Nullable Vec3 position, @Nullable Float yaw, int interpolationTicks) {}
+
     public static final class AttachmentInstance {
         private final String id;
         private final EmoteAnimation.Attachment attachment;
@@ -447,8 +444,11 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
         private DisplayData displayContent;
         private CompoundTag initialEntityData = new CompoundTag();
         private final Set<String> modifiedNbtFields = new HashSet<>();
+        UUID packetUuid;
+        Set<ServerGamePacketListenerImpl> viewers = Set.of();
+        VirtualDisplayTracker.@Nullable Position lastPosition;
 
-        public AttachmentInstance(String id, EmoteAnimation.Attachment attachment, Display entity, DisplayData displayContent) {
+        private AttachmentInstance(String id, EmoteAnimation.Attachment attachment, Display entity, DisplayData displayContent) {
             this.id = Objects.requireNonNull(id, "id");
             this.attachment = Objects.requireNonNull(attachment, "attachment");
             this.entity = entity;

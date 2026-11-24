@@ -11,6 +11,7 @@ import io.github.hanhy06.emote.playback.PlaybackHooks;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.resource.ResourcePackService;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
+import net.fabricmc.fabric.api.entity.event.v1.ServerEntityLevelChangeEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -73,6 +74,9 @@ public class ServerLifecycle {
             this.playbackEngine.beginTick();
         });
         ServerTickEvents.END_SERVER_TICK.register(ignoredServer -> this.playbackEngine.tick());
+        ServerEntityLevelChangeEvents.AFTER_PLAYER_CHANGE_LEVEL.register(
+            (player, ignoredOrigin, ignoredDestination) -> this.playbackEngine.displayViewerChangedWorld(player)
+        );
         PlaybackHooks.INTERRUPTION.register(this.playerPlaybackManager::interrupt);
         ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, ignoredSource, ignoredBaseDamage, damageTaken, ignoredBlocked) -> {
             if (damageTaken > 0.0F && entity instanceof ServerPlayer player) {
@@ -109,7 +113,7 @@ public class ServerLifecycle {
 
     private void handleServerStarted(MinecraftServer server) {
         EmoteMod.SERVER = server;
-        this.playbackEngine.startWorker();
+        this.playbackEngine.startWorker(server);
         this.reloadService.reload();
     }
 
