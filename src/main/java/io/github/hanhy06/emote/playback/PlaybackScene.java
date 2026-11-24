@@ -237,8 +237,11 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
 
     public void close() {
         this.displays.remove(this);
+        var scoreboard = this.level.getScoreboard();
         for (AttachmentInstance attachment : this.displayAttachments) {
-            if (!attachment.entity().isRemoved()) attachment.entity().discard();
+            Display display = attachment.entity();
+            if (!display.isRemoved()) display.discard();
+            scoreboard.entityRemoved(display);
         }
     }
 
