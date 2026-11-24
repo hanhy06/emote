@@ -118,7 +118,7 @@ public final class PlayerPlaybackManager {
         };
         var result = this.engine.start(new PlaybackEngine.Request(player.level(), root, emote,
             Map.of("actor", player), PlayerMolangQueries.forPlayer(player), player.createCommandSourceStack(),
-            preparation.textures(), lifecycle, placement.mode()), findActive(player.getUUID()));
+            preparation.textures(), lifecycle, placement.mode(), false), findActive(player.getUUID()));
         return switch (result) {
             case PlaybackEngine.StartResult.Success success -> new PlayResult.Success(success.session().view());
             case PlaybackEngine.StartResult.Failure failure -> PlayResult.failure(failure.message());

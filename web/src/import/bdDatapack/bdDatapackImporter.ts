@@ -1,4 +1,4 @@
-import { sourceSecondsTime } from "../../format/time";
+import { parseAnimationDuration, sourceSecondsTime } from "../../format/time";
 import { importedNodeHints } from "../../domain/conversionSeed";
 import type { AnimationIR, CurveIR, TrackIR, Vector3IR } from "../../domain/animationIR";
 import type { ImportedNode, ImportedProject } from "../../domain/conversionSeed";
@@ -7,6 +7,7 @@ import { sanitizeResourcePath } from "../../format/resourceLocation";
 import { writeDisplayNbt } from "../../format/minecraftData";
 import { minecraftVersionProfile } from "../../format/minecraftVersionProfiles";
 import type { BdDatapackSource, BdSourceDisplay } from "./bdDatapackSource";
+import { ConversionError, skippedAnimationIssue, type ConversionIssue } from "../../foundation/diagnostics";
 import { initialDisplayNbt } from "../common/runtimeOutput";
 import { importedNodeIR } from "../common/blockbenchAnimationIR";
 import { decomposeDisplayMatrix, interpolateDisplayTransformation, type DisplayTransformation } from "./displayTransformation";
@@ -14,6 +15,17 @@ import { decomposeDisplayMatrix, interpolateDisplayTransformation, type DisplayT
 export function importBdDatapack(source: BdDatapackSource, sourceName: string): ImportedProject {
   const name = prettify(source.namespace);
   const nodes = Object.fromEntries(source.displays.map((display) => [display.id, importNode(display)]));
+  const skipped: ConversionIssue[] = [];
+  const animations = source.animations.flatMap((animation) => {
+    try {
+      parseAnimationDuration(`${animation.durationTicks}t`);
+    } catch (reason) {
+      skipped.push(skippedAnimationIssue(animation.name, `data/${source.namespace}/function/k/${animation.name}`, reason));
+      return [];
+    }
+    return [{ id: sanitizeResourcePath(animation.name, "default"), name: prettify(animation.name), ir: createBdAnimationIR(animation, nodes, source.displays) }];
+  });
+  if (animations.length === 0) throw new ConversionError("no_importable_animations", skipped.map((issue) => issue.message).join(" "));
   return {
     source: "bd_datapack",
     sourceName,
@@ -21,12 +33,8 @@ export function importBdDatapack(source: BdDatapackSource, sourceName: string): 
     suggestedPlayer: createDefaultPlayerBehavior(),
     suggestedNamespace: source.namespace,
     nodeHints: importedNodeHints(nodes),
-    animations: source.animations.map((animation) => ({
-      id: sanitizeResourcePath(animation.name, "default"),
-      name: prettify(animation.name),
-      ir: createBdAnimationIR(animation, nodes, source.displays),
-    })),
-    diagnostics: [...source.diagnostics, ...source.displays.filter((display) => display.type === "anchor").map((display) => ({ severity: "warning" as const, code: "bd_datapack_logical_node", message: `${display.tag} is preserved as a logical node; geometry is unavailable.` })), ...(source.droppedCamera ? [{
+    animations,
+    diagnostics: [...source.diagnostics, ...skipped, ...source.displays.filter((display) => display.type === "anchor").map((display) => ({ severity: "warning" as const, code: "bd_datapack_logical_node", message: `${display.tag} is preserved as a logical node; geometry is unavailable.` })), ...(source.droppedCamera ? [{
       severity: "warning",
       code: "bd_datapack_camera_ignored",
       message: "BD Engine camera movement is not part of the emote format and was ignored.",

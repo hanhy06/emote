@@ -41,12 +41,8 @@ export function prepareCubeModels(bones: BoneEntry[]): PreparedCubeModels {
   const sourceIds = new Map(bones.flatMap((bone) => bone.cubes.map((cube) => [cube, cube.uuid] as const)));
   const diagnostics: ConversionIssue[] = [];
   const playableCubesByBone = splitPlayerSkinCubesByPoseBone(bones, sourceIds, diagnostics);
-  const skinSceneIds = new Map(bones.map((bone) => {
-    let root = bone;
-    while (root.parent) root = root.parent;
-    return [bone.uuid, root.uuid];
-  }));
-  return { playableCubesByBone, skinAssignments: inferSkinAssignments(bones, playableCubesByBone, sourceIds, skinSceneIds), sourceIds, skinSceneIds, diagnostics };
+  const { skinAssignments, skinSceneIds } = inferSkinAssignments(bones, playableCubesByBone, sourceIds);
+  return { playableCubesByBone, skinAssignments, sourceIds, skinSceneIds, diagnostics };
 }
 
 export function normalizeBlockbenchName(name: string | undefined): string | undefined {
@@ -285,19 +281,21 @@ function inferSkinAssignments(
   bones: BoneEntry[],
   playableCubesByBone: ReadonlyMap<string, BbCube[]>,
   sourceIds: ReadonlyMap<BbCube, string>,
-  skinSceneIds: ReadonlyMap<string, string>,
-): Map<BbCube, ImportedSkinPart> {
-  const candidates: { cube: BbCube; part: ImportedSkinPart["part"]; sceneId: string; centerY: number; sourceOrder: number; explicitOrder?: number }[] = [];
+) {
+  const candidates: { cube: BbCube; part: PlayerSkinPart; bone: BoneEntry; centerY: number; sourceOrder: number; explicitOrder?: number }[] = [];
+  const partsByBone = new Map<BoneEntry, PlayerSkinPart>();
   let sourceOrder = 0;
   for (const bone of bones) {
     const part = inferSkinPart(bone);
+    if (!part) continue;
     for (const cube of playableCubesByBone.get(bone.uuid) ?? []) {
       const split = sourceIds.get(cube) !== cube.uuid ? parseSplitSkinCube(cube.uuid) : null;
-      if (!part || isSkinLayerCube(cube) || (split === null && !isStandardPlayerSkinCube(cube, part))) continue;
+      if (isSkinLayerCube(cube) || (split === null && !isStandardPlayerSkinCube(cube, part))) continue;
+      partsByBone.set(bone, part);
       candidates.push({
         cube,
         part,
-        sceneId: skinSceneIds.get(bone.uuid)!,
+        bone,
         centerY: (cube.from[1] + cube.to[1]) / 2,
         sourceOrder: sourceOrder++,
         explicitOrder: split?.order,
@@ -305,14 +303,44 @@ function inferSkinAssignments(
     }
   }
 
-  const result = new Map<BbCube, ImportedSkinPart>();
+  const skinSceneIds = resolveSkinScenes(bones, partsByBone);
+  const skinAssignments = new Map<BbCube, ImportedSkinPart>();
   for (const scene of new Set(skinSceneIds.values())) for (const part of ["head", "body", "left_arm", "right_arm", "left_leg", "right_leg"] as const) {
     candidates
-      .filter((candidate) => candidate.part === part && candidate.sceneId === scene)
+      .filter((candidate) => candidate.part === part && skinSceneIds.get(candidate.bone.uuid) === scene)
       .sort((first, second) => second.centerY - first.centerY || first.sourceOrder - second.sourceOrder)
-      .forEach((candidate, order) => result.set(candidate.cube, { part, order: candidate.explicitOrder ?? order }));
+      .forEach((candidate, order) => skinAssignments.set(candidate.cube, { part, order: candidate.explicitOrder ?? order }));
   }
-  return result;
+  return { skinAssignments, skinSceneIds };
+}
+
+function resolveSkinScenes(bones: BoneEntry[], partsByBone: ReadonlyMap<BoneEntry, PlayerSkinPart>): Map<string, string> {
+  const branchesByParent = new Map<BoneEntry, Map<PlayerSkinPart, BoneEntry>>();
+  const rigRoots = new Set<BoneEntry>();
+  for (const [bone, part] of partsByBone) {
+    let partRoot = bone;
+    while (partRoot.parent && inferSkinPart(partRoot.parent) === part) partRoot = partRoot.parent;
+
+    // Start above the part so separate joint bones in one rig do not create separate scenes.
+    for (let branch = partRoot.parent; branch?.parent; branch = branch.parent) {
+      let branches = branchesByParent.get(branch.parent);
+      if (!branches) {
+        branches = new Map();
+        branchesByParent.set(branch.parent, branches);
+      }
+      const previous = branches.get(part);
+      if (!previous) branches.set(part, branch);
+      else if (previous !== branch) {
+        rigRoots.add(previous);
+        rigRoots.add(branch);
+      }
+    }
+  }
+  return new Map(bones.map((bone) => {
+    let root = bone;
+    while (root.parent && !rigRoots.has(root)) root = root.parent;
+    return [bone.uuid, root.uuid];
+  }));
 }
 
 function parseSplitSkinCube(uuid: string): SplitSkinCube | null {

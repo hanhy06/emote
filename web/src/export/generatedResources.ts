@@ -50,9 +50,10 @@ function referencedResourcePaths(
   const pending = [...references];
   while (pending.length > 0) {
     const path = pending.pop()!;
-    if (included.has(path) || !resources.has(path)) continue;
+    if (included.has(path)) continue;
+    const resource = resources.get(path);
+    if (resource === undefined) continue;
     included.add(path);
-    const resource = resources.get(path)!;
     if (resource instanceof Uint8Array || resource.kind === "json") continue;
     if (resource.kind === "item_model") {
       const modelPath = modelResourcePath(resource.model);
