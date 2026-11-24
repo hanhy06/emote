@@ -199,7 +199,7 @@ public final class EmoteApiImpl extends EmoteApi {
         @Override
         public boolean unregister() {
             requireServerThread();
-            List<String> previousEmoteIds = EmoteApiImpl.this.emoteCatalog.emotes().stream().map(emote -> emote.id()).toList();
+            List<String> previousEmoteIds = EmoteApiImpl.this.emoteCatalog.emotes().stream().map(PreparedEmote::id).toList();
             if (!EmoteApiImpl.this.emoteCatalog.unregister(this.id.toString(), this.registrationId)) {
                 return false;
             }

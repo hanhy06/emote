@@ -95,7 +95,7 @@ public class PlayerSkinManager implements ConfigListener {
         List<PreparedAnimation> animations = this.animations;
         Set<Path> paths = this.filePaths;
         String base64 = Base64.getEncoder().encodeToString(source.png());
-        this.defaultWrites = this.defaultWrites.handle((ignored, exception) -> null).thenRunAsync(() -> {
+        this.defaultWrites = this.defaultWrites.handle((_, _) -> null).thenRunAsync(() -> {
             List<PreparedAnimation> saved = new ArrayList<>();
             for (PreparedAnimation animation : animations) {
                 if (generation != this.sourceGeneration || revision != this.catalogRevision) return;
@@ -139,7 +139,7 @@ public class PlayerSkinManager implements ConfigListener {
                     return null;
                 }
                 return source;
-            }).whenComplete((source, exception) -> {
+            }).whenComplete((_, _) -> {
                 if (generation != this.sourceGeneration) return;
                 EmoteMod.SERVER.execute(() -> {
                     if (generation == this.sourceGeneration) this.defaultReadyListeners.forEach(Runnable::run);

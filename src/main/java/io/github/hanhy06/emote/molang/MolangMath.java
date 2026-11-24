@@ -71,7 +71,7 @@ public final class MolangMath extends MutableObjectBinding {
     }
 
     private static double dieRoll(double count, double low, double high) {
-        if (!validRandomRange(low, high)) {
+        if (invalidRandomRange(low, high)) {
             return low == high ? low * normalizedRollCount(count) : 0.0D;
         }
         int rolls = normalizedRollCount(count);
@@ -99,7 +99,7 @@ public final class MolangMath extends MutableObjectBinding {
     }
 
     private static double random(double low, double high) {
-        if (!validRandomRange(low, high)) {
+        if (invalidRandomRange(low, high)) {
             return low == high ? low : 0.0D;
         }
         double exclusiveUpperBound = Math.nextUp(high);
@@ -128,8 +128,8 @@ public final class MolangMath extends MutableObjectBinding {
         return ThreadLocalRandom.current().nextLong(first, last + 1L);
     }
 
-    private static boolean validRandomRange(double low, double high) {
-        return Double.isFinite(low) && Double.isFinite(high) && low < high;
+    private static boolean invalidRandomRange(double low, double high) {
+        return !Double.isFinite(low) || !Double.isFinite(high) || low >= high;
     }
 
     private static double lerp(double start, double end, double progress) {

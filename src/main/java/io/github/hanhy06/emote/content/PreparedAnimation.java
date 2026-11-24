@@ -224,7 +224,7 @@ public final class PreparedAnimation implements PreparedEmote {
         List<Driver> drivers = new ArrayList<>();
         for (var track : animation.clip().tracks()) {
             drivers.add(track.driver());
-            if (track.blend() != null && track.blend().weight() instanceof MolangValue m) compileExpression(result, m.source(), m.path(), false);
+            if (track.blend() != null && track.blend().weight() instanceof MolangValue(String source, String path)) compileExpression(result, source, path, false);
         }
         animation.clip().values().values().forEach(value -> drivers.add(value.driver()));
         for (var driver : drivers) {
@@ -249,18 +249,18 @@ public final class PreparedAnimation implements PreparedEmote {
                         constantVectors.put(vector, vector.components().stream().mapToDouble(component -> ((ConstantValue) component).value()).toArray());
                     }
                 }
-                else if (value instanceof EmoteAnimation.MolangVisibility m) scalars.add(new EmoteAnimation.MolangValue(m.source(), m.path()));
-                else if (value instanceof EmoteAnimation.MolangNbtValue m) scalars.add(new EmoteAnimation.MolangValue(m.source(), m.path()));
+                else if (value instanceof EmoteAnimation.MolangVisibility(String source, String path)) scalars.add(new EmoteAnimation.MolangValue(source, path));
+                else if (value instanceof EmoteAnimation.MolangNbtValue(String source, String path, List<String> _)) scalars.add(new EmoteAnimation.MolangValue(source, path));
             }
             for (var scalar : scalars) {
-                if (scalar instanceof EmoteAnimation.MolangValue m) compileExpression(result, m.source(), m.path(), false);
+                if (scalar instanceof EmoteAnimation.MolangValue(String source, String path)) compileExpression(result, source, path, false);
             }
         }
         if (animation.clip().clock() != null) compileExpression(result, animation.clip().clock(), "$.animation.clock.expression", false);
         if (animation.molang().initialize() != null) compileExpression(result, animation.molang().initialize(), "$.animation.molang.initialize", true);
         if (animation.molang().tick() != null) compileExpression(result, animation.molang().tick(), "$.animation.molang.tick", true);
         for (var delay : List.of(animation.settings().playback().startDelay(), animation.settings().playback().loopDelay())) {
-            if (delay instanceof EmoteAnimation.MolangValue m) compileExpression(result, m.source(), m.path(), false);
+            if (delay instanceof EmoteAnimation.MolangValue(String source, String path)) compileExpression(result, source, path, false);
         }
         return Map.copyOf(result);
     }
@@ -376,8 +376,8 @@ public final class PreparedAnimation implements PreparedEmote {
     public @Nullable Integer durationTicks() {
         var playback = this.model.settings().playback();
         if (playback.mode() != EmoteAnimation.PlaybackMode.ONCE || this.model.clip().clock() != null
-            || !(playback.startDelay() instanceof EmoteAnimation.ConstantValue delay)) return null;
-        return Math.addExact((int) delay.value(), this.model.clip().durationTicks());
+            || !(playback.startDelay() instanceof EmoteAnimation.ConstantValue(double delay))) return null;
+        return Math.addExact((int) delay, this.model.clip().durationTicks());
     }
 
     @Override

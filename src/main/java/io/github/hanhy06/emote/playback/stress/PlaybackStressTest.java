@@ -6,6 +6,7 @@ import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.playback.EmotePlayback;
 import io.github.hanhy06.emote.playback.PlaybackScene;
 import io.github.hanhy06.emote.playback.RootTransform;
+import io.github.hanhy06.emote.playback.VirtualDisplayTracker;
 import io.github.hanhy06.emote.playback.molang.MolangQuerySource;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import net.minecraft.server.level.ServerLevel;
@@ -23,14 +24,19 @@ import static io.github.hanhy06.emote.playback.stress.StressTestTiming.ThreadRol
 
 public final class PlaybackStressTest {
     public static final int DEFAULT_INSTANCE_COUNT = 50;
-    public static final int MAX_INSTANCE_COUNT = 500;
+    public static final int MAX_INSTANCE_COUNT = 1_000;
     static final int MIN_INITIAL_TICK = 80;
     static final int MAX_INITIAL_TICK = 175;
     private static final long RANDOM_SEED = 0xE607EL;
 
+    private final VirtualDisplayTracker displays;
     private @Nullable Session session;
     private @Nullable Session frameSession;
     private List<StressTestInstance> frameInstances = List.of();
+
+    public PlaybackStressTest(VirtualDisplayTracker displays) {
+        this.displays = displays;
+    }
 
     public StartResult start(
         ServerLevel level,
@@ -106,7 +112,7 @@ public final class PlaybackStressTest {
         try {
             for (int index = 0; index < instanceCount; index++) {
                 PreparedAnimation emote = selection.get(index);
-                PlaybackScene scene = PlaybackScene.create(level, RootTransform.create(gridPosition(origin, index, instanceCount), yaw), emote);
+                PlaybackScene scene = PlaybackScene.create(level, RootTransform.create(gridPosition(origin, index, instanceCount), yaw), emote, this.displays);
                 EmotePlayback playback = new EmotePlayback(emote, MolangQuerySource.EMPTY, random);
                 instances.add(new StressTestInstance(emote, scene, playback, initialTick(random, index)));
                 if (preparedSkin != null) scene.setSkins(preparedSkin);

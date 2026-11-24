@@ -53,7 +53,7 @@ public record EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings set
             this.override = override;
         }
         public @Nullable PlayerSkinSource defaultSource() { return this.defaultSource; }
-        public void setDefaultSource(PlayerSkinSource source) { this.defaultSource = source; }
+        public void setDefaultSource(@Nullable PlayerSkinSource source) { this.defaultSource = source; }
         public @Nullable SkinOverride override() { return this.override; }
     }
 
