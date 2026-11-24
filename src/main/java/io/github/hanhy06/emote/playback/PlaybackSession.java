@@ -400,16 +400,6 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
             return Optional.ofNullable(PlaybackSession.this.actors.get(name)).filter(entity -> !entity.isRemoved());
         }
 
-        public Optional<Entity> getAttachmentEntity(String nodeId, String attachmentId) {
-            requireServerThread();
-            Objects.requireNonNull(nodeId, "nodeId");
-            Objects.requireNonNull(attachmentId, "attachmentId");
-            if (PlaybackSession.this.state == PlaybackState.CLOSED) return Optional.empty();
-            return Optional.ofNullable(PlaybackSession.this.scene.nodes().get(nodeId))
-                .map(node -> node.attachments().get(attachmentId))
-                .flatMap(attachment -> Optional.<Entity>ofNullable(attachment.entity())).filter(entity -> !entity.isRemoved());
-        }
-
         public Optional<Vec3> getNodeWorldPosition(String nodeId) {
             requireServerThread();
             Objects.requireNonNull(nodeId, "nodeId");

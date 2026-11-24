@@ -58,7 +58,7 @@ public interface Playback {
     Vec3 getRootPosition();
     Optional<Entity> getActor();
     Optional<Entity> getActor(String name);
-    Optional<Entity> getAttachmentEntity(String nodeId, String attachmentId);
+    /** Returns the node's transformed origin in world coordinates, including nodes without attachments. */
     Optional<Vec3> getNodeWorldPosition(String nodeId);
     boolean stop();
     boolean stop(PlaybackStopReason reason);

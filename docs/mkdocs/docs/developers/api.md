@@ -150,7 +150,7 @@ Register a named callback and select it in an Animation or Sequence's root `call
 
 ### Callback context
 
-`PlaybackContext` provides the session, actors, node positions, attachment entities, and per-callback state. A node describes a transform; its attachments provide the entities. A Sequence and its Animation segments have separate callback contexts.
+`PlaybackContext` provides the session, actors, node positions, and per-callback state. Use a node's world position to place effects or move entities from a callback. A Sequence and its Animation segments have separate callback contexts.
 
 | API | Result or behavior |
 |---|---|
@@ -164,7 +164,6 @@ Register a named callback and select it in an Animation or Sequence's root `call
 | `seekAnimation(tick)` | Moves within the active Animation. |
 | `seekStep(stepIndex, repeatIndex, tick)` | Moves to a resolved Sequence Animation or `emote:empty`. Position-control rules above apply. |
 | `getActor(name)` | Actor entity as an `Optional<Entity>`; use `"actor"` for the playback actor. |
-| `getAttachmentEntity(nodeId, attachmentId)` | Display entity as an `Optional<Entity>`; empty for attachments without an entity or unavailable entities. |
 | `getNodeWorldPosition(nodeId)` | Transformed node origin in world coordinates, including nodes without entity attachments. |
 | `getRootPosition()` | Current root world position. |
 | `getCloseReason()` | Optional close reason. |
