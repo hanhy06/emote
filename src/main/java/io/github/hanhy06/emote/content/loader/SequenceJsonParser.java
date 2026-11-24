@@ -26,7 +26,7 @@ public final class SequenceJsonParser {
         if (!document.type().equals("sequence")) {
             throw document.error("$.type", "must equal sequence");
         }
-        document.requireExactInt(root, "schema_version", "$", SCHEMA_VERSION);
+        document.requireSchemaVersion(root, SCHEMA_VERSION);
         Identifier id = document.requireIdentifier(document.requireString(root, "id", "$"), "$.id");
         EmoteMetadata metadata = document.metadata();
         if (root.has("participants") && !root.get("participants").isJsonNull()) {
@@ -34,13 +34,10 @@ public final class SequenceJsonParser {
         }
         JsonObject settingsObject = document.requireObject(root, "settings", "$");
         int cooldownTicks = document.requireTicks(settingsObject, "cooldown", "$.settings", 0);
-        EmotePlayerBehavior playerBehavior = document.parsePlayerBehavior(
-            document.requireObject(settingsObject, "player", "$.settings"),
-            "$.settings.player"
-        );
+        EmotePlayerBehavior playerBehavior = document.parsePlayerBehavior(document.requireObject(settingsObject, "player", "$.settings"));
         EmoteSequence.Settings settings = new EmoteSequence.Settings(cooldownTicks, playerBehavior);
 
-        List<EmoteSequence.Step> steps = parseSteps(document.requireArray(root, "steps", "$"), "$.steps", document);
+        List<EmoteSequence.Step> steps = parseSteps(document.requireArray(root, "steps", "$"), document);
         try {
             return new LoadedSequence(document.sourcePath(), new EmoteSequence(id, metadata, settings, steps, document.callbacks()));
         } catch (IllegalArgumentException | NullPointerException exception) {
@@ -50,9 +47,9 @@ public final class SequenceJsonParser {
 
     private List<EmoteSequence.Step> parseSteps(
         JsonArray stepsArray,
-        String stepsPath,
         EmoteJsonDocument document
     ) throws EmoteLoadException {
+        String stepsPath = "$.steps";
         if (stepsArray.isEmpty()) {
             throw document.error(stepsPath, "must not be empty");
         }

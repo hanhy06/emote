@@ -69,9 +69,9 @@ public final class ChristmasExample implements EmoteCallbacks {
         center = center.scale(1.0 / members.size());
 
         // Start a scene without an actor so it can run alongside all four performances.
-        if (this.api.play(context.getWorld(), Identifier.parse(CHORUS), center, 0) instanceof PlayResult.Success success) {
+        if (this.api.play(context.getWorld(), Identifier.parse(CHORUS), center, 0) instanceof PlayResult.Success(var playback)) {
             for (Playback member : members.values()) {
-                this.chorusByInstrument.put(member.getSessionId(), success.playback());
+                this.chorusByInstrument.put(member.getSessionId(), playback);
             }
         }
     }

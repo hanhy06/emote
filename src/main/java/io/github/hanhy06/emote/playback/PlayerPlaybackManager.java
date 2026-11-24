@@ -5,6 +5,7 @@ import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaybackPlacement;
+import io.github.hanhy06.emote.api.PlaybackState;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.mixin.accessor.EntitySharedFlagsAccessor;
@@ -25,6 +26,8 @@ import org.jspecify.annotations.Nullable;
 import java.util.*;
 
 public final class PlayerPlaybackManager {
+    public static PlayerPlaybackManager INSTANCE;
+
     private static final List<EquipmentSlot> PLAYER_EQUIPMENT_SLOTS = List.of(
         EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND, EquipmentSlot.FEET,
         EquipmentSlot.LEGS, EquipmentSlot.CHEST, EquipmentSlot.HEAD
@@ -43,7 +46,6 @@ public final class PlayerPlaybackManager {
     }
     public void register() {
         EntityTrackingEvents.START_TRACKING.register(this::handleStartTracking);
-        PlaybackHooks.EQUIPMENT_SYNC.register(this::handleEquipmentSync);
     }
     public void addStateListener(PlaybackStateListener listener) { this.listeners.add(Objects.requireNonNull(listener)); }
     public @Nullable PlaybackSession findActive(UUID playerId) {
@@ -131,8 +133,10 @@ public final class PlayerPlaybackManager {
         return session == null ? null : this.engine.stop(session, reason);
     }
     public void interrupt(ServerPlayer player, PlaybackStopReason reason) {
-        PlaybackSession session = findActive(player.getUUID());
-        if (session != null && shouldStopFor(playerState(player.getUUID()).behavior().stopConditions(), reason)) stop(player, reason);
+        PlayerPlayback playback = this.playerSessions.get(player.getUUID());
+        if (playback != null && shouldStopFor(playback.playerState().behavior().stopConditions(), reason)) {
+            this.engine.stop(playback.session(), reason);
+        }
     }
     private void refreshPlayerSkin(UUID playerId) {
         PlaybackSession session = findActive(playerId);
@@ -158,17 +162,20 @@ public final class PlayerPlaybackManager {
     }
 
     private void handleStartTracking(Entity entity, ServerPlayer trackingPlayer) {
-        if (!(entity instanceof ServerPlayer emotePlayer)) return;
-        PlayerPlaybackState playerState = playerState(emotePlayer.getUUID());
-        if (playerState != null && findActive(emotePlayer.getUUID()).state() == io.github.hanhy06.emote.api.PlaybackState.RUNNING && playerState.behavior().hidden()) {
+        if (entity instanceof ServerPlayer emotePlayer && isHidingPlayer(emotePlayer)) {
             trackingPlayer.connection.send(new ClientboundSetEquipmentPacket(emotePlayer.getId(), EMPTY_EQUIPMENT));
         }
     }
 
-    private void handleEquipmentSync(ServerPlayer player, Map<EquipmentSlot, ItemStack> changedItems) {
-        if (PLAYER_EQUIPMENT_SLOTS.stream().noneMatch(changedItems::containsKey)) return;
-        PlayerPlaybackState playerState = playerState(player.getUUID());
-        if (playerState != null && findActive(player.getUUID()).state() == io.github.hanhy06.emote.api.PlaybackState.RUNNING && playerState.behavior().hidden()) sendToTrackingPlayers(player, EMPTY_EQUIPMENT);
+    public void handleEquipmentSync(ServerPlayer player, Map<EquipmentSlot, ItemStack> changedItems) {
+        if (isHidingPlayer(player) && PLAYER_EQUIPMENT_SLOTS.stream().anyMatch(changedItems::containsKey)) {
+            sendToTrackingPlayers(player, EMPTY_EQUIPMENT);
+        }
+    }
+
+    private boolean isHidingPlayer(ServerPlayer player) {
+        PlayerPlayback playback = this.playerSessions.get(player.getUUID());
+        return playback != null && playback.session().state() == PlaybackState.RUNNING && playback.playerState().behavior().hidden();
     }
 
     private static void syncPlayerVisibility(ServerPlayer player) {
