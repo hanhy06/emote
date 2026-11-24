@@ -120,20 +120,20 @@ public final class PreparedSequence implements PreparedEmote {
         long durationTicks = 0;
         boolean previousPose = false;
         for (Step step : steps) {
-            if (step instanceof WaitStep wait) {
-                durationTicks += wait.ticks();
+            if (step instanceof WaitStep(int ticks)) {
+                durationTicks += ticks;
                 continue;
             }
             AnimationStep animationStep = (AnimationStep) step;
             if (animationStep.choices().size() != 1 || !(animationStep.choices().getFirst() instanceof AnimationChoice choice)) return null;
             var animation = choice.animation().model();
             var playback = animation.settings().playback();
-            if (animation.clip().clock() != null || !(playback.startDelay() instanceof EmoteAnimation.ConstantValue start)
-                || !(playback.loopDelay() instanceof EmoteAnimation.ConstantValue delay)) return null;
+            if (animation.clip().clock() != null || !(playback.startDelay() instanceof EmoteAnimation.ConstantValue(double startDelay))
+                || !(playback.loopDelay() instanceof EmoteAnimation.ConstantValue(double loopDelay))) return null;
             long repeat = animationStep.repeat();
-            durationTicks += repeat * ((long) start.value() + animation.clip().durationTicks());
+            durationTicks += repeat * ((long) startDelay + animation.clip().durationTicks());
             durationTicks += (previousPose ? repeat : repeat - 1) * animationStep.transitionTicks();
-            if (playback.mode() == EmoteAnimation.PlaybackMode.LOOP) durationTicks += (repeat - 1) * (long) delay.value();
+            if (playback.mode() == EmoteAnimation.PlaybackMode.LOOP) durationTicks += (repeat - 1) * (long) loopDelay;
             previousPose = true;
         }
         return Math.toIntExact(durationTicks);

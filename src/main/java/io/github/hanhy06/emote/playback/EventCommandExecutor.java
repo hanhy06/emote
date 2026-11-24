@@ -62,8 +62,7 @@ public final class EventCommandExecutor implements EmotePlayback.EventExecutor {
                 Entity entity = requiredEntity(source.node(), source.attachment());
                 yield EmoteMod.SERVER.createCommandSourceStack()
                     .withLevel(this.level)
-                    .withEntity(entity)
-                    .withPosition(entity.position());
+                    .withEntity(entity);
             }
         };
     }

@@ -101,7 +101,8 @@ final class EmoteJsonDocument {
         return List.copyOf(callbacks);
     }
 
-    EmotePlayerBehavior parsePlayerBehavior(JsonObject object, String path) throws EmoteLoadException {
+    EmotePlayerBehavior parsePlayerBehavior(JsonObject object) throws EmoteLoadException {
+        String path = "$.settings.player";
         boolean hidden = requireBoolean(object, "hidden", path);
         boolean autoThirdPerson = !object.has("auto_third_person") || requireBoolean(object, "auto_third_person", path);
         JsonObject stopObject = requireObject(object, "stop_conditions", path);
@@ -226,10 +227,10 @@ final class EmoteJsonDocument {
         return node;
     }
 
-    void requireExactInt(JsonObject object, String key, String path, int expected)
+    void requireSchemaVersion(JsonObject object, int expected)
         throws EmoteLoadException {
-        if (requireInt(object, key, path) != expected) {
-            throw error(path + "." + key, "must equal " + expected);
+        if (requireInt(object, "schema_version", "$") != expected) {
+            throw error("$.schema_version", "must equal " + expected);
         }
     }
 

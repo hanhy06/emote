@@ -7,11 +7,14 @@ import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.config.ConfigListener;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.PreparedEmote;
+import io.github.hanhy06.emote.network.VirtualDisplaySender;
 import io.github.hanhy06.emote.playback.molang.MolangQuerySource;
 import io.github.hanhy06.emote.playback.stress.PlaybackStressTest;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import org.jspecify.annotations.Nullable;
 
@@ -25,12 +28,13 @@ public final class PlaybackEngine implements ConfigListener {
     private final Map<UUID, PlaybackSession> activePlaybacks = new HashMap<>();
     private final List<PlaybackSession> closingPlaybacks = new ArrayList<>();
     private final CallbackRegistry callbackRegistry = new CallbackRegistry();
+    private final VirtualDisplayTracker displays = new VirtualDisplayTracker();
     private int activeDisplayEntities;
     private int activeMarkerDisplays;
     private int maxActiveDisplayEntities = Config.DEFAULT_MAX_ACTIVE_DISPLAY_ENTITIES;
     private boolean countMarkerDisplays = Config.DEFAULT_COUNT_MARKER_DISPLAYS;
     private PlaybackStressTest stressTest;
-    private ExecutorService poseExecutor;
+    private ExecutorService playbackExecutor;
     private List<PlaybackSession> framePlaybacks = List.of();
     private @Nullable Future<?> frameTask;
     private Lifecycle stateListener = Lifecycle.NONE;
@@ -71,10 +75,11 @@ public final class PlaybackEngine implements ConfigListener {
     public enum FailureReason { DISPLAY_LIMIT, START_REJECTED }
 
     public CallbackRegistry callbackRegistry() { return this.callbackRegistry; }
-    public void startWorker() {
+    public void startWorker(MinecraftServer server) {
+        VirtualDisplaySender.INSTANCE.start(server);
         this.stopping = false;
-        this.poseExecutor = Executors.newSingleThreadExecutor(Thread.ofPlatform().name("Emote pose worker").factory());
-        this.stressTest = new PlaybackStressTest();
+        this.playbackExecutor = Executors.newSingleThreadExecutor(Thread.ofPlatform().name("Emote playback worker").factory());
+        this.stressTest = new PlaybackStressTest(this.displays);
     }
 
     public void stopWorker() {
@@ -87,7 +92,11 @@ public final class PlaybackEngine implements ConfigListener {
             this.stressTest.stop();
             this.stressTest.discardFrames();
             finishClosings();
-        } finally { this.poseExecutor.close(); }
+            sendDisplayPackets();
+        } finally {
+            this.playbackExecutor.close();
+            VirtualDisplaySender.INSTANCE.stop();
+        }
     }
 
     public void setStateListener(Lifecycle listener) { this.stateListener = Objects.requireNonNull(listener, "listener"); }
@@ -116,7 +125,7 @@ public final class PlaybackEngine implements ConfigListener {
             List<CallbackRegistry.Binding> bindings = this.callbackRegistry.resolve(emote.callbacks());
             Map<PreparedAnimation, List<CallbackRegistry.Binding>> animationBindings = new HashMap<>();
             for (PreparedAnimation animation : playback.selectedAnimations()) animationBindings.put(animation, this.callbackRegistry.resolve(animation.callbacks()));
-            scene = PlaybackScene.create(request.level(), request.root(), emote);
+            scene = PlaybackScene.create(request.level(), request.root(), emote, this.displays);
             playback.bindEvents(new EventCommandExecutor(request.level(), request.commandSource(), scene));
             if (request.skin() != null) scene.setSkins(request.skin());
             session = new PlaybackSession(this, UUID.randomUUID(), request.level().dimension(), scene, playback,
@@ -159,7 +168,7 @@ public final class PlaybackEngine implements ConfigListener {
         this.framePlaybacks = List.copyOf(frames);
         if (!frames.isEmpty() || hasStressFrames) {
             try {
-                this.frameTask = this.poseExecutor.submit(() -> {
+                this.frameTask = this.playbackExecutor.submit(() -> {
                     for (PlaybackSession session : frames) session.calculateFrame();
                     this.stressTest.calculateFrames();
                 });
@@ -173,18 +182,22 @@ public final class PlaybackEngine implements ConfigListener {
     private void awaitFrames() {
         Future<?> task = this.frameTask;
         if (task == null) return;
+        this.frameTask = null;
+        awaitWorker(task);
+    }
+
+    private static void awaitWorker(Future<?> task) {
         boolean interrupted = Thread.interrupted();
         try {
             while (true) {
                 try { task.get(); break; }
                 catch (InterruptedException exception) { interrupted = true; }
-                catch (ExecutionException exception) { throw new IllegalStateException("Emote frame calculation failed", exception.getCause()); }
+                catch (ExecutionException exception) { throw new IllegalStateException("Emote worker task failed", exception.getCause()); }
             }
         } finally {
-            this.frameTask = null;
             if (interrupted) Thread.currentThread().interrupt();
         }
-        if (interrupted) throw new IllegalStateException("Interrupted while waiting for emote frames");
+        if (interrupted) throw new IllegalStateException("Interrupted while waiting for the emote worker");
     }
 
     public void tick() {
@@ -201,6 +214,17 @@ public final class PlaybackEngine implements ConfigListener {
         this.framePlaybacks = List.of();
         finishClosings();
         this.stressTest.tick(endTickStartedNanos);
+        sendDisplayPackets();
+    }
+
+    private void sendDisplayPackets() {
+        Runnable packets = this.displays.capture();
+        // Submit before the next server tick can send a chunk or dimension change on the same connection.
+        if (packets != null) awaitWorker(this.playbackExecutor.submit(packets));
+    }
+
+    public void displayViewerChangedWorld(ServerPlayer viewer) {
+        this.displays.viewerChangedWorld(viewer.connection);
     }
 
     public @Nullable PlaybackSession stop(PlaybackSession session, PlaybackStopReason reason) {

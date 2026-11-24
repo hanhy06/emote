@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.examples;
 
+import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.EmoteCallbacks;
 import io.github.hanhy06.emote.api.PlaybackContext;
 import net.minecraft.core.particles.ParticleTypes;
@@ -21,8 +22,6 @@ import java.util.Objects;
  * Set the callback payload to the exported node ID of the locator to follow.
  */
 public final class EntityFollowExample {
-    // Emote cleans up entities with this tag after a server restart.
-    private static final String RUNTIME_ENTITY_TAG = "emote.runtime";
     private static final double ALLAY_SCALE = 0.35D;
 
     public final EmoteCallbacks butterflyCallbacks = new EmoteCallbacks() {
@@ -88,7 +87,7 @@ public final class EntityFollowExample {
         allay.setInvulnerable(true);
         allay.setSilent(true);
         allay.setCanPickUpLoot(false);
-        allay.addTag(RUNTIME_ENTITY_TAG);
+        allay.addTag(EmoteMod.RUNTIME_ENTITY_TAG);
         Objects.requireNonNull(allay.getAttribute(Attributes.SCALE), "Allay scale attribute").setBaseValue(ALLAY_SCALE);
 
         if (!level.addFreshEntity(allay)) {
@@ -122,7 +121,7 @@ public final class EntityFollowExample {
         bat.setInvulnerable(true);
         bat.setSilent(true);
         bat.setResting(false);
-        bat.addTag(RUNTIME_ENTITY_TAG);
+        bat.addTag(EmoteMod.RUNTIME_ENTITY_TAG);
 
         if (!level.addFreshEntity(bat)) {
             bat.discard();

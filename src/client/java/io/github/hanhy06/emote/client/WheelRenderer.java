@@ -103,7 +103,7 @@ final class WheelRenderer {
         String singleLine = name.replace('\n', ' ').replace('\r', ' ');
         boolean tooWide = font.width(singleLine) > width;
         if (selected && (tooWide || !singleLine.equals(name))) {
-            int height = Math.max(4, Math.min(Math.round(wheel.outerRadius * 0.34F), 3 * (font.lineHeight + 2)));
+            int height = Math.clamp(Math.round(wheel.outerRadius * 0.34F), 4, 3 * (font.lineHeight + 2));
             drawWrappedLabel(graphics, font, Component.literal(name), x, y, width, height, 1, color);
             return;
         }

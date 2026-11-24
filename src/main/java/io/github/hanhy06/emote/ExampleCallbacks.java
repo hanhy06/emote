@@ -40,7 +40,7 @@ public final class ExampleCallbacks {
         );
 
         // Monitor both sessions, including cancellations before their first frame callbacks.
-        ServerTickEvents.END_SERVER_TICK.register(server -> this.hug.tick());
+        ServerTickEvents.END_SERVER_TICK.register(_ -> this.hug.tick());
     }
 
     /** Call once after the Emote API is available; retain the result for cleanup. */

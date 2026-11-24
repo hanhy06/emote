@@ -12,6 +12,7 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import org.jspecify.annotations.NonNull;
 
 import java.util.List;
 
@@ -82,7 +83,7 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
         }
 
         @Override
-        public Component getNarration() {
+        public @NonNull Component getNarration() {
             return Component.literal(this.emote.name());
         }
 

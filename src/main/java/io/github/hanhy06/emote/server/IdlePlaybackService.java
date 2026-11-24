@@ -29,6 +29,7 @@ public final class IdlePlaybackService implements AccessConfigListener {
     private final Map<UUID, String> lastPlayedEmotes = new HashMap<>();
     private final Map<UUID, IdleResolution> idleResolutions = new HashMap<>();
 
+    private boolean hasIdleSettings;
     private int ticksUntilCheck;
 
     public IdlePlaybackService(
@@ -42,7 +43,7 @@ public final class IdlePlaybackService implements AccessConfigListener {
     }
 
     public void tick() {
-        if (!advanceCheckSchedule()) {
+        if (!this.hasIdleSettings || !advanceCheckSchedule()) {
             return;
         }
         for (ServerPlayer player : EmoteMod.SERVER.getPlayerList().getPlayers()) {
@@ -77,12 +78,11 @@ public final class IdlePlaybackService implements AccessConfigListener {
         AccessConfig.IdleSettings idleSettings = resolvedIdleSettings.get();
         if (state == null || state.lastActionTime() != lastActionTime || !state.idleSettings().equals(idleSettings)) {
             long firstAttemptTime = lastActionTime + ticksToMillis(idleSettings.delayTicks());
-            String selectedEmote = selectEmote(player, idleSettings);
-            state = new IdleState(lastActionTime, idleSettings, selectedEmote, firstAttemptTime);
+            state = new IdleState(lastActionTime, idleSettings, null, firstAttemptTime);
             this.playerStates.put(playerUuid, state);
         }
 
-        if (now < state.nextAttemptTime() || this.playerPlaybackManager.findActive(player.getUUID()) != null) {
+        if (now < state.nextAttemptTime() || this.playerPlaybackManager.findActive(playerUuid) != null) {
             return;
         }
 
@@ -93,7 +93,7 @@ public final class IdlePlaybackService implements AccessConfigListener {
         long nextAttemptTime = now + RETRY_INTERVAL_MILLIS;
         if (selectedEmote != null && this.playService.play(player, selectedEmote, PlaySource.IDLE).isSuccess()) {
             this.lastPlayedEmotes.put(playerUuid, selectedEmote);
-            selectedEmote = selectEmote(player, idleSettings);
+            selectedEmote = null;
             long intervalMillis = ticksToMillis(idleSettings.delayTicks());
             long elapsedIntervals = (now - state.nextAttemptTime()) / intervalMillis + 1L;
             nextAttemptTime = state.nextAttemptTime() + elapsedIntervals * intervalMillis;
@@ -108,6 +108,7 @@ public final class IdlePlaybackService implements AccessConfigListener {
 
     @Override
     public void onAccessConfigReload(AccessConfig newConfig) {
+        this.hasIdleSettings = newConfig.permissions().stream().anyMatch(entry -> entry.idle().isPresent());
         this.idleResolutions.clear();
         this.playerStates.clear();
         this.ticksUntilCheck = 0;

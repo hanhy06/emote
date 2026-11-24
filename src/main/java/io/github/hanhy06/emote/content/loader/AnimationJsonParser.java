@@ -29,7 +29,7 @@ public final class AnimationJsonParser {
     LoadedAnimation parse(EmoteJsonDocument document) throws EmoteLoadException {
         JsonObject root = document.root();
         if (!document.type().equals("animation")) throw document.error("$.type", "must equal animation");
-        document.requireExactInt(root, "schema_version", "$", SCHEMA_VERSION);
+        document.requireSchemaVersion(root, SCHEMA_VERSION);
         Identifier id = document.requireIdentifier(document.requireString(root, "id", "$"), "$.id");
         Map<String, Node> nodes = nodes(document.requireObject(root, "nodes", "$"), document);
         JsonObject clip = document.requireObject(root, "animation", "$");
@@ -153,7 +153,7 @@ public final class AnimationJsonParser {
                     case "external" -> new ExternalAttachment(visible, document.requireIdentifier(nonempty(definition, "key", p, document), p + ".key"), document.requireElement(definition, "data", p));
                     default -> throw document.error(p + ".type", "unknown attachment");
                 };
-                if (!isDisplayAttachment(attachment) && definition.has("entity_snbt")) throw document.error(p + ".entity_snbt", "requires a display attachment");
+                if (isNonDisplayAttachment(attachment) && definition.has("entity_snbt")) throw document.error(p + ".entity_snbt", "requires a display attachment");
                 attachments.put(a.getKey(), attachment);
             }
             nodes.put(entry.getKey(), new Node(n.has("name") ? document.requireString(n, "name", path) : null,
@@ -163,8 +163,8 @@ public final class AnimationJsonParser {
         return nodes;
     }
 
-    private static boolean isDisplayAttachment(Attachment attachment) {
-        return attachment instanceof ItemAttachment || attachment instanceof BlockAttachment || attachment instanceof TextAttachment;
+    private static boolean isNonDisplayAttachment(Attachment attachment) {
+        return !(attachment instanceof ItemAttachment || attachment instanceof BlockAttachment || attachment instanceof TextAttachment);
     }
 
     private List<Track> tracks(JsonArray input, Map<String, Node> nodes, int durationTicks, EmoteJsonDocument document) throws EmoteLoadException {
@@ -187,7 +187,7 @@ public final class AnimationJsonParser {
             if (attachmentId != null && attachment == null) throw document.error(path + ".target.attachment", "unknown attachment");
             Channel channel = enumeration(Channel.class, nonempty(raw, "channel", path, document), path + ".channel", document);
             if (channel == Channel.VALUE && op == null || channel != Channel.VALUE && op != null) throw document.error(path + ".target", "channel does not match target");
-            if (channel == Channel.NBT && !isDisplayAttachment(attachment)) throw document.error(path + ".target", "NBT requires a display attachment");
+            if (channel == Channel.NBT && isNonDisplayAttachment(attachment)) throw document.error(path + ".target", "NBT requires a display attachment");
             Target destination = new Target(nodeId, operationId, attachmentId);
             List<String> key = List.of(nodeId, Objects.toString(operationId, ""), Objects.toString(attachmentId, ""), channel.name());
             if (!signatures.add(key)) throw document.error(path + ".target", "duplicate target/channel");
@@ -294,8 +294,8 @@ public final class AnimationJsonParser {
                     case "blockbench_bounce" -> new ConstantValue(0.5);
                     default -> throw document.error(ep + "." + field, "is required");
                 };
-            if (parameter instanceof ConstantValue c && (kernel.equals("power") && c.value() <= 0
-                || Set.of("steps", "blockbench_steps").contains(kernel) && (c.value() < 2 || c.value() != Math.floor(c.value())))) throw document.error(ep, "invalid easing parameter");
+            if (parameter instanceof ConstantValue(double value) && (kernel.equals("power") && value <= 0
+                || Set.of("steps", "blockbench_steps").contains(kernel) && (value < 2 || value != Math.floor(value)))) throw document.error(ep, "invalid easing parameter");
             if (interpolation == Interpolation.BEZIER && Set.of("back", "blockbench_elastic").contains(kernel)) throw document.error(ep, "overshoot easing is not supported for Bezier");
             easing = new Easing(kernel, direction, parameter);
         }
@@ -311,8 +311,8 @@ public final class AnimationJsonParser {
                 ScalarValue outTime = scalar(document.requireElement(out, "time", hp + ".out"), hp + ".out.time", document), inTime = scalar(document.requireElement(in, "time", hp + ".in"), hp + ".in.time", document);
                 String outClamp = text(out, "clamp", "none", hp + ".out", document), inClamp = text(in, "clamp", "none", hp + ".in", document);
                 if (!Set.of("none", "rescale_value").contains(outClamp) || !Set.of("none", "rescale_value").contains(inClamp)) throw document.error(hp, "invalid time clamp policy");
-                if (outClamp.equals("none") && outTime instanceof ConstantValue o && (o.value() < 0 || o.value() > 1)
-                    || inClamp.equals("none") && inTime instanceof ConstantValue n && (n.value() < 0 || n.value() > 1)) throw document.error(hp, "time handles must be within [0, 1]");
+                if (outClamp.equals("none") && outTime instanceof ConstantValue(double outValue) && (outValue < 0 || outValue > 1)
+                    || inClamp.equals("none") && inTime instanceof ConstantValue(double inValue) && (inValue < 0 || inValue > 1)) throw document.error(hp, "time handles must be within [0, 1]");
                 handles.add(new BezierHandle(outTime, scalar(document.requireElement(out, "value", hp + ".out"), hp + ".out.value", document), bool(out, "relative", false, hp + ".out", document), outClamp.equals("rescale_value"),
                     inTime, scalar(document.requireElement(in, "value", hp + ".in"), hp + ".in.value", document), bool(in, "relative", false, hp + ".in", document), inClamp.equals("rescale_value")));
             }
@@ -326,7 +326,7 @@ public final class AnimationJsonParser {
     private Value value(JsonElement raw, Channel channel, int componentCount, String path, EmoteJsonDocument document) throws EmoteLoadException {
         if (channel == Channel.VALUE) {
             VectorValue vector = vector(raw, componentCount, false, path, document);
-            if (componentCount == 4 && vector.components().stream().allMatch(component -> component instanceof ConstantValue constant && constant.value() == 0)) {
+            if (componentCount == 4 && vector.components().stream().allMatch(component -> component instanceof ConstantValue(double value) && value == 0)) {
                 throw document.error(path, "quaternion must not be zero");
             }
             return vector;
@@ -334,8 +334,8 @@ public final class AnimationJsonParser {
         if (channel == Channel.VISIBLE) {
             if (raw.isJsonPrimitive() && raw.getAsJsonPrimitive().isBoolean()) return new ConstantVisibility(raw.getAsBoolean());
             ScalarValue expression = scalar(raw, path, document);
-            if (!(expression instanceof MolangValue m)) throw document.error(path, "visibility requires boolean or Molang");
-            return new MolangVisibility(m.source(), m.path());
+            if (!(expression instanceof MolangValue(String source, String molangPath))) throw document.error(path, "visibility requires boolean or Molang");
+            return new MolangVisibility(source, molangPath);
         }
         JsonObject patch = document.requireObject(raw, path);
         List<String> remove = strings(document.optionalArray(patch, "remove", path), path + ".remove", document);
@@ -343,8 +343,8 @@ public final class AnimationJsonParser {
         JsonElement merge = document.requireElement(patch, "merge", path);
         if (merge.isJsonPrimitive() && merge.getAsJsonPrimitive().isString()) return new ConstantNbtValue(compound(merge.getAsString(), path + ".merge", false, document, true), remove);
         ScalarValue expression = scalar(merge, path + ".merge", document);
-        if (!(expression instanceof MolangValue m)) throw document.error(path + ".merge", "requires SNBT or Molang");
-        return new MolangNbtValue(m.source(), m.path(), remove);
+        if (!(expression instanceof MolangValue(String source, String molangPath))) throw document.error(path + ".merge", "requires SNBT or Molang");
+        return new MolangNbtValue(source, molangPath, remove);
     }
 
     private VectorValue vector(JsonElement raw, int componentCount, boolean literal, String path, EmoteJsonDocument document) throws EmoteLoadException {
@@ -371,7 +371,7 @@ public final class AnimationJsonParser {
                 String attachment = sourceType == SourceType.NODE ? nonempty(source, "attachment", p + ".source", document) : null;
                 if (sourceNode != null) {
                     Attachment a = document.requireNode(nodes, sourceNode, p + ".source.node").attachments().get(attachment);
-                    if (!isDisplayAttachment(a) && !(a instanceof SkinAttachment)) throw document.error(p + ".source.attachment", "requires an entity attachment");
+                    if (isNonDisplayAttachment(a) && !(a instanceof SkinAttachment)) throw document.error(p + ".source.attachment", "requires an entity attachment");
                 }
                 OriginType originType = enumeration(OriginType.class, nonempty(origin, "type", p + ".origin", document), p + ".origin.type", document);
                 String originNode = originType == OriginType.NODE ? nonempty(origin, "node", p + ".origin", document) : null;

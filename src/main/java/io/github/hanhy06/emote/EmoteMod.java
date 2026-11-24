@@ -39,6 +39,8 @@ import org.slf4j.LoggerFactory;
 
 public class EmoteMod implements ModInitializer {
     public static final String MOD_ID = "emote";
+    // Entities with this tag are excluded from world saves.
+    public static final String RUNTIME_ENTITY_TAG = "emote.runtime";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
     public static MinecraftServer SERVER;
 
@@ -59,11 +61,12 @@ public class EmoteMod implements ModInitializer {
         PlayerSkinManager skins = new PlayerSkinManager(
             new SkinBakeCoordinator(accounts, skinBaker, minecraftSkins, skinCache, accountQueue, mineSkin)
         );
-        catalog.addListener(emotes -> skins.setEmotes(catalog.animations(), catalog.fileEmotes().stream()
+        catalog.addListener(_ -> skins.setEmotes(catalog.animations(), catalog.fileEmotes().stream()
             .filter(PreparedAnimation.class::isInstance).map(PreparedEmote::sourcePath).collect(java.util.stream.Collectors.toUnmodifiableSet())));
 
         PlaybackEngine engine = new PlaybackEngine();
         PlayerPlaybackManager playback = new PlayerPlaybackManager(engine, skins);
+        PlayerPlaybackManager.INSTANCE = playback;
         MarkerPlaybackManager markerPlayback = new MarkerPlaybackManager(engine, catalog, skins);
         PlaybackCooldownService cooldowns = new PlaybackCooldownService();
         ApiEventDispatcher apiEvents = new ApiEventDispatcher();
@@ -119,9 +122,9 @@ public class EmoteMod implements ModInitializer {
         markerPlayback.register();
         PayloadTypeRegistry.clientboundPlay().register(PlaybackStatePayload.TYPE, PlaybackStatePayload.STREAM_CODEC);
         PayloadTypeRegistry.clientboundPlay().register(WheelSyncPayload.TYPE, WheelSyncPayload.STREAM_CODEC);
-        ServerLifecycleEvents.SERVER_STARTED.register(server -> accounts.initialize());
+        ServerLifecycleEvents.SERVER_STARTED.register(_ -> accounts.initialize());
         lifecycle.register();
-        ServerLifecycleEvents.SERVER_STOPPING.register(server -> accounts.close());
+        ServerLifecycleEvents.SERVER_STOPPING.register(_ -> accounts.close());
     }
 
 }

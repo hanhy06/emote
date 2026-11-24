@@ -116,9 +116,12 @@ public final class UserCommand {
         CommandSourceStack source = context.getSource();
         ServerPlayer player = source.getPlayerOrException();
         PlayResult result = this.playService.play(player, IdentifierArgument.getId(context, "id").toString(), PlaySource.COMMAND);
-        if (!result.isSuccess()) {
-            source.sendFailure(result.errorMessage());
-            return 0;
+        switch (result) {
+            case PlayResult.Failure(var errorMessage) -> {
+                source.sendFailure(errorMessage);
+                return 0;
+            }
+            case PlayResult.Success(_) -> {}
         }
         return 1;
     }

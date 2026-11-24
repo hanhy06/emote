@@ -111,7 +111,7 @@ public class WheelScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+    public boolean mouseClicked(@NonNull MouseButtonEvent event, boolean doubleClick) {
         if (super.mouseClicked(event, doubleClick)) {
             return true;
         }
@@ -130,7 +130,7 @@ public class WheelScreen extends Screen {
     }
 
     @Override
-    public boolean mouseReleased(MouseButtonEvent event) {
+    public boolean mouseReleased(@NonNull MouseButtonEvent event) {
         if (this.keyMapping.matchesMouse(event)) {
             handleBindingReleased(event.x(), event.y());
             return true;

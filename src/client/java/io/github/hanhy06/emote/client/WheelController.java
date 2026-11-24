@@ -44,9 +44,9 @@ public class WheelController {
         ClientTickEvents.END_CLIENT_TICK.register(client -> tickBinding(client, keyMapping));
     }
 
-    private void openWheel(Minecraft client, KeyMapping keyMapping) {
+    private void openWheel(Minecraft client, LocalPlayer player, KeyMapping keyMapping) {
         if (!this.syncedFromServer) {
-            client.player.connection.sendUnattendedCommand(MENU_FALLBACK_COMMAND, null);
+            player.connection.sendUnattendedCommand(MENU_FALLBACK_COMMAND, null);
             return;
         }
 
@@ -72,12 +72,13 @@ public class WheelController {
     }
 
     private void tickBinding(Minecraft client, KeyMapping keyMapping) {
-        if (client.screen != null || client.player == null) {
+        LocalPlayer player = client.player;
+        if (client.screen != null || player == null) {
             return;
         }
 
         if (keyMapping.consumeClick()) {
-            openWheel(client, keyMapping);
+            openWheel(client, player, keyMapping);
         }
     }
 

@@ -8,17 +8,14 @@ import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.components.AbstractWidget;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.components.ObjectSelectionList;
-import net.minecraft.client.gui.components.SelectableEntry;
+import net.minecraft.client.gui.components.*;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import java.util.List;
@@ -65,12 +62,12 @@ final class WheelSearchScreen extends Screen {
     }
 
     @Override
-    public boolean keyPressed(KeyEvent event) {
+    public boolean keyPressed(@NonNull KeyEvent event) {
         return (this.pendingWheelKey != null && this.pendingWheelKey.getValue() == event.key()) || super.keyPressed(event);
     }
 
     @Override
-    public boolean keyReleased(KeyEvent event) {
+    public boolean keyReleased(@NonNull KeyEvent event) {
         if (this.pendingWheelKey != null && this.pendingWheelKey.getValue() == event.key()) {
             this.pendingWheelKey = null;
             return true;
@@ -79,7 +76,7 @@ final class WheelSearchScreen extends Screen {
     }
 
     @Override
-    public boolean charTyped(CharacterEvent event) {
+    public boolean charTyped(@NonNull CharacterEvent event) {
         // Character events carry only the code point, including events from key repeats.
         return this.pendingWheelKey != null || super.charTyped(event);
     }
@@ -147,7 +144,7 @@ final class WheelSearchScreen extends Screen {
         }
 
         @Override
-        public Component getNarration() {
+        public @NonNull Component getNarration() {
             return Component.literal(this.emote.name());
         }
 

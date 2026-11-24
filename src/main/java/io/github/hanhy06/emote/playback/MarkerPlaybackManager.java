@@ -43,9 +43,11 @@ public final class MarkerPlaybackManager {
             if (entity instanceof Marker marker) this.markers.put(marker.getUUID(), new Entry(marker));
         });
         ServerEntityEvents.ENTITY_UNLOAD.register((entity, level) -> {
-            Entry entry = this.markers.get(entity.getUUID());
-            if (entry == null || entry.marker != entity) return;
-            this.markers.remove(entity.getUUID());
+            if (!(entity instanceof Marker marker)) return;
+            UUID markerId = marker.getUUID();
+            Entry entry = this.markers.get(markerId);
+            if (entry == null || entry.marker != marker) return;
+            this.markers.remove(markerId);
             if (entry.session != null) this.engine.stop(entry.session, PlaybackStopReason.ENTITY_UNAVAILABLE);
         });
         ServerLifecycleEvents.SERVER_STARTED.register(server -> this.running = true);
@@ -54,11 +56,16 @@ public final class MarkerPlaybackManager {
     }
 
     public void tick() {
-        if (!this.running) return;
+        if (!this.running || this.markers.isEmpty()) return;
         long serverTick = EmoteMod.SERVER.getTickCount();
         for (Entry entry : List.copyOf(this.markers.values())) {
             if (entry.marker.isRemoved()) continue;
-            MarkerEmoteSettings settings = MarkerEmoteSettings.read(entry.marker.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY));
+            CustomData customData = entry.marker.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY);
+            MarkerEmoteSettings settings = entry.settings;
+            if (customData != entry.customData) {
+                settings = MarkerEmoteSettings.read(customData);
+                entry.customData = customData;
+            }
             if (!settings.equals(entry.settings) || entry.catalogRevision != this.catalogRevision) {
                 entry.settings = settings;
                 entry.catalogRevision = this.catalogRevision;
@@ -141,6 +148,7 @@ public final class MarkerPlaybackManager {
 
     private static final class Entry {
         private final Marker marker;
+        private CustomData customData = CustomData.EMPTY;
         private MarkerEmoteSettings settings = MarkerEmoteSettings.EMPTY;
         private @Nullable PlaybackSession session;
         private long catalogRevision = -1;
