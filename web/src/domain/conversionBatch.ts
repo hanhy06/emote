@@ -26,6 +26,13 @@ export function combineConversionDocuments(documents: readonly ImportedConversio
   if (animationDocuments.length <= 1) {
     return { ...first, origin, diagnostics, targetMinecraftVersion, entries: [...animationEntries(first), ...sequences] };
   }
+  if (animationDocuments.some((document) => Object.keys(document.nodes).length > 0)) {
+    diagnostics.push({
+      severity: "warning",
+      code: "batch_node_ids_changed",
+      message: "Combining animation files changes their node names. Convert the files separately if callbacks or scripts use the original node names.",
+    });
+  }
 
   const nodes: Record<string, NodeIR> = {};
   const skinCandidates: Record<string, SkinCandidate> = {};
