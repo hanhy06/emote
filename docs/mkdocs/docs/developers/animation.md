@@ -145,12 +145,16 @@ Set the command source (`source`) and execution position (`origin`) separately.
 
 | Field | Values | Meaning |
 |---|---|---|
-| `source.type` | `player`, `server`, `node` | Who runs the command. A `node` source must select an entity attachment. |
+| `source.type` | `player`, `server`, `node` | Who runs the command. A `node` source selects a virtual display attachment. |
 | `origin.type` | `root`, `node` | Runs at the emote's root position or a specific node's position. |
 | `origin.offset` | Three-number position offset | Adjusts the execution position. Defaults to `[0, 0, 0]`. |
 | `origin.rotation` | `origin` | Uses the selected origin's rotation for command execution. Omit it to retain the command source's direction. |
 
-When `source.type` or `origin.type` is `node`, also specify the node ID. A node source also requires `source.attachment`. Nodes without entity attachments can be used as origins, but not as command sources.
+When `source.type` or `origin.type` is `node`, also specify the node ID. A node source requires `source.attachment`. Use a node origin when a command only needs the node's position, including nodes without attachments.
+
+For a node source, `@s` refers to the virtual display. Commands such as `data merge entity @s` can update its data. World selectors such as `@e` and UUID lookups only see world-registered entities. Virtual displays stay in their original dimension and cannot ride or carry passengers. Vanilla teleport feedback can still count a blocked target. The display's scores and team membership are cleared when playback ends.
+
+A command such as `summon` or `execute summon` creates a world entity with the usual Minecraft lifetime. Use a stop event or a callback to remove temporary entities created by your commands.
 
 ## Skin
 
