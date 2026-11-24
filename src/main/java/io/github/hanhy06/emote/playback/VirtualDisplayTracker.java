@@ -112,7 +112,7 @@ public final class VirtualDisplayTracker {
             double dx = player.getX() - display.getX();
             double dz = player.getZ() - display.getZ();
             if (dx * dx + dz * dz <= (double) range * range && player.connection.isAcceptingMessages()
-                && display.broadcastToPlayer(player) && chunkMap.isChunkTracked(player, chunk.x(), chunk.z())) {
+                && chunkMap.isChunkTracked(player, chunk.x(), chunk.z())) {
                 viewers.add(player.connection);
             }
         }

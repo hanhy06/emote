@@ -141,8 +141,8 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
         this.nodes.forEach((nodeId, node) -> {
             node.attachments().keySet().forEach(attachmentId -> resetNbt(nodeId, attachmentId));
             applyTransform(nodeId, createTransformation(nodeId, this.emote.defaultMatrix(nodeId)), 0);
-            node.attachments().forEach((id, attachment) -> setVisible(nodeId, id, attachment.attachment().visible()));
-            setVisible(nodeId, node.node().visible());
+            node.attachments().forEach((id, attachment) -> setVisible(nodeId, id, attachment.initiallyVisible));
+            setVisible(nodeId, node.initiallyVisible);
         });
     }
 
@@ -172,13 +172,13 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
             String textureUrl = skin.get(binding.region());
             if (textureUrl == null
                 || !(attachment.entity() instanceof Display.ItemDisplay itemDisplay)
-                || !(attachment.displayContent() instanceof DisplayData.Item(ItemStack itemStack, var _))
+                || !(attachment.displayContent() instanceof DisplayData.Item(ItemStack itemStack, var displayContext))
                 || !itemStack.is(Items.PLAYER_HEAD)) {
                 continue;
             }
             ItemStack skinnedStack = itemStack.copy();
             skinnedStack.set(DataComponents.PROFILE, createSkinProfile(textureUrl));
-            attachment.setItemStack(skinnedStack);
+            attachment.setDisplayContent(new DisplayData.Item(skinnedStack, displayContext));
             TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, itemDisplay.registryAccess());
             ItemStack initialItem = TagValueInput.create(ProblemReporter.DISCARDING, itemDisplay.registryAccess(), attachment.initialEntityData())
                 .read("item", ItemStack.CODEC).orElse(ItemStack.EMPTY);
@@ -226,7 +226,7 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
             node.attachments().entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(entry ->
                 attachments.put(entry.getKey(), createAttachment(level, root, nodeId, entry.getKey(),
                     entry.getValue(), preparedData.get(entry.getKey()), emote.rotationDeadzone())));
-            instances.put(nodeId, new NodeInstance(nodeId, node, attachments));
+            instances.put(nodeId, new NodeInstance(node.visible(), attachments));
         }
         return new PlaybackScene(level, root, emote, displays, instances);
     }
@@ -307,9 +307,6 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
     public void applyTransform(String nodeId, Transformation transformation, int interpolationDurationTicks) {
         NodeInstance node = requiredNode(nodeId);
         node.latestTransformation = transformation;
-        if (node.isAnchor()) {
-            return;
-        }
         for (AttachmentInstance attachment : node.attachments().values()) {
             if (attachment.entity() != null && attachment.displayed && node.visible && attachment.visible) {
                 applyTransformation(attachment, transformation, interpolationDurationTicks, false);
@@ -327,7 +324,7 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
         float rotationDeadzone
     ) {
         if (attachment instanceof EmoteAnimation.ExternalAttachment) {
-            return new AttachmentInstance(attachmentId, attachment, null, null);
+            return new AttachmentInstance(attachment.visible(), null, null);
         }
 
         Display entity = createDisplay(level, attachment);
@@ -342,7 +339,7 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
             throw new IllegalStateException("Display node was not prepared during reload: " + nodeId + "/" + attachmentId);
         }
         DisplayData content = applyRuntimeData(entity, preparedData);
-        AttachmentInstance instance = new AttachmentInstance(attachmentId, attachment, entity, content);
+        AttachmentInstance instance = new AttachmentInstance(attachment.visible(), entity, content);
         TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, entity.registryAccess());
         entity.saveWithoutId(output);
         instance.setInitialEntityData(output.buildResult());
@@ -412,30 +409,24 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
     }
 
     public static final class NodeInstance {
-        private final String id;
-        private final EmoteAnimation.Node node;
+        private final boolean initiallyVisible;
         private final Map<String, AttachmentInstance> attachments;
         private boolean visible;
         private Transformation latestTransformation;
 
-        public NodeInstance(String id, EmoteAnimation.Node node, Map<String, AttachmentInstance> attachments) {
-            this.id = Objects.requireNonNull(id, "id");
-            this.node = Objects.requireNonNull(node, "node");
+        private NodeInstance(boolean initiallyVisible, Map<String, AttachmentInstance> attachments) {
+            this.initiallyVisible = initiallyVisible;
             this.attachments = Map.copyOf(attachments);
-            this.visible = node.visible();
+            this.visible = initiallyVisible;
         }
 
-        public String id() { return this.id; }
-        public EmoteAnimation.Node node() { return this.node; }
         public Map<String, AttachmentInstance> attachments() { return this.attachments; }
-        public boolean isAnchor() { return this.attachments.values().stream().noneMatch(a -> a.entity() != null); }
     }
 
     private record Placement(@Nullable Vec3 position, @Nullable Float yaw, int interpolationTicks) {}
 
     public static final class AttachmentInstance {
-        private final String id;
-        private final EmoteAnimation.Attachment attachment;
+        private final boolean initiallyVisible;
         private final Display entity;
         private boolean visible;
         private boolean displayed = true;
@@ -448,16 +439,12 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
         Set<ServerGamePacketListenerImpl> viewers = Set.of();
         VirtualDisplayTracker.@Nullable Position lastPosition;
 
-        private AttachmentInstance(String id, EmoteAnimation.Attachment attachment, Display entity, DisplayData displayContent) {
-            this.id = Objects.requireNonNull(id, "id");
-            this.attachment = Objects.requireNonNull(attachment, "attachment");
+        private AttachmentInstance(boolean initiallyVisible, Display entity, DisplayData displayContent) {
+            this.initiallyVisible = initiallyVisible;
             this.entity = entity;
             this.displayContent = displayContent;
-            this.visible = attachment.visible();
+            this.visible = initiallyVisible;
         }
-
-        public String id() { return this.id; }
-        public EmoteAnimation.Attachment attachment() { return this.attachment; }
 
         public Display entity() {
             return this.entity;
@@ -465,13 +452,6 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
 
         public DisplayData displayContent() {
             return this.displayContent;
-        }
-
-        public void setItemStack(ItemStack itemStack) {
-            if (!(this.displayContent instanceof DisplayData.Item item)) {
-                throw new IllegalStateException("Attachment is not an item display: " + this.id);
-            }
-            this.displayContent = new DisplayData.Item(Objects.requireNonNull(itemStack, "itemStack"), item.displayContext());
         }
 
         void setDisplayContent(DisplayData displayContent) {
