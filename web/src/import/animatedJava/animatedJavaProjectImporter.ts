@@ -10,7 +10,7 @@ import { parseSnbtCompound, serializeSnbtCompound, serializeSnbtString, splitSnb
 import type { ImportInput } from "../input";
 import { ConversionError, skippedAnimationIssue, type ConversionIssue } from "../../foundation/diagnostics";
 import { importAnimatedJavaCubes, writeReferencedAnimatedJavaCubeResources, type AnimatedJavaCubes } from "./animatedJavaCubes";
-import { normalizeBlockbenchName } from "../common/blockbenchCubeSkin";
+import { blockbenchEffectOrigin } from "../common/blockbenchAnimationIR";
 import { PLAYER_RENDER_SCALE } from "../common/blockbenchCubeModel";
 import { writeEmbeddedTextures } from "../common/blockbenchCubeResources";
 import { readBlockbenchSkin } from "../common/blockbenchSkin";
@@ -301,18 +301,15 @@ function projectEffectEvents(source: AjProjectAnimation, cubes: AnimatedJavaCube
       }
       for (const point of frame.data_points) {
         const data = point as Record<string, unknown>;
-        const locator = normalizeBlockbenchName(stringField(data, "locator"));
-        const locatorNode = locator ? cubes?.bones.flatMap((bone) => bone.nodes).find((node) => normalizeBlockbenchName(node.locatorName) === locator) : undefined;
-        const boneNode = locator ? cubes?.bones.find((bone) => normalizeBlockbenchName(bone.group.name) === locator)?.nodes[0] : undefined;
-        const node = locatorNode ?? boneNode;
-        const origin = node ? { type: "node" as const, node: node.id } : { type: "root" as const };
+        const locator = stringField(data, "locator");
+        const origin = blockbenchEffectOrigin(locator, cubes?.bones ?? []);
         const effect = stringField(data, "effect");
         const script = stringField(data, "script");
         if (frame.channel !== "timeline" && !effect) {
           diagnostics.push({ severity: "warning", code: "animated_java_effect_ignored", message: `${source.name} at ${frame.time * 20}t: an effect without a resource identifier was omitted.`, sourcePath: path });
           continue;
         }
-        if (locator && !node) diagnostics.push({ severity: "warning", code: "animated_java_effect_origin_approximated", message: `${source.name} at ${frame.time * 20}t: effect locator could not be resolved; the root position is used. Review and edit the event.`, sourcePath: path });
+        if (locator && origin.type === "root") diagnostics.push({ severity: "warning", code: "animated_java_effect_origin_approximated", message: `${source.name} at ${frame.time * 20}t: effect locator could not be resolved; the root position is used. Review and edit the event.`, sourcePath: path });
         if (frame.channel === "sound" && effect) events.push({ time: sourceSecondsTime(frame.time), source: { type: "player" }, origin, action: { type: "commands", commands: [`playsound ${effect} master @s ~ ~ ~`] } });
         else if (frame.channel === "particle" && effect) {
           events.push({ time: sourceSecondsTime(frame.time), source: { type: "server" }, origin, action: { type: "commands", commands: [`particle ${effect} ~ ~ ~`] } });

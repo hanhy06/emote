@@ -31,6 +31,7 @@ import {
 } from "../common/blockbenchCubeSkin";
 import { type BoneEntry } from "../common/blockbenchCubeModel";
 import { molangScalar } from "../common/molangVector";
+import { blockbenchEffectOrigin } from "../common/blockbenchAnimationIR";
 import { type GeckoLibAnimationSource, createGeckoLibAnimationIR } from "./geckoLibAnimationIR";
 
 const FORMAT_LABEL = "GeckoLib";
@@ -292,7 +293,7 @@ function importEffectEvents(
           diagnostics.push({ severity: "warning", code: `${DIAGNOSTIC_PREFIX}_effect_ignored`, message: `${animation.name} at ${time * 20}t: an effect without a resource identifier was omitted.`, sourcePath });
           continue;
         }
-        const origin = effectOrigin(point.locator, bones);
+        const origin = blockbenchEffectOrigin(point.locator, bones);
         if (point.locator?.trim() && origin.type === "root") diagnostics.push({ severity: "warning", code: `${DIAGNOSTIC_PREFIX}_effect_origin_approximated`, message: `${animation.name} at ${time * 20}t: effect locator could not be resolved; the root position is used. Review and edit the event.`, sourcePath });
         if (keyframe.channel === "sound" && point.effect?.trim()) {
           appendTimelineEvent(events, time, { source: { type: "player" }, origin, action: { type: "commands", commands: [`playsound ${point.effect.trim()} master @s ~ ~ ~`] } });
@@ -319,15 +320,6 @@ function importEffectEvents(
     }
   }
   return events.sort((first, second) => parseAnimationSeconds(first.time) - parseAnimationSeconds(second.time));
-}
-
-function effectOrigin(locator: string | undefined, bones: BoneEntry[]): EventIR["origin"] {
-  const name = normalizeBlockbenchName(locator);
-  if (!name) return { type: "root" };
-  const locators = bones.flatMap((bone) => bone.nodes.filter((node) => normalizeBlockbenchName(node.locatorName) === name));
-  if (locators.length) return locators.length === 1 ? { type: "node", node: locators[0].id } : { type: "root" };
-  const matchingBones = bones.filter((candidate) => normalizeBlockbenchName(candidate.group.name) === name);
-  return matchingBones.length === 1 ? { type: "node", node: `group:${matchingBones[0].uuid}` } : { type: "root" };
 }
 
 function appendTimelineEvent(events: TimelineEventIR[], time: number, event: EventIR): void {
