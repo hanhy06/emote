@@ -2,7 +2,7 @@ package io.github.hanhy06.emote.mixin;
 
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
-import io.github.hanhy06.emote.playback.PlaybackHooks;
+import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
@@ -29,7 +29,7 @@ abstract class EntityMixin {
     ) {
         Entity entity = (Entity) (Object) this;
         if (callbackInfo.getReturnValueZ() && entity instanceof ServerPlayer player) {
-            PlaybackHooks.INTERRUPTION.invoker().interrupt(player, PlaybackStopReason.MOUNTED);
+            PlayerPlaybackManager.INSTANCE.interrupt(player, PlaybackStopReason.MOUNTED);
         }
     }
 }

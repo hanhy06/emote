@@ -66,6 +66,7 @@ public class EmoteMod implements ModInitializer {
 
         PlaybackEngine engine = new PlaybackEngine();
         PlayerPlaybackManager playback = new PlayerPlaybackManager(engine, skins);
+        PlayerPlaybackManager.INSTANCE = playback;
         MarkerPlaybackManager markerPlayback = new MarkerPlaybackManager(engine, catalog, skins);
         PlaybackCooldownService cooldowns = new PlaybackCooldownService();
         ApiEventDispatcher apiEvents = new ApiEventDispatcher();

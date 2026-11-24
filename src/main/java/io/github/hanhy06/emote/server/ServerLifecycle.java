@@ -7,7 +7,6 @@ import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.network.WheelSyncService;
 import io.github.hanhy06.emote.playback.MarkerPlaybackManager;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
-import io.github.hanhy06.emote.playback.PlaybackHooks;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.resource.ResourcePackService;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
@@ -77,7 +76,6 @@ public class ServerLifecycle {
         ServerEntityLevelChangeEvents.AFTER_PLAYER_CHANGE_LEVEL.register(
             (player, ignoredOrigin, ignoredDestination) -> this.playbackEngine.displayViewerChangedWorld(player)
         );
-        PlaybackHooks.INTERRUPTION.register(this.playerPlaybackManager::interrupt);
         ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, ignoredSource, ignoredBaseDamage, damageTaken, ignoredBlocked) -> {
             if (damageTaken > 0.0F && entity instanceof ServerPlayer player) {
                 this.playerPlaybackManager.interrupt(player, PlaybackStopReason.DAMAGED);
