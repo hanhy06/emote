@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.client;
 
+import java.util.List;
+
 final class WheelGeometry {
     static final int SLOT_COUNT = 5;
     static final int TITLE_BOTTOM = 44;
@@ -28,11 +30,13 @@ final class WheelGeometry {
     private int selected = -1;
 
     WheelGeometry(int width, int height, long now) {
-        int wheelHeight = height - TITLE_BOTTOM - 52;
-        centerX = width / 2;
-        centerY = TITLE_BOTTOM + wheelHeight / 2 - 3;
-        int limit = Math.min(width / 2 - 8, wheelHeight / 2);
-        outerRadius = Math.max(12, Math.min(Math.min(width, height) * 9 / 25, limit - 4));
+        this(width / 2, TITLE_BOTTOM + (height - TITLE_BOTTOM - 52) / 2 - 3, radiusForScreen(width, height), now);
+    }
+
+    WheelGeometry(int centerX, int centerY, int outerRadius, long now) {
+        this.centerX = centerX;
+        this.centerY = centerY;
+        this.outerRadius = outerRadius;
         scale = outerRadius / 100.0F;
         lift = Math.min(4, outerRadius * 0.045F);
         textWidth = Math.max(8, (int) (outerRadius * 0.61F));
@@ -40,11 +44,22 @@ final class WheelGeometry {
         changedAt = now;
     }
 
+    private static int radiusForScreen(int width, int height) {
+        int wheelHeight = height - TITLE_BOTTOM - 52;
+        int limit = Math.min(width / 2 - 8, wheelHeight / 2);
+        return Math.max(12, Math.min(Math.min(width, height) * 9 / 25, limit - 4));
+    }
+
+    static <T> List<T> page(List<T> slots, int pageIndex) {
+        int start = Math.min(slots.size(), pageIndex * SLOT_COUNT);
+        return slots.subList(start, start + Math.min(SLOT_COUNT, slots.size() - start));
+    }
+
     int selected() {
         return selected;
     }
 
-    int slotAt(double mouseX, double mouseY, int count) {
+    int slotAt(double mouseX, double mouseY) {
         double x = mouseX - centerX;
         double y = mouseY - centerY;
         double radius = Math.hypot(x, y);
@@ -53,7 +68,7 @@ final class WheelGeometry {
         }
         int slot = Math.floorMod((int) Math.floor(Math.atan2(x, -y) / SLOT_ANGLE + 0.5), SLOT_COUNT);
         float hitRadius = outerRadius + (slot == selected ? lift : 0);
-        return slot < count && radius <= hitRadius ? slot : -1;
+        return radius <= hitRadius ? slot : -1;
     }
 
     boolean select(int next, long now) {

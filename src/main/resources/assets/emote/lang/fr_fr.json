@@ -19,7 +19,6 @@
     "screen.emote.shortcuts.sort_tags": "Par tag",
     "screen.emote.shortcuts.empty_search": "Aucune emote correspondante.",
     "screen.emote.shortcuts.selected_help": "Faites glisser pour réorganiser.",
-    "screen.emote.shortcuts.empty_selected": "Aucune emote dans la roue.",
     "screen.emote.shortcuts.empty_available": "Toutes les emotes disponibles sont dans la roue.",
     "screen.emote.shortcuts.remove": "Retirer",
     "screen.emote.shortcuts.add": "Ajouter %s",

@@ -19,7 +19,6 @@
     "screen.emote.shortcuts.sort_tags": "タグ別に整理",
     "screen.emote.shortcuts.empty_search": "一致するエモートがありません。",
     "screen.emote.shortcuts.selected_help": "ドラッグして並べ替えます。",
-    "screen.emote.shortcuts.empty_selected": "ホイールにエモートがありません。",
     "screen.emote.shortcuts.empty_available": "利用可能なエモートはすべてホイールにあります。",
     "screen.emote.shortcuts.remove": "削除",
     "screen.emote.shortcuts.add": "%s を追加",

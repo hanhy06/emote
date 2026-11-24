@@ -19,7 +19,7 @@
     "screen.emote.shortcuts.sort_tags": "Group by Tag",
     "screen.emote.shortcuts.empty_search": "No matching emotes.",
     "screen.emote.shortcuts.selected_help": "Drag to reorder.",
-    "screen.emote.shortcuts.empty_selected": "No emotes on the wheel.",
+    "screen.emote.shortcuts.wheel_help": "Drag to move · Right-click to remove\nScroll to change page",
     "screen.emote.shortcuts.empty_available": "Every available emote is on the wheel.",
     "screen.emote.shortcuts.remove": "Remove",
     "screen.emote.shortcuts.add": "Add %s",

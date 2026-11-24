@@ -19,7 +19,7 @@
     "screen.emote.shortcuts.sort_tags": "태그별 묶기",
     "screen.emote.shortcuts.empty_search": "검색 결과가 없습니다.",
     "screen.emote.shortcuts.selected_help": "드래그해서 순서를 바꾸세요.",
-    "screen.emote.shortcuts.empty_selected": "휠에 표시할 이모트가 없습니다.",
+    "screen.emote.shortcuts.wheel_help": "드래그로 배치 · 우클릭으로 제거\n스크롤로 페이지 이동",
     "screen.emote.shortcuts.empty_available": "사용 가능한 모든 이모트가 휠에 있습니다.",
     "screen.emote.shortcuts.remove": "제거",
     "screen.emote.shortcuts.add": "%s 추가",

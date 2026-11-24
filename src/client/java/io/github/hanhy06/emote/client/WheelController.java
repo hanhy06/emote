@@ -31,8 +31,13 @@ public class WheelController {
     }
 
     public void updateEntries(List<EmoteSummary> emotes) {
-        this.shortcutSettings.updateServer(findServerKey(Minecraft.getInstance()), emotes);
+        Minecraft client = Minecraft.getInstance();
+        int previousSlotCount = this.shortcutSettings.slotIds().size();
+        this.shortcutSettings.updateServer(findServerKey(client), emotes);
         this.syncedFromServer = true;
+        if (client.gui.screen() instanceof WheelShortcutScreen editor) {
+            editor.refreshCatalog(previousSlotCount);
+        }
     }
 
     public void registerBinding(KeyMapping keyMapping) {
@@ -45,8 +50,7 @@ public class WheelController {
             return;
         }
 
-        List<EmoteSummary> shortcuts = this.shortcutSettings.selectedEmotes();
-        client.gui.setScreen(new WheelScreen(this, shortcuts, findInitialPageIndex(shortcuts), keyMapping));
+        client.gui.setScreen(new WheelScreen(this, this.shortcutSettings.selectedSlots(), findInitialPageIndex(), keyMapping));
     }
 
     public void play(EmoteSummary emoteSummary) {
@@ -59,16 +63,12 @@ public class WheelController {
         player.connection.sendUnattendedCommand(emoteSummary.createPlayCommand(), null);
     }
 
-    public void openShortcutEditor() {
-        Minecraft.getInstance().gui.setScreen(new WheelShortcutScreen(this));
+    void openShortcutEditor(int pageIndex) {
+        Minecraft.getInstance().gui.setScreen(new WheelShortcutScreen(this.shortcutSettings, pageIndex));
     }
 
     void openSearch(KeyMapping keyMapping) {
         Minecraft.getInstance().gui.setScreen(new WheelSearchScreen(this, this.shortcutSettings.allEmotes(), keyMapping));
-    }
-
-    public WheelShortcutSettings shortcuts() {
-        return this.shortcutSettings;
     }
 
     private void tickBinding(Minecraft client, KeyMapping keyMapping) {
@@ -81,18 +81,13 @@ public class WheelController {
         }
     }
 
-    private int findInitialPageIndex(List<EmoteSummary> shortcuts) {
-        if (this.lastSelectedId.isEmpty()) {
+    private int findInitialPageIndex() {
+        if (this.shortcutSettings.emote(this.lastSelectedId) == null) {
             return 0;
         }
 
-        for (int index = 0; index < shortcuts.size(); index++) {
-            if (shortcuts.get(index).id().equals(this.lastSelectedId)) {
-                return index / WheelGeometry.SLOT_COUNT;
-            }
-        }
-
-        return 0;
+        int slot = this.shortcutSettings.slotIds().indexOf(this.lastSelectedId);
+        return Math.max(0, slot) / WheelGeometry.SLOT_COUNT;
     }
 
     private static String findServerKey(Minecraft client) {

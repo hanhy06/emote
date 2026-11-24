@@ -19,7 +19,6 @@
     "screen.emote.shortcuts.sort_tags": "По тегам",
     "screen.emote.shortcuts.empty_search": "Подходящих эмоций нет.",
     "screen.emote.shortcuts.selected_help": "Перетащите, чтобы изменить порядок.",
-    "screen.emote.shortcuts.empty_selected": "В колесе нет эмоций.",
     "screen.emote.shortcuts.empty_available": "Все доступные эмоции уже в колесе.",
     "screen.emote.shortcuts.remove": "Убрать",
     "screen.emote.shortcuts.add": "Добавить %s",

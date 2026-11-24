@@ -19,7 +19,6 @@
     "screen.emote.shortcuts.sort_tags": "Nach Tags",
     "screen.emote.shortcuts.empty_search": "Keine passenden Emotes.",
     "screen.emote.shortcuts.selected_help": "Zum Sortieren ziehen.",
-    "screen.emote.shortcuts.empty_selected": "Keine Emotes im Rad.",
     "screen.emote.shortcuts.empty_available": "Alle verfügbaren Emotes sind im Rad.",
     "screen.emote.shortcuts.remove": "Entfernen",
     "screen.emote.shortcuts.add": "%s hinzufügen",

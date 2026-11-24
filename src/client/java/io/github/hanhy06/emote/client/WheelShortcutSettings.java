@@ -21,7 +21,7 @@ public class WheelShortcutSettings {
 
     private String serverKey = "";
     private Map<String, EmoteSummary> availableById = Map.of();
-    private List<String> selectedIds = List.of();
+    private List<String> slotIds = List.of();
 
     public WheelShortcutSettings(Path filePath) {
         this.filePath = filePath;
@@ -41,94 +41,83 @@ public class WheelShortcutSettings {
         boolean settingsChanged;
         if (storedIds == null) {
             storedIds = List.copyOf(nextAvailableById.keySet());
-            knownIds = storedIds;
             this.shortcutsByServer.put(serverKey, storedIds);
-            this.knownIdsByServer.put(serverKey, knownIds);
+            this.knownIdsByServer.put(serverKey, storedIds);
             settingsChanged = true;
         } else if (knownIds == null) {
             LinkedHashSet<String> migratedKnownIds = new LinkedHashSet<>(storedIds);
+            migratedKnownIds.remove(null);
             migratedKnownIds.addAll(nextAvailableById.keySet());
-            knownIds = List.copyOf(migratedKnownIds);
-            this.knownIdsByServer.put(serverKey, knownIds);
+            this.knownIdsByServer.put(serverKey, List.copyOf(migratedKnownIds));
             settingsChanged = true;
         } else {
             List<String> nextStoredIds = new ArrayList<>(storedIds);
             LinkedHashSet<String> nextKnownIds = new LinkedHashSet<>(knownIds);
-            settingsChanged = nextKnownIds.addAll(storedIds);
+            for (String id : storedIds) {
+                if (id != null) {
+                    nextKnownIds.add(id);
+                }
+            }
             for (String id : nextAvailableById.keySet()) {
                 if (nextKnownIds.add(id)) {
                     nextStoredIds.add(id);
-                    settingsChanged = true;
                 }
             }
+            settingsChanged = nextKnownIds.size() != knownIds.size();
             if (settingsChanged) {
-                storedIds = List.copyOf(nextStoredIds);
-                knownIds = List.copyOf(nextKnownIds);
+                storedIds = Collections.unmodifiableList(nextStoredIds);
                 this.shortcutsByServer.put(serverKey, storedIds);
-                this.knownIdsByServer.put(serverKey, knownIds);
+                this.knownIdsByServer.put(serverKey, List.copyOf(nextKnownIds));
             }
         }
 
         if (settingsChanged) {
             save();
         }
-        this.selectedIds = storedIds;
+        this.slotIds = storedIds;
     }
 
     public void clearSession() {
         this.serverKey = "";
         this.availableById = Map.of();
-        this.selectedIds = List.of();
+        this.slotIds = List.of();
     }
 
-    public List<EmoteSummary> selectedEmotes() {
-        List<EmoteSummary> selected = new ArrayList<>();
-        for (String id : this.selectedIds) {
-            EmoteSummary emote = this.availableById.get(id);
-            if (emote != null) {
-                selected.add(emote);
-            }
-        }
-        return List.copyOf(selected);
+    List<EmoteSummary> selectedSlots() {
+        return resolveSlots(this.slotIds);
+    }
+
+    List<EmoteSummary> resolveSlots(List<String> slotIds) {
+        return slotIds.stream().map(this::emote).toList();
+    }
+
+    EmoteSummary emote(String id) {
+        return id == null ? null : this.availableById.get(id);
     }
 
     List<EmoteSummary> allEmotes() {
         return List.copyOf(this.availableById.values());
     }
 
-    public List<EmoteSummary> availableEmotes() {
-        LinkedHashSet<String> selected = new LinkedHashSet<>(this.selectedIds);
+    List<EmoteSummary> availableEmotes(List<String> slotIds) {
+        Set<String> selected = new HashSet<>(slotIds);
         return this.availableById.values().stream()
             .filter(emote -> !selected.contains(emote.id()))
             .toList();
     }
 
-    List<String> selectedIds() {
-        return this.selectedIds;
+    List<String> slotIds() {
+        return this.slotIds;
     }
 
-    public void add(String id) {
-        if (!this.availableById.containsKey(id) || this.selectedIds.contains(id)) {
-            return;
+    void sortSlots(List<String> slotIds, boolean groupByTag) {
+        List<EmoteSummary> selected = new ArrayList<>();
+        for (String id : slotIds) {
+            EmoteSummary emote = emote(id);
+            if (emote != null) {
+                selected.add(emote);
+            }
         }
-
-        List<String> nextIds = new ArrayList<>(this.selectedIds);
-        nextIds.add(id);
-        updateSelectedIds(nextIds);
-    }
-
-    public void remove(String id) {
-        if (!this.selectedIds.contains(id)) {
-            return;
-        }
-
-        List<String> nextIds = new ArrayList<>(this.selectedIds);
-        nextIds.remove(id);
-        updateSelectedIds(nextIds);
-    }
-
-    void sortSelected(boolean groupByTag) {
-        List<EmoteSummary> selected = new ArrayList<>(selectedEmotes());
         if (selected.size() < 2) {
             return;
         }
@@ -149,52 +138,25 @@ public class WheelShortcutSettings {
         }
         selected.sort(order);
 
-        // Unavailable shortcuts keep their slots when the server hides them.
-        List<String> nextIds = new ArrayList<>(this.selectedIds);
+        // Only the occupied, visible slots participate in sorting.
         Iterator<EmoteSummary> sorted = selected.iterator();
-        for (int i = 0; i < nextIds.size(); i++) {
-            if (this.availableById.containsKey(nextIds.get(i))) {
-                nextIds.set(i, sorted.next().id());
+        for (int i = 0; i < slotIds.size(); i++) {
+            if (emote(slotIds.get(i)) != null) {
+                slotIds.set(i, sorted.next().id());
             }
-        }
-        if (!nextIds.equals(this.selectedIds)) {
-            updateSelectedIds(nextIds);
         }
     }
 
-    public void moveToIndex(String id, int targetVisibleIndex) {
-        List<EmoteSummary> visibleSelection = selectedEmotes();
-        int visibleIndex = -1;
-        for (int index = 0; index < visibleSelection.size(); index++) {
-            if (visibleSelection.get(index).id().equals(id)) {
-                visibleIndex = index;
-                break;
-            }
-        }
-        if (visibleIndex < 0 || visibleSelection.size() <= 1) {
+    void saveSlots(List<String> nextIds) {
+        if (this.slotIds.equals(nextIds)) {
             return;
         }
-
-        int clampedTargetIndex = Math.clamp(targetVisibleIndex, 0, visibleSelection.size() - 1);
-        if (visibleIndex == clampedTargetIndex) {
-            return;
-        }
-
-        String targetId = visibleSelection.get(clampedTargetIndex).id();
-        List<String> nextIds = new ArrayList<>(this.selectedIds);
-        nextIds.remove(id);
-        int targetIndex = nextIds.indexOf(targetId);
-        nextIds.add(targetIndex + (clampedTargetIndex > visibleIndex ? 1 : 0), id);
-        updateSelectedIds(nextIds);
-    }
-
-    void updateSelectedIds(List<String> nextIds) {
-        this.selectedIds = List.copyOf(nextIds);
+        this.slotIds = Collections.unmodifiableList(new ArrayList<>(nextIds));
         if (this.serverKey.isEmpty()) {
             return;
         }
 
-        this.shortcutsByServer.put(this.serverKey, this.selectedIds);
+        this.shortcutsByServer.put(this.serverKey, this.slotIds);
         save();
     }
 
@@ -217,7 +179,7 @@ public class WheelShortcutSettings {
             }
 
             for (Map.Entry<String, JsonElement> entry : serversElement.getAsJsonObject().entrySet()) {
-                List<String> ids = readIds(entry.getValue());
+                List<String> ids = readIds(entry.getValue(), true);
                 if (ids != null) {
                     this.shortcutsByServer.put(entry.getKey(), ids);
                 }
@@ -226,7 +188,7 @@ public class WheelShortcutSettings {
             JsonElement knownServersElement = root.get("known_servers");
             if (knownServersElement != null && knownServersElement.isJsonObject()) {
                 for (Map.Entry<String, JsonElement> entry : knownServersElement.getAsJsonObject().entrySet()) {
-                    List<String> ids = readIds(entry.getValue());
+                    List<String> ids = readIds(entry.getValue(), false);
                     if (ids != null) {
                         this.knownIdsByServer.put(entry.getKey(), ids);
                     }
@@ -270,21 +232,28 @@ public class WheelShortcutSettings {
             : element.getAsInt();
     }
 
-    private static List<String> readIds(JsonElement element) {
+    private static List<String> readIds(JsonElement element, boolean allowEmptySlots) {
         if (!element.isJsonArray()) {
             return null;
         }
 
-        LinkedHashSet<String> ids = new LinkedHashSet<>();
+        List<String> ids = new ArrayList<>();
+        Set<String> seenIds = new HashSet<>();
         for (JsonElement idElement : element.getAsJsonArray()) {
+            if (allowEmptySlots && idElement.isJsonNull()) {
+                ids.add(null);
+                continue;
+            }
             if (!idElement.isJsonPrimitive() || !idElement.getAsJsonPrimitive().isString()) {
                 return null;
             }
             String id = idElement.getAsString().trim();
-            if (!id.isEmpty()) {
+            if (!id.isEmpty() && seenIds.add(id)) {
                 ids.add(id);
+            } else if (allowEmptySlots) {
+                ids.add(null);
             }
         }
-        return List.copyOf(ids);
+        return Collections.unmodifiableList(ids);
     }
 }

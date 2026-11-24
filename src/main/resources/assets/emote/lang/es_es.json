@@ -19,7 +19,6 @@
     "screen.emote.shortcuts.sort_tags": "Por etiqueta",
     "screen.emote.shortcuts.empty_search": "No hay gestos coincidentes.",
     "screen.emote.shortcuts.selected_help": "Arrastra para reordenar.",
-    "screen.emote.shortcuts.empty_selected": "No hay gestos en la rueda.",
     "screen.emote.shortcuts.empty_available": "Todos los gestos disponibles están en la rueda.",
     "screen.emote.shortcuts.remove": "Quitar",
     "screen.emote.shortcuts.add": "Añadir %s",

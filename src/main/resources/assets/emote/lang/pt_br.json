@@ -19,7 +19,6 @@
     "screen.emote.shortcuts.sort_tags": "Por tag",
     "screen.emote.shortcuts.empty_search": "Nenhum emote correspondente.",
     "screen.emote.shortcuts.selected_help": "Arraste para reordenar.",
-    "screen.emote.shortcuts.empty_selected": "Não há emotes na roda.",
     "screen.emote.shortcuts.empty_available": "Todos os emotes disponíveis estão na roda.",
     "screen.emote.shortcuts.remove": "Remover",
     "screen.emote.shortcuts.add": "Adicionar %s",

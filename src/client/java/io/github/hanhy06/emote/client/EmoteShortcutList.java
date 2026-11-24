@@ -1,16 +1,13 @@
 package io.github.hanhy06.emote.client;
 
-import com.mojang.blaze3d.platform.InputConstants;
 import io.github.hanhy06.emote.application.EmoteSummary;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.GuiPipeline;
-import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.ObjectSelectionList;
 import net.minecraft.client.gui.components.SelectableEntry;
-import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -19,8 +16,6 @@ import java.util.List;
 
 @Environment(EnvType.CLIENT)
 final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entry> {
-    private static final Identifier SELECT_HIGHLIGHTED_SPRITE = Identifier.withDefaultNamespace("transferable_list/select_highlighted");
-    private static final Identifier SELECT_SPRITE = Identifier.withDefaultNamespace("transferable_list/select");
     private static final Identifier UNSELECT_HIGHLIGHTED_SPRITE = Identifier.withDefaultNamespace("transferable_list/unselect_highlighted");
     private static final Identifier UNSELECT_SPRITE = Identifier.withDefaultNamespace("transferable_list/unselect");
     private static final int ENTRY_HEIGHT = 36;
@@ -29,14 +24,10 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
     private static final int TEXT_GAP = 4;
 
     private final WheelShortcutScreen screen;
-    private final WheelController controller;
-    private final boolean selectedList;
 
     EmoteShortcutList(
         Minecraft minecraft,
         WheelShortcutScreen screen,
-        WheelController controller,
-        boolean selectedList,
         int x,
         int y,
         int width,
@@ -44,8 +35,6 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
     ) {
         super(minecraft, width, height, y, ENTRY_HEIGHT);
         this.screen = screen;
-        this.controller = controller;
-        this.selectedList = selectedList;
         this.centerListVertically = false;
         updateSizeAndPosition(width, height, x, y);
     }
@@ -65,11 +54,6 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
         return getRight() - scrollbarWidth();
     }
 
-    @Override
-    public boolean keyPressed(KeyEvent event) {
-        return getSelected() != null ? getSelected().keyPressed(event) : super.keyPressed(event);
-    }
-
     void updateEntries(List<EmoteSummary> emotes) {
         double previousScroll = scrollAmount();
         clearEntries();
@@ -82,35 +66,6 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
 
     boolean isEmpty() {
         return children().isEmpty();
-    }
-
-    private void dragEntry(Entry entry, double mouseY) {
-        int currentIndex = children().indexOf(entry);
-        if (!this.selectedList || currentIndex < 0) {
-            return;
-        }
-
-        if (mouseY < getY() + 12) {
-            setScrollAmount(scrollAmount() - 4);
-        } else if (mouseY > getBottom() - 12) {
-            setScrollAmount(scrollAmount() + 4);
-        }
-
-        int targetIndex = Math.clamp(
-            (int) ((mouseY - getY() - 2 + scrollAmount()) / ENTRY_HEIGHT),
-            0,
-            children().size() - 1
-        );
-        if (currentIndex == targetIndex) {
-            return;
-        }
-
-        this.controller.shortcuts().moveToIndex(entry.emote.id(), targetIndex);
-        int direction = Integer.compare(targetIndex, currentIndex);
-        while (currentIndex != targetIndex) {
-            swap(currentIndex, currentIndex + direction);
-            currentIndex += direction;
-        }
     }
 
     final class Entry extends ObjectSelectionList.Entry<Entry> implements SelectableEntry {
@@ -136,9 +91,7 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
             int controlY = getContentY() + CONTROL_Y_OFFSET;
             boolean showControls = hovered || EmoteShortcutList.this.getSelected() == this && EmoteShortcutList.this.isFocused();
 
-            Identifier sprite = selectedList
-                ? showControls ? SELECT_HIGHLIGHTED_SPRITE : SELECT_SPRITE
-                : showControls ? UNSELECT_HIGHLIGHTED_SPRITE : UNSELECT_SPRITE;
+            Identifier sprite = showControls ? UNSELECT_HIGHLIGHTED_SPRITE : UNSELECT_SPRITE;
             graphics.blitSprite(GuiPipeline.TEXTURED, sprite, controlX, controlY, CONTROL_SIZE, CONTROL_SIZE);
 
             int textX = controlX + CONTROL_SIZE + TEXT_GAP;
@@ -149,51 +102,11 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
 
         @Override
         public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-            if (event.button() != InputConstants.MOUSE_BUTTON_LEFT) {
-                return false;
-            }
-
-            int relX = (int) event.x() - getContentX();
-            int relY = (int) event.y() - (getContentY() + CONTROL_Y_OFFSET);
-            if (relX < 0 || relX >= CONTROL_SIZE || relY < 0 || relY >= CONTROL_SIZE) {
+            if (!event.isLeftMouse()) {
                 return super.mouseClicked(event, doubleClick);
             }
-
-            toggleShortcut();
+            screen.startDragFromAvailable(this.emote.id());
             return true;
-        }
-
-        @Override
-        public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
-            if (selectedList && event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
-                EmoteShortcutList.this.dragEntry(this, event.y());
-                return true;
-            }
-            return super.mouseDragged(event, dx, dy);
-        }
-
-        @Override
-        public boolean shouldTakeFocusAfterInteraction() {
-            return EmoteShortcutList.this.children().contains(this);
-        }
-
-        @Override
-        public boolean keyPressed(KeyEvent event) {
-            if (event.isConfirmation()) {
-                toggleShortcut();
-                return true;
-            }
-            return super.keyPressed(event);
-        }
-
-        private void toggleShortcut() {
-            AbstractWidget.playButtonClickSound(minecraft.getSoundManager());
-            if (selectedList) {
-                controller.shortcuts().remove(this.emote.id());
-            } else {
-                controller.shortcuts().add(this.emote.id());
-            }
-            screen.refreshLists();
         }
 
         private Component fitText(String text, int maxWidth) {
@@ -204,6 +117,5 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
             String ellipsis = "...";
             return Component.literal(minecraft.font.plainSubstrByWidth(text, Math.max(0, maxWidth - minecraft.font.width(ellipsis))) + ellipsis);
         }
-
     }
 }

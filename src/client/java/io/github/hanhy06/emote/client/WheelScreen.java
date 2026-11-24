@@ -2,34 +2,25 @@ package io.github.hanhy06.emote.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.Window;
-import com.mojang.blaze3d.pipeline.RenderPipeline;
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.renderpearl.api.pipeline.BlendFunction;
-import com.mojang.renderpearl.api.pipeline.ColorTargetState;
-import com.mojang.renderpearl.api.pipeline.PrimitiveTopology;
 import io.github.hanhy06.emote.application.EmoteSummary;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.MouseHandler;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.GuiPipeline;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
-import net.minecraft.client.renderer.BindGroupLayouts;
-import net.minecraft.client.renderer.pipeline.RenderPipelines;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
-import net.minecraft.util.ARGB;
 import net.minecraft.util.FormattedCharSequence;
 import org.joml.Matrix3x2fStack;
 import org.jspecify.annotations.NonNull;
 
 import java.util.List;
+import java.util.Objects;
 
 @Environment(EnvType.CLIENT)
 public class WheelScreen extends Screen {
@@ -37,35 +28,16 @@ public class WheelScreen extends Screen {
     private static final int ACTION_BUTTON_GAP = 4;
     private static final int ACTION_BUTTONS_WIDTH = 2 * (ACTION_BUTTON_WIDTH + ACTION_BUTTON_GAP);
     private static final int TITLE_TOP = 8;
-    private static final Identifier SLOT = Identifier.parse("emote:textures/gui/wheel/slot.png");
-    private static final Identifier HUB = Identifier.parse("emote:textures/gui/wheel/hub.png");
-    private static final Identifier INDICATOR = Identifier.parse("emote:textures/gui/wheel/indicator.png");
-    private static final GuiPipeline WHEEL_SHAPE = GuiPipeline.of(() -> RenderPipeline.builder(RenderPipelines.GLOBALS_SNIPPET)
-        .withLocation(Identifier.parse("emote:pipeline/wheel_shape"))
-        .withVertexShader("core/position_tex_color")
-        .withFragmentShader(Identifier.parse("emote:core/wheel_shape"))
-        .withBindGroupLayout(BindGroupLayouts.PROJECTION)
-        .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
-        .withBindGroupLayout(BindGroupLayouts.SAMPLER0)
-        .withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
-        .withPrimitiveTopology(PrimitiveTopology.QUADS)
-        .withVertexBinding(0, DefaultVertexFormat.POSITION_TEX_COLOR)
-        .build());
-    private static final String ELLIPSIS = "…";
     private static final int LEFT_MOUSE_BUTTON = InputConstants.MOUSE_BUTTON_LEFT;
     private static final int RIGHT_MOUSE_BUTTON = InputConstants.MOUSE_BUTTON_RIGHT;
     private static final int BACKGROUND_COLOR = 0x40101010;
-    private static final int SLOT_FILL_COLOR = 0xF33B4752;
-    private static final int SLOT_HIGHLIGHT_FILL_COLOR = 0xFF265B83;
-    private static final int SLOT_EMPTY_FILL_COLOR = 0xC21C242B;
-    private static final int HUB_COLOR = 0xFA171F27;
-    private static final int INDICATOR_COLOR = 0xFF79BDEF;
     private static final int TITLE_COLOR = 0xFFF7FAFC;
     private static final int BODY_COLOR = 0xFFD1D9DF;
     private static final int MUTED_COLOR = 0xFF9DB0BC;
 
     private final WheelController controller;
     private final List<EmoteSummary> emotes;
+    private final boolean hasEmotes;
     private final int pageCount;
     private final KeyMapping keyMapping;
     private final Component bindingLabel;
@@ -78,7 +50,8 @@ public class WheelScreen extends Screen {
     public WheelScreen(WheelController controller, List<EmoteSummary> emotes, int pageIndex, KeyMapping keyMapping) {
         super(Component.translatable("screen.emote.wheel.title"));
         this.controller = controller;
-        this.emotes = List.copyOf(emotes);
+        this.emotes = emotes;
+        this.hasEmotes = emotes.stream().anyMatch(Objects::nonNull);
         this.pageCount = Math.max(1, Math.ceilDiv(this.emotes.size(), WheelGeometry.SLOT_COUNT));
         setPage(Math.clamp(pageIndex, 0, this.pageCount - 1));
         this.keyMapping = keyMapping;
@@ -96,7 +69,7 @@ public class WheelScreen extends Screen {
         ).bounds(searchX, this.height - 24, ACTION_BUTTON_WIDTH, 20).build());
         this.addRenderableWidget(Button.builder(
             Component.translatable("screen.emote.wheel.edit"),
-            ignoredButton -> this.controller.openShortcutEditor()
+            ignoredButton -> this.controller.openShortcutEditor(this.pageIndex)
         ).bounds(editX, this.height - 24, ACTION_BUTTON_WIDTH, 20).build());
     }
 
@@ -125,7 +98,7 @@ public class WheelScreen extends Screen {
         long now = System.nanoTime();
         EmoteSummary hoveredEmote = hoveredEmote();
 
-        drawWheel(graphics, now);
+        WheelRenderer.draw(graphics, this.font, this.wheel, this.pageEmotes, now, false);
         drawTitle(graphics, hoveredEmote);
         drawCenter(graphics);
         drawFooter(graphics, hoveredEmote);
@@ -206,74 +179,13 @@ public class WheelScreen extends Screen {
         }
 
         setPage(nextPage);
-        this.wheel.select(this.wheel.slotAt(mouseX, mouseY, this.pageEmotes.size()), System.nanoTime());
+        this.wheel.select(playableSlotAt(mouseX, mouseY), System.nanoTime());
         playWheelClick();
     }
 
     private void setPage(int pageIndex) {
         this.pageIndex = pageIndex;
-        int start = pageIndex * WheelGeometry.SLOT_COUNT;
-        int count = Math.min(WheelGeometry.SLOT_COUNT, this.emotes.size() - start);
-        this.pageEmotes = this.emotes.subList(start, start + count);
-    }
-
-    private void drawWheel(GuiGraphicsExtractor graphics, long now) {
-        Matrix3x2fStack pose = graphics.pose();
-        pose.pushMatrix().translate(this.wheel.centerX, this.wheel.centerY);
-        float progress = this.wheel.selectionProgress(now);
-        for (int i = 0; i < WheelGeometry.SLOT_COUNT; i++) {
-            float entrance = this.wheel.entrance(i, now);
-            float weight = this.wheel.weight(i, progress);
-            float angle = (float) (i * WheelGeometry.SLOT_ANGLE);
-            float scale = this.wheel.scale * (0.93F + 0.07F * entrance);
-            float lift = this.wheel.lift * weight;
-            boolean hasEmote = i < this.pageEmotes.size();
-            int color = hasEmote ? ARGB.srgbLerp(weight, SLOT_FILL_COLOR, SLOT_HIGHLIGHT_FILL_COLOR) : SLOT_EMPTY_FILL_COLOR;
-            pose.pushMatrix().rotate(angle).translate(0, -lift).scale(scale);
-            drawWheelPart(graphics, SLOT, -64, -106, 128, 80, ARGB.color(Math.round(ARGB.alpha(color) * entrance), color));
-            pose.popMatrix();
-
-            if (hasEmote && entrance > 0) {
-                float distance = WheelGeometry.LABEL_RADIUS * scale + lift;
-                float x = (float) Math.sin(angle) * distance;
-                float y = -(float) Math.cos(angle) * distance;
-                drawSlotLabel(graphics, this.pageEmotes.get(i).name(), i == this.wheel.selected(), x, y,
-                    ARGB.color(Math.round(255 * entrance), TITLE_COLOR));
-            }
-        }
-
-        pose.scale(this.wheel.scale);
-        drawWheelPart(graphics, HUB, -40, -40, 80, 80, HUB_COLOR);
-        float opacity = this.wheel.indicatorOpacity(progress);
-        if (opacity > 0) {
-            pose.rotate((float) this.wheel.indicatorAngle(now));
-            drawWheelPart(graphics, INDICATOR, -17, -41, 34, 10, ARGB.color(Math.round(255 * opacity), INDICATOR_COLOR));
-        }
-        pose.popMatrix();
-    }
-
-    private static void drawWheelPart(GuiGraphicsExtractor graphics, Identifier texture, int x, int y, int width, int height, int color) {
-        graphics.blit(WHEEL_SHAPE, texture, x, y, 0, 0, width, height, width, height, color);
-    }
-
-    private void drawSlotLabel(GuiGraphicsExtractor graphics, String name, boolean selected, float x, float y, int color) {
-        int width = this.wheel.textWidth;
-        String singleLine = name.replace('\n', ' ').replace('\r', ' ');
-        boolean tooWide = this.font.width(singleLine) > width;
-        if (selected && (tooWide || !singleLine.equals(name))) {
-            int height = Math.max(4, Math.min(Math.round(this.wheel.outerRadius * 0.34F), 3 * (this.font.lineHeight + 2)));
-            drawWrappedLabel(graphics, Component.literal(name), x, y, width, height, 1, color);
-            return;
-        }
-
-        if (tooWide) {
-            int textWidth = Math.max(0, width - this.font.width(ELLIPSIS));
-            singleLine = this.font.plainSubstrByWidth(singleLine, textWidth).stripTrailing() + ELLIPSIS;
-        }
-        Matrix3x2fStack pose = graphics.pose();
-        pose.pushMatrix().translate(x, y - this.font.lineHeight / 2.0F);
-        graphics.centeredText(this.font, singleLine, 0, 0, color);
-        pose.popMatrix();
+        this.pageEmotes = WheelGeometry.page(this.emotes, pageIndex);
     }
 
     private void drawTitle(GuiGraphicsExtractor graphics, EmoteSummary hoveredEmote) {
@@ -282,30 +194,11 @@ public class WheelScreen extends Screen {
         int rimTop = this.wheel.centerY - this.wheel.outerRadius - (int) Math.ceil(this.wheel.lift);
         int titleBottom = Math.clamp(rimTop - 3, TITLE_TOP + 1, WheelGeometry.TITLE_BOTTOM);
         float centerY = (TITLE_TOP + titleBottom) / 2.0F;
-        drawWrappedLabel(graphics, text, this.wheel.centerX, centerY, Math.max(1, this.width - 24), titleBottom - TITLE_TOP, scale, TITLE_COLOR);
-    }
-
-    private void drawWrappedLabel(GuiGraphicsExtractor graphics, Component text, float centerX, float centerY, int width, int height, float scale, int color) {
-        int lineSpacing = this.font.lineHeight + 2;
-        List<FormattedCharSequence> lines = this.font.split(text, Math.max(1, (int) (width / scale)));
-        float textHeight = Math.max(1, lines.size()) * lineSpacing;
-        if (textHeight * scale > height) {
-            // Shrinking the text also allows more characters per line.
-            scale = (float) Math.sqrt(scale * height / textHeight);
-            lines = this.font.split(text, Math.max(1, (int) (width / scale)));
-            scale = Math.min(scale, (float) height / (Math.max(1, lines.size()) * lineSpacing));
-        }
-        float y = centerY - ((lines.size() - 1) * lineSpacing + this.font.lineHeight) * scale / 2.0F;
-        Matrix3x2fStack pose = graphics.pose();
-        pose.pushMatrix().translate(centerX, y).scale(scale);
-        for (int i = 0; i < lines.size(); i++) {
-            graphics.centeredText(this.font, lines.get(i), 0, i * lineSpacing, color);
-        }
-        pose.popMatrix();
+        WheelRenderer.drawWrappedLabel(graphics, this.font, text, this.wheel.centerX, centerY, Math.max(1, this.width - 24), titleBottom - TITLE_TOP, scale, TITLE_COLOR);
     }
 
     private void drawCenter(GuiGraphicsExtractor graphics) {
-        boolean empty = this.emotes.isEmpty();
+        boolean empty = !this.hasEmotes;
         Component first = Component.translatable(empty ? "screen.emote.wheel.center.no_shortcuts" : "screen.emote.wheel.center.release");
         Component second = Component.translatable(empty ? "screen.emote.wheel.center.selected" : "screen.emote.wheel.center.to_play");
         float scale = Math.min(1.0F, this.wheel.scale * 60 /
@@ -344,13 +237,13 @@ public class WheelScreen extends Screen {
             return;
         }
 
-        if (this.emotes.isEmpty()) {
+        if (!this.hasEmotes) {
             drawFooterHint(graphics, Component.translatable("screen.emote.wheel.footer.no_shortcuts"), footerTop, footerWidth, BODY_COLOR);
-            return;
+        } else {
+            drawFooterHint(graphics, Component.translatable("screen.emote.wheel.footer.release_to_play", this.bindingLabel), footerTop, footerWidth, BODY_COLOR);
+            drawFooterHint(graphics, Component.translatable("screen.emote.wheel.footer.close"), footerTop + 11, footerWidth, MUTED_COLOR);
         }
 
-        drawFooterHint(graphics, Component.translatable("screen.emote.wheel.footer.release_to_play", this.bindingLabel), footerTop, footerWidth, BODY_COLOR);
-        drawFooterHint(graphics, Component.translatable("screen.emote.wheel.footer.close"), footerTop + 11, footerWidth, MUTED_COLOR);
         if (this.pageCount > 1) {
             drawFooterHint(graphics, Component.translatable("screen.emote.wheel.footer.page_click"), footerTop + 22, footerWidth, MUTED_COLOR);
         }
@@ -370,10 +263,15 @@ public class WheelScreen extends Screen {
     }
 
     private void updateHoveredSlot(double mouseX, double mouseY) {
-        int slot = this.wheel.slotAt(mouseX, mouseY, this.pageEmotes.size());
+        int slot = playableSlotAt(mouseX, mouseY);
         if (this.wheel.select(slot, System.nanoTime()) && slot >= 0) {
             playWheelClick();
         }
+    }
+
+    private int playableSlotAt(double mouseX, double mouseY) {
+        int slot = this.wheel.slotAt(mouseX, mouseY);
+        return slot >= 0 && slot < this.pageEmotes.size() && this.pageEmotes.get(slot) != null ? slot : -1;
     }
 
     private void playWheelClick() {
