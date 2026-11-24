@@ -1,4 +1,4 @@
-import { sourceSecondsTime, parseAnimationSeconds } from "../../format/time";
+import { sourceSecondsTime, parseAnimationSeconds, parseAnimationDuration } from "../../format/time";
 import type { GeneratedResource } from "../../domain/generatedResource";
 import { Matrix4 } from "three";
 import { importedNodeHints } from "../../domain/conversionSeed";
@@ -115,6 +115,7 @@ export function importGeckoLibProject(project: GeckoLibBbmodelProject, sourceNam
     const animationDiagnostics: ConversionIssue[] = [];
     try {
       const imported = importAnimation(animation, sourceIndex, animationBones, nodes, animationDiagnostics);
+      parseAnimationDuration(imported.ir.animation.duration);
       imported.ir.skin = readBlockbenchSkin(project.textures, animation.name) ?? skin;
       animations.push(imported);
       diagnostics.push(...animationDiagnostics);

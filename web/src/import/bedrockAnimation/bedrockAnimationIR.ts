@@ -1,4 +1,4 @@
-import { sourceSecondsTime, parseAnimationSeconds, parseMinecraftTime, MAX_ANIMATION_DURATION_TICKS } from "../../format/time";
+import { sourceSecondsTime, parseAnimationSeconds, parseMinecraftTime, parseAnimationDuration } from "../../format/time";
 import type { AnimationIR, CurveIR, ValueDriverIR, NodeIR, ScalarIR, TimelineEventIR, VectorValueIR, Vector3IR } from "../../domain/animationIR";
 import { affineCurveIR, affineScalarIR, scalarIR, sourceDelayIR } from "../../domain/animationIRConversion";
 import type { ImportedNode } from "../../domain/conversionSeed";
@@ -16,8 +16,7 @@ export function createBedrockAnimationIR(animation: BedrockAnimation, name: stri
     throw new ConversionError("bedrock_animation_duration_missing", `${name}: a time-dependent animation without key or event timing requires animation_length.`, `animations.${name}.animation_length`);
   }
   const duration = sourceSecondsTime(animation.animation_length !== undefined && typeof animation.animation_length !== "number" ? animation.animation_length : Math.max(0.05, sourceDuration));
-  const durationTicks = parseMinecraftTime(duration, 1);
-  if (durationTicks > MAX_ANIMATION_DURATION_TICKS) throw new ConversionError("animation_duration_unsupported", `${name} duration must not exceed ${MAX_ANIMATION_DURATION_TICKS} ticks.`, `animations.${name}.animation_length`);
+  const durationTicks = parseAnimationDuration(duration, `animations.${name}.animation_length`);
   const nodes: Record<string, NodeIR> = { scene: { transform: [{ id: "scale", op: "scale", value: [BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE] }] } };
   const timeline: TimelineEventIR[] = [];
   const ir: AnimationIR = {

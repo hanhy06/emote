@@ -1,4 +1,4 @@
-import { sourceSecondsTime, parseAnimationSeconds } from "../../format/time";
+import { sourceSecondsTime, parseAnimationSeconds, parseAnimationDuration } from "../../format/time";
 import { importedNodeHints } from "../../domain/conversionSeed";
 import { referencedItemModelResources } from "../../domain/generatedResource";
 import type { BlockStateData, ItemStackData } from "../../domain/minecraftData";
@@ -81,6 +81,7 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
       const effects = projectEffectEvents(animation, cubeContent, animationDiagnostics, sourceIndex);
       const state = resolveAnimatedJavaAnimationState(effects, animation, project, nodes, transformGraph, nodeBindings, animationDiagnostics, sourceIndex);
       const ir = createAnimatedJavaAnimationIR(animation, project, transformGraph, nodes, PLAYER_RENDER_SCALE, state.nodeFrames, cubeContent);
+      parseAnimationDuration(ir.animation.duration);
       ir.skin = readBlockbenchSkin(project.textures, animation.name) ?? skin;
       ir.animation.events = { start: state.startEvents, timeline: state.timelineEvents, loop: [], stop: [] };
       diagnostics.push(...animationDiagnostics);

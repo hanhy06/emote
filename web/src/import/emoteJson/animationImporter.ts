@@ -3,6 +3,7 @@ import { attachmentTargetId, type AnimationIR } from "../../domain/animationIR";
 import { createDefaultPlayerBehavior } from "../../domain/emoteDefinition";
 import { normalizeResourceLocation } from "../../format/resourceLocation";
 import { readItemStack } from "../../format/minecraftData";
+import { parseAnimationDuration } from "../../format/time";
 import { isRecord } from "../../format/runtimeValue";
 import type { ConversionIssue } from "../../foundation/diagnostics";
 import { migrateAnimation } from "./schema4Migration";
@@ -13,6 +14,7 @@ export function importAnimation(value: unknown, sourceName: string): ImportedPro
   const ir = isRecord(value) && value.schema_version === 4
     ? migrateAnimation(value, nodeHints, diagnostics)
     : structuredClone(value) as AnimationIR;
+  parseAnimationDuration(ir.animation.duration, "$.animation.duration");
   for (const [id, node] of Object.entries(ir.nodes)) {
     nodeHints[id] ??= { sourceNodeId: id };
     if (!node.attachments) continue;
