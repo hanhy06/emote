@@ -24,7 +24,7 @@ import static io.github.hanhy06.emote.playback.stress.StressTestTiming.ThreadRol
 
 public final class PlaybackStressTest {
     public static final int DEFAULT_INSTANCE_COUNT = 50;
-    public static final int MAX_INSTANCE_COUNT = 500;
+    public static final int MAX_INSTANCE_COUNT = 1_000;
     static final int MIN_INITIAL_TICK = 80;
     static final int MAX_INITIAL_TICK = 175;
     private static final long RANDOM_SEED = 0xE607EL;
