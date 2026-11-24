@@ -56,7 +56,8 @@ public class WheelShortcutScreen extends Screen {
         int wheelX = centerX - LIST_GAP / 2 - listWidth;
         int reservedHeight = 31;
         int radius = Math.max(4, Math.min((listWidth - 12) / 2, (panelHeight - reservedHeight - 10) / 2));
-        this.wheel = new WheelGeometry(wheelX + listWidth / 2, LIST_TOP + (panelHeight - reservedHeight) / 2, radius, System.nanoTime());
+        var slotMask = WheelRenderer.loadSlotMask(this.minecraft.getResourceManager());
+        this.wheel = new WheelGeometry(wheelX + listWidth / 2, LIST_TOP + (panelHeight - reservedHeight) / 2, radius, System.nanoTime(), slotMask);
         this.dragged = null;
 
         int sortButtonWidth = (listWidth - BUTTON_GAP) / 2;
@@ -104,7 +105,7 @@ public class WheelShortcutScreen extends Screen {
     public void extractRenderState(GuiGraphicsExtractor graphics) {
         super.extractRenderState(graphics);
         long now = System.nanoTime();
-        this.wheel.select(this.wheel.slotAt(graphics.mouseX(), graphics.mouseY()), now);
+        this.wheel.select(this.wheel.hoveredSlotAt(graphics.mouseX(), graphics.mouseY(), now), now);
         WheelRenderer.draw(graphics, this.font, this.wheel, this.pageEmotes, now, true);
 
         int listWidth = this.availableList.getWidth();
@@ -227,7 +228,7 @@ public class WheelShortcutScreen extends Screen {
     }
 
     private int slotAt(double x, double y) {
-        int slot = this.wheel.slotAt(x, y);
+        int slot = this.wheel.slotAt(x, y, System.nanoTime());
         return slot < 0 ? -1 : this.pageIndex * WheelGeometry.SLOT_COUNT + slot;
     }
 

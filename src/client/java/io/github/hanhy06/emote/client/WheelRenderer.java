@@ -5,6 +5,7 @@ import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.renderpearl.api.pipeline.BlendFunction;
 import com.mojang.renderpearl.api.pipeline.ColorTargetState;
 import com.mojang.renderpearl.api.pipeline.PrimitiveTopology;
+import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.application.EmoteSummary;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -13,10 +14,15 @@ import net.minecraft.client.renderer.BindGroupLayouts;
 import net.minecraft.client.renderer.pipeline.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.packs.resources.ResourceProvider;
 import net.minecraft.util.ARGB;
 import net.minecraft.util.FormattedCharSequence;
 import org.joml.Matrix3x2fStack;
+import org.jspecify.annotations.Nullable;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
 import java.util.List;
 
 final class WheelRenderer {
@@ -45,6 +51,15 @@ final class WheelRenderer {
 
     private WheelRenderer() {}
 
+    static @Nullable BufferedImage loadSlotMask(ResourceProvider resources) {
+        try (var input = resources.open(SLOT)) {
+            return ImageIO.read(input);
+        } catch (IOException exception) {
+            EmoteMod.LOGGER.warn("Could not load the emote wheel slot mask", exception);
+            return null;
+        }
+    }
+
     static void draw(GuiGraphicsExtractor graphics, Font font, WheelGeometry wheel, List<EmoteSummary> pageEmotes, long now, boolean editing) {
         Matrix3x2fStack pose = graphics.pose();
         pose.pushMatrix().translate(wheel.centerX, wheel.centerY);
@@ -55,11 +70,12 @@ final class WheelRenderer {
             boolean hasEmote = emote != null;
             float weight = hasEmote || editing ? wheel.weight(i, progress) : 0;
             float angle = (float) (i * WheelGeometry.SLOT_ANGLE);
-            float scale = wheel.scale * (0.93F + 0.07F * entrance);
-            float lift = wheel.lift * weight;
+            float scale = wheel.slotScale(entrance);
+            float lift = wheel.slotLift(weight);
             int color = ARGB.srgbLerp(weight, hasEmote ? SLOT_FILL_COLOR : SLOT_EMPTY_FILL_COLOR, SLOT_HIGHLIGHT_FILL_COLOR);
             pose.pushMatrix().rotate(angle).translate(0, -lift).scale(scale);
-            drawWheelPart(graphics, SLOT, -64, -106, 128, 80, ARGB.color(Math.round(ARGB.alpha(color) * entrance), color));
+            drawWheelPart(graphics, SLOT, WheelGeometry.SLOT_X, WheelGeometry.SLOT_Y, WheelGeometry.SLOT_WIDTH, WheelGeometry.SLOT_HEIGHT,
+                ARGB.color(Math.round(ARGB.alpha(color) * entrance), color));
             pose.popMatrix();
 
             if ((hasEmote || editing) && entrance > 0) {

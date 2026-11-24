@@ -20,7 +20,6 @@ import org.joml.Matrix3x2fStack;
 import org.jspecify.annotations.NonNull;
 
 import java.util.List;
-import java.util.Objects;
 
 @Environment(EnvType.CLIENT)
 public class WheelScreen extends Screen {
@@ -51,8 +50,12 @@ public class WheelScreen extends Screen {
         super(Component.translatable("screen.emote.wheel.title"));
         this.controller = controller;
         this.emotes = emotes;
-        this.hasEmotes = emotes.stream().anyMatch(Objects::nonNull);
-        this.pageCount = Math.max(1, Math.ceilDiv(this.emotes.size(), WheelGeometry.SLOT_COUNT));
+        int lastPlayableSlot = emotes.size() - 1;
+        while (lastPlayableSlot >= 0 && emotes.get(lastPlayableSlot) == null) {
+            lastPlayableSlot--;
+        }
+        this.hasEmotes = lastPlayableSlot >= 0;
+        this.pageCount = Math.max(1, Math.ceilDiv(lastPlayableSlot + 1, WheelGeometry.SLOT_COUNT));
         setPage(Math.clamp(pageIndex, 0, this.pageCount - 1));
         this.keyMapping = keyMapping;
         this.bindingLabel = keyMapping.getTranslatedKeyMessage();
@@ -60,7 +63,8 @@ public class WheelScreen extends Screen {
 
     @Override
     protected void init() {
-        this.wheel = new WheelGeometry(this.width, this.height, System.nanoTime());
+        var slotMask = WheelRenderer.loadSlotMask(this.minecraft.getResourceManager());
+        this.wheel = new WheelGeometry(this.width, this.height, System.nanoTime(), slotMask);
         int searchX = Math.max(ACTION_BUTTON_GAP, this.width - ACTION_BUTTONS_WIDTH);
         int editX = searchX + ACTION_BUTTON_WIDTH + ACTION_BUTTON_GAP;
         this.addRenderableWidget(Button.builder(
@@ -93,10 +97,9 @@ public class WheelScreen extends Screen {
         super.extractRenderState(graphics);
         Window window = this.minecraft.getWindow();
         MouseHandler mouseHandler = this.minecraft.mouseHandler;
-        updateHoveredSlot(mouseHandler.getScaledXPos(window), mouseHandler.getScaledYPos(window));
-
         long now = System.nanoTime();
-        EmoteSummary hoveredEmote = hoveredEmote();
+        updateHoveredSlot(mouseHandler.getScaledXPos(window), mouseHandler.getScaledYPos(window), now);
+        EmoteSummary hoveredEmote = emoteAt(this.wheel.selected());
 
         WheelRenderer.draw(graphics, this.font, this.wheel, this.pageEmotes, now, false);
         drawTitle(graphics, hoveredEmote);
@@ -106,7 +109,7 @@ public class WheelScreen extends Screen {
 
     @Override
     public void mouseMoved(double x, double y) {
-        updateHoveredSlot(x, y);
+        updateHoveredSlot(x, y, System.nanoTime());
     }
 
     @Override
@@ -130,18 +133,20 @@ public class WheelScreen extends Screen {
 
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
-        updateHoveredSlot(event.x(), event.y());
         if (this.keyMapping.matchesMouse(event)) {
-            handleBindingReleased();
+            handleBindingReleased(event.x(), event.y());
             return true;
         }
+        updateHoveredSlot(event.x(), event.y(), System.nanoTime());
         return event.button() == LEFT_MOUSE_BUTTON || event.button() == RIGHT_MOUSE_BUTTON;
     }
 
     @Override
     public boolean keyReleased(@NonNull KeyEvent event) {
         if (this.keyMapping.matches(event)) {
-            handleBindingReleased();
+            Window window = this.minecraft.getWindow();
+            MouseHandler mouseHandler = this.minecraft.mouseHandler;
+            handleBindingReleased(mouseHandler.getScaledXPos(window), mouseHandler.getScaledYPos(window));
             return true;
         }
         return super.keyReleased(event);
@@ -164,8 +169,8 @@ public class WheelScreen extends Screen {
         return true;
     }
 
-    private void handleBindingReleased() {
-        EmoteSummary hoveredEmote = hoveredEmote();
+    private void handleBindingReleased(double mouseX, double mouseY) {
+        EmoteSummary hoveredEmote = emoteAt(this.wheel.slotAt(mouseX, mouseY, System.nanoTime()));
         this.onClose();
         if (hoveredEmote != null) {
             this.controller.play(hoveredEmote);
@@ -179,7 +184,8 @@ public class WheelScreen extends Screen {
         }
 
         setPage(nextPage);
-        this.wheel.select(playableSlotAt(mouseX, mouseY), System.nanoTime());
+        long now = System.nanoTime();
+        this.wheel.select(playableHoveredSlotAt(mouseX, mouseY, now), now);
         playWheelClick();
     }
 
@@ -257,21 +263,20 @@ public class WheelScreen extends Screen {
         pose.popMatrix();
     }
 
-    private EmoteSummary hoveredEmote() {
-        int slot = this.wheel.selected();
-        return slot < 0 ? null : this.pageEmotes.get(slot);
+    private EmoteSummary emoteAt(int slot) {
+        return slot >= 0 && slot < this.pageEmotes.size() ? this.pageEmotes.get(slot) : null;
     }
 
-    private void updateHoveredSlot(double mouseX, double mouseY) {
-        int slot = playableSlotAt(mouseX, mouseY);
-        if (this.wheel.select(slot, System.nanoTime()) && slot >= 0) {
+    private void updateHoveredSlot(double mouseX, double mouseY, long now) {
+        int slot = playableHoveredSlotAt(mouseX, mouseY, now);
+        if (this.wheel.select(slot, now) && slot >= 0) {
             playWheelClick();
         }
     }
 
-    private int playableSlotAt(double mouseX, double mouseY) {
-        int slot = this.wheel.slotAt(mouseX, mouseY);
-        return slot >= 0 && slot < this.pageEmotes.size() && this.pageEmotes.get(slot) != null ? slot : -1;
+    private int playableHoveredSlotAt(double mouseX, double mouseY, long now) {
+        int slot = this.wheel.hoveredSlotAt(mouseX, mouseY, now);
+        return emoteAt(slot) == null ? -1 : slot;
     }
 
     private void playWheelClick() {

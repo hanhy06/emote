@@ -20,6 +20,7 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public final class EmoteApiImpl extends EmoteApi {
     private final EmoteCatalog emoteCatalog;
@@ -70,6 +71,11 @@ public final class EmoteApiImpl extends EmoteApi {
         PlaybackPlacement placement = PlaybackPlacement.external(position, yaw);
         PreparedEmote emote = this.emoteCatalog.find(emoteId.toString());
         if (emote == null) return PlayResult.failure("That emote does not exist.");
+        for (PreparedAnimation animation : emote.animations()) {
+            if (hasPlayerCommands(animation)) {
+                return PlayResult.failure("Animation " + animation.id() + " requires a player to run its commands.");
+            }
+        }
         var preparation = this.skins.prepareNamedSkin("", emote);
         if (!preparation.ready()) return PlayResult.failure(preparation.preparing()
             ? "Preparing the default skin… " + preparation.progressPercent() + "%" : "No complete default skin is available.");
@@ -79,6 +85,14 @@ public final class EmoteApiImpl extends EmoteApi {
             case PlaybackEngine.StartResult.Success success -> new PlayResult.Success(success.session().view());
             case PlaybackEngine.StartResult.Failure failure -> PlayResult.failure(failure.message());
         };
+    }
+
+    private static boolean hasPlayerCommands(PreparedAnimation animation) {
+        var events = animation.model().clip().events();
+        return Stream.of(events.start().stream(), events.timeline().stream().map(EmoteAnimation.TimelineEvent::event),
+                events.loop().stream(), events.stop().stream())
+            .flatMap(Function.identity())
+            .anyMatch(event -> !event.commands().isEmpty() && event.source().type() == EmoteAnimation.SourceType.PLAYER);
     }
 
     @Override
