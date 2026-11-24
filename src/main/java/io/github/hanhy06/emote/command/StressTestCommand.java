@@ -38,11 +38,13 @@ final class StressTestCommand {
     private final EmoteCatalog emoteCatalog;
     private final PlaybackEngine playbackEngine;
     private final PlayerSkinManager playerSkinManager;
+    private final BenchmarkCommand benchmarkCommand;
 
-    StressTestCommand(EmoteCatalog emoteCatalog, PlaybackEngine playbackEngine, PlayerSkinManager playerSkinManager) {
+    StressTestCommand(EmoteCatalog emoteCatalog, PlaybackEngine playbackEngine, PlayerSkinManager playerSkinManager, BenchmarkCommand benchmarkCommand) {
         this.emoteCatalog = emoteCatalog;
         this.playbackEngine = playbackEngine;
         this.playerSkinManager = playerSkinManager;
+        this.benchmarkCommand = benchmarkCommand;
     }
 
     LiteralArgumentBuilder<CommandSourceStack> createCommand() {
@@ -69,6 +71,10 @@ final class StressTestCommand {
     }
 
     private int startStressTest(CommandSourceStack source, int durationTicks, StressLoad load) {
+        if (this.benchmarkCommand.isRunning()) {
+            source.sendFailure(Component.literal("An emote benchmark is running. Use /emote benchmark stop to stop it."));
+            return 0;
+        }
         List<PreparedAnimation> animations = this.emoteCatalog.animations();
         if (animations.isEmpty()) {
             source.sendFailure(Component.literal("No emotes are registered."));
@@ -160,6 +166,10 @@ final class StressTestCommand {
     }
 
     private int stopStressTest(CommandSourceStack source) {
+        if (this.benchmarkCommand.isRunning()) {
+            source.sendFailure(Component.literal("An emote benchmark is running. Use /emote benchmark stop to stop it."));
+            return 0;
+        }
         PlaybackStressTestReport report = this.playbackEngine.stressTest().stop();
         if (report == null) {
             source.sendFailure(Component.literal("No emote stress test is running."));

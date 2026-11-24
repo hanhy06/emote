@@ -22,21 +22,25 @@ final class DisplayPacketQueue {
         return this.ordered.isEmpty() && this.poses.isEmpty();
     }
 
-    void addAll(List<DisplayPacket> packets) {
+    long addAll(List<DisplayPacket> packets) {
+        long coalesced = 0;
         for (DisplayPacket packet : packets) {
             long key = packet.poseKey();
             if (key != 0) {
                 QueuedPacket previous = this.poses.remove(key);
                 if (previous == null) previous = new QueuedPacket(packet);
-                else previous.replace(packet);
+                else {
+                    previous.replace(packet);
+                    coalesced++;
+                }
                 previous.order = this.poseOrder++;
                 this.poses.put(key, previous);
             } else {
                 switch (packet.packet()) {
                     case ClientboundRemoveEntitiesPacket removal -> {
                         for (int id : removal.entityIds()) {
-                            this.poses.remove(poseKey(id, false));
-                            this.poses.remove(poseKey(id, true));
+                            if (this.poses.remove(poseKey(id, false)) != null) coalesced++;
+                            if (this.poses.remove(poseKey(id, true)) != null) coalesced++;
                         }
                     }
                     case ClientboundSetEntityDataPacket metadata -> {
@@ -56,6 +60,7 @@ final class DisplayPacketQueue {
                 this.ordered.add(new QueuedPacket(packet));
             }
         }
+        return coalesced;
     }
 
     List<DisplayPacket> drain(Function<ClientboundSetEntityDataPacket, DisplayPacket> wrapMergedMetadata) {

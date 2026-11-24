@@ -28,12 +28,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
 class VirtualDisplaySenderTest {
     @Test
-    void sharedFramesMatchVanillaAcrossCompressionThresholdsAndBundles() {
+    void sharedFramesMatchVanillaWithoutRepeatingEncodingOrCompression() {
         SharedConstants.tryDetectVersion();
         Bootstrap.bootStrap();
         var protocol = GameProtocols.CLIENTBOUND_TEMPLATE.bind(RegistryFriendlyByteBuf.decorator(RegistryAccess.EMPTY));
@@ -56,7 +57,10 @@ class VirtualDisplaySenderTest {
             var sharedPackets = packets.stream().map(displaySender::packet).toList();
             var contextualPacket = new VirtualDisplaySender.DisplayPacket(longPacket, false, 0);
             assertNull(displaySender.frame(contextualPacket, 0));
+            assertEquals(0, displaySender.stats().codecCalls());
+            assertEquals(0, displaySender.stats().compressionCalls());
             for (int threshold : new int[]{-1, 0, 256}) {
+                var before = displaySender.stats();
                 var handlers = new ArrayList<ChannelHandler>();
                 handlers.add(new Varint21LengthFieldPrepender());
                 if (threshold >= 0) handlers.add(new CompressionEncoder(threshold));
@@ -76,11 +80,16 @@ class VirtualDisplaySenderTest {
                             expected.writeBytes(ByteBufUtil.getBytes(part));
                             part.release();
                         }
-                        assertArrayEquals(expected.toByteArray(), frame, "threshold " + threshold + ", " + packet.type());
+                        assertArrayEquals(expected.toByteArray(), frame.bytes(), "threshold " + threshold + ", " + packet.type());
                     }
                 } finally {
                     vanilla.finishAndReleaseAll();
                 }
+                // Three individual packets and a bundle containing two packets and two delimiters.
+                var stats = displaySender.stats().since(before);
+                assertEquals(threshold == -1 ? 7 : 0, stats.codecCalls(), "threshold " + threshold);
+                assertEquals(threshold == 0 ? 7 : 0, stats.compressionCalls(), "threshold " + threshold);
+                assertEquals(0, stats.failedEncodes());
             }
         } finally {
             displaySender.stop();

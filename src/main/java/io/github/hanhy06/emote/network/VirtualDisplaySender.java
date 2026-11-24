@@ -40,12 +40,20 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.zip.Deflater;
 
 public final class VirtualDisplaySender {
     public static final VirtualDisplaySender INSTANCE = new VirtualDisplaySender();
 
-    private boolean warnedAboutEncodingFailure;
+    private final LongAdder codecCalls = new LongAdder();
+    private final LongAdder compressionCalls = new LongAdder();
+    private final LongAdder failedEncodes = new LongAdder();
+    private final LongAdder directPackets = new LongAdder();
+    private final LongAdder fallbackPackets = new LongAdder();
+    private final LongAdder workerNanos = new LongAdder();
+    private final LongAdder batchWrites = new LongAdder();
+    private final LongAdder coalescedPoses = new LongAdder();
     private final Map<ServerGamePacketListenerImpl, Delivery> deliveries = new HashMap<>();
     private @Nullable WireEncoder encoder;
     private Set<Integer> poseFields = Set.of();
@@ -104,7 +112,7 @@ public final class VirtualDisplaySender {
         return false;
     }
 
-    byte @Nullable [] frame(DisplayPacket packet, int threshold) {
+    @Nullable EncodedFrame frame(DisplayPacket packet, int threshold) {
         if (!packet.shareable || packet.serializationFailed) return null;
         if (threshold == packet.firstThreshold) return packet.firstFrame;
         if (packet.firstThreshold == Integer.MIN_VALUE) {
@@ -116,17 +124,18 @@ public final class VirtualDisplaySender {
         return packet.otherFrames.get(threshold);
     }
 
-    private byte @Nullable [] encode(DisplayPacket packet, int threshold) {
+    private @Nullable EncodedFrame encode(DisplayPacket packet, int threshold) {
+        long started = System.nanoTime();
         try {
             if (packet.payloads == null) packet.payloads = this.encoder.serialize(packet.packet());
             return this.encoder.frame(packet.payloads, threshold);
         } catch (RuntimeException exception) {
             if (packet.payloads == null) packet.serializationFailed = true;
-            if (!this.warnedAboutEncodingFailure) {
-                this.warnedAboutEncodingFailure = true;
-                EmoteMod.LOGGER.warn("Could not encode virtual display packet {}", packet.packet().type(), exception);
-            }
+            this.failedEncodes.increment();
+            if (this.failedEncodes.sum() == 1) EmoteMod.LOGGER.warn("Could not encode virtual display packet {}", packet.packet().type(), exception);
             return null;
+        } finally {
+            this.workerNanos.add(System.nanoTime() - started);
         }
     }
 
@@ -146,14 +155,14 @@ public final class VirtualDisplaySender {
                 Connection connection = viewer.getPacketContext().orElseThrow(PacketContext.CONNECTION);
                 delivery = new Delivery(viewer, connection);
                 if (!(delivery.channel instanceof SocketChannel)) {
-                    for (DisplayPacket packet : packets) viewer.send(packet.packet());
+                    for (DisplayPacket packet : packets) sendNormally(viewer, packet.packet());
                     return;
                 }
                 if (!delivery.isCurrent()) return;
                 this.deliveries.put(viewer, delivery);
             }
             if (delivery.pending.isEmpty() && delivery.canWrite()) delivery.submit(packets, shared);
-            else delivery.pending.addAll(packets);
+            else this.coalescedPoses.add(delivery.pending.addAll(packets));
         });
         for (Iterator<Delivery> deliveries = this.deliveries.values().iterator(); deliveries.hasNext();) {
             Delivery delivery = deliveries.next();
@@ -206,16 +215,18 @@ public final class VirtualDisplaySender {
         private void write(WriteBatch batch, int compression) {
             var prepender = this.transport.emote$compressionThreshold() == compression ? compatiblePrepender(this.channel, compression) : null;
             if (prepender == null) {
-                for (Packet<?> packet : batch.packets()) this.viewer.send(packet);
+                for (Packet<?> packet : batch.packets()) sendNormally(this.viewer, packet);
                 return;
             }
             boolean encrypted = this.channel.pipeline().get("encrypt") != null;
             boolean needsFlush = false;
             for (WireWrite write : batch.writes()) {
                 if (write.packet() != null) {
-                    this.viewer.send(write.packet());
+                    sendNormally(this.viewer, write.packet());
                     needsFlush = false;
                 } else {
+                    directPackets.add(write.packetCount());
+                    batchWrites.increment();
                     this.transport.emote$countDisplayPackets(write.packetCount());
                     writeFrame(prepender, write.frame(), encrypted);
                     needsFlush = true;
@@ -227,15 +238,15 @@ public final class VirtualDisplaySender {
 
     private record BatchKey(int compression, List<DisplayPacket> packets) {}
 
-    private record WireWrite(byte @Nullable [] frame, @Nullable Packet<?> packet, int packetCount) {}
+    private record WireWrite(@Nullable EncodedFrame frame, @Nullable Packet<?> packet, int packetCount) {}
 
     private record WriteBatch(List<Packet<?>> packets, List<WireWrite> writes) {}
 
     private WriteBatch prepareBatch(List<DisplayPacket> packets, int compression) {
         List<WireWrite> writes = new ArrayList<>();
-        List<byte[]> frames = new ArrayList<>();
+        List<EncodedFrame> frames = new ArrayList<>();
         for (DisplayPacket packet : packets) {
-            byte[] frame = frame(packet, compression);
+            EncodedFrame frame = frame(packet, compression);
             if (frame == null) {
                 if (!frames.isEmpty()) writes.add(join(frames));
                 frames.clear();
@@ -248,17 +259,24 @@ public final class VirtualDisplaySender {
         return new WriteBatch(packets.stream().map(DisplayPacket::packet).toList(), writes);
     }
 
-    private static WireWrite join(List<byte[]> frames) {
+    private static WireWrite join(List<EncodedFrame> frames) {
         if (frames.size() == 1) return new WireWrite(frames.getFirst(), null, 1);
         int bytes = 0;
-        for (byte[] frame : frames) bytes = Math.addExact(bytes, frame.length);
+        for (EncodedFrame frame : frames) bytes = Math.addExact(bytes, frame.bytes().length);
         byte[] joined = new byte[bytes];
+        List<WirePacket> metrics = new ArrayList<>();
         int offset = 0;
-        for (byte[] frame : frames) {
-            System.arraycopy(frame, 0, joined, offset, frame.length);
-            offset += frame.length;
+        for (EncodedFrame frame : frames) {
+            System.arraycopy(frame.bytes(), 0, joined, offset, frame.bytes().length);
+            offset += frame.bytes().length;
+            metrics.addAll(frame.packets());
         }
-        return new WireWrite(joined, null, frames.size());
+        return new WireWrite(new EncodedFrame(joined, metrics), null, frames.size());
+    }
+
+    private void sendNormally(ServerGamePacketListenerImpl viewer, Packet<?> packet) {
+        this.fallbackPackets.increment();
+        viewer.send(packet);
     }
 
     private static @Nullable ChannelHandlerContext compatiblePrepender(Channel channel, int threshold) {
@@ -286,6 +304,7 @@ public final class VirtualDisplaySender {
                     && handler.getClass().getName().equals("net.fabricmc.fabric.impl.networking.splitter.FabricPacketSplitter");
                 case "hackfix" -> afterPrepender && handler.getClass().getEnclosingClass() == Connection.class;
                 case "timeout" -> handler.getClass() == ReadTimeoutHandler.class;
+                case "emote_network_benchmark" -> true;
                 case "encrypt" -> !afterPrepender && (handler.getClass() == CipherEncoder.class
                     || kryptonHandler(handler, "pipeline.MinecraftCipherEncoder"));
                 default -> false;
@@ -299,11 +318,33 @@ public final class VirtualDisplaySender {
         return handler != null && handler.getClass().getName().equals("me.steinborn.krypton.mod.shared.network." + name);
     }
 
-    private static void writeFrame(ChannelHandlerContext prepender, byte[] frame, boolean encrypted) {
+    private static void writeFrame(ChannelHandlerContext prepender, EncodedFrame frame, boolean encrypted) {
+        for (WirePacket packet : frame.packets()) {
+            var measurement = NetworkBenchmark.INSTANCE.beginFrame(prepender.channel());
+            if (measurement != null) {
+                measurement.encoded(packet.packet(), packet.payloadSize(), 0);
+                if (packet.compressionSize() >= 0) measurement.compressed(packet.compressionSize(), 0, packet.deflated());
+                measurement.framed(packet.frameSize(), 0);
+            }
+        }
         // Krypton's cipher can encrypt its input in place.
-        ByteBuf bytes = encrypted ? prepender.alloc().ioBuffer(frame.length).writeBytes(frame)
-            : Unpooled.wrappedBuffer(frame);
+        ByteBuf bytes = encrypted ? prepender.alloc().ioBuffer(frame.bytes().length).writeBytes(frame.bytes())
+            : Unpooled.wrappedBuffer(frame.bytes());
         prepender.write(bytes);
+    }
+
+    public Stats stats() {
+        return new Stats(this.encoder != null, this.codecCalls.sum(), this.compressionCalls.sum(), this.failedEncodes.sum(),
+            this.directPackets.sum(), this.fallbackPackets.sum(), this.workerNanos.sum(), this.batchWrites.sum(), this.coalescedPoses.sum());
+    }
+
+    public record Stats(boolean enabled, long codecCalls, long compressionCalls, long failedEncodes,
+                        long directPackets, long fallbackPackets, long workerNanos, long batchWrites, long coalescedPoses) {
+        Stats since(Stats start) {
+            return new Stats(enabled, codecCalls - start.codecCalls, compressionCalls - start.compressionCalls,
+                failedEncodes - start.failedEncodes, directPackets - start.directPackets, fallbackPackets - start.fallbackPackets,
+                workerNanos - start.workerNanos, batchWrites - start.batchWrites, coalescedPoses - start.coalescedPoses);
+        }
     }
 
     public interface EncoderProtocol {
@@ -325,8 +366,8 @@ public final class VirtualDisplaySender {
         private @Nullable List<WirePayload> payloads;
         private boolean serializationFailed;
         private int firstThreshold = Integer.MIN_VALUE;
-        private byte @Nullable [] firstFrame;
-        private @Nullable Map<Integer, byte[]> otherFrames;
+        private @Nullable EncodedFrame firstFrame;
+        private @Nullable Map<Integer, EncodedFrame> otherFrames;
 
         DisplayPacket(Packet<?> packet, boolean shareable, long poseKey) {
             this.packet = packet;
@@ -338,16 +379,21 @@ public final class VirtualDisplaySender {
         long poseKey() { return this.poseKey; }
     }
 
-    private static final class WirePayload {
-        private final byte[] bytes;
-        private byte @Nullable [] compressed;
+    record EncodedFrame(byte[] bytes, List<WirePacket> packets) {}
+    record WirePacket(Packet<?> packet, int payloadSize, int compressionSize, int frameSize, boolean deflated) {}
 
-        private WirePayload(byte[] bytes) {
+    private static final class WirePayload {
+        private final Packet<?> packet;
+        private final byte[] bytes;
+        private @Nullable byte[] compressed;
+
+        private WirePayload(Packet<?> packet, byte[] bytes) {
+            this.packet = packet;
             this.bytes = bytes;
         }
     }
 
-    private static final class WireEncoder implements AutoCloseable {
+    private final class WireEncoder implements AutoCloseable {
         private final ProtocolInfo<ClientGamePacketListener> protocol;
         private final ByteBuf payload = Unpooled.buffer();
         private final ByteBuf compressed = Unpooled.buffer();
@@ -368,17 +414,19 @@ public final class VirtualDisplaySender {
         @SuppressWarnings("unchecked")
         private WirePayload serializePacket(Packet<?> packet) {
             this.payload.clear();
+            codecCalls.increment();
             this.protocol.codec().encode(this.payload, (Packet<? super ClientGamePacketListener>) packet);
-            return new WirePayload(ByteBufUtil.getBytes(this.payload));
+            return new WirePayload(packet, ByteBufUtil.getBytes(this.payload));
         }
 
-        private byte[] frame(List<WirePayload> packets, int threshold) {
+        private EncodedFrame frame(List<WirePayload> packets, int threshold) {
             this.framed.clear();
-            for (WirePayload packet : packets) writePacket(packet, threshold);
-            return ByteBufUtil.getBytes(this.framed);
+            List<WirePacket> sizes = new ArrayList<>(packets.size());
+            for (WirePayload packet : packets) sizes.add(writePacket(packet, threshold));
+            return new EncodedFrame(ByteBufUtil.getBytes(this.framed, 0, this.framed.readableBytes(), true), List.copyOf(sizes));
         }
 
-        private void writePacket(WirePayload packet, int threshold) {
+        private WirePacket writePacket(WirePayload packet, int threshold) {
             int length = packet.bytes.length;
             if (threshold >= 0 && length > 8_388_608) throw new IllegalArgumentException("Display packet exceeds the compression size limit: " + length);
             boolean deflated = threshold >= 0 && length >= threshold;
@@ -391,12 +439,14 @@ public final class VirtualDisplaySender {
             VarInt.write(this.framed, bodySize);
             if (uncompressedPrefix != 0) this.framed.writeByte(0);
             this.framed.writeBytes(body);
+            return new WirePacket(packet.packet, length, threshold >= 0 ? bodySize : -1, lengthPrefix + bodySize, deflated);
         }
 
         private byte[] compress(byte[] bytes) {
             this.compressed.clear();
             VarInt.write(this.compressed, bytes.length);
             try {
+                compressionCalls.increment();
                 this.deflater.setInput(bytes);
                 this.deflater.finish();
                 while (!this.deflater.finished()) {

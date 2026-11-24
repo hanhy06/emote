@@ -10,6 +10,7 @@ import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.content.loader.EmoteDirectoryLoader;
+import io.github.hanhy06.emote.network.NetworkBenchmark;
 import io.github.hanhy06.emote.network.PlaybackStateSyncService;
 import io.github.hanhy06.emote.network.WheelSyncService;
 import io.github.hanhy06.emote.network.payload.PlaybackStatePayload;
@@ -122,6 +123,7 @@ public class EmoteMod implements ModInitializer {
         PayloadTypeRegistry.clientboundPlay().register(PlaybackStatePayload.TYPE, PlaybackStatePayload.STREAM_CODEC);
         PayloadTypeRegistry.clientboundPlay().register(WheelSyncPayload.TYPE, WheelSyncPayload.STREAM_CODEC);
         ServerLifecycleEvents.SERVER_STARTED.register(server -> accounts.initialize());
+        NetworkBenchmark.INSTANCE.register();
         lifecycle.register();
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> accounts.close());
     }

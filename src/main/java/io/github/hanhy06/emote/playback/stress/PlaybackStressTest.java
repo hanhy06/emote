@@ -140,6 +140,10 @@ public final class PlaybackStressTest {
         return new StartResult(instances.size(), displayEntityCount);
     }
 
+    public boolean isRunning() {
+        return this.session != null;
+    }
+
     public @Nullable PlaybackStressTestReport stop() {
         Session current = this.session;
         this.session = null;

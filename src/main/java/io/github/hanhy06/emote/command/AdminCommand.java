@@ -37,6 +37,7 @@ public final class AdminCommand {
     private final ConfigManager configManager;
     private final PlayerSkinManager playerSkinManager;
     private final StressTestCommand stressTestCommand;
+    private final BenchmarkCommand benchmarkCommand;
 
     public AdminCommand(
         EmoteCatalog emoteCatalog,
@@ -52,7 +53,8 @@ public final class AdminCommand {
         this.reloadService = reloadService;
         this.configManager = configManager;
         this.playerSkinManager = playerSkinManager;
-        this.stressTestCommand = new StressTestCommand(emoteCatalog, playbackEngine, playerSkinManager);
+        this.benchmarkCommand = new BenchmarkCommand(emoteCatalog, playbackEngine);
+        this.stressTestCommand = new StressTestCommand(emoteCatalog, playbackEngine, playerSkinManager, this.benchmarkCommand);
     }
 
     public void attachTo(LiteralArgumentBuilder<CommandSourceStack> root) {
@@ -61,6 +63,8 @@ public final class AdminCommand {
             .then(createReloadCommand())
             .then(createStopPlayerCommand())
             .then(this.stressTestCommand.createCommand())
+            .then(NetworkTestCommand.createCommand())
+            .then(this.benchmarkCommand.createCommand())
             .then(createEnableCommand())
             .then(createDisableCommand());
     }

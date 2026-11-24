@@ -34,8 +34,8 @@ class DisplayPacketQueueTest {
         var remove = new ClientboundRemoveEntitiesPacket(id);
         var other = metadata(otherId, field(11, 7));
 
-        queue.addAll(List.of(pose(first), pose(olderMove), pose(latest), pose(latestMove),
-            packet(content, 0), pose(metadata(id, field(11, 6))), pose(other), packet(remove, 0)));
+        assertEquals(3, queue.addAll(List.of(pose(first), pose(olderMove), pose(latest), pose(latestMove),
+            packet(content, 0), pose(metadata(id, field(11, 6))), pose(other), packet(remove, 0))));
         var drained = queue.drain(DisplayPacketQueueTest::pose).stream().map(DisplayPacket::packet).toList();
         assertEquals(List.of(metadata(id, field(11, 4), field(12, 5)), latestMove, content, remove, other), drained);
         assertTrue(queue.isEmpty());

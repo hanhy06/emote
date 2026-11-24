@@ -3,11 +3,14 @@
     "package": "io.github.hanhy06.emote.mixin",
     "compatibilityLevel": "JAVA_25",
     "mixins": [
+        "CompressionEncoderMixin",
         "ConnectionMixin",
         "EntityMixin",
         "LivingEntityMixin",
+        "MinecraftServerMixin",
         "PacketEncoderMixin",
-        "ServerPlayerMixin"
+        "ServerPlayerMixin",
+        "Varint21LengthFieldPrependerMixin"
     ],
     "injectors": {
         "defaultRequire": 1
