@@ -231,7 +231,7 @@ public final class VirtualDisplaySender {
             }
         }
         if (!frames.isEmpty()) writes.add(join(frames));
-        return new WriteBatch(packets.stream().map(DisplayPacket::packet).toList(), writes);
+        return new WriteBatch(packets.stream().<Packet<?>>map(DisplayPacket::packet).toList(), writes);
     }
 
     private static WireWrite join(List<byte[]> frames) {
