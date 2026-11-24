@@ -356,6 +356,7 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
         if (display == null) {
             throw new IllegalStateException("Failed to create display entity");
         }
+        ((VirtualDisplayEntity) display).emote$markVirtualDisplay();
         return display;
     }
 
