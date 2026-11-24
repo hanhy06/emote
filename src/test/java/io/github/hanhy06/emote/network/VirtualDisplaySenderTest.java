@@ -6,11 +6,7 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.embedded.EmbeddedChannel;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.RegistryAccess;
-import net.minecraft.network.CompressionEncoder;
-import net.minecraft.network.PacketBundleUnpacker;
-import net.minecraft.network.PacketEncoder;
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.Varint21LengthFieldPrepender;
+import net.minecraft.network.*;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientboundBundlePacket;
@@ -27,9 +23,7 @@ import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.*;
 
 class VirtualDisplaySenderTest {
     @Test
