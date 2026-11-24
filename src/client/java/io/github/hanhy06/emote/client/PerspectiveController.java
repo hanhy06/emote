@@ -21,14 +21,13 @@ public class PerspectiveController {
         this.hideLocalPlayerEquipment = false;
     }
 
-    public void handlePlaybackState(boolean active, boolean hidePlayer) {
+    public void handlePlaybackState(boolean active, boolean hidePlayer, boolean autoThirdPerson) {
         this.hideLocalPlayerEquipment = active && hidePlayer;
-        if (active) {
+        if (active && autoThirdPerson) {
             switchToThirdPersonIfNeeded();
-            return;
+        } else {
+            restorePerspectiveIfNeeded();
         }
-
-        restorePerspectiveIfNeeded();
     }
 
     public boolean shouldHideLocalPlayerEquipment() {
@@ -36,13 +35,11 @@ public class PerspectiveController {
     }
 
     private void switchToThirdPersonIfNeeded() {
-        if (!Minecraft.getInstance().options.getCameraType().isFirstPerson()) {
-            this.restoreCameraOnStop = false;
-            return;
+        var options = Minecraft.getInstance().options;
+        if (options.getCameraType().isFirstPerson()) {
+            options.setCameraType(CameraType.THIRD_PERSON_FRONT);
+            this.restoreCameraOnStop = true;
         }
-
-        this.restoreCameraOnStop = true;
-        Minecraft.getInstance().options.setCameraType(CameraType.THIRD_PERSON_FRONT);
     }
 
     private void restorePerspectiveIfNeeded() {
@@ -50,7 +47,10 @@ public class PerspectiveController {
             return;
         }
 
-        Minecraft.getInstance().options.setCameraType(CameraType.FIRST_PERSON);
         this.restoreCameraOnStop = false;
+        var options = Minecraft.getInstance().options;
+        if (options.getCameraType() == CameraType.THIRD_PERSON_FRONT) {
+            options.setCameraType(CameraType.FIRST_PERSON);
+        }
     }
 }

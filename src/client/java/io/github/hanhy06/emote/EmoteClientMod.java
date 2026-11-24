@@ -28,7 +28,7 @@ public class EmoteClientMod implements ClientModInitializer {
         WheelController wheelController = new WheelController(wheelShortcutSettings);
 
         ClientPlayNetworking.registerGlobalReceiver(PlaybackStatePayload.TYPE, (payload, ignoredContext) ->
-            Minecraft.getInstance().execute(() -> perspectiveController.handlePlaybackState(payload.active(), payload.hidePlayer()))
+            Minecraft.getInstance().execute(() -> perspectiveController.handlePlaybackState(payload.active(), payload.hidePlayer(), payload.autoThirdPerson()))
         );
         ClientPlayNetworking.registerGlobalReceiver(WheelSyncPayload.TYPE, (payload, ignoredContext) ->
             Minecraft.getInstance().execute(() -> wheelController.updateEntries(payload.emotes()))

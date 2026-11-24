@@ -1,8 +1,10 @@
-import type { CurveIR, CurveKeyIR, EasingIR, NodeIR, SegmentIR, VectorValueIR } from "../../domain/animationIR";
+import type { CurveIR, CurveKeyIR, EasingIR, EventIR, NodeIR, SegmentIR, VectorValueIR } from "../../domain/animationIR";
 import { affineScalarIR, scalarIR } from "../../domain/animationIRConversion";
 import type { ImportedNode } from "../../domain/conversionSeed";
 import { minecraftVersionProfile } from "../../format/minecraftVersionProfiles";
 import { writeBlockState, writeItemStack } from "../../format/minecraftData";
+import type { BoneEntry } from "./blockbenchCubeModel";
+import { normalizeBlockbenchName } from "./blockbenchCubeSkin";
 import type { BbKeyframe } from "./blockbenchCubeSchema";
 import { sourceSecondsTime } from "../../format/time";
 import { mapMolangResult } from "../../format/molang/sourceTransformer";
@@ -18,6 +20,15 @@ export function importedNodeIR(node: ImportedNode, parent?: string): NodeIR {
     ...(node.type === "item_display" && node.modelGeometryMatrix ? { transform: [{ id: "model_geometry", op: "matrix" as const, value: node.modelGeometryMatrix }] } : {}),
     attachments: { display: { ...content, ...(node.entitySnbt ? { entity_snbt: node.entitySnbt } : {}) } },
   };
+}
+
+export function blockbenchEffectOrigin(locator: string | undefined, bones: readonly BoneEntry[]): EventIR["origin"] {
+  const name = normalizeBlockbenchName(locator);
+  if (!name) return { type: "root" };
+  const locators = bones.flatMap((bone) => bone.nodes.filter((node) => normalizeBlockbenchName(node.locatorName) === name));
+  if (locators.length) return locators.length === 1 ? { type: "node", node: locators[0].id } : { type: "root" };
+  const matchingBones = bones.filter((bone) => normalizeBlockbenchName(bone.group.name) === name);
+  return matchingBones.length === 1 ? { type: "node", node: `group:${matchingBones[0].uuid}` } : { type: "root" };
 }
 
 export function blockbenchCurveIR(frames: readonly BbKeyframe[]): CurveIR | undefined {

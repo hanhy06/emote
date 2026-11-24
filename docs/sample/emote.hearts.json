@@ -1,0 +1,27 @@
+{
+  "type": "animation",
+  "schema_version": 5,
+  "id": "emote:hearts",
+  "metadata": {
+    "name": "Hearts",
+    "description": "Show a burst of hearts. #particle"
+  },
+  "settings": { "player": { "hidden": false, "auto_third_person": false } },
+  "nodes": {},
+  "animation": {
+    "duration": "1t",
+    "tracks": [],
+    "events": {
+      "start": [
+        {
+          "source": { "type": "server" },
+          "origin": { "type": "root" },
+          "action": {
+            "type": "commands",
+            "commands": ["particle minecraft:heart ~ ~2 ~ 0.28 0.12 0.28 0 7"]
+          }
+        }
+      ]
+    }
+  }
+}

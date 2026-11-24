@@ -23,6 +23,7 @@ final class ConfigJsonCodec {
         object.addProperty("mineskin_cache_retention_days", config.mineSkinCacheRetentionDays());
         object.addProperty("mineskin_cache_max_mib", config.mineSkinCacheMaxMiB());
         object.addProperty("max_active_display_entities", config.maxActiveDisplayEntities());
+        object.addProperty("count_marker_displays", config.countMarkerDisplays());
         object.addProperty("default_skin", config.defaultSkin());
         return object;
     }
@@ -71,6 +72,11 @@ final class ConfigJsonCodec {
         String mineSkinApiKey = mineSkinApiKeyElement == null || mineSkinApiKeyElement.isJsonNull()
             ? defaultConfig.mineSkinApiKey()
             : mineSkinApiKeyElement.getAsString();
+        JsonElement countMarkerDisplays = object.get("count_marker_displays");
+        if (countMarkerDisplays != null && !countMarkerDisplays.isJsonNull()
+            && (!countMarkerDisplays.isJsonPrimitive() || !countMarkerDisplays.getAsJsonPrimitive().isBoolean())) {
+            throw new IllegalArgumentException("count_marker_displays must be a boolean");
+        }
         return new Config(
             readInt(object, "schema_version", Config.CURRENT_SCHEMA_VERSION),
             readInt(object, "menu_page_size", defaultConfig.menuPageSize()),
@@ -79,6 +85,8 @@ final class ConfigJsonCodec {
             readInt(object, "mineskin_cache_retention_days", defaultConfig.mineSkinCacheRetentionDays()),
             readInt(object, "mineskin_cache_max_mib", defaultConfig.mineSkinCacheMaxMiB()),
             readInt(object, "max_active_display_entities", defaultConfig.maxActiveDisplayEntities()),
+            countMarkerDisplays == null || countMarkerDisplays.isJsonNull()
+                ? defaultConfig.countMarkerDisplays() : countMarkerDisplays.getAsBoolean(),
             object.has("default_skin") && !object.get("default_skin").isJsonNull()
                 ? object.get("default_skin").getAsString() : ""
         );

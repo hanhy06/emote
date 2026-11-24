@@ -127,7 +127,7 @@ public final class MarkerPlaybackManager {
             emote, Map.of("actor", marker), MolangQueries.forEntity(marker),
             EmoteMod.SERVER.createCommandSourceStack().withEntity(marker).withLevel(level)
                 .withPosition(marker.position()).withRotation(marker.getRotationVector()),
-            preparation.textures(), lifecycle, PlaybackPlacement.Mode.ACTOR), entry.session);
+            preparation.textures(), lifecycle, PlaybackPlacement.Mode.ACTOR, true), entry.session);
         if (result instanceof PlaybackEngine.StartResult.Failure failure) {
             if (failure.reason() == PlaybackEngine.FailureReason.DISPLAY_LIMIT) {
                 entry.needsStart = true;

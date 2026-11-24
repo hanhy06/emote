@@ -9,11 +9,12 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.level.ServerPlayer;
 
 public class PlaybackStateSyncService implements PlaybackStateListener {
-    private static final PlaybackStatePayload INACTIVE_PAYLOAD = new PlaybackStatePayload(false, false);
+    private static final PlaybackStatePayload INACTIVE_PAYLOAD = new PlaybackStatePayload(false, false, false);
 
     @Override
     public void onStarted(ServerPlayer player, PlaybackSession session, PlayerPlaybackState playerState) {
-        sync(player, new PlaybackStatePayload(true, playerState.behavior().hidden()));
+        var behavior = playerState.behavior();
+        sync(player, new PlaybackStatePayload(true, behavior.hidden(), behavior.autoThirdPerson()));
     }
 
     @Override

@@ -112,8 +112,9 @@ public final class SkinCache {
             Map<PlayerSkinRegion, String> textureUrlMap = new HashMap<>();
             for (JsonElement textureElement : textures.getAsJsonArray()) {
                 if (!textureElement.isJsonObject()) continue;
-                PlayerSkinRegion region = readTextureRegion(textureElement);
-                String textureUrl = readString(textureElement.getAsJsonObject(), "texture_url");
+                JsonObject textureJson = textureElement.getAsJsonObject();
+                PlayerSkinRegion region = readTextureRegion(textureJson);
+                String textureUrl = readString(textureJson, "texture_url");
                 if (region == null || textureUrl == null) {
                     continue;
                 }
@@ -541,12 +542,7 @@ public final class SkinCache {
         return skinJson;
     }
 
-    private PlayerSkinRegion readTextureRegion(JsonElement textureElement) {
-        if (textureElement == null || !textureElement.isJsonObject()) {
-            return null;
-        }
-
-        JsonObject textureJson = textureElement.getAsJsonObject();
+    private PlayerSkinRegion readTextureRegion(JsonObject textureJson) {
         PlayerSkinPart skinPart = PlayerSkinPart.fromId(readString(textureJson, "skin_part"));
         Double segmentStart = readDouble(textureJson, "region_from");
         Double segmentEnd = readDouble(textureJson, "region_to");

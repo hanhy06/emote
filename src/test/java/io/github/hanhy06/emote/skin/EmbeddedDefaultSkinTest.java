@@ -165,7 +165,7 @@ class EmbeddedDefaultSkinTest {
             .connectTimeout(java.time.Duration.ofMillis(250)).build()));
         Config config = Config.createDefault();
         mineSkin.configure(new Config(config.schemaVersion(), config.menuPageSize(), "test-key", config.mineSkinPollIntervalSeconds(),
-            config.mineSkinCacheRetentionDays(), config.mineSkinCacheMaxMiB(), config.maxActiveDisplayEntities(), ""));
+            config.mineSkinCacheRetentionDays(), config.mineSkinCacheMaxMiB(), config.maxActiveDisplayEntities(), config.countMarkerDisplays(), ""));
         var baker = new PlayerSkinBaker();
         var coordinator = new SkinBakeCoordinator(accounts, baker, client, cache, new AccountBakeQueue(accounts, client), mineSkin);
         var ready = new LinkedBlockingQueue<UUID>();
