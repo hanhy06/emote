@@ -142,7 +142,11 @@ function createBdAnimationIR(animation: BdDatapackSource["animations"][number], 
     nodes,
     source: { unresolved_commands: structuredClone(animation.unresolvedCommands) },
     animation: { duration: `${animation.durationTicks}t`, playback: { mode: "loop", loop_start: "0t", loop_delay: "0t" }, tracks,
-      events: { timeline: animation.unresolvedCommands.map((event) => ({ time: `${event.tick}t`, source: { type: "player" }, origin: { type: "root" }, action: { type: "commands", commands: [event.command.replace(/^\//, "")] } })) },
+      events: { timeline: animation.unresolvedCommands.map((event) => {
+        const command = event.command.replace(/^\//, "");
+        const type = /^particle\s+(?:[a-z0-9_.-]+:)?[a-z0-9_./-]+\s+~\s+~\s+~$/.test(command) ? "server" : "player";
+        return { time: `${event.tick}t`, source: { type }, origin: { type: "root" }, action: { type: "commands", commands: [command] } };
+      }) },
     },
   };
 }
