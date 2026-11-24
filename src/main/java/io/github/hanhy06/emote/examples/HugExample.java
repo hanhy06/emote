@@ -157,6 +157,7 @@ public final class HugExample implements EmoteCallbacks {
 
     /** Called by the server tick listener registered alongside this callback. */
     public void tick() {
+        if (this.hugs.isEmpty()) return;
         for (Hug hug : List.copyOf(this.hugs.values())) {
             if (
                 !hug.ownerPlayback.isActive()
