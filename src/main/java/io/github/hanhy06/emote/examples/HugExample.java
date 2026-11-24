@@ -222,11 +222,12 @@ public final class HugExample implements EmoteCallbacks {
             );
 
             PlayResult result = this.api.play(partner, HUG_PLAYER1, hug.partnerPlacement);
-            if (result instanceof PlayResult.Success success) {
-                hug.partnerPlayback = success.playback();
-            } else {
-                partner.sendSystemMessage(result.errorMessage());
-                finish(hug);
+            switch (result) {
+                case PlayResult.Success(var playback) -> hug.partnerPlayback = playback;
+                case PlayResult.Failure(var errorMessage) -> {
+                    partner.sendSystemMessage(errorMessage);
+                    finish(hug);
+                }
             }
         } catch (RuntimeException exception) {
             finish(hug);

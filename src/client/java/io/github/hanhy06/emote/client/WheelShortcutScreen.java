@@ -12,6 +12,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
+import org.jspecify.annotations.NonNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -102,7 +103,7 @@ public class WheelShortcutScreen extends Screen {
     }
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor graphics) {
+    public void extractRenderState(@NonNull GuiGraphicsExtractor graphics) {
         super.extractRenderState(graphics);
         long now = System.nanoTime();
         this.wheel.select(this.wheel.hoveredSlotAt(graphics.mouseX(), graphics.mouseY(), now), now);
@@ -135,7 +136,7 @@ public class WheelShortcutScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+    public boolean mouseClicked(@NonNull MouseButtonEvent event, boolean doubleClick) {
         if (this.dragged != null) {
             return true;
         }
@@ -161,7 +162,7 @@ public class WheelShortcutScreen extends Screen {
     }
 
     @Override
-    public boolean mouseReleased(MouseButtonEvent event) {
+    public boolean mouseReleased(@NonNull MouseButtonEvent event) {
         boolean handled = super.mouseReleased(event);
         if (!event.isLeftMouse() || this.dragged == null) {
             return handled;

@@ -71,7 +71,7 @@ public final class UserCommand {
     private LiteralArgumentBuilder<CommandSourceStack> createPlayCommand() {
         return Commands.literal("play")
             .then(Commands.argument("id", IdentifierArgument.id())
-                .suggests(SuggestionProviders.serverOnly((server, context, builder) -> SuggestionContext.suggestResource(
+                .suggests(SuggestionProviders.serverOnly((_, context, builder) -> SuggestionContext.suggestResource(
                     getSuggestedPlayIds(context.getSource()).stream().map(Identifier::parse), builder
                 )))
                 .executes(this::play));
@@ -117,9 +117,12 @@ public final class UserCommand {
         CommandSourceStack source = context.getSource();
         ServerPlayer player = source.getPlayerOrException();
         PlayResult result = this.playService.play(player, IdentifierArgument.getId(context, "id").toString(), PlaySource.COMMAND);
-        if (!result.isSuccess()) {
-            source.sendFailure(result.errorMessage());
-            return 0;
+        switch (result) {
+            case PlayResult.Failure(var errorMessage) -> {
+                source.sendFailure(errorMessage);
+                return 0;
+            }
+            case PlayResult.Success(_) -> {}
         }
         return 1;
     }

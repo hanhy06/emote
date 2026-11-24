@@ -143,7 +143,7 @@ public final class AdminCommand {
         return Commands.literal("enable")
             .requires(PermissionService.CAN_MANAGE)
             .then(Commands.argument("id", IdentifierArgument.id())
-                .suggests(SuggestionProviders.serverOnly((server, context, builder) -> SuggestionContext.suggest(
+                .suggests(SuggestionProviders.serverOnly((_, _, builder) -> SuggestionContext.suggest(
                     this.configManager.getAccessConfig().disabled(),
                     builder
                 )))
@@ -158,7 +158,7 @@ public final class AdminCommand {
         return Commands.literal("disable")
             .requires(PermissionService.CAN_MANAGE)
             .then(Commands.argument("id", IdentifierArgument.id())
-                .suggests(SuggestionProviders.serverOnly((server, context, builder) -> SuggestionContext.suggest(
+                .suggests(SuggestionProviders.serverOnly((_, _, builder) -> SuggestionContext.suggest(
                     this.emoteCatalog.fileEmotes().stream().map(PreparedEmote::id),
                     builder
                 )))

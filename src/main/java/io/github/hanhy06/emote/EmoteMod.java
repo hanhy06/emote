@@ -61,7 +61,7 @@ public class EmoteMod implements ModInitializer {
         PlayerSkinManager skins = new PlayerSkinManager(
             new SkinBakeCoordinator(accounts, skinBaker, minecraftSkins, skinCache, accountQueue, mineSkin)
         );
-        catalog.addListener(emotes -> skins.setEmotes(catalog.animations(), catalog.fileEmotes().stream()
+        catalog.addListener(_ -> skins.setEmotes(catalog.animations(), catalog.fileEmotes().stream()
             .filter(PreparedAnimation.class::isInstance).map(PreparedEmote::sourcePath).collect(java.util.stream.Collectors.toUnmodifiableSet())));
 
         PlaybackEngine engine = new PlaybackEngine();
@@ -121,9 +121,9 @@ public class EmoteMod implements ModInitializer {
         markerPlayback.register();
         PayloadTypeRegistry.clientboundPlay().register(PlaybackStatePayload.TYPE, PlaybackStatePayload.STREAM_CODEC);
         PayloadTypeRegistry.clientboundPlay().register(WheelSyncPayload.TYPE, WheelSyncPayload.STREAM_CODEC);
-        ServerLifecycleEvents.SERVER_STARTED.register(server -> accounts.initialize());
+        ServerLifecycleEvents.SERVER_STARTED.register(_ -> accounts.initialize());
         lifecycle.register();
-        ServerLifecycleEvents.SERVER_STOPPING.register(server -> accounts.close());
+        ServerLifecycleEvents.SERVER_STOPPING.register(_ -> accounts.close());
     }
 
 }

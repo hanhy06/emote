@@ -56,7 +56,7 @@ final class StressTestCommand {
                     new StressLoad(DEFAULT_INSTANCE_COUNT, LoadUnit.INSTANCES)
                 ))
                 .then(Commands.argument("load", StringArgument.word())
-                    .suggests(SuggestionProviders.serverOnly((server, context, builder) -> SuggestionContext.suggest(
+                    .suggests(SuggestionProviders.serverOnly((_, _, builder) -> SuggestionContext.suggest(
                         List.of(Integer.toString(DEFAULT_INSTANCE_COUNT), DEFAULT_INSTANCE_COUNT + "i", Config.DEFAULT_MAX_ACTIVE_DISPLAY_ENTITIES + "d"),
                         builder
                     )))
@@ -191,10 +191,10 @@ final class StressTestCommand {
                 report.runtimeSeconds()
             )).withStyle(ChatFormatting.WHITE))
             .append(Component.literal("\n• MSPT").withStyle(ChatFormatting.GREEN))
-            .append(createStressStatistic("\n  ", "baseline", "%.2f ms", ChatFormatting.GRAY, report.baselineMspt()))
-            .append(createStressStatistic("  ", "avg", "%.2f ms", ChatFormatting.GREEN, report.averageMspt()))
-            .append(createStressStatistic("\n  ", "p95", "%.2f ms", ChatFormatting.GOLD, report.percentile95Mspt()))
-            .append(createStressStatistic("  ", "max", "%.2f ms", ChatFormatting.RED, report.maximumMspt()))
+            .append(createStressStatistic("\n  ", "baseline", ChatFormatting.GRAY, report.baselineMspt()))
+            .append(createStressStatistic("  ", "avg", ChatFormatting.GREEN, report.averageMspt()))
+            .append(createStressStatistic("\n  ", "p95", ChatFormatting.GOLD, report.percentile95Mspt()))
+            .append(createStressStatistic("  ", "max", ChatFormatting.RED, report.maximumMspt()))
             .append(Component.literal("\n\nEmote processing").withStyle(ChatFormatting.GRAY))
             .append(Component.literal("\n• Main: ").withStyle(ChatFormatting.GREEN))
             .append(Component.literal(String.format(
@@ -231,12 +231,11 @@ final class StressTestCommand {
     static MutableComponent createStressStatistic(
         String prefix,
         String label,
-        String valueFormat,
         ChatFormatting labelColor,
         double value
     ) {
         return Component.literal(prefix + label + ": ").withStyle(labelColor)
-            .append(Component.literal(String.format(Locale.ROOT, valueFormat, value)).withStyle(ChatFormatting.WHITE));
+            .append(Component.literal(String.format(Locale.ROOT, "%.2f ms", value)).withStyle(ChatFormatting.WHITE));
     }
 
 }

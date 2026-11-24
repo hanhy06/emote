@@ -185,7 +185,7 @@ public final class EmotePlayback {
             initializeAnimation();
             this.phase = this.startDelayTicks > 0 ? PlaybackPhase.START_DELAY : PlaybackPhase.RUNNING;
             this.remainingDelayTicks = this.startDelayTicks;
-            applyAnimationPose(0, false);
+            applyAnimationPose();
         }
     }
 
@@ -212,7 +212,7 @@ public final class EmotePlayback {
         this.cycleTick = Math.max(0, cycleTick);
         this.loopDelayTicks = (int) delay.value();
         placeAtCycleTick(this.cycleTick);
-        applyAnimationPose(0, false);
+        applyAnimationPose();
     }
 
     private void placeAtCycleTick(long elapsed) {
@@ -423,10 +423,10 @@ public final class EmotePlayback {
         return this.frameBoundaries > 0 ? AdvanceResult.RESTARTED : AdvanceResult.CONTINUE;
     }
 
-    private void applyAnimationPose(int deltaTicks, boolean update) {
-        this.evaluator.sampleFrame(this.animationTick, this.loopCount, deltaTicks, this.lifetimeTicks, update, true);
+    private void applyAnimationPose() {
+        this.evaluator.sampleFrame(this.animationTick, this.loopCount, 0, this.lifetimeTicks, false, true);
         this.evaluator.finishFrame();
-        preparePose(this.evaluator, null, 0, deltaTicks == 0 ? 0 : 1, true, false);
+        preparePose(this.evaluator, null, 0, 0, true, false);
     }
 
     private void executeAnimationFrame(int previousAnimationTick, int previousLoop, PlaybackPhase previousPhase) {
@@ -538,7 +538,7 @@ public final class EmotePlayback {
                 this.child.clearAppliedPose();
                 this.child.phase = segment.phase() == PlaybackTimeline.Phase.START_DELAY ? PlaybackPhase.START_DELAY : PlaybackPhase.RUNNING;
                 this.child.evaluator.prepareFrame(this.child.animationTick, 0, 0, this.child.lifetimeTicks);
-                this.child.applyAnimationPose(0, false);
+                this.child.applyAnimationPose();
                 copyChildPose();
                 hideUnusedNodes();
                 if (segment.phase() == PlaybackTimeline.Phase.ANIMATION) {
@@ -601,7 +601,7 @@ public final class EmotePlayback {
                 break;
             }
             if (segment.phase() == PlaybackTimeline.Phase.ANIMATION) {
-                int delta = this.child.model.clip().clock() == null ? Math.min(budget, Math.max(0, this.child.model.clip().durationTicks() - this.child.animationTick)) : budget;
+                int delta = this.child.model.clip().clock() == null ? Math.clamp(this.child.model.clip().durationTicks() - this.child.animationTick, 0, budget) : budget;
                 this.timelineTick += delta;
                 this.lifetimeTicks += delta;
                 this.segmentTick += delta;
@@ -617,7 +617,7 @@ public final class EmotePlayback {
                 if (!finishSequenceAnimation(segment, result)) return isFinished() ? AdvanceResult.FINISHED : AdvanceResult.CONTINUE;
             } else {
                 int length = Objects.requireNonNull(sequenceSegmentDurationTicks(this.sequenceSegment));
-                int delta = Math.min(budget, Math.max(0, length - this.segmentTick));
+                int delta = Math.clamp(length - this.segmentTick, 0, budget);
                 this.segmentTick += delta;
                 this.timelineTick += delta;
                 this.lifetimeTicks += delta;
@@ -732,7 +732,7 @@ public final class EmotePlayback {
             this.remainingDelayTicks = segment.endTick() - timelineTick;
         }
         this.evaluator.prepareFrame(this.animationTick, this.loopCount, 0, this.lifetimeTicks);
-        applyAnimationPose(0, false);
+        applyAnimationPose();
         if (this.phase != PlaybackPhase.START_DELAY) activateAnimationEvents(false);
     }
 
@@ -787,7 +787,7 @@ public final class EmotePlayback {
         this.phase = PlaybackPhase.RUNNING;
         this.animationEndTick = this.model.clip().clock() == null ? Math.addExact(this.timelineTick, this.model.clip().durationTicks() - animationTick) : null;
         this.evaluator.prepareFrame(animationTick, this.loopCount, 0, this.lifetimeTicks);
-        applyAnimationPose(0, false);
+        applyAnimationPose();
         activateAnimationEvents(false);
     }
 
@@ -880,7 +880,7 @@ public final class EmotePlayback {
                 this.child.clearState();
                 this.child.animationTick = source.animation().model().clip().durationTicks();
                 this.child.evaluator.prepareFrame(this.child.animationTick, 0, 0, this.child.lifetimeTicks);
-                this.child.applyAnimationPose(0, false);
+                this.child.applyAnimationPose();
                 copyChildPose();
                 hideUnusedNodes();
             } else {

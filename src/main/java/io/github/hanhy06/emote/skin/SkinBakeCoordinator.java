@@ -194,7 +194,7 @@ public final class SkinBakeCoordinator implements ConfigListener {
                 Set<PlayerSkinRegion> missing;
                 Set<UUID> completedSubscribers = null;
                 Listener completionListener = null;
-                boolean unavailable = false;
+                boolean unavailable;
                 synchronized (this) {
                     if (!isCurrent(key, bake)) {
                         return;

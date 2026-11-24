@@ -15,6 +15,7 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import java.util.List;
@@ -61,12 +62,12 @@ final class WheelSearchScreen extends Screen {
     }
 
     @Override
-    public boolean keyPressed(KeyEvent event) {
+    public boolean keyPressed(@NonNull KeyEvent event) {
         return (this.pendingWheelKey != null && this.pendingWheelKey.getValue() == event.key()) || super.keyPressed(event);
     }
 
     @Override
-    public boolean keyReleased(KeyEvent event) {
+    public boolean keyReleased(@NonNull KeyEvent event) {
         if (this.pendingWheelKey != null && this.pendingWheelKey.getValue() == event.key()) {
             this.pendingWheelKey = null;
             return true;
@@ -75,7 +76,7 @@ final class WheelSearchScreen extends Screen {
     }
 
     @Override
-    public boolean charTyped(CharacterEvent event) {
+    public boolean charTyped(@NonNull CharacterEvent event) {
         // Character events carry only the code point, including events from key repeats.
         return this.pendingWheelKey != null || super.charTyped(event);
     }
@@ -99,7 +100,7 @@ final class WheelSearchScreen extends Screen {
     }
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor graphics) {
+    public void extractRenderState(@NonNull GuiGraphicsExtractor graphics) {
         super.extractRenderState(graphics);
         graphics.centeredText(this.font, this.title, this.width / 2, 8, 0xFFFFFFFF);
         if (this.results.children().isEmpty()) {
@@ -143,7 +144,7 @@ final class WheelSearchScreen extends Screen {
         }
 
         @Override
-        public Component getNarration() {
+        public @NonNull Component getNarration() {
             return Component.literal(this.emote.name());
         }
 
