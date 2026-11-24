@@ -1,8 +1,8 @@
 package io.github.hanhy06.emote.mixin;
 
+import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.playback.PlaybackHooks;
-import io.github.hanhy06.emote.playback.PlaybackScene;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
@@ -15,7 +15,7 @@ abstract class EntityMixin {
     @Inject(method = "shouldBeSaved", at = @At("HEAD"), cancellable = true)
     private void emote$preventRuntimeEntitySave(CallbackInfoReturnable<Boolean> callbackInfo) {
         Entity entity = (Entity) (Object) this;
-        if (entity.entityTags().contains(PlaybackScene.RUNTIME_TAG)) {
+        if (entity.entityTags().contains(EmoteMod.RUNTIME_ENTITY_TAG)) {
             callbackInfo.setReturnValue(false);
         }
     }

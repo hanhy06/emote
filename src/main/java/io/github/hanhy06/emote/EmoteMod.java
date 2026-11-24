@@ -39,6 +39,8 @@ import org.slf4j.LoggerFactory;
 
 public class EmoteMod implements ModInitializer {
     public static final String MOD_ID = "emote";
+    // Entities with this tag are excluded from world saves.
+    public static final String RUNTIME_ENTITY_TAG = "emote.runtime";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
     public static MinecraftServer SERVER;
 

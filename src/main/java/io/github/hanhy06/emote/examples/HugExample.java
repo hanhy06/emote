@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.examples;
 
+import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.*;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
@@ -29,8 +30,6 @@ import java.util.UUID;
 public final class HugExample implements EmoteCallbacks {
     private static final Logger LOGGER = LoggerFactory.getLogger(HugExample.class);
 
-    // Emote cleans up entities with this tag after a server restart.
-    private static final String RUNTIME_ENTITY_TAG = "emote.runtime";
     private static final Identifier PUT_AWAY_SIGN = Identifier.parse("hug:put_away_sign");
     private static final Identifier HUG_PLAYER1 = Identifier.parse("hug:hug_player1");
     private static final int STOW_STEP = 1;
@@ -132,7 +131,7 @@ public final class HugExample implements EmoteCallbacks {
             dimensions.putFloat("height", 1.8F);
             TypedEntityData.of(EntityTypes.INTERACTION, dimensions).loadInto(hug.interaction);
 
-            hug.interaction.addTag(RUNTIME_ENTITY_TAG);
+            hug.interaction.addTag(EmoteMod.RUNTIME_ENTITY_TAG);
             positionInteraction(hug);
             if (!context.getWorld().addFreshEntity(hug.interaction)) {
                 throw new IllegalStateException("Failed to add the hug Interaction");
