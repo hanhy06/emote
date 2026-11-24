@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -9,11 +10,14 @@ ASSETS_DIR = Path(__file__).resolve().parent / "assets"
 
 
 def on_post_build(config, **kwargs):
+    site_dir = Path(config.site_dir).resolve()
+    shutil.copytree(ASSETS_DIR, site_dir / "assets", dirs_exist_ok=True)
+    if os.environ.get("EMOTE_SKIP_CONVERTER") == "1":
+        return
+
     npm = shutil.which("npm")
     if npm is None:
         raise RuntimeError("npm was not found. Install Node.js before building the site.")
-
-    converter_dir = Path(config.site_dir).resolve() / "converter"
 
     subprocess.run(
         [
@@ -22,7 +26,7 @@ def on_post_build(config, **kwargs):
             "build",
             "--",
             "--outDir",
-            str(converter_dir),
+            str(site_dir / "converter"),
             "--emptyOutDir",
             "--base",
             "./",
@@ -30,5 +34,3 @@ def on_post_build(config, **kwargs):
         cwd=WEB_DIR,
         check=True,
     )
-
-    shutil.copytree(ASSETS_DIR, Path(config.site_dir).resolve() / "assets", dirs_exist_ok=True)

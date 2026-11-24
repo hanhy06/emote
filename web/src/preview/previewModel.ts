@@ -1,6 +1,7 @@
 import type { ConversionAnimation, ConversionDocument } from "../domain/conversionDocument";
 import { evaluatePose } from "../domain/animationIRPose";
 import { matrix4ToRowMajor } from "../format/matrix";
+import { TICKS_PER_SECOND } from "../format/time";
 import { PreviewMolangEvaluator } from "./molangEvaluator";
 import type { ScalarEvaluatorIR } from "../domain/animationIRCurves";
 import type { SelectedFrame } from "../workspace";
@@ -42,7 +43,7 @@ export function createPreviewModel(document: ConversionDocument, animation: Conv
       return base;
     }
   };
-  const animationTimeSeconds = frame.type === "timeline" ? frame.animationTick / 20 : 0;
+  const animationTimeSeconds = frame.type === "timeline" ? frame.animationTick / TICKS_PER_SECOND : 0;
   const parts: PreviewPart[] = [];
   let availability: PreviewAvailability | null = animation ? { status: "full" } : null;
   if (animation) {

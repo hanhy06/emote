@@ -75,7 +75,7 @@ public final class AdminCommand {
         SkinProcessingStats skin = this.playerSkinManager.processingStats();
         int activeSessions = this.playbackEngine.activeSessionCount();
         int activePlayers = this.playerPlaybackManager.activePlayerCount();
-        int activeDisplays = this.playbackEngine.activeDisplayEntityCount();
+        int activeDisplays = this.playbackEngine.countedDisplayEntityCount();
         int displayLimit = this.configManager.getConfig().maxActiveDisplayEntities();
         int loadedEmotes = this.emoteCatalog.size();
         int disableRules = this.configManager.getAccessConfig().disabled().size();

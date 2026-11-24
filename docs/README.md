@@ -1,10 +1,20 @@
 # Emote
 
-![Emote demo](https://cdn.modrinth.com/data/qUF0jygw/images/15c895aea280b546764a0b7f2db2a4cb1f9628c8.gif)
+<a href="https://www.youtube.com/watch?v=miEEutsojFw&list=PLXqBJ1wZw7O0">
+  <img src="https://img.youtube.com/vi/miEEutsojFw/maxresdefault.jpg" alt="Emote 3.1 Demo" width="640">
+</a>
 
-> Thanks to [Popular Vibe](https://block-display.com/bd/77774) for allowing us to use their animation!
-
-[▶ Watch the full emote demo on YouTube](https://youtu.be/iJI04gY8A6c?si=h71TccN11jvLIFa3)
+<!-- 
+<iframe
+width="720"
+height="405"
+src="https://www.youtube.com/embed/miEEutsojFw?list=PLXqBJ1wZw7O0"
+title="YouTube video player"
+frameborder="0"
+allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+allowfullscreen>
+</iframe>
+-->
 
 [![Web converter](https://img.shields.io/badge/Web_converter-0067C0?style=flat-square&logo=githubpages&logoColor=white)](https://docs.hanhy06.kr/emote/converter/)
 [![Wiki](https://img.shields.io/badge/Wiki-9d4edd?style=flat-square&logo=materialformkdocs&logoColor=white)](https://docs.hanhy06.kr/emote/)
@@ -75,6 +85,7 @@ Place JSON exported by the converter under `emote/`. Subdirectories are loaded a
   "mineskin_cache_retention_days": 30,
   "mineskin_cache_max_mib": 256,
   "max_active_display_entities": 1024,
+  "count_marker_displays": true,
   "default_skin": ""
 }
 ```
@@ -118,9 +129,7 @@ Use the 3D preview to assign skin parts, then configure metadata, playback behav
 
 ![Open a project](https://cdn.modrinth.com/data/qUF0jygw/images/69f77ef2095909af8e7dd5830e452c3b9c4d61b2.png)
 
-![Review](https://cdn.modrinth.com/data/qUF0jygw/images/8f099b4088dca06f6f5f2eb92a77a1d83267c8bb.png)
-
-![Settings](https://cdn.modrinth.com/data/qUF0jygw/images/7b83454fe2ddff3e73abe2fc7f858cceb33ebff6.png)
+![Edit](https://cdn.modrinth.com/data/qUF0jygw/images/dbb1f803e310690b9b97e0c88ebd83341fd93eec.png)
 
 ### Animation conversion
 

@@ -300,7 +300,7 @@ export function App() {
             const showReview = severity === "warning" && selectedAnimation && eventReview.hasSelectedReview;
             if (!issues.length && !showSkinWarning && !showCommandWarning && !showReview) return null;
             return <details className={`message diagnostic-group ${severity}`} key={`${eventEditorRevision}:${severity}`}
-              open={showCommandWarning || issues.some(issue => issue.code === "unsupported_sequence_animation")}>
+              open={showCommandWarning || issues.some(issue => issue.code === "unsupported_sequence_animation" || issue.code === "batch_node_ids_changed")}>
               <summary>{severity === "error" ? "Error" : "Warn"}</summary>
               <div className="diagnostic-body">
                 {(issues.length > 0 || showSkinWarning || showCommandWarning) && <ul className="diagnostic-messages">

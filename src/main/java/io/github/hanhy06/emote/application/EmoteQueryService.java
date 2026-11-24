@@ -26,7 +26,7 @@ public class EmoteQueryService {
 
     public List<EmoteSummary> search(ServerPlayer player, String query) {
         List<EmoteSummary> emotes = getAll(player);
-        SearchQuery searchQuery = parseQuery(query);
+        SearchQuery searchQuery = parseQuery(query, false);
         if (searchQuery.isEmpty()) {
             return List.copyOf(emotes);
         }
@@ -40,7 +40,7 @@ public class EmoteQueryService {
     }
 
     public static List<EmoteSummary> filterPreservingOrder(List<EmoteSummary> emotes, String query) {
-        SearchQuery searchQuery = parseQuery(query);
+        SearchQuery searchQuery = parseQuery(query, true);
         if (searchQuery.isEmpty()) {
             return List.copyOf(emotes);
         }
@@ -62,8 +62,13 @@ public class EmoteQueryService {
     }
 
     private static int searchRank(EmoteSummary emote, SearchQuery query) {
-        if (!emote.tags().containsAll(query.tags())) {
-            return Integer.MAX_VALUE;
+        for (String tag : query.tags()) {
+            boolean matches = query.matchTagPrefixes()
+                ? emote.tags().stream().anyMatch(emoteTag -> emoteTag.startsWith(tag))
+                : emote.tags().contains(tag);
+            if (!matches) {
+                return Integer.MAX_VALUE;
+            }
         }
         if (query.text().isEmpty()) {
             return 0;
@@ -79,15 +84,19 @@ public class EmoteQueryService {
         return Integer.MAX_VALUE;
     }
 
-    private static SearchQuery parseQuery(String query) {
+    private static SearchQuery parseQuery(String query, boolean matchTagPrefixes) {
         String normalized = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
         if (normalized.isEmpty()) {
-            return new SearchQuery("", List.of());
+            return new SearchQuery("", List.of(), matchTagPrefixes);
         }
 
         List<String> textParts = new ArrayList<>();
         LinkedHashSet<String> tags = new LinkedHashSet<>();
         for (String part : normalized.split("\\s+")) {
+            if (matchTagPrefixes && part.equals("#")) {
+                tags.add("");
+                continue;
+            }
             List<String> parsedTags = EmoteTags.extract(part);
             if (parsedTags.size() == 1 && part.equals("#" + parsedTags.getFirst())) {
                 tags.add(parsedTags.getFirst());
@@ -95,10 +104,10 @@ public class EmoteQueryService {
                 textParts.add(part);
             }
         }
-        return new SearchQuery(String.join(" ", textParts), List.copyOf(tags));
+        return new SearchQuery(String.join(" ", textParts), List.copyOf(tags), matchTagPrefixes);
     }
 
-    private record SearchQuery(String text, List<String> tags) {
+    private record SearchQuery(String text, List<String> tags, boolean matchTagPrefixes) {
         private boolean isEmpty() {
             return this.text.isEmpty() && this.tags.isEmpty();
         }

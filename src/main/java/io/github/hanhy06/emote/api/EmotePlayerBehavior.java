@@ -2,13 +2,13 @@ package io.github.hanhy06.emote.api;
 
 import java.util.Objects;
 
-public record EmotePlayerBehavior(boolean hidden, StopConditions stopConditions) {
+public record EmotePlayerBehavior(boolean hidden, boolean autoThirdPerson, StopConditions stopConditions) {
     public EmotePlayerBehavior {
         Objects.requireNonNull(stopConditions, "stopConditions");
     }
 
     public static EmotePlayerBehavior createDefault() {
-        return new EmotePlayerBehavior(true, StopConditions.createDefault());
+        return new EmotePlayerBehavior(true, true, StopConditions.createDefault());
     }
 
     public record StopConditions(

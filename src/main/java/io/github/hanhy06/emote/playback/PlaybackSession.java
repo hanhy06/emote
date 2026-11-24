@@ -47,6 +47,7 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
     private final PlaybackScene scene;
     private final EmotePlayback playback;
     private final Map<String, Entity> actors;
+    private final boolean markerPlayback;
     private PlaybackPlacement.Mode placementMode;
 
     public PlaybackSession(
@@ -57,7 +58,8 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
         EmotePlayback playback,
         Map<String, Entity> actors,
         PlaybackPlacement.Mode placementMode,
-        PlaybackEngine.Lifecycle lifecycle
+        PlaybackEngine.Lifecycle lifecycle,
+        boolean markerPlayback
     ) {
         this.engine = Objects.requireNonNull(engine, "engine");
         this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle");
@@ -67,6 +69,7 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
         this.playback = Objects.requireNonNull(playback, "playback");
         this.emoteInfo = playback.emote().info();
         this.actors = Map.copyOf(actors);
+        this.markerPlayback = markerPlayback;
         this.placementMode = Objects.requireNonNull(placementMode, "placementMode");
         this.appliedPlacementMode = placementMode;
     }
@@ -80,6 +83,7 @@ public final class PlaybackSession implements EmotePlayback.LifecycleListener {
     }
 
     public Playback view() { return this.view; }
+    boolean markerPlayback() { return this.markerPlayback; }
 
     private PlaybackPlacement placement(EmotePlayback.@Nullable PoseView pose) {
         return new PlaybackPlacement(this.appliedPlacementMode, pose == null ? this.scene.root().position() : pose.root().position(),

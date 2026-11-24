@@ -214,7 +214,11 @@ it("normalizes oversized or displaced models without changing their animated geo
   }
 });
 
-for (const format of formats) it(`${format}: isolates automatic and manual skin assignment between rigid and jointed player rigs`, async () => {
+for (const format of formats) it.each([false, true])(`${format}: isolates skin assignment between rigid and jointed rigs (shared root: %s)`, async (sharedRoot) => {
+  const rigs = [
+    { uuid: "rigid", children: [{ uuid: "rigid_bone", children: ["rigid_arm"] }] },
+    { uuid: "jointed", children: [{ uuid: "upper_bone", children: ["jointed_arm", { uuid: "lower_bone", children: ["jointed_forearm"] }] }] },
+  ];
   const project = await importModel(format, "unused", [
     cube("rigid_arm", [-8, 12, -2], [-4, 24, 2]),
     cube("jointed_arm", [-8, 18, -2], [-4, 24, 2]),
@@ -226,11 +230,9 @@ for (const format of formats) it(`${format}: isolates automatic and manual skin 
       { uuid: "jointed", name: "player_jointed", origin: [0, 0, 0] },
       { uuid: "upper_bone", name: "left_arm", origin: [-5, 22, 0] },
       { uuid: "lower_bone", name: "left_forearm", origin: [-5, 18, 0] },
+      ...(sharedRoot ? [{ uuid: "stage", name: "stage", origin: [0, 0, 0] }] : []),
     ],
-    outliner: [
-      { uuid: "rigid", children: [{ uuid: "rigid_bone", children: ["rigid_arm"] }] },
-      { uuid: "jointed", children: [{ uuid: "upper_bone", children: ["jointed_arm", { uuid: "lower_bone", children: ["jointed_forearm"] }] }] },
-    ],
+    outliner: sharedRoot ? [{ uuid: "stage", children: rigs }] : rigs,
   });
   const document = createConversionDocument(project, format);
   const rigid = Object.entries(document.skinCandidates).filter(([, candidate]) => candidate.sceneId === "rigid");
@@ -253,7 +255,10 @@ for (const format of formats) it(`${format}: isolates automatic and manual skin 
   const reassigned = assignSkinPart(document, selected, "right_arm");
   const attachment = reassigned.nodes[rigid[0][1].nodeId].attachments![rigid[0][1].attachmentId];
   expect(attachment).toMatchObject({ type: "player_skin", part: "right_arm", region: { from: 0, to: 1 } });
-  expect(regions(jointed, reassigned)).toEqual(regions(jointed));
+  for (const [, candidate] of jointed) {
+    expect(reassigned.nodes[candidate.nodeId].attachments![candidate.attachmentId])
+      .toEqual(document.nodes[candidate.nodeId].attachments![candidate.attachmentId]);
+  }
   const output = compileAnimation(document, animationEntries(document)[0]).animation;
   for (const [, candidate] of [...rigid, ...jointed]) {
     expect(output.nodes[candidate.nodeId].attachments![candidate.attachmentId]).toEqual(document.nodes[candidate.nodeId].attachments![candidate.attachmentId]);

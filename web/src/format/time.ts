@@ -1,3 +1,5 @@
+import { ConversionError } from "../foundation/diagnostics";
+
 export const TICKS_PER_SECOND = 20;
 export const MAX_ANIMATION_DURATION_TICKS = TICKS_PER_SECOND * 60 * 10;
 
@@ -9,8 +11,16 @@ export function parseMinecraftTime(value: string, minimumTicks = 0): number {
   if (!match) throw new Error("must be a Minecraft time string using d, s, t, or bare ticks");
   const number = Number.parseFloat(value);
   const multiplier = match[1] === "d" ? 24_000 : match[1] === "s" ? 20 : 1;
-  const ticks = Math.floor(Math.fround(Math.fround(number) * multiplier) + 0.5);
+  const ticks = Math.round(number * multiplier);
   if (!Number.isSafeInteger(ticks) || ticks < minimumTicks || ticks > JAVA_INT_MAX) throw new Error(`must resolve to ${minimumTicks}..${JAVA_INT_MAX} ticks`);
+  return ticks;
+}
+
+export function parseAnimationDuration(value: string, sourcePath?: string): number {
+  const ticks = parseMinecraftTime(value, 1);
+  if (ticks > MAX_ANIMATION_DURATION_TICKS) {
+    throw new ConversionError("animation_duration_unsupported", `Animation duration must not exceed ${MAX_ANIMATION_DURATION_TICKS} ticks.`, sourcePath);
+  }
   return ticks;
 }
 

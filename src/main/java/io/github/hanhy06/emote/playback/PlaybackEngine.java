@@ -26,7 +26,9 @@ public final class PlaybackEngine implements ConfigListener {
     private final List<PlaybackSession> closingPlaybacks = new ArrayList<>();
     private final CallbackRegistry callbackRegistry = new CallbackRegistry();
     private int activeDisplayEntities;
+    private int activeMarkerDisplays;
     private int maxActiveDisplayEntities = Config.DEFAULT_MAX_ACTIVE_DISPLAY_ENTITIES;
+    private boolean countMarkerDisplays = Config.DEFAULT_COUNT_MARKER_DISPLAYS;
     private PlaybackStressTest stressTest;
     private ExecutorService poseExecutor;
     private List<PlaybackSession> framePlaybacks = List.of();
@@ -48,7 +50,8 @@ public final class PlaybackEngine implements ConfigListener {
 
     public record Request(ServerLevel level, RootTransform root, PreparedEmote emote,
                           Map<String, Entity> actors, MolangQuerySource queries, @Nullable CommandSourceStack commandSource,
-                          @Nullable Map<String, Map<PlayerSkinRegion, String>> skin, Lifecycle lifecycle, PlaybackPlacement.Mode placementMode) {
+                          @Nullable Map<String, Map<PlayerSkinRegion, String>> skin, Lifecycle lifecycle,
+                          PlaybackPlacement.Mode placementMode, boolean markerPlayback) {
         public Request {
             Objects.requireNonNull(level, "level");
             Objects.requireNonNull(root, "root");
@@ -88,7 +91,10 @@ public final class PlaybackEngine implements ConfigListener {
     }
 
     public void setStateListener(Lifecycle listener) { this.stateListener = Objects.requireNonNull(listener, "listener"); }
-    @Override public void onConfigReload(Config config) { this.maxActiveDisplayEntities = config.maxActiveDisplayEntities(); }
+    @Override public void onConfigReload(Config config) {
+        this.maxActiveDisplayEntities = config.maxActiveDisplayEntities();
+        this.countMarkerDisplays = config.countMarkerDisplays();
+    }
 
     public StartResult start(Request request, @Nullable PlaybackSession replacedSession) {
         if (this.stopping) return new StartResult.Failure(FailureReason.START_REJECTED, "The server is stopping.");
@@ -96,7 +102,10 @@ public final class PlaybackEngine implements ConfigListener {
         if (replacedSession != null && !contains(replacedSession)) {
             return new StartResult.Failure(FailureReason.START_REJECTED, "The playback being replaced is no longer active.");
         }
-        int projected = activeDisplayEntityCount() - (replacedSession == null ? 0 : replacedSession.scene().displayEntityCount()) + emote.displayEntityCount();
+        int projected = countedDisplayEntityCount() + countedDisplays(emote.displayEntityCount(), request.markerPlayback());
+        if (replacedSession != null) {
+            projected -= countedDisplays(replacedSession.scene().displayEntityCount(), replacedSession.markerPlayback());
+        }
         if (this.maxActiveDisplayEntities > 0 && projected > this.maxActiveDisplayEntities) {
             return new StartResult.Failure(FailureReason.DISPLAY_LIMIT, "Too many emotes are active right now. Try again shortly.");
         }
@@ -110,7 +119,8 @@ public final class PlaybackEngine implements ConfigListener {
             scene = PlaybackScene.create(request.level(), request.root(), emote);
             playback.bindEvents(new EventCommandExecutor(request.level(), request.commandSource(), scene));
             if (request.skin() != null) scene.setSkins(request.skin());
-            session = new PlaybackSession(this, UUID.randomUUID(), request.level().dimension(), scene, playback, request.actors(), request.placementMode(), request.lifecycle());
+            session = new PlaybackSession(this, UUID.randomUUID(), request.level().dimension(), scene, playback,
+                request.actors(), request.placementMode(), request.lifecycle(), request.markerPlayback());
             session.bindCallbacks(bindings, animationBindings);
             if (replacedSession != null) stop(replacedSession, PlaybackStopReason.REPLACED);
             register(session);
@@ -127,7 +137,9 @@ public final class PlaybackEngine implements ConfigListener {
         if (this.activePlaybacks.putIfAbsent(session.sessionId(), session) != null) {
             throw new IllegalStateException("Playback session is already registered: " + session.sessionId());
         }
-        this.activeDisplayEntities += session.scene().displayEntityCount();
+        int displays = session.scene().displayEntityCount();
+        this.activeDisplayEntities += displays;
+        if (session.markerPlayback()) this.activeMarkerDisplays += displays;
         session.registered(this.stateListener);
     }
 
@@ -194,7 +206,9 @@ public final class PlaybackEngine implements ConfigListener {
     public @Nullable PlaybackSession stop(PlaybackSession session, PlaybackStopReason reason) {
         if (!contains(session) || !session.beginClose(reason)) return null;
         this.activePlaybacks.remove(session.sessionId());
-        this.activeDisplayEntities -= session.scene().displayEntityCount();
+        int displays = session.scene().displayEntityCount();
+        this.activeDisplayEntities -= displays;
+        if (session.markerPlayback()) this.activeMarkerDisplays -= displays;
         this.closingPlaybacks.add(session);
         session.notifyClosing();
         return session;
@@ -219,7 +233,15 @@ public final class PlaybackEngine implements ConfigListener {
             if (session.emoteId().equals(id)) stop(session, reason);
         }
     }
-    public int activeDisplayEntityCount() { return this.stressTest.displayEntityCount() + this.activeDisplayEntities; }
+    public int countedDisplayEntityCount() {
+        int nonMarkerDisplays = this.activeDisplayEntities - this.activeMarkerDisplays;
+        return this.stressTest.displayEntityCount() + nonMarkerDisplays + countedDisplays(this.activeMarkerDisplays, true);
+    }
+
+    private int countedDisplays(int displays, boolean markerPlayback) {
+        return markerPlayback && !this.countMarkerDisplays ? 0 : displays;
+    }
+
     public int activeSessionCount() { return this.activePlaybacks.size(); }
     public PlaybackStressTest stressTest() { return this.stressTest; }
 }

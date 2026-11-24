@@ -8,13 +8,15 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.NonNull;
 
-public record PlaybackStatePayload(boolean active, boolean hidePlayer) implements CustomPacketPayload {
-    public static final Type<PlaybackStatePayload> TYPE = new Type<>(Identifier.fromNamespaceAndPath(EmoteMod.MOD_ID, "playback_state"));
+public record PlaybackStatePayload(boolean active, boolean hidePlayer, boolean autoThirdPerson) implements CustomPacketPayload {
+    public static final Type<PlaybackStatePayload> TYPE = new Type<>(Identifier.fromNamespaceAndPath(EmoteMod.MOD_ID, "playback_state_v2"));
     public static final StreamCodec<RegistryFriendlyByteBuf, PlaybackStatePayload> STREAM_CODEC = StreamCodec.composite(
         ByteBufCodecs.BOOL,
         PlaybackStatePayload::active,
         ByteBufCodecs.BOOL,
         PlaybackStatePayload::hidePlayer,
+        ByteBufCodecs.BOOL,
+        PlaybackStatePayload::autoThirdPerson,
         PlaybackStatePayload::new
     );
 
