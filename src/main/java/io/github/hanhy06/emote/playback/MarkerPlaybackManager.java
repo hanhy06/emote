@@ -146,6 +146,20 @@ public final class MarkerPlaybackManager {
         }
     }
 
+    private record MarkerEmoteSettings(String emoteId, String skinName) {
+        private static final MarkerEmoteSettings EMPTY = new MarkerEmoteSettings("", "");
+
+        private MarkerEmoteSettings {
+            emoteId = emoteId.strip();
+            skinName = skinName.strip();
+        }
+
+        private static MarkerEmoteSettings read(CustomData data) {
+            var tag = data.copyTag();
+            return new MarkerEmoteSettings(tag.getStringOr("emote", ""), tag.getStringOr("emote_skin", ""));
+        }
+    }
+
     private static final class Entry {
         private final Marker marker;
         private CustomData customData = CustomData.EMPTY;
