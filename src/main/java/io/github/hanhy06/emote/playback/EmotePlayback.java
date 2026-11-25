@@ -987,15 +987,6 @@ public final class EmotePlayback {
         closeChild(reason);
     }
 
-    public Transformation currentTransformation(String nodeId) {
-        if (this.notificationView != null) return new Transformation(this.notificationView.nodeMatrix(nodeId));
-        if (this.appliedPose != null) return new Transformation(this.appliedPose.nodeMatrix(nodeId));
-        if (this.emote instanceof PreparedSequence && this.child != null && cursor().phase() == PlaybackTimeline.Phase.ANIMATION && this.child.model.nodes().containsKey(nodeId)) return this.child.currentTransformation(nodeId);
-        Matrix4fc matrix = this.appliedTransforms.get(nodeId);
-        if (matrix == null) return this.target.createTransformation(nodeId, this.emote.defaultMatrix(nodeId));
-        return this.target.createTransformation(nodeId, matrix);
-    }
-
     private void clearState() {
         this.transitionStartTransforms = new HashMap<>();
         clearAppliedPose();
@@ -1296,8 +1287,6 @@ public final class EmotePlayback {
         default RootTransform frameRoot() { return root(); }
         default float frameOrientationYaw() { return orientationYaw(); }
 
-        Transformation createTransformation(String nodeId, Matrix4fc matrix);
-
         void applyTransform(String nodeId, Transformation transformation, int interpolationDurationTicks);
 
         void setVisible(String nodeId, boolean visible);
@@ -1305,8 +1294,6 @@ public final class EmotePlayback {
         void setVisible(String nodeId, String attachmentId, boolean visible);
 
         void applyNbt(String nodeId, String attachmentId, CompoundTag nbt, Set<String> remove);
-
-        default void resetNbt(String nodeId, String attachmentId) {}
 
         void resetAll();
     }

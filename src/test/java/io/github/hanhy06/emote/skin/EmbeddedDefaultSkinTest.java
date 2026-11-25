@@ -342,7 +342,6 @@ class EmbeddedDefaultSkinTest {
 
     private static final class Target implements EmotePlayback.PoseTarget {
         public Matrix4fc rootMatrix() { return new Matrix4f(); }
-        public Transformation createTransformation(String id, Matrix4fc matrix) { return new Transformation(matrix); }
         public void applyTransform(String id, Transformation transformation, int interpolationDurationTicks) {}
         public void setVisible(String id, boolean visible) {}
         public void setVisible(String id, String attachment, boolean visible) {}
