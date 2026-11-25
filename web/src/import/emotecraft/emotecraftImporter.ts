@@ -3,7 +3,6 @@ import { importedNodeHints } from "../../domain/conversionSeed";
 import type { ImportedProject } from "../../domain/conversionSeed";
 import type { ConversionIssue } from "../../foundation/diagnostics";
 import type { TimelineEventIR } from "../../domain/animationIR";
-import { createDefaultPlayerBehavior } from "../../domain/emoteDefinition";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import type { EmotecraftFile } from "./emotecraftBinary";
 import { convertEmotecraftSong } from "./emotecraftNbs";
@@ -60,7 +59,7 @@ export function importEmotecraftFile(file: EmotecraftFile, sourceName: string): 
     ...(file.metadata.author ? { author: file.metadata.author } : {}), ...(file.metadata.badges.length ? { badges: file.metadata.badges } : {}) };
   if (file.icon) diagnostics.push({ severity: "warning", code: "emotecraft_icon_ignored", message: "Embedded icon is outside the animation output contract." });
   return {
-    source: "emotecraft_binary", sourceName, suggestedMetadata: ir.metadata, suggestedPlayer: createDefaultPlayerBehavior(),
+    source: "emotecraft_binary", sourceName, suggestedMetadata: ir.metadata,
     suggestedNamespace: sanitizeNamespace(name), suggestedRotationDeadzone: 0, nodeHints: importedNodeHints(nodes),
     animations: [{ ir, id: sanitizeResourcePath(name, "emotecraft_emote"), name, suggestedMetadata: ir.metadata,
     }], diagnostics, resources: new Map(),

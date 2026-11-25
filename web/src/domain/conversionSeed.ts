@@ -1,4 +1,4 @@
-import type { EmoteMetadata, EmotePlayerBehavior } from "./emoteDefinition";
+import type { EmoteMetadata } from "./emoteDefinition";
 import type { Matrix16 } from "./matrix";
 import type { PlayerSkinPart } from "./player";
 import type { BlockStateData, ItemStackData } from "./minecraftData";
@@ -13,11 +13,8 @@ export interface ImportedProject {
   source: InputFormat;
   sourceName: string;
   suggestedMetadata: EmoteMetadata;
-  suggestedPlayer: EmotePlayerBehavior;
   suggestedMinecraftVersion?: string;
   suggestedNamespace?: string;
-  suggestedStandalone?: boolean;
-  suggestedCooldown?: string;
   suggestedRotationDeadzone?: number;
   nodeHints: Record<string, ImportedNodeHint>;
   animations: ImportedAnimation[];

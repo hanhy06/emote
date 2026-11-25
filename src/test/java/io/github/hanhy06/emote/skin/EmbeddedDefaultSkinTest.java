@@ -84,7 +84,7 @@ class EmbeddedDefaultSkinTest {
         PreparedAnimation first = animation("test:first", png(0xff123456));
         PreparedAnimation second = animation("test:second", png(0xffabcdef));
         PlayerSkinSource a = first.model().skin().defaultSource(), b = second.model().skin().defaultSource();
-        PlayerSkinSource player = new PlayerSkinSource(UUID.randomUUID(), "Player", "c".repeat(64), "unused", false);
+        PlayerSkinSource player = new PlayerSkinSource(UUID.randomUUID(), "c".repeat(64), "unused", false);
         var cache = new SkinCache(this.directory.resolve("cache"));
         Map<PlayerSkinRegion, String> fallbackA = Map.of(HEAD, "a-head", BODY, "a-body");
         Map<PlayerSkinRegion, String> fallbackB = Map.of(HEAD, "b-head", BODY, "b-body");
@@ -107,7 +107,7 @@ class EmbeddedDefaultSkinTest {
             PlayerSkinSource incomplete = PlayerSkinSource.fromPng(png(0xffaabbcc));
             assertTrue(cache.save(incomplete.textureHash(), false, Map.of(HEAD, "partial-default-head"), cache.epoch()));
             second.model().skin().setDefaultSource(incomplete);
-            var missingPlayer = new PlayerSkinSource(UUID.randomUUID(), "Missing", "d".repeat(64), "unused", false);
+            var missingPlayer = new PlayerSkinSource(UUID.randomUUID(), "d".repeat(64), "unused", false);
             cache.load(missingPlayer.textureHash(), false, cache.epoch());
             preparation = manager.prepareSkinSource(missingPlayer, List.of(first, second), false);
             assertFalse(preparation.ready());
@@ -173,7 +173,7 @@ class EmbeddedDefaultSkinTest {
             public void onReady(UUID player, long generation) { ready.add(player); }
         });
         try {
-            var remote = new PlayerSkinSource(UUID.randomUUID(), "Player", "a".repeat(64), "remote", true);
+            var remote = new PlayerSkinSource(UUID.randomUUID(), "a".repeat(64), "remote", true);
             var embedded = coordinator.embed(remote).get(5, TimeUnit.SECONDS);
             var normalized = ImageIO.read(new java.io.ByteArrayInputStream(embedded.png()));
             assertFalse(embedded.slimModel());
@@ -233,7 +233,7 @@ class EmbeddedDefaultSkinTest {
         Files.writeString(first.sourcePath(), json.toString());
         first = PreparedAnimation.prepare(new AnimationJsonParser().parse(first.sourcePath()), registries);
         var second = animation("test:second", png(0xffabcdef));
-        var player = new PlayerSkinSource(UUID.randomUUID(), "Player", "c".repeat(64), "unused", false);
+        var player = new PlayerSkinSource(UUID.randomUUID(), "c".repeat(64), "unused", false);
         PlayerSkinSource playerOverride = player.withOverride(first.model().skin().override());
         PlayerSkinSource fallbackOverride = first.model().skin().defaultSource().withOverride(first.model().skin().override());
         var cache = new SkinCache(this.directory.resolve("cache"));
@@ -342,7 +342,6 @@ class EmbeddedDefaultSkinTest {
 
     private static final class Target implements EmotePlayback.PoseTarget {
         public Matrix4fc rootMatrix() { return new Matrix4f(); }
-        public Transformation createTransformation(String id, Matrix4fc matrix) { return new Transformation(matrix); }
         public void applyTransform(String id, Transformation transformation, int interpolationDurationTicks) {}
         public void setVisible(String id, boolean visible) {}
         public void setVisible(String id, String attachment, boolean visible) {}

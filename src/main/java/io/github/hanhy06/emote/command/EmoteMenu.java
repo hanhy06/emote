@@ -54,10 +54,6 @@ public final class EmoteMenu {
         this.playerPlaybackManager = playerPlaybackManager;
     }
 
-    public void open(ServerPlayer player, int pageNumber) {
-        open(player, pageNumber, "");
-    }
-
     public void open(ServerPlayer player, int pageNumber, String query) {
         String dialogQuery = query == null ? "" : query.trim();
         Dialog dialog = createRootDialog(player, pageNumber, dialogQuery);

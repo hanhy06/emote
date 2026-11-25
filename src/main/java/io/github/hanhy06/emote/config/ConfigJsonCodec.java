@@ -102,8 +102,7 @@ final class ConfigJsonCodec {
             return null;
         }
         try {
-            int schemaVersion = schemaElement.getAsBigDecimal().intValueExact();
-            if (schemaVersion != AccessConfig.CURRENT_SCHEMA_VERSION && schemaVersion != AccessConfig.LEGACY_SCHEMA_VERSION) {
+            if (schemaElement.getAsBigDecimal().intValueExact() != AccessConfig.CURRENT_SCHEMA_VERSION) {
                 return null;
             }
         } catch (ArithmeticException exception) {

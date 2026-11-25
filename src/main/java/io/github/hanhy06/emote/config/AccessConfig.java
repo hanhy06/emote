@@ -8,7 +8,6 @@ import java.util.regex.PatternSyntaxException;
 
 public record AccessConfig(List<String> disabled, List<PermissionEntry> permissions) {
     public static final int CURRENT_SCHEMA_VERSION = 3;
-    public static final int LEGACY_SCHEMA_VERSION = 2;
     public static final Identifier DEFAULT_PERMISSION = Identifier.fromNamespaceAndPath("emote", "default");
 
     public AccessConfig {

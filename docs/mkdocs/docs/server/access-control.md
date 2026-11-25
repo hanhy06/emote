@@ -56,7 +56,7 @@ API and bypass playback must still meet the minimum playback requirements.
 
 | Field            | Behavior                                                                          |
 |------------------|-----------------------------------------------------------------------------------|
-| `schema_version` | Must be `3`. Version `2` is upgraded automatically.                              |
+| `schema_version` | Must be `3`.                                                                      |
 | `disabled`       | Hidden from normal players. Only players with `emote.bypass` can use them.        |
 | `permissions`    | Permission groups used to assemble each player's available emote IDs.             |
 | `permission`     | Permission checked through the installed permission provider.                     |

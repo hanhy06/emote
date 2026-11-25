@@ -21,7 +21,7 @@ export function requireString(value: unknown, path: string): string {
   return value;
 }
 
-export function requireNumber(value: unknown, path: string): number {
+function requireNumber(value: unknown, path: string): number {
   if (typeof value !== "number" || !Number.isFinite(value)) throw invalidInput(path, "must be a finite number");
   return value;
 }

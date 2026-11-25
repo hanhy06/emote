@@ -1,4 +1,4 @@
-export const RESOURCE_LOCATION_PATTERN = /^([a-z0-9_.-]+):([a-z0-9_./-]+)$/;
+const RESOURCE_LOCATION_PATTERN = /^([a-z0-9_.-]+):([a-z0-9_./-]+)$/;
 
 export function isResourceLocation(value: string): boolean {
   return RESOURCE_LOCATION_PATTERN.test(value);

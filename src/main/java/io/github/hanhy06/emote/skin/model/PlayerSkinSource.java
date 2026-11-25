@@ -20,7 +20,6 @@ import java.util.UUID;
 
 public record PlayerSkinSource(
     UUID playerUuid,
-    String playerName,
     String textureHash,
     String textureUrl,
     boolean slimModel,
@@ -29,13 +28,12 @@ public record PlayerSkinSource(
 ) {
     public static final int MAX_PNG_BYTES = 1_048_576;
 
-    public PlayerSkinSource(UUID playerUuid, String playerName, String textureHash, String textureUrl, boolean slimModel) {
-        this(playerUuid, playerName, textureHash, textureUrl, slimModel, null, null);
+    public PlayerSkinSource(UUID playerUuid, String textureHash, String textureUrl, boolean slimModel) {
+        this(playerUuid, textureHash, textureUrl, slimModel, null, null);
     }
 
     public PlayerSkinSource {
         Objects.requireNonNull(playerUuid, "playerUuid");
-        Objects.requireNonNull(playerName, "playerName");
         Objects.requireNonNull(textureHash, "textureHash");
         Objects.requireNonNull(textureUrl, "textureUrl");
     }
@@ -44,7 +42,7 @@ public record PlayerSkinSource(
 
     public static PlayerSkinSource fromPng(byte[] png) {
         String hash = HexFormat.of().formatHex(Sha256.newDigest().digest(png));
-        return new PlayerSkinSource(UUID.nameUUIDFromBytes(png), "embedded", hash, "", false, png, null);
+        return new PlayerSkinSource(UUID.nameUUIDFromBytes(png), hash, "", false, png, null);
     }
 
     public PlayerSkinSource withOverride(@Nullable SkinOverride override) {
@@ -54,7 +52,7 @@ public record PlayerSkinSource(
         digest.update((byte) 0);
         digest.update(override.hash().getBytes(java.nio.charset.StandardCharsets.UTF_8));
         String hash = HexFormat.of().formatHex(digest.digest());
-        return new PlayerSkinSource(this.playerUuid, this.playerName, hash, this.textureUrl, this.slimModel, this.png, override);
+        return new PlayerSkinSource(this.playerUuid, hash, this.textureUrl, this.slimModel, this.png, override);
     }
 
     public static BufferedImage readPng(byte[] png) throws IOException {
@@ -84,7 +82,7 @@ public record PlayerSkinSource(
         MinecraftProfileTextures textures = sessionService.unpackTextures(packedTextures);
         MinecraftProfileTexture skinTexture = textures.skin();
         if (skinTexture == null) return null;
-        return new PlayerSkinSource(profile.id(), profile.name(), skinTexture.getHash(), skinTexture.getUrl(),
+        return new PlayerSkinSource(profile.id(), skinTexture.getHash(), skinTexture.getUrl(),
             "slim".equalsIgnoreCase(skinTexture.getMetadata("model")));
     }
 }
