@@ -5,7 +5,7 @@ import { normalizeAnimationTimes, remapClip } from "./animationIRConversion";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
 import type { GeneratedResource } from "./generatedResource";
-import type { EmoteMetadata, EmotePlayerBehavior, SequenceStep } from "./emoteDefinition";
+import { createDefaultPlayerBehavior, type EmoteMetadata, type EmotePlayerBehavior, type SequenceStep } from "./emoteDefinition";
 import type { ImportedProject, ImportedSkinPart, InputFormat } from "./conversionSeed";
 
 export const DEFAULT_TARGET_MINECRAFT_VERSION = "26.4";
@@ -66,10 +66,10 @@ export function createConversionDocument(project: ImportedProject, formatLabel: 
     if (project.source !== "emote_json") ir.id = `${sanitizeNamespace(namespace)}:${sanitizeResourcePath(animation.id)}`;
     if (project.source !== "emote_json") ir.metadata = animation.suggestedMetadata ?? { ...additionalMetadata, name: animation.name, description: `${animation.name} emote.` };
     ir.settings = {
-      standalone: project.suggestedStandalone ?? true,
-      cooldown: project.suggestedCooldown ?? "0t",
+      standalone: true,
+      cooldown: "0t",
       rotation_deadzone: project.suggestedRotationDeadzone ?? 50,
-      player: structuredClone(project.suggestedPlayer), ...ir.settings,
+      player: createDefaultPlayerBehavior(), ...ir.settings,
     };
     Reflect.deleteProperty(ir.settings, "display_interpolation_ticks");
     ir.animation.events = {

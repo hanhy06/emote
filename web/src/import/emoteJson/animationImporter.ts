@@ -1,6 +1,5 @@
 import type { ImportedNodeHint, ImportedProject } from "../../domain/conversionSeed";
 import { attachmentTargetId, type AnimationIR } from "../../domain/animationIR";
-import { createDefaultPlayerBehavior } from "../../domain/emoteDefinition";
 import { normalizeResourceLocation } from "../../format/resourceLocation";
 import { readItemStack } from "../../format/minecraftData";
 import { parseAnimationDuration } from "../../format/time";
@@ -40,8 +39,7 @@ export function importAnimation(value: unknown, sourceName: string): ImportedPro
   }
   return {
     source: "emote_json", sourceName, suggestedMetadata: ir.metadata, suggestedMinecraftVersion: ir.target_minecraft_version,
-    suggestedNamespace: ir.id?.split(":")[0], suggestedPlayer: ir.settings?.player ?? createDefaultPlayerBehavior(),
-    suggestedStandalone: ir.settings?.standalone ?? true, suggestedCooldown: ir.settings?.cooldown, suggestedRotationDeadzone: ir.settings?.rotation_deadzone ?? 50,
+    suggestedNamespace: ir.id?.split(":")[0],
     nodeHints, resources: new Map(), diagnostics,
     animations: [{ ir, id: ir.id?.split(":")[1], sourceReferenceId: ir.id, name: ir.metadata.name,
     }],

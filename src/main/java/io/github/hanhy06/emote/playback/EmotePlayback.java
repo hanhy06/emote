@@ -6,7 +6,6 @@ import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.api.PlaybackTimeline;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.sequence.EmoteSequence;
-import io.github.hanhy06.emote.content.AnimationEventPhase;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.content.PreparedSequence;
@@ -147,7 +146,7 @@ public final class EmotePlayback {
             PlaybackCursor cursor = this.eventPose.cursor();
             EmoteAnimation animation = this.eventAnimation;
             this.eventAnimation = null;
-            execute(animation.clip().events().stop(), animation.id(), cursor.animationTick() == null ? animation.clip().durationTicks() : cursor.animationTick(), AnimationEventPhase.STOP);
+            execute(animation.clip().events().stop(), animation.id(), cursor.animationTick() == null ? animation.clip().durationTicks() : cursor.animationTick(), true);
             if (this.emote instanceof PreparedSequence) notifyLifecycle(listener -> listener.onClose(reason), true);
             return AdvanceResult.FINISHED;
         });
@@ -293,7 +292,7 @@ public final class EmotePlayback {
         if (!this.eventsStarted || this.animationEventsActive || this.eventsStopped) return;
         this.animationEventsActive = true;
         recordEventPose();
-        execute(this.model.clip().events().start(), this.model.id(), this.animationTick, AnimationEventPhase.START);
+        execute(this.model.clip().events().start(), this.model.id(), this.animationTick, false);
         if (startAtZero && !this.eventsStopped) execute(timelineEventsAt(0));
     }
 
@@ -453,7 +452,7 @@ public final class EmotePlayback {
         while (previousLoop < loop && !this.eventsStopped) {
             execute(timelineEvents(previousAnimationTick, durationTicks));
             if (this.eventsStopped) return;
-            execute(this.model.clip().events().loop(), this.model.id(), durationTicks, AnimationEventPhase.LOOP);
+            execute(this.model.clip().events().loop(), this.model.id(), durationTicks, false);
             if (this.eventsStopped) return;
             notifyLifecycle(LifecycleListener::onLoop, false);
             if (this.eventsStopped) return;
@@ -464,7 +463,7 @@ public final class EmotePlayback {
         if (this.eventsStopped) return;
         execute(timelineEvents(previousAnimationTick, animationTick));
         if (phase == PlaybackPhase.LOOP_BOUNDARY || phase == PlaybackPhase.LOOP_DELAY) {
-            execute(this.model.clip().events().loop(), this.model.id(), durationTicks, AnimationEventPhase.LOOP);
+            execute(this.model.clip().events().loop(), this.model.id(), durationTicks, false);
         }
     }
 
@@ -964,10 +963,6 @@ public final class EmotePlayback {
             phase == PlaybackTimeline.Phase.ANIMATION ? this.animationTick : null);
     }
 
-    public Identifier emoteId() {
-        return Identifier.parse(this.emote.id());
-    }
-
     public float rotationDeadzone() {
         return this.child == null ? this.emote.rotationDeadzone() : this.child.model.settings().rotationDeadzone();
     }
@@ -985,20 +980,11 @@ public final class EmotePlayback {
                 this.model.clip().events().stop(),
                 this.model.id(),
                 this.animationTick,
-                AnimationEventPhase.STOP
+                true
             );
             return;
         }
         closeChild(reason);
-    }
-
-    public Transformation currentTransformation(String nodeId) {
-        if (this.notificationView != null) return new Transformation(this.notificationView.nodeMatrix(nodeId));
-        if (this.appliedPose != null) return new Transformation(this.appliedPose.nodeMatrix(nodeId));
-        if (this.emote instanceof PreparedSequence && this.child != null && cursor().phase() == PlaybackTimeline.Phase.ANIMATION && this.child.model.nodes().containsKey(nodeId)) return this.child.currentTransformation(nodeId);
-        Matrix4fc matrix = this.appliedTransforms.get(nodeId);
-        if (matrix == null) return this.target.createTransformation(nodeId, this.emote.defaultMatrix(nodeId));
-        return this.target.createTransformation(nodeId, matrix);
     }
 
     private void clearState() {
@@ -1262,9 +1248,9 @@ public final class EmotePlayback {
         List<EmoteAnimation.Event> events,
         Identifier animationId,
         int animationTick,
-        AnimationEventPhase phase
+        boolean stopEvent
     ) {
-        execute(events.stream().map(event -> new EmotePlayback.EventOccurrence(event, animationId, animationTick, phase, this.preparingFrame.view())).toList());
+        execute(events.stream().map(event -> new EmotePlayback.EventOccurrence(event, animationId, animationTick, stopEvent, this.preparingFrame.view())).toList());
     }
 
     private void execute(List<EmotePlayback.EventOccurrence> events) {
@@ -1272,13 +1258,13 @@ public final class EmotePlayback {
             return;
         }
         for (EmotePlayback.EventOccurrence event : events) {
-            if (this.eventsStopped && event.phase() != AnimationEventPhase.STOP) break;
+            if (this.eventsStopped && !event.stopEvent()) break;
             EventExecutor executor = this.eventExecutor;
             Frame frame = this.preparingFrame;
             frame.notifications.add(new Notification(event.pose(), () -> {
-                if (event.phase() == AnimationEventPhase.STOP && frame.owner.eventAnimation != null && frame.owner.eventAnimation.id().equals(event.animationId())) frame.owner.eventAnimation = null;
+                if (event.stopEvent() && frame.owner.eventAnimation != null && frame.owner.eventAnimation.id().equals(event.animationId())) frame.owner.eventAnimation = null;
                 executor.execute(event);
-            }, event.phase() == AnimationEventPhase.STOP));
+            }, event.stopEvent()));
         }
     }
 
@@ -1301,8 +1287,6 @@ public final class EmotePlayback {
         default RootTransform frameRoot() { return root(); }
         default float frameOrientationYaw() { return orientationYaw(); }
 
-        Transformation createTransformation(String nodeId, Matrix4fc matrix);
-
         void applyTransform(String nodeId, Transformation transformation, int interpolationDurationTicks);
 
         void setVisible(String nodeId, boolean visible);
@@ -1310,8 +1294,6 @@ public final class EmotePlayback {
         void setVisible(String nodeId, String attachmentId, boolean visible);
 
         void applyNbt(String nodeId, String attachmentId, CompoundTag nbt, Set<String> remove);
-
-        default void resetNbt(String nodeId, String attachmentId) {}
 
         void resetAll();
     }
@@ -1430,26 +1412,25 @@ public final class EmotePlayback {
             .filter(event -> forward ? event.tick() > previousAnimationTick && event.tick() <= animationTick && event.direction() != EmoteAnimation.Direction.BACKWARD
                 : event.tick() >= animationTick && event.tick() < previousAnimationTick && event.direction() != EmoteAnimation.Direction.FORWARD)
             .sorted(forward ? order : order.reversed())
-            .map(event -> new EventOccurrence(event.event(), this.model.id(), event.tick(), AnimationEventPhase.TIMELINE, this.preparingFrame.view())).toList();
+            .map(event -> new EventOccurrence(event.event(), this.model.id(), event.tick(), false, this.preparingFrame.view())).toList();
     }
 
     private List<EventOccurrence> timelineEventsAt(int animationTick) {
         return this.model.clip().events().timeline().stream()
             .filter(event -> event.tick() == animationTick && event.direction() != EmoteAnimation.Direction.BACKWARD)
-            .map(event -> new EventOccurrence(event.event(), this.model.id(), event.tick(), AnimationEventPhase.TIMELINE, this.preparingFrame.view())).toList();
+            .map(event -> new EventOccurrence(event.event(), this.model.id(), event.tick(), false, this.preparingFrame.view())).toList();
     }
 
     public record EventOccurrence(
         EmoteAnimation.Event event,
         Identifier animationId,
         int animationTick,
-        AnimationEventPhase phase,
+        boolean stopEvent,
         PoseView pose
     ) {
         public EventOccurrence {
             Objects.requireNonNull(event, "event");
             Objects.requireNonNull(animationId, "animationId");
-            Objects.requireNonNull(phase, "phase");
             Objects.requireNonNull(pose, "pose");
         }
     }
