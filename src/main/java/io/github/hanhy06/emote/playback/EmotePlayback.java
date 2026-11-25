@@ -964,10 +964,6 @@ public final class EmotePlayback {
             phase == PlaybackTimeline.Phase.ANIMATION ? this.animationTick : null);
     }
 
-    public Identifier emoteId() {
-        return Identifier.parse(this.emote.id());
-    }
-
     public float rotationDeadzone() {
         return this.child == null ? this.emote.rotationDeadzone() : this.child.model.settings().rotationDeadzone();
     }

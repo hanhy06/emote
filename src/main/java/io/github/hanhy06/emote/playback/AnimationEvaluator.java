@@ -118,10 +118,6 @@ final class AnimationEvaluator {
     Matrix4fc matrix(int index) { return this.matrices[index]; }
     Matrix4fc poseMatrix(int index) { return this.poseMatrices[index]; }
     Transformation transformation(int index) { return this.transformations[index]; }
-    boolean visible(int index) { return this.visibility[index]; }
-    Map<String, Boolean> attachmentVisibility(int index) { return this.attachmentVisibility.get(index); }
-    Map<String, CompoundTag> nbt(int index) { return this.nbt.getOrDefault(nodeId(index), Map.of()); }
-    Set<String> nbtRemoved(int index, String attachmentId) { return this.nbtRemoved.get(nodeId(index)).get(attachmentId); }
 
     private void setFrameQueries(int animationTick, int loopCount, int deltaTicks, long lifetimeTicks) {
         if (animationTick != this.sampleAnimationTick || loopCount != this.sampleLoop) this.sharedValues.clear();
