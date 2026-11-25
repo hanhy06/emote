@@ -214,7 +214,7 @@ class SkinCachePipelineTest {
             new AccountBakeQueue(accounts, client), new MineSkinProvider(cache, new MineSkinClient()));
     }
 
-    private static PlayerSkinSource source(UUID player, String hash) { return new PlayerSkinSource(player, "Player", hash, "https://textures.minecraft.net/texture/" + hash, false); }
+    private static PlayerSkinSource source(UUID player, String hash) { return new PlayerSkinSource(player, hash, "https://textures.minecraft.net/texture/" + hash, false); }
 
     private static Config defaultConfig(String name) {
         var config = Config.createDefault();
