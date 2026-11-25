@@ -51,9 +51,9 @@ public final class MineSkinProvider {
         boolean slimModel
     ) throws IOException, InterruptedException {
         long nowEpochMillis = System.currentTimeMillis();
-        SkinCache.Failure failure = this.cache.loadFailure(contentHash, nowEpochMillis);
-        if (failure != null) {
-            return TextureResolution.retry(failure.retryAfterEpochMillis());
+        Long retryAfter = this.cache.loadFailureRetryAfterEpochMillis(contentHash, nowEpochMillis);
+        if (retryAfter != null) {
+            return TextureResolution.retry(retryAfter);
         }
         SkinCache.PendingJob pendingJob = this.cache.loadPendingJob(contentHash);
         if (pendingJob != null

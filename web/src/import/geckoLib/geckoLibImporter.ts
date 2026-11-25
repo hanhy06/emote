@@ -8,7 +8,6 @@ import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLo
 import { serializeSnbtString } from "../../format/snbt";
 import { ConversionError, skippedAnimationIssue, type ConversionIssue } from "../../foundation/diagnostics";
 import type { ImportedAnimation, ImportedNode, ImportedProject } from "../../domain/conversionSeed";
-import { createDefaultPlayerBehavior } from "../../domain/emoteDefinition";
 import {
   type BbAnimation,
   type BbAnimator,
@@ -132,7 +131,6 @@ export function importGeckoLibProject(project: GeckoLibBbmodelProject, sourceNam
     source: "geckolib_bbmodel",
     sourceName,
     suggestedMetadata: { name: sourceStem, description: `${sourceStem} emote.` },
-    suggestedPlayer: createDefaultPlayerBehavior(),
     suggestedNamespace: namespace,
     nodeHints: importedNodeHints(nodes),
     animations,

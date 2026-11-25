@@ -546,10 +546,14 @@ class SamplePoseTest {
         playback.bindEvents(event -> effects.add("event:" + event.animationId() + ":" + event.animationTick() + ":" + event.pose().nodeMatrix("n").m30()));
         playback.bindLifecycleListener(new EmotePlayback.LifecycleListener() {
             public void onStart(PreparedAnimation animation) {
-                effects.add("start:" + animation.id() + ":" + playback.cursor().animationTick() + ":" + playback.currentTransformation("n").getMatrix().m30());
+                var pose = playback.notificationPose();
+                assertNotNull(pose);
+                effects.add("start:" + animation.id() + ":" + playback.cursor().animationTick() + ":" + pose.nodeMatrix("n").m30());
             }
             public void onTick(int tick) {
-                effects.add("tick:" + tick + ":" + playback.cursor().animationTick() + ":" + playback.currentTransformation("n").getMatrix().m30());
+                var pose = playback.notificationPose();
+                assertNotNull(pose);
+                effects.add("tick:" + tick + ":" + playback.cursor().animationTick() + ":" + pose.nodeMatrix("n").m30());
             }
             public void onClose(PlaybackStopReason reason) { effects.add("close:" + reason); }
         });
@@ -753,7 +757,6 @@ class SamplePoseTest {
         final Matrix4f root = new Matrix4f();
 
         @Override public Matrix4fc rootMatrix() { return this.root; }
-        @Override public Transformation createTransformation(String nodeId, Matrix4fc matrix) { return new Transformation(new Matrix4f(matrix)); }
         @Override public void applyTransform(String nodeId, Transformation transformation, int interpolationDurationTicks) { this.matrices.put(nodeId, transformation.getMatrixCopy()); }
         @Override public void setVisible(String nodeId, boolean visible) {}
         @Override public void setVisible(String nodeId, String attachmentId, boolean visible) {}

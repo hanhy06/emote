@@ -2,7 +2,6 @@ import { parseAnimationDuration, sourceSecondsTime } from "../../format/time";
 import { importedNodeHints } from "../../domain/conversionSeed";
 import type { AnimationIR, CurveIR, TrackIR, Vector3IR } from "../../domain/animationIR";
 import type { ImportedNode, ImportedProject } from "../../domain/conversionSeed";
-import { createDefaultPlayerBehavior } from "../../domain/emoteDefinition";
 import { sanitizeResourcePath } from "../../format/resourceLocation";
 import { writeDisplayNbt } from "../../format/minecraftData";
 import { minecraftVersionProfile } from "../../format/minecraftVersionProfiles";
@@ -30,7 +29,6 @@ export function importBdDatapack(source: BdDatapackSource, sourceName: string): 
     source: "bd_datapack",
     sourceName,
     suggestedMetadata: { name, description: `${name} emote.` },
-    suggestedPlayer: createDefaultPlayerBehavior(),
     suggestedNamespace: source.namespace,
     nodeHints: importedNodeHints(nodes),
     animations,

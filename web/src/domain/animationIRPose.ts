@@ -1,6 +1,6 @@
 import { parseMinecraftTime } from "../format/time";
 import { Euler, Matrix4, Quaternion, Vector3 } from "three";
-import { orderedNodeIds, type AnimationIR, type DriverIR, type ScalarIR, type TrackIR, type VisibilityIR } from "./animationIR";
+import { orderedNodeIds, type AnimationIR, type ScalarIR, type TrackIR, type ValueDriverIR, type VisibilityDriverIR, type VisibilityIR } from "./animationIR";
 import { sampleCurve, type ScalarEvaluatorIR } from "./animationIRCurves";
 
 export interface NodePoseIR {
@@ -32,20 +32,20 @@ export function evaluatePose(animation: AnimationIR, time: number, evaluate: Sca
     }
     return cached[component];
   };
-  const value = (driver: DriverIR | undefined, base: readonly number[], sampleTime = time): number[] => {
+  const value = (driver: ValueDriverIR | undefined, base: readonly number[], sampleTime = time): number[] => {
     if (!driver) return [...base];
     if (driver.type === "curve") return sampleCurve(driver, sampleTime, base, scalar);
     if (driver.type !== "expression" || !Array.isArray(driver.value)) throw new Error("Transform requires an expression vector or curve.");
-    return (driver.value as readonly ScalarIR[]).map((raw, axis) => scalar(raw, 0, base[axis]));
+    return driver.value.map((raw: ScalarIR, axis) => scalar(raw, 0, base[axis]));
   };
-  const visible = (driver: DriverIR | undefined, base: boolean): boolean => {
+  const visible = (driver: VisibilityDriverIR | undefined, base: boolean): boolean => {
     if (!driver) return base;
     let raw: VisibilityIR;
-    if (driver.type === "expression") raw = driver.value as VisibilityIR;
+    if (driver.type === "expression") raw = driver.value;
     else if (driver.type === "state") {
       const key = driver.keys.filter((key) => parseMinecraftTime(key.time) / 20 <= time).at(-1);
       if (!key) return base;
-      raw = key.value as VisibilityIR;
+      raw = key.value;
     } else throw new Error("Visibility requires an expression or state driver.");
     return typeof raw === "boolean" ? raw : scalar(raw, 0, base ? 1 : 0) !== 0;
   };

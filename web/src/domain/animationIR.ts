@@ -81,7 +81,6 @@ export type StateDriverIR<T> = { type: "state"; before?: "base" | "first_pre"; k
 export type ValueDriverIR = CurveIR | { type: "expression"; value: VectorValueIR };
 export type VisibilityDriverIR = { type: "expression"; value: VisibilityIR } | StateDriverIR<VisibilityIR>;
 export type NbtDriverIR = StateDriverIR<NbtPatchIR>;
-export type DriverIR = ValueDriverIR | VisibilityDriverIR | NbtDriverIR;
 export type SharedValueIR = ValueDriverIR & { base: readonly number[]; time_offset?: string };
 export type TrackIR =
   | { target: { node: string; operation: string; attachment?: never }; channel: "value"; driver: ValueDriverIR; blend?: { base: Readonly<Vector3IR>; weight: ScalarIR } }

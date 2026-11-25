@@ -3,7 +3,6 @@ import { importedNodeHints } from "../../domain/conversionSeed";
 import { referencedItemModelResources } from "../../domain/generatedResource";
 import type { BlockStateData, ItemStackData } from "../../domain/minecraftData";
 import { readDisplayNbt } from "../../format/minecraftData";
-import { createDefaultPlayerBehavior } from "../../domain/emoteDefinition";
 import { normalizeResourceLocation, sanitizeResourcePath } from "../../format/resourceLocation";
 import { isRecord } from "../../format/runtimeValue";
 import { parseSnbtCompound, serializeSnbtCompound, serializeSnbtString, splitSnbtPair, splitSnbtTopLevel } from "../../format/snbt";
@@ -105,7 +104,6 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
     source: "animated_java_blueprint",
     sourceName: input.name,
     suggestedMetadata: { name, description: `${name} emote.` },
-    suggestedPlayer: createDefaultPlayerBehavior(),
     nodeHints: importedNodeHints(nodes),
     animations,
     diagnostics,

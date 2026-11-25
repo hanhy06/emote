@@ -57,16 +57,12 @@ public class ConfigManager {
             return null;
         }
 
-        boolean migrateAccessConfig = accessConfigJson.get("schema_version").getAsInt() == AccessConfig.LEGACY_SCHEMA_VERSION;
-        return new PreparedConfig(loadedConfig, loadedAccessConfig, migrateAccessConfig);
+        return new PreparedConfig(loadedConfig, loadedAccessConfig);
     }
 
     public void apply(PreparedConfig preparedConfig) {
         this.config = preparedConfig.config();
         this.accessConfig = preparedConfig.accessConfig();
-        if (preparedConfig.migrateAccessConfig()) {
-            writeJsonFile(ACCESS_CONFIG_FILE_NAME, ConfigJsonCodec.writeAccessConfig(this.accessConfig));
-        }
         broadcastConfig();
         broadcastAccessConfig();
     }
@@ -245,6 +241,6 @@ public class ConfigManager {
         }
     }
 
-    public record PreparedConfig(Config config, AccessConfig accessConfig, boolean migrateAccessConfig) {
+    public record PreparedConfig(Config config, AccessConfig accessConfig) {
     }
 }
