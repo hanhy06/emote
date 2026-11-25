@@ -8,6 +8,7 @@ import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
 import io.github.hanhy06.emote.util.Sha256;
 import net.fabricmc.loader.api.FabricLoader;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -271,7 +272,7 @@ public final class SkinCache {
         deleteCacheFile(contentHash, "pending", "pending job");
     }
 
-    public synchronized Failure loadFailure(String contentHash, long nowEpochMillis) {
+    public synchronized @Nullable Long loadFailureRetryAfterEpochMillis(String contentHash, long nowEpochMillis) {
         Path filePath = resolveCacheFilePath(contentHash, "failures");
         if (filePath == null || !Files.isRegularFile(filePath)) {
             return null;
@@ -283,8 +284,7 @@ public final class SkinCache {
                 Files.deleteIfExists(filePath);
                 return null;
             }
-            String errorMessage = readString(object, "last_error");
-            return new Failure(retryAfter, errorMessage == null ? "Skin upload request failed" : errorMessage);
+            return retryAfter;
         } catch (IOException | RuntimeException exception) {
             EmoteMod.LOGGER.warn("Failed to read skin upload failure state: {}", filePath, exception);
             return null;
@@ -644,12 +644,6 @@ public final class SkinCache {
             while (this.values.size() > this.maximumSize) {
                 this.values.pollFirstEntry();
             }
-        }
-    }
-
-    public record Failure(long retryAfterEpochMillis, String errorMessage) {
-        public Failure {
-            Objects.requireNonNull(errorMessage, "errorMessage");
         }
     }
 
