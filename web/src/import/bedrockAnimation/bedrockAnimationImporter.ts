@@ -1,4 +1,3 @@
-import { createDefaultPlayerBehavior } from "../../domain/emoteDefinition";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { importedNodeHints } from "../../domain/conversionSeed";
 import type { ImportedAnimation, ImportedProject } from "../../domain/conversionSeed";
@@ -51,7 +50,6 @@ export function importBedrockAnimationDocument(document: BedrockAnimationDocumen
     source: "bedrock_animation_json",
     sourceName,
     suggestedMetadata: { name: sourceStem, description: `${sourceStem} emote.` },
-    suggestedPlayer: createDefaultPlayerBehavior(),
     suggestedNamespace: sanitizeNamespace(sourceStem),
     suggestedRotationDeadzone: 0,
     nodeHints: importedNodeHints(nodes),
