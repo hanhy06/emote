@@ -58,10 +58,6 @@ public final class PlayerPlaybackManager {
     }
     public int activePlayerCount() { return this.playerSessions.size(); }
 
-    public PlayResult start(ServerPlayer player, PreparedEmote emote) {
-        return start(player, emote, PlaybackPlacement.actor());
-    }
-
     public PlayResult start(ServerPlayer player, PreparedEmote emote, PlaybackPlacement placement) {
         var preparation = this.skins.preparePlayerSkin(player, emote);
         if (!preparation.ready()) return PlayResult.failure(preparation.preparing()

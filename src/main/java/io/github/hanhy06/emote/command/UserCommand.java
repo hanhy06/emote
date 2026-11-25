@@ -39,11 +39,12 @@ public final class UserCommand {
 
     public LiteralArgumentBuilder<CommandSourceStack> createRoot() {
         return Commands.literal("emote")
-            .executes(context -> openMenu(context.getSource(), 1))
+            .executes(context -> openMenu(context.getSource(), 1, ""))
             .then(Commands.argument("page", IntegerArgumentType.integer(1))
                 .executes(context -> openMenu(
                     context.getSource(),
-                    IntegerArgumentType.getInteger(context, "page")
+                    IntegerArgumentType.getInteger(context, "page"),
+                    ""
                 )))
             .then(createSearchCommand())
             .then(createPlayCommand())
@@ -85,15 +86,6 @@ public final class UserCommand {
         return source.getEntity() instanceof ServerPlayer player
             ? this.emoteQueryService.getPlayableIds(player)
             : this.emoteQueryService.getAllIds();
-    }
-
-    private int openMenu(
-        CommandSourceStack source,
-        int pageNumber
-    ) throws CommandSyntaxException {
-        ServerPlayer player = source.getPlayerOrException();
-        this.menu.open(player, pageNumber);
-        return 1;
     }
 
     private int openSearch(CommandSourceStack source) throws CommandSyntaxException {

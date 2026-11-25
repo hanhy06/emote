@@ -122,7 +122,6 @@ class EventCommandExecutorTest {
         @Override public Matrix4fc rootMatrix() { return this.root.rotationMatrix(); }
         @Override public RootTransform root() { return this.root; }
         @Override public float orientationYaw() { return 135; }
-        @Override public Transformation createTransformation(String nodeId, Matrix4fc matrix) { return new Transformation(new Matrix4f(matrix)); }
         @Override public void applyTransform(String nodeId, Transformation transformation, int interpolationDurationTicks) {}
         @Override public void setVisible(String nodeId, boolean visible) {}
         @Override public void setVisible(String nodeId, String attachmentId, boolean visible) {}

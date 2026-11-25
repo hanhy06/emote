@@ -116,12 +116,6 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
     }
 
     @Override
-    public Transformation createTransformation(String nodeId, Matrix4fc matrix) {
-        requiredNode(nodeId);
-        return new Transformation(this.root.displayMatrix(matrix));
-    }
-
-    @Override
     public void setVisible(String nodeId, boolean visible) {
         NodeInstance node = requiredNode(nodeId);
         node.visible = visible;
@@ -139,8 +133,9 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
     @Override
     public void resetAll() {
         this.nodes.forEach((nodeId, node) -> {
-            node.attachments().keySet().forEach(attachmentId -> resetNbt(nodeId, attachmentId));
-            applyTransform(nodeId, createTransformation(nodeId, this.emote.defaultMatrix(nodeId)), 0);
+            node.attachments().values().forEach(attachment -> resetNbt(node, attachment));
+            Transformation transformation = new Transformation(this.root.displayMatrix(this.emote.defaultMatrix(nodeId)));
+            applyTransform(nodeId, transformation, 0);
             node.attachments().forEach((id, attachment) -> setVisible(nodeId, id, attachment.initiallyVisible));
             setVisible(nodeId, node.initiallyVisible);
         });
@@ -276,10 +271,7 @@ public final class PlaybackScene implements EmotePlayback.PoseTarget {
         loadNbt(node, attachment, current, changed);
     }
 
-    @Override
-    public void resetNbt(String nodeId, String attachmentId) {
-        NodeInstance node = requiredNode(nodeId);
-        AttachmentInstance attachment = node.attachments().get(attachmentId);
+    private void resetNbt(NodeInstance node, AttachmentInstance attachment) {
         if (attachment.isAnchor() || !attachment.hasModifiedNbt()) return;
         TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, attachment.entity().registryAccess());
         attachment.entity().saveWithoutId(output);

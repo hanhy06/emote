@@ -545,7 +545,6 @@ class EmptySequenceTest {
         boolean visible = true;
 
         public Matrix4fc rootMatrix() { return new Matrix4f(); }
-        public Transformation createTransformation(String nodeId, Matrix4fc matrix) { return new Transformation(new Matrix4f(matrix)); }
         public void applyTransform(String nodeId, Transformation transformation, int interpolationDurationTicks) { this.matrix = transformation.getMatrixCopy(); }
         public void setVisible(String nodeId, boolean visible) { this.visible = visible; }
         public void setVisible(String nodeId, String attachmentId, boolean visible) {}
