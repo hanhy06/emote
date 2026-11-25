@@ -1,6 +1,6 @@
 import type { TargetedEvent } from "preact";
 import { useEffect, useRef } from "preact/hooks";
-import type { PreviewPart } from "../preview/previewModel";
+import type { PreviewModel } from "../preview/previewModel";
 import type { PlayerSkinPart } from "../domain/player";
 import {
   SKIN_PARTS,
@@ -9,7 +9,7 @@ import {
 } from "../preview/skinParts";
 
 interface AssignmentPanelProps {
-  parts: Pick<PreviewPart, "candidateId" | "partIndex">[];
+  parts: PreviewModel["candidateParts"];
   assignments: PartAssignments;
   orders: PartOrders;
   selectedCandidateIds: ReadonlySet<string>;

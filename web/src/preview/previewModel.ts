@@ -8,7 +8,6 @@ import type { SelectedFrame } from "../workspace";
 
 export interface PreviewPart {
   candidateId: string;
-  partIndex: number;
   matrix: readonly number[];
   conversionMatrix?: readonly number[];
 }
@@ -19,13 +18,13 @@ export type PreviewAvailability =
   | { status: "unavailable"; reason: string };
 
 export interface PreviewModel {
-  availability: PreviewAvailability | null;
-  candidateParts: Pick<PreviewPart, "candidateId" | "partIndex">[];
+  availability: PreviewAvailability;
+  candidateParts: { candidateId: string; partIndex: number }[];
   parts: PreviewPart[];
 }
 
-export function createPreviewModel(document: ConversionDocument, animation: ConversionAnimation | undefined, frame: SelectedFrame): PreviewModel {
-  const nodeIds = new Set(animation?.nodeIds ?? []);
+export function createPreviewModel(document: ConversionDocument, animation: ConversionAnimation, frame: SelectedFrame): PreviewModel {
+  const nodeIds = new Set(animation.nodeIds);
   const candidates = Object.entries(document.skinCandidates).filter(([, candidate]) => nodeIds.has(candidate.nodeId));
   const groups = new Map<string, number>();
   const candidateParts = candidates.map(([candidateId, candidate]) => {
@@ -45,24 +44,21 @@ export function createPreviewModel(document: ConversionDocument, animation: Conv
   };
   const animationTimeSeconds = frame.type === "timeline" ? frame.animationTick / TICKS_PER_SECOND : 0;
   const parts: PreviewPart[] = [];
-  let availability: PreviewAvailability | null = animation ? { status: "full" } : null;
-  if (animation) {
-    if (animation.clip.clock?.type === "molang") approximate("Runtime animation clock is approximated with elapsed time.");
-    if (animation.clip.molang?.initialize || animation.clip.molang?.tick) approximate("Runtime Molang is preserved; dependent expressions use their base components.");
-    try {
-      const poses = evaluatePose({ ...animation, nodes: Object.fromEntries(animation.nodeIds.map((id) => [id, document.nodes[id]])),
-        animation: frame.type === "create" ? { ...animation.clip, tracks: [] } : animation.clip }, animationTimeSeconds, evaluate, approximate);
-      for (const { candidateId, partIndex } of candidateParts) {
-        const candidate = document.skinCandidates[candidateId];
-        const pose = poses[candidate.nodeId];
-        if (!pose?.attachments[candidate.attachmentId]) continue;
-        parts.push({ candidateId, partIndex, matrix: matrix4ToRowMajor(pose.matrix, candidateId),
-          ...(candidate.fittingOperation ? { conversionMatrix: candidate.fittingOperation.value } : {}) });
-      }
-      if (reasons.size) availability = { status: "approximate", reason: [...reasons].join(" ") };
-    } catch (reason) {
-      availability = { status: "unavailable", reason: reason instanceof Error ? reason.message : String(reason) };
+  let availability: PreviewAvailability = { status: "full" };
+  if (animation.clip.clock?.type === "molang") approximate("Runtime animation clock is approximated with elapsed time.");
+  if (animation.clip.molang?.initialize || animation.clip.molang?.tick) approximate("Runtime Molang is preserved; dependent expressions use their base components.");
+  try {
+    const poses = evaluatePose({ ...animation, nodes: Object.fromEntries(animation.nodeIds.map((id) => [id, document.nodes[id]])),
+      animation: frame.type === "create" ? { ...animation.clip, tracks: [] } : animation.clip }, animationTimeSeconds, evaluate, approximate);
+    for (const [candidateId, candidate] of candidates) {
+      const pose = poses[candidate.nodeId];
+      if (!pose?.attachments[candidate.attachmentId]) continue;
+      parts.push({ candidateId, matrix: matrix4ToRowMajor(pose.matrix, candidateId),
+        ...(candidate.fittingOperation ? { conversionMatrix: candidate.fittingOperation.value } : {}) });
     }
+    if (reasons.size) availability = { status: "approximate", reason: [...reasons].join(" ") };
+  } catch (reason) {
+    availability = { status: "unavailable", reason: reason instanceof Error ? reason.message : String(reason) };
   }
   return { availability, candidateParts, parts };
 }
