@@ -24,6 +24,7 @@ nav:
       - Custom Emote: server/custom-emote.md
       - Advanced Usage: server/advanced-usage.md
       - Custom Provider: server/custom-provider.md
+      - Troubleshooting: server/troubleshooting.md
   - Developers:
       - Animation: developers/animation.md
       - Sequence: developers/sequence.md
