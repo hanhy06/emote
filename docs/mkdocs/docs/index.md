@@ -16,16 +16,16 @@
 [![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/hanhy06/emote)
 [![Discord](https://img.shields.io/badge/Discord-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/CRWqKbSebW)
 
-Emote is a server-side Fabric mod that plays animations using Minecraft display entities. The server administration guides cover installing emotes, permissions, disabling emotes, cooldowns, and using Sequences. The web converter for creating Animations is available from the badge above.
+Emote is a server-side Fabric mod that plays animations using Minecraft display entities. The web converter for creating Animations is available from the badge above.
+
+## Server Administration
+
+The server administration guides cover installing emotes, permissions, disabling emotes, cooldowns, and using Sequences.
+
+## Developers
+
+The developer guides cover the Animation and Sequence formats, the mod API, and Molang.
 
 ## Troubleshooting
 
-| Problem                                           | What to check                                                                                                                                |
-|---------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|
-| An emote does not appear in the list              | Check the server log, duplicate IDs, the `disabled` list, the `standalone` setting, and permissions.                                         |
-| A JSON file does not load                         | Check `schema_version`, required fields, time strings, and the file size limit.                                                              |
-| The player skin is not applied                    | Check the skin-part assignments in the converter and the skin provider configuration. Try playing the emote again after skin processing finishes. |
-| The skin is applied in the wrong position         | Reassign the part and order of each node. |
-| A Sequence does not load                          | Check that each referenced Animation exists and that reused node IDs, skin layouts, and playback modes are compatible.                       |
-
-If the problem persists, report it through [GitHub Issues](https://github.com/hanhy06/emote/issues) or [Discord](https://discord.gg/CRWqKbSebW) with reproduction steps, the Emote and Minecraft versions, and the relevant server logs.
+See the [Troubleshooting guide](server/troubleshooting.md).
